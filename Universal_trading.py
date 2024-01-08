@@ -1,5 +1,7 @@
 #PARAMETERS
 
+#TEST TO SEE IF I CAN PUSH CODE BACK TO THE GIT
+
 #PARAMTERS
 # Hvilken orderbook vi legger ordre i (Den vil automatisk hedge with the opposite contract)
 # Fungerer antageligvis best om kun en av dem er True
