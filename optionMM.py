@@ -162,20 +162,20 @@ def calculateMarketMakerPrice(bidask,contract):
     if bidask == "ask":
         if "-P" in contract: #if we are getting put and ask, we need to genereate price for a ask call
             mmPrice = (price*futureAskPrice + futureAskPrice - float(strike))/futureAskPrice
-            print(mmPrice)
+            #print(mmPrice)
             mmPrice += (tcost(mmPrice*futureAskPrice,price*futureAskPrice,futureAskPrice) + dOptionMargin)/futureAskPrice
         if "-C" in contract: #if call
             mmPrice = (float(strike) + price*futureBidPrice - futureBidPrice)/futureBidPrice
-            print(mmPrice)
+            #print(mmPrice)
             mmPrice += (tcost(mmPrice*futureBidPrice,price*futureBidPrice,futureBidPrice) + dOptionMargin)/futureBidPrice
     if bidask == "bid":
         if "-P" in contract: #if put
             mmPrice = (price*futureBidPrice + futureBidPrice - float(strike))/futureBidPrice
-            print(mmPrice)
+            #print(mmPrice)
             mmPrice += -(tcost(mmPrice*futureBidPrice,price*futureBidPrice,futureBidPrice) + dOptionMargin)/futureBidPrice
         if "-C" in contract: #if call
             mmPrice = (float(strike) + price*futureAskPrice - futureAskPrice)/futureAskPrice
-            print(mmPrice)
+            #print(mmPrice)
             mmPrice += -(tcost(mmPrice*futureAskPrice,price*futureAskPrice,futureAskPrice) + dOptionMargin)/futureAskPrice
             
     return mmPrice
@@ -478,7 +478,7 @@ while unload_qty > trade_qty:
         if str(msg.get(35)).split("'")[1] == "y":
             subArray = []
             for i in range(1,int(msg.get(146))):
-                print(m2s(msg.get(167,i)))
+                #print(m2s(msg.get(167,i)))
                 if m2s(msg.get(167,i)) == "FUT" or m2s(msg.get(167,i)) == "OPT":
                     subArray.append(msg.get(55,i))
             print("Subscribing!")
@@ -732,17 +732,26 @@ while unload_qty > trade_qty:
             order_book[instrumetName] = {"ask":{"price":askPrice,"volume":askVol,"spotChange":spotChangeAsk},"bid":{"price":bidPrice,"volume":bidVol,"spotChange":spotChangeBid}}
                         
             for contract in order_book:
-                mmList = []
-                for price in order_book[contract]["ask"]["price"]:
-                    if "-P" in contract:
-                        contractName = contract.split("-")[0]+"-"+contract.split("-")[1]
-                        strike = contract.split("-")[2]
-                        futurePrice = order_book[contractName]["ask"]["price"][0]
-                        callPrice = float(strike)-price-futurePrice
-                        mmList.append(callPrice)
+                try:
+                    order_book[contract]["ask"]["mmPrice"] = calculateMarketMakerPrice("ask", contract)
+                except:
+                    order_book[contract]["ask"]["mmPrice"] = 0
+                try:
+                    order_book[contract]["bid"]["mmPrice"] = calculateMarketMakerPrice("bid", contract)
+                except:
+                    order_book[contract]["ask"]["mmPrice"] = 0
+
+                # mmList = []
+                # for price in order_book[contract]["ask"]["price"]:
+                #     if "-P" in contract:
+                #         contractName = contract.split("-")[0]+"-"+contract.split("-")[1]
+                #         strike = contract.split("-")[2]
+                #         futurePrice = order_book[contractName]["ask"]["price"][0]
+                #         callPrice = float(strike)-price-futurePrice
+                #         mmList.append(callPrice)
                 
-                        #callPrice = order_book[contractName+"-"+strike]["ask"]["price"][0]
-                order_book[contract]["ask"]["mmPrice"] = mmList
+                #         #callPrice = order_book[contractName+"-"+strike]["ask"]["price"][0]
+                # order_book[contract]["ask"]["mmPrice"] = mmList
                 
         
         
