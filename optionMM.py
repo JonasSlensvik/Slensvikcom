@@ -5,7 +5,7 @@ Created on Wed Jan 17 18:34:41 2024
 
 @author: fredriklangbo
 """
-#bæsj
+#bæsj2
 #PARAMETERS
 
 #PARAMTERS
