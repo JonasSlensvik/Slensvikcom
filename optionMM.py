@@ -36,7 +36,7 @@ max_margin = 0.99
 
 # Option Margin in dollars
 dOptionMargin = 50
-
+strike_interval = 5000
 
 # Imports
 import simplefix as fix
@@ -456,8 +456,25 @@ unwind_order = 0
 swap_order = 0
 old_diff = 0
 
+api_credit = 50000
+trading_queue = []
+timer = time.perf_counter()
 
 while unload_qty > trade_qty:
+    if api_credit > 5000:
+        if trading_queue:
+            #newOrder(symbol, orderType, price, qty, side, "mm")
+            newOrder(trading_queue[0][0], 2, trading_queue[0][1], trading_queue[0][2], trading_queue[0][3], "mm")
+            api_credit -= 500
+            trading_queue.pop(0)
+            if len(trading_queue) > 200:
+                print("WARING! LARGE TRADING QUEUE OF: ", len(trading_queue))
+    if api_credit < 50000:
+        current_time = time.perf_counter()
+        api_credit += (current_time-timer)*10000
+        api_credit = min(api_credit,50000)
+        timer = time.perf_counter()
+
     try:
         buf = s.recv(4096)
     except:
@@ -731,15 +748,20 @@ while unload_qty > trade_qty:
             #order_book[instrumetName] = {"ask":{"price":askPrice,"volume":askVol},"bid":{"price":bidPrice,"volume":bidVol}}
             order_book[instrumetName] = {"ask":{"price":askPrice,"volume":askVol,"spotChange":spotChangeAsk},"bid":{"price":bidPrice,"volume":bidVol,"spotChange":spotChangeBid}}
                         
+
             for contract in order_book:
-                try:
-                    order_book[contract]["ask"]["mmPrice"] = calculateMarketMakerPrice("ask", contract)
-                except:
-                    order_book[contract]["ask"]["mmPrice"] = 0
-                try:
-                    order_book[contract]["bid"]["mmPrice"] = calculateMarketMakerPrice("bid", contract)
-                except:
-                    order_book[contract]["ask"]["mmPrice"] = 0
+                splitcontract = contract.split("-")
+                if len(splitcontract) > 2:
+                    fut_ask = order_book[splitcontract[0]+"-"+splitcontract[1]]["ask"]["price"][0]
+                    if float(splitcontract[2]) < fut_ask + strike_interval and float(splitcontract[2]) > fut_ask - strike_interval:
+                        try:
+                            order_book[contract]["ask"]["mmPrice"] = calculateMarketMakerPrice("ask", contract)
+                        except:
+                            order_book[contract]["ask"]["mmPrice"] = 0
+                        try:
+                            order_book[contract]["bid"]["mmPrice"] = calculateMarketMakerPrice("bid", contract)
+                        except:
+                            order_book[contract]["ask"]["mmPrice"] = 0
 
                 # mmList = []
                 # for price in order_book[contract]["ask"]["price"]:
