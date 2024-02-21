@@ -35,8 +35,9 @@ margin = 0
 max_margin = 0.99
 
 # Option Margin in dollars
-dOptionMargin = 50
-strike_interval = 5000
+dOptionMargin = 50 # Our margin in dollar when calculating mmPrice
+strike_interval = 5000 # what interval to calculate mmPrice at program init
+max_dSize = 1000 # Maxium dollar size per order, can be adjusted to increase or lower init margin tolerance
 
 # Imports
 import simplefix as fix
@@ -179,6 +180,12 @@ def calculateMarketMakerPrice(bidask,contract):
             mmPrice += -(tcost(mmPrice*futureAskPrice,price*futureAskPrice,futureAskPrice) + dOptionMargin)/futureAskPrice
             
     return mmPrice
+
+def round_down(n):
+    return math.floor(n / 0.0005) * 0.0005
+
+def round_up(n):
+    return math.ceil(n / 0.0005) * 0.0005
     
 # FIX functions
     
@@ -457,7 +464,7 @@ swap_order = 0
 old_diff = 0
 
 api_credit = 50000
-trading_queue = []
+trading_queue = [] # pass list [instrument_name, price, qty, side(buy/sell)]
 timer = time.perf_counter()
 
 while unload_qty > trade_qty:
@@ -547,35 +554,24 @@ while unload_qty > trade_qty:
                             del order_book[instrumetName]["bid"]["price"][idx]
                             del order_book[instrumetName]["bid"]["volume"][idx]
                         
-                        # this will change the swap contract
+                        # there has been a change in the top listing
                         if top_listing !=  order_book[instrumetName]["bid"]["price"][0]: 
-                            if instrumetName == SELL and MM_BUY_ORDER == True:
-                                 # reager på prisendringer i i perp bid.
-                                 # hvis current order da ligger utenfor gitt premium +- range så oppdateres ordren
-                                if top_listing - swap_order > top_range: #this is top_range since its negative value
-                                    s.sendall(newOrder(BUY, 2, top_listing-enterprice, trade_qty, "buy", "mm").encode())
-                                    # print("=================")
-                                    # print("Over, adding")
-                                    # print(instrumetName)
-                                    # print(top_listing)
-                                    # print(swap_order)
-                                    # print(top_listing-swap_order)
-                                    swap_order = top_listing-enterprice
-                                if top_listing - swap_order < low_range: #this is low_range since its negative value
-                                    # print("=================")
-                                    # print("Under, canceling")
-                                    # print(instrumetName)
-                                    # print(top_listing)
-                                    # print(swap_order)
-                                    # print(top_listing-swap_order)
-                                    s.sendall(massCancel(BUY).encode())
-                                    s.sendall(newOrder(BUY, 2, top_listing-enterprice, trade_qty, "buy", "mm").encode())
-                                    swap_order = top_listing-enterprice
+                            split_name = instrumetName.split("-")
+                            if len(split_name) > 2: # Options
+                                # append to trading queue [instrument_name, price, qty, side(buy/sell)]
+                                ulPrice = order_book[split_name[0]+"-"+split_name[1]]["ask"]["price"][0] # price of underlying
+                                qty = min(max_dSize, ulPrice*order_book[instrumetName]["bid"]["price"][0]*order_book[instrumetName]["bid"]["volume"][0])
+                                qty = round_down(qty/((ulPrice*order_book[instrumetName]["bid"]["price"][0])))
+                                # check margin krav
+                                # check at ordren vi hedger med ikke er vår egen
+                                # hvis det gap mellom vår ordre og nest beste legg deg helt intil neste orde
+                                # oppdater mmPrice i ordreboken
+                                # check om det finnes en mmPrice, slik at vi ikke havner utenfor 5000 dollar intervallet
                                 
-                             # hvis gitt premium + toprange < monthly bid sin premium betyr det at det gitte premiumen bør endres
-                             # da det vili være muliig å få en bedre pris, samt at man "holder" markedet tilbake
-                             # men når skal da bestemmes at den settes ned igjen?????
-                             # forslag: kan øke inkrementelt med x, og hvis monthly ask går under et vist punkt igjen så går den tilbake
+                                #trading_queue.append(intstrument_name, calculateMarketMakerPrice("bid", instrumetName), qty, "buy")
+                            #else:
+                                
+                            
                             
                     if bidask == "1": # ASKS
                         top_listing = order_book[instrumetName]["ask"]["price"][0]
