@@ -32,12 +32,14 @@ trade_qty = 100
 wanted_diff = 0 # if a certain hedged should be maintained
 
 margin = 0
-max_margin = 0.99
+max_margin = 0.7
+initMargin = 0
 
 # Option Margin in dollars
 dOptionMargin = 50 # Our margin in dollar when calculating mmPrice
 strike_interval = 5000 # what interval to calculate mmPrice at program init
 max_dSize = 1000 # Maxium dollar size per order, can be adjusted to increase or lower init margin tolerance
+my_order_book = {}
 
 # Imports
 import simplefix as fix
@@ -61,7 +63,7 @@ req_profit = 0
 #username = "WTA6Tzrp" #LSCM
 username = "ArHnml9l" # Fredrik Privat
 #password = "tUt173_-7LZliqqAmxywa77aH7VXA_KhoR76QaZKh_0" #LSCM
-password = "1vzVyGl106IjzBUvvVj8LfdPB3ByW5o7LIiBI7MZm0c" #Fredrik Privat
+#password = "1vzVyGl106IjzBUvvVj8LfdPB3ByW5o7LIiBI7MZm0c" #Fredrik Privat
 # Establishing a socket to send FIX messages through
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 #s.connect(("193.58.254.1", 8025))
@@ -163,21 +165,25 @@ def calculateMarketMakerPrice(bidask,contract):
     if bidask == "ask":
         if "-P" in contract: #if we are getting put and ask, we need to genereate price for a ask call
             mmPrice = (price*futureAskPrice + futureAskPrice - float(strike))/futureAskPrice
-            #print(mmPrice)
+            print(mmPrice)
             mmPrice += (tcost(mmPrice*futureAskPrice,price*futureAskPrice,futureAskPrice) + dOptionMargin)/futureAskPrice
+            print(mmPrice)
         if "-C" in contract: #if call
             mmPrice = (float(strike) + price*futureBidPrice - futureBidPrice)/futureBidPrice
-            #print(mmPrice)
+            print(mmPrice)
             mmPrice += (tcost(mmPrice*futureBidPrice,price*futureBidPrice,futureBidPrice) + dOptionMargin)/futureBidPrice
+            print(mmPrice)
     if bidask == "bid":
         if "-P" in contract: #if put
             mmPrice = (price*futureBidPrice + futureBidPrice - float(strike))/futureBidPrice
-            #print(mmPrice)
+            print(mmPrice)
             mmPrice += -(tcost(mmPrice*futureBidPrice,price*futureBidPrice,futureBidPrice) + dOptionMargin)/futureBidPrice
+            print(mmPrice)
         if "-C" in contract: #if call
             mmPrice = (float(strike) + price*futureAskPrice - futureAskPrice)/futureAskPrice
-            #print(mmPrice)
+            print(mmPrice)
             mmPrice += -(tcost(mmPrice*futureAskPrice,price*futureAskPrice,futureAskPrice) + dOptionMargin)/futureAskPrice
+            print(mmPrice)
             
     return mmPrice
 
@@ -196,8 +202,8 @@ def logIn(): # TO OPEN MORE CHANNELS TRY LOGGING IN WITH A NEW API KEY ON A NEW 
     username = "WTA6Tzrp" #LSCM
     password = "tUt173_-7LZliqqAmxywa77aH7VXA_KhoR76QaZKh_0" #LSCM
     
-    username = "ArHnml9l" # Fredrik Privat
-    password = "1vzVyGl106IjzBUvvVj8LfdPB3ByW5o7LIiBI7MZm0c" #Fredrik Privat
+    #username = "ArHnml9l" # Fredrik Privat
+    #password = "1vzVyGl106IjzBUvvVj8LfdPB3ByW5o7LIiBI7MZm0c" #Fredrik Privat
 
 
     nonce = secrets.token_urlsafe()
@@ -347,7 +353,7 @@ def subscribeMarketData(subArray):
 def userData():
     global inc
     username = "WTA6Tzrp" #LSCM
-    username = "ArHnml9l" # Fredrik Privat
+    #username = "ArHnml9l" # Fredrik Privat
 
     message = fix.FixMessage()
     message.append_pair(8, "FIX.4.4")
@@ -389,7 +395,7 @@ def posistionRequest():
     username = "hv45H05G"
     username = "WTA6Tzrp" #LSCM
     
-    username = "ArHnml9l" # Fredrik Privat
+    #username = "ArHnml9l" # Fredrik Privat
 
     message = fix.FixMessage()
     message.append_pair(8, "FIX.4.4")
@@ -425,6 +431,69 @@ def securityListRequest():
     inc +=1
     
     return message
+
+# Her lager vi en funksjon for å sjekke om vi allerede har en ordre ute i markedet
+# for å unngå at vi bruker vår egen ordre til å regne market maker prisen
+def notMatchingOrder(instrumetName):
+    try:
+        if my_order_book[instrumetName]["bid"]["price"][0] == order_book[instrumetName]["bid"]["price"][0]:
+            return False
+        else: 
+            return True
+    except:
+        return True
+
+
+# Vi lager en funksjon for å legge ordre i tradingqueuen. 
+def addToTradingQueue(instrumetName, bidask):
+    if order_book[instrumetName]["bid"]["mmPrice"]:     # check om det finnes en mmPrice, slik at vi ikke havner utenfor 5000 dollar intervallet
+
+        split_name = instrumetName.split("-")
+        if instrumetName[-1:] == "P": # name of the order we are executing 
+            orderName = instrumetName[:-1]+"C"
+        else: 
+            orderName = instrumetName[:-1]+"P"
+        print(orderName)
+        ulPrice = order_book[split_name[0]+"-"+split_name[1]]["ask"]["price"][0] # price of underlying
+        qty = min(max_dSize, ulPrice*order_book[instrumetName]["bid"]["price"][0]*order_book[instrumetName]["bid"]["volume"][0])
+        qty = round_down(qty/((ulPrice*order_book[instrumetName]["bid"]["price"][0]))) # make qty denominated in bitcoin
+        print(qty)
+        # check margin krav
+        if max_margin > initMargin:
+            # check at ordren vi hedger med ikke er vår egen
+            print("d1")
+            if notMatchingOrder(instrumetName):
+                print("d2")
+                if bidask == "bid":
+                    # calculates price for our new order using the hedgeing instrument(instrument name)
+                    calc_price = round_down(calculateMarketMakerPrice("bid", instrumetName))
+                    
+                    #legg deg intil best bid hvis prisen vår er bedre
+                    if order_book[orderName]["bid"]["price"][0] < calc_price:
+                        calc_price = order_book[orderName]["bid"]["price"][0] + 0.0005
+                    print(calc_price)
+                    #oppdater my_order_book med den nye ordren
+                    my_order_book[orderName]["bid"] = {"price":calc_price,"volume":qty}
+                    
+                    #add to queue
+                    trading_queue.append([orderName, calc_price, qty, "buy"])
+                    
+                if bidask == "ask":
+                    # calculates price for our new order using the hedgeing instrument(instrument name)
+                    calc_price = round_up(calculateMarketMakerPrice("ask", instrumetName))
+                    
+                    #legg deg intil best bid hvis prisen vår er bedre
+                    if order_book[orderName]["ask"]["price"][0] > calc_price:
+                        calc_price = order_book[orderName]["ask"]["price"][0] - 0.0005
+                    
+                    #oppdater my_order_book med den nye ordren
+                    my_order_book[orderName]["ask"] = {"price":calc_price,"volume":qty}
+
+                    #add to queue
+                    trading_queue.append([orderName, calc_price, qty, "sell"])
+                
+     
+    
 
 # def securityListRequest2():
 #     global inc
@@ -558,19 +627,8 @@ while unload_qty > trade_qty:
                         if top_listing !=  order_book[instrumetName]["bid"]["price"][0]: 
                             split_name = instrumetName.split("-")
                             if len(split_name) > 2: # Options
-                                # append to trading queue [instrument_name, price, qty, side(buy/sell)]
-                                ulPrice = order_book[split_name[0]+"-"+split_name[1]]["ask"]["price"][0] # price of underlying
-                                qty = min(max_dSize, ulPrice*order_book[instrumetName]["bid"]["price"][0]*order_book[instrumetName]["bid"]["volume"][0])
-                                qty = round_down(qty/((ulPrice*order_book[instrumetName]["bid"]["price"][0])))
-                                # check margin krav
-                                # check at ordren vi hedger med ikke er vår egen
-                                # hvis det gap mellom vår ordre og nest beste legg deg helt intil neste orde
-                                # oppdater mmPrice i ordreboken
-                                # check om det finnes en mmPrice, slik at vi ikke havner utenfor 5000 dollar intervallet
-                                
-                                #trading_queue.append(intstrument_name, calculateMarketMakerPrice("bid", instrumetName), qty, "buy")
-                            #else:
-                                
+                                print("adding to queue")
+                                #addToTradingQueue()
                             
                             
                     if bidask == "1": # ASKS
@@ -660,7 +718,10 @@ while unload_qty > trade_qty:
                 
         if str(msg.get(35)).split("'")[1] == "BF": # user info like equity, margin, pnl etc
             MaintenanceMargin = m2f(msg.get(100004))
+            initMargin = m2f(msg.get(100003))
+            
             Equity = m2f(msg.get(100001))
+            initMargin = initMargin/Equity
             margin = MaintenanceMargin/Equity
             #print(margin)
             if margin > max_margin:
@@ -743,7 +804,7 @@ while unload_qty > trade_qty:
                 spotChangeAsk= 0
             #order_book[instrumetName] = {"ask":{"price":askPrice,"volume":askVol},"bid":{"price":bidPrice,"volume":bidVol}}
             order_book[instrumetName] = {"ask":{"price":askPrice,"volume":askVol,"spotChange":spotChangeAsk},"bid":{"price":bidPrice,"volume":bidVol,"spotChange":spotChangeBid}}
-                        
+            my_order_book[instrumetName] = {"ask":{},"bid":{}}
 
             for contract in order_book:
                 splitcontract = contract.split("-")
