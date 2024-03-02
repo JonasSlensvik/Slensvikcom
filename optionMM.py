@@ -38,6 +38,7 @@ initMargin = 0
 # Option Margin in dollars
 dOptionMargin = 50 # Our margin in dollar when calculating mmPrice
 strike_interval = 5000 # what interval to calculate mmPrice at program init
+future_upd_thshld = 15
 max_dSize = 1000 # Maxium dollar size per order, can be adjusted to increase or lower init margin tolerance
 my_order_book = {}
 
@@ -155,6 +156,10 @@ def tcost(option1, option2, ul):
         delivery2 = abs(option2) * 0.125
 
     return 0.00075*ul + trade1 + trade2 + delivery1 + delivery2
+
+# This function uses the already existing orders in the market to calculate the 
+# price of the opposite contract. If we pass an existing call into this function
+# we will receive the potentially profitable price of a put
 
 def calculateMarketMakerPrice(bidask,contract):
     contractName = contract.split("-")[0]+"-"+contract.split("-")[1]
@@ -629,6 +634,36 @@ while unload_qty > trade_qty:
                             if len(split_name) > 2: # Options
                                 print("adding to queue")
                                 #addToTradingQueue()
+                            else: # Futures
+                                # Check that the futures prices have moved by more than 10 to update our orders 
+                                if abs(order_book[instrumetName]["bid"]["spotChange"]-order_book[instrumetName]["bid"]["price"][0]) > future_upd_thshld:
+                                    # Mass Cancel
+                                    # Remove "old" orders from the trading queue, so the orders dont double up
+                                    ticker = instrumetName.split("-")[0] + "-" + instrumetName.split("-")[1] 
+                                    trading_queue = [item for item in trading_queue if item[0].split("-")[0] + "-" + item[0].split("-")[1] != ticker]
+                                    # Calculate price for entire option chain
+                                    # Get all the instrument names with the same expiration date
+                                    instrument_list = [key for key in list(my_order_book.keys()) if ticker in key]
+                                    for instrument in instrument_list:
+                                        split_name2 = instrument.split("-")
+                                        if len(split_name2) > 2: # Options
+                                            if split_name2[3] == "P":
+                                                if my_order_book[instrument]["ask"]: # check if there is a existing outstanding ask order for this instrument
+                                                    # calculates the new price
+                                                    newPrice = calculateMarketMakerPrice("ask", instrument[:-1]+"C") # flip to call in order to use the calc function
+                                                    # calculate quanity
+                                                    
+                                                    # append to massquote list
+                                                    # update my orderbook
+                                            if split_name2[3] == "C":
+                                                if my_order_book[instrument]["bid"]: # check if there is a existing outstanding bid order for this instrument
+                                                    newPrice = calculateMarketMakerPrice("bid", instrument[:-1]+"P") # flip to put in order to use the calc function
+                                                    
+                                        my_order_book[instrument] = {"ask":{"price":askPrice,"volume":askVol,"spotChange":spotChangeAsk},"bid":{"price":bidPrice,"volume":bidVol,"spotChange":spotChangeBid}}
+                                    # Mass quoute
+                                    # Update my_order_book
+                                    
+                            
                             
                             
                     if bidask == "1": # ASKS
