@@ -56,15 +56,20 @@ import bisect
 import traceback
 import math
 from openpyxl import load_workbook
+import configparser
+
+config = configparser.ConfigParser()
+config.read('config.ini')  # Read the configuration file
+
+# Retrieve the API keys securely
+api_key = config['deribit']['api_key']
+api_secret = config['deribit']['api_secret']
+
 # Variables
 inc = 2 # The increamenting value for each FIX message
 req_profit = 0
 
-#LOGIN INFO
-#username = "WTA6Tzrp" #LSCM
-username = "ArHnml9l" # Fredrik Privat
-#password = "tUt173_-7LZliqqAmxywa77aH7VXA_KhoR76QaZKh_0" #LSCM
-#password = "1vzVyGl106IjzBUvvVj8LfdPB3ByW5o7LIiBI7MZm0c" #Fredrik Privat
+
 # Establishing a socket to send FIX messages through
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 #s.connect(("193.58.254.1", 8025))
@@ -204,19 +209,13 @@ def round_up(n):
 def logIn(): # TO OPEN MORE CHANNELS TRY LOGGING IN WITH A NEW API KEY ON A NEW SOCKET
     ###################################################################################
     message = fix.FixMessage()
-    username = "WTA6Tzrp" #LSCM
-    password = "tUt173_-7LZliqqAmxywa77aH7VXA_KhoR76QaZKh_0" #LSCM
-    
-    #username = "ArHnml9l" # Fredrik Privat
-    #password = "1vzVyGl106IjzBUvvVj8LfdPB3ByW5o7LIiBI7MZm0c" #Fredrik Privat
-
 
     nonce = secrets.token_urlsafe()
     encodedBytes = base64.b64encode(nonce.encode("utf-8"))
     encodedNonce = str(encodedBytes, "utf-8")
     timestamp = time.time_ns()
     raw_data = str(timestamp)[:-6] + "." + encodedNonce
-    base_signature = raw_data + password
+    base_signature = raw_data + api_secret
     sha256 = hashlib.sha256(base_signature.encode('utf-8'))
     secret = sha256.hexdigest()
     secret = bytes.fromhex(secret)
@@ -230,7 +229,7 @@ def logIn(): # TO OPEN MORE CHANNELS TRY LOGGING IN WITH A NEW API KEY ON A NEW 
     message.append_pair(34, 1)
     message.append_pair(108, 10)
     message.append_pair(96, raw_data)
-    message.append_pair(553, username)
+    message.append_pair(553, api_key)
     message.append_pair(554, secret)
     message.append_pair(9001, "Y")
 
@@ -357,8 +356,6 @@ def subscribeMarketData(subArray):
 
 def userData():
     global inc
-    username = "WTA6Tzrp" #LSCM
-    #username = "ArHnml9l" # Fredrik Privat
 
     message = fix.FixMessage()
     message.append_pair(8, "FIX.4.4")
@@ -370,7 +367,7 @@ def userData():
 
     message.append_pair(923, "LSCMAS") #The request ID
     message.append_pair(924, 4) # Should be equal to 4 (Request individual user status), only UserRequestType=4 supported for now
-    message.append_pair(553, username) # API authenticated 'Access Key', user can request only own info, should be the same as for previous LOGON(A)
+    message.append_pair(553, api_key) # API authenticated 'Access Key', user can request only own info, should be the same as for previous LOGON(A)
     message.append_pair(15, crypto)
     
     inc +=1
@@ -378,7 +375,6 @@ def userData():
     return message
 # def positionTracker():
 #     global inc
-#     username = "WTA6Tzrp" #LSCM
 #     message = fix.FixMessage()
 #     message.append_pair(8, "FIX.4.4")
 #     message.append_pair(35, "BE")
@@ -397,10 +393,6 @@ def userData():
 
 def posistionRequest():
     global inc
-    username = "hv45H05G"
-    username = "WTA6Tzrp" #LSCM
-    
-    #username = "ArHnml9l" # Fredrik Privat
 
     message = fix.FixMessage()
     message.append_pair(8, "FIX.4.4")
@@ -451,7 +443,7 @@ def notMatchingOrder(instrumetName):
 
 # Vi lager en funksjon for å legge ordre i tradingqueuen. 
 def addToTradingQueue(instrumetName, bidask):
-    if order_book[instrumetName]["bid"]["mmPrice"]:     # check om det finnes en mmPrice, slik at vi ikke havner utenfor 5000 dollar intervallet
+    if order_book[instrumetName][bidask]["mmPrice"]:     # check om det finnes en mmPrice, slik at vi ikke havner utenfor 5000 dollar intervallet
 
         split_name = instrumetName.split("-")
         if instrumetName[-1:] == "P": # name of the order we are executing 
@@ -460,8 +452,8 @@ def addToTradingQueue(instrumetName, bidask):
             orderName = instrumetName[:-1]+"P"
         print(orderName)
         ulPrice = order_book[split_name[0]+"-"+split_name[1]]["ask"]["price"][0] # price of underlying
-        qty = min(max_dSize, ulPrice*order_book[instrumetName]["bid"]["price"][0]*order_book[instrumetName]["bid"]["volume"][0])
-        qty = round_down(qty/((ulPrice*order_book[instrumetName]["bid"]["price"][0]))) # make qty denominated in bitcoin
+        qty = min(max_dSize, ulPrice*order_book[instrumetName][bidask]["price"][0]*order_book[instrumetName][bidask]["volume"][0])
+        qty = round_down(qty/((ulPrice*order_book[instrumetName][bidask]["price"][0]))) # make qty denominated in bitcoin
         print(qty)
         # check margin krav
         if max_margin > initMargin:
@@ -609,6 +601,7 @@ while unload_qty > trade_qty:
                     if bidask == "0": # BIDs
                         # this is used to check if the toplistinig changed later
                         top_listing = order_book[instrumetName]["bid"]["price"][0]
+                        top_listing_vol = order_book[instrumetName]["bid"]["volume"][0]
 
                         if orderType == "0": # New orders
                             #Check for arb first, then append to order_book
@@ -628,6 +621,14 @@ while unload_qty > trade_qty:
                             del order_book[instrumetName]["bid"]["price"][idx]
                             del order_book[instrumetName]["bid"]["volume"][idx]
                         
+                        if top_listing == order_book[instrumetName]["bid"]["price"][0] and top_listing_vol != order_book[instrumetName]["bid"]["volume"][0]:
+                            # There was a change in the top listings volume, so we need to adjust the size of our posistion
+                            if instrumetName[-1:] == "P": # Put update
+                                # check if there is a position in my order book to change at all:
+                                if my_order_book[instrumetName[:-1]+"C"]["bid"]: 
+                                    # We have a order in the market affected by the change in volume
+                                    # cahnge current order OR delete and make a new one
+                                    
                         # there has been a change in the top listing
                         if top_listing !=  order_book[instrumetName]["bid"]["price"][0]: 
                             split_name = instrumetName.split("-")
@@ -644,25 +645,42 @@ while unload_qty > trade_qty:
                                     # Calculate price for entire option chain
                                     # Get all the instrument names with the same expiration date
                                     instrument_list = [key for key in list(my_order_book.keys()) if ticker in key]
+                                    massQuoteList = []
                                     for instrument in instrument_list:
+                                        # instrument is the full name of the insturment i.e "BTC-1MAR24-57000-P" ops! can be future too!
                                         split_name2 = instrument.split("-")
                                         if len(split_name2) > 2: # Options
                                             if split_name2[3] == "P":
                                                 if my_order_book[instrument]["ask"]: # check if there is a existing outstanding ask order for this instrument
                                                     # calculates the new price
                                                     newPrice = calculateMarketMakerPrice("ask", instrument[:-1]+"C") # flip to call in order to use the calc function
-                                                    # calculate quanity
-                                                    
+                                                    # calculate quanity based on quanity to hedged option
+                                                    qty = min(max_dSize, price*order_book[instrument[:-1]+"C"]["ask"]["price"][0]*order_book[instrument[:-1]+"C"]["ask"]["volume"][0])
+                                                    qty = round_down(qty/((price*order_book[instrument[:-1]+"C"]["ask"]["price"][0]))) # make qty denominated in bitcoin
                                                     # append to massquote list
+                                                    massQuoteList.append([instrument, newPrice, qty, "sell"])
                                                     # update my orderbook
+                                                    my_order_book[instrument]["ask"] = {"price":newPrice,"volume":qty}
                                             if split_name2[3] == "C":
                                                 if my_order_book[instrument]["bid"]: # check if there is a existing outstanding bid order for this instrument
                                                     newPrice = calculateMarketMakerPrice("bid", instrument[:-1]+"P") # flip to put in order to use the calc function
                                                     
-                                        my_order_book[instrument] = {"ask":{"price":askPrice,"volume":askVol,"spotChange":spotChangeAsk},"bid":{"price":bidPrice,"volume":bidVol,"spotChange":spotChangeBid}}
+                                                    # THIS CODE NEEDS TO BE REVIEWED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                                                    
+                                                    # calculate quanity based on quanity to hedged option
+                                                    qty = min(max_dSize, price*order_book[instrument[:-1]+"P"]["ask"]["price"][0]*order_book[instrument[:-1]+"P"]["ask"]["volume"][0])
+                                                    qty = round_down(qty/((price*order_book[instrument[:-1]+"P"]["ask"]["price"][0]))) # make qty denominated in bitcoin
+                                                    # append to massquote list
+                                                    massQuoteList.append([instrument, newPrice, qty, "sell"])
+                                                    # update my orderbook
+                                                    my_order_book[instrument]["ask"] = {"price":newPrice,"volume":qty}
+                                                    
+                                                    #REVIEW END!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                                        
                                     # Mass quoute
-                                    # Update my_order_book
-                                    
+                                    # Now the massQuote list should be filled up
+                                    print(massQuoteList)
+                                    # Now either loop thorugh all the orders adding them to trading queue or pass the list to a mass qute function
                             
                             
                             
