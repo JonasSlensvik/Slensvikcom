@@ -34,6 +34,7 @@ wanted_diff = 0 # if a certain hedged should be maintained
 margin = 0
 max_margin = 0.7
 initMargin = 0
+localMargin = 0
 
 # Option Margin in dollars
 dOptionMargin = 50 # Our margin in dollar when calculating mmPrice
@@ -67,6 +68,7 @@ api_secret = config['deribit']['api_secret']
 
 # Variables
 inc = 2 # The increamenting value for each FIX message
+quoteInc = 1
 req_profit = 0
 
 
@@ -429,20 +431,79 @@ def securityListRequest():
     
     return message
 
+def massQuote(massQuoteList):
+    global inc
+    global quoteInc
+    message = fix.FixMessage()
+    
+    numberOfQuotes = len(massQuoteList)
+    # Header
+    message.append_pair(8, "FIX.4.4")
+    message.append_pair(35, "i")
+    message.append_pair(34, inc)
+    message.append_pair(49, "arbBOIi1997")
+    message.append_pair(52, "20211228-18:28:27.000") # This is probably not needed
+    message.append_pair(56, "DERIBITSERVER")
+
+    message.append_pair(117, "ID" + str(quoteInc)) 
+    message.append_pair(9019, "MMgroup1") # Hvis vi skal ha flere bids på en enkelt opsjon må vi ha en ny MMPGroup
+    message.append_pair(296, 1) # number of quotesets
+    message.append_pair(302, str(quoteInc)) # this is the ID we refer to when we use quoteCancel
+    message.append_pair(304, numberOfQuotes)
+    message.append_pair(295, numberOfQuotes)
+    idInc = 1
+    for quote in massQuoteList:
+        
+        message.append_pair(299, idInc) # number of quotesets
+        message.append_pair(55, quote[0]) # this is the ID we refer to when we use quoteCancel
+        if quote[3] == "sell":
+            if quote[1] != "null":
+                message.append_pair(133, quote[1])
+            if quote[2] != "null": 
+                message.append_pair(135, quote[2])
+        else:
+            if quote[1] != "null":
+                message.append_pair(132, quote[1])
+            if quote[2] != "null":
+                message.append_pair(134, quote[2])
+        idInc +=1
+    quoteInc += 1
+    inc +=1
+    
+    return message
+
 # Her lager vi en funksjon for å sjekke om vi allerede har en ordre ute i markedet
 # for å unngå at vi bruker vår egen ordre til å regne market maker prisen
-def notMatchingOrder(instrumetName):
+def notMatchingOrder(instrumetName, bidask):
     try:
-        if my_order_book[instrumetName]["bid"]["price"][0] == order_book[instrumetName]["bid"]["price"][0]:
+        if my_order_book[instrumetName][bidask]["price"][0] == order_book[instrumetName][bidask]["price"][0]:
             return False
         else: 
             return True
     except:
         return True
 
+def bestOrder(orderName, bidask, calc_price):
+    if bidask == "bid":
+        try:
+            if order_book[orderName][bidask]["price"][0] < calc_price:
+                return True
+            else:
+                return False
+        except:
+            return True
+    else:
+        try:
+            if order_book[orderName][bidask]["price"][0] > calc_price:
+                return True
+            else:
+                return False
+        except:
+            return True
 
 # Vi lager en funksjon for å legge ordre i tradingqueuen. 
-def addToTradingQueue(instrumetName, bidask):
+def addToTradingQueue(instrumetName, bidask, updateType=1): # updatetype 1 = both price and vol, 2 = just vol
+    global localMargin
     if order_book[instrumetName][bidask]["mmPrice"]:     # check om det finnes en mmPrice, slik at vi ikke havner utenfor 5000 dollar intervallet
 
         split_name = instrumetName.split("-")
@@ -456,60 +517,71 @@ def addToTradingQueue(instrumetName, bidask):
         qty = round_down(qty/((ulPrice*order_book[instrumetName][bidask]["price"][0]))) # make qty denominated in bitcoin
         print(qty)
         # check margin krav
-        if max_margin > initMargin:
+        if max_margin > initMargin and max_margin > localMargin:
             # check at ordren vi hedger med ikke er vår egen
             print("d1")
-            if notMatchingOrder(instrumetName):
+            if notMatchingOrder(instrumetName, bidask):
                 print("d2")
                 if bidask == "bid":
                     # calculates price for our new order using the hedgeing instrument(instrument name)
                     calc_price = round_down(calculateMarketMakerPrice("bid", instrumetName))
-                    
-                    #legg deg intil best bid hvis prisen vår er bedre
-                    if order_book[orderName]["bid"]["price"][0] < calc_price:
+                    if bestOrder(orderName, "bid", calc_price): # check if our order is best priced OR there are no other quotes in the orderbook
+
                         calc_price = order_book[orderName]["bid"]["price"][0] + 0.0005
-                    print(calc_price)
-                    #oppdater my_order_book med den nye ordren
-                    my_order_book[orderName]["bid"] = {"price":calc_price,"volume":qty}
-                    
-                    #add to queue
-                    trading_queue.append([orderName, calc_price, qty, "buy"])
+                                                            
+                        print(calc_price)
+                        #oppdater my_order_book med den nye ordren
+                        if updateType == 2:
+                            #add to queue
+                            trading_queue.append([orderName, "null", qty, "buy"])
+                        else:
+                            #add to queue
+                            trading_queue.append([orderName, calc_price, qty, "buy"])
+                        
+                        #increase local margin
+                        if not my_order_book[orderName]["ask"]: # there is no entry in my_order_book, meaning this is a new order -> add margin
+                            localMargin += qty*0.15
+                        else: # order already exists in my orderbook
+                            if my_order_book[orderName]["ask"]["volume"] != qty: # we check if there is a change in quantity, if so update the local margin
+                                localMargin -= my_order_book[orderName]["ask"]["volume"]*0.15
+                                localMargin += qty*0.15
+                                
+                        # add the new order to my_order_book
+                        my_order_book[orderName]["bid"] = {"price":calc_price,"volume":qty}
+
+                                
                     
                 if bidask == "ask":
                     # calculates price for our new order using the hedgeing instrument(instrument name)
                     calc_price = round_up(calculateMarketMakerPrice("ask", instrumetName))
                     
-                    #legg deg intil best bid hvis prisen vår er bedre
-                    if order_book[orderName]["ask"]["price"][0] > calc_price:
+                    if bestOrder(orderName, "ask", calc_price): # check if our order is best priced OR there are no other quotes in the orderbook
+
                         calc_price = order_book[orderName]["ask"]["price"][0] - 0.0005
                     
-                    #oppdater my_order_book med den nye ordren
-                    my_order_book[orderName]["ask"] = {"price":calc_price,"volume":qty}
-
-                    #add to queue
-                    trading_queue.append([orderName, calc_price, qty, "sell"])
-                
-     
-    
-
-# def securityListRequest2():
-#     global inc
-#     message = fix.FixMessage()
-#     # Header
-#     message.append_pair(8, "FIX.4.4")
-#     message.append_pair(35, "y")
-#     message.append_pair(34, inc)
-#     message.append_pair(49, "arbBOIi1997")
-#     message.append_pair(52, "20211228-18:28:27.000") # This is probably not needed
-#     message.append_pair(56, "DERIBITSERVER")
-
-#     message.append_pair(320, "TESTing") # unquie ID
-#     message.append_pair(559, 4) # 4 = All
-#     message.append_pair(263, 0) # SubscriptionRequestType 0 = Snapshot, 1 = Snapshot + Subscribe, 2 = Unsubscribe
-    
-#     inc +=1
-    
-#     return message
+                        
+                        #oppdater my_order_book med den nye ordren
+                        if updateType == 2:
+                            #add to queue
+                            trading_queue.append([orderName, "null", qty, "sell"])
+                        else:
+                            #add to queue
+                            trading_queue.append([orderName, calc_price, qty, "sell"])
+                        # OLD : add to queue
+                        # OLD : trading_queue.append([orderName, calc_price, qty, "sell"])
+                        
+                        #increase local margin
+                        if not my_order_book[orderName]["bid"]:
+                            localMargin += qty*0.15
+                        else: # order already exists in my orderbook
+                            if my_order_book[orderName]["bid"]["volume"] != qty: # we check if there is a change in quantity, if so update the local margin
+                                localMargin -= my_order_book[orderName]["bid"]["volume"]*0.15
+                                localMargin += qty*0.15
+                            
+                        #oppdater my_order_book med den nye ordren
+                        my_order_book[orderName]["ask"] = {"price":calc_price,"volume":qty}
+            
+        
 
 logIn()
 
@@ -537,9 +609,10 @@ while unload_qty > trade_qty:
     if api_credit > 5000:
         if trading_queue:
             #newOrder(symbol, orderType, price, qty, side, "mm")
-            newOrder(trading_queue[0][0], 2, trading_queue[0][1], trading_queue[0][2], trading_queue[0][3], "mm")
+            s.sendall(massQuote(trading_queue).encode())
+            #newOrder(trading_queue[0][0], 2, trading_queue[0][1], trading_queue[0][2], trading_queue[0][3], "mm")
             api_credit -= 500
-            trading_queue.pop(0)
+            trading_queue = []
             if len(trading_queue) > 200:
                 print("WARING! LARGE TRADING QUEUE OF: ", len(trading_queue))
     if api_credit < 50000:
@@ -628,13 +701,15 @@ while unload_qty > trade_qty:
                                 if my_order_book[instrumetName[:-1]+"C"]["bid"]: 
                                     # We have a order in the market affected by the change in volume
                                     # cahnge current order OR delete and make a new one
+                                    addToTradingQueue(instrumetName, "bid", 2)
                                     
-                        # there has been a change in the top listing
-                        if top_listing !=  order_book[instrumetName]["bid"]["price"][0]: 
+                        # there has been a change in the top listing price
+                        if top_listing != order_book[instrumetName]["bid"]["price"][0]: 
                             split_name = instrumetName.split("-")
                             if len(split_name) > 2: # Options
                                 print("adding to queue")
                                 #addToTradingQueue()
+                                addToTradingQueue(instrumetName, "bid")
                             else: # Futures
                                 # Check that the futures prices have moved by more than 10 to update our orders 
                                 if abs(order_book[instrumetName]["bid"]["spotChange"]-order_book[instrumetName]["bid"]["price"][0]) > future_upd_thshld:
@@ -645,7 +720,8 @@ while unload_qty > trade_qty:
                                     # Calculate price for entire option chain
                                     # Get all the instrument names with the same expiration date
                                     instrument_list = [key for key in list(my_order_book.keys()) if ticker in key]
-                                    massQuoteList = []
+                                    #massQuoteList = []
+                                    
                                     for instrument in instrument_list:
                                         # instrument is the full name of the insturment i.e "BTC-1MAR24-57000-P" ops! can be future too!
                                         split_name2 = instrument.split("-")
@@ -656,26 +732,22 @@ while unload_qty > trade_qty:
                                                     newPrice = calculateMarketMakerPrice("ask", instrument[:-1]+"C") # flip to call in order to use the calc function
                                                     # calculate quanity based on quanity to hedged option
                                                     qty = min(max_dSize, price*order_book[instrument[:-1]+"C"]["ask"]["price"][0]*order_book[instrument[:-1]+"C"]["ask"]["volume"][0])
-                                                    qty = round_down(qty/((price*order_book[instrument[:-1]+"C"]["ask"]["price"][0]))) # make qty denominated in bitcoin
+                                                    qty = round_down(qty/((price*order_book[instrument[:-1]+"C"]["ask"]["price"][0]))) # make qty denominated in bitcoin 
                                                     # append to massquote list
-                                                    massQuoteList.append([instrument, newPrice, qty, "sell"])
+                                                    trading_queue.append([instrument, newPrice, qty, "sell"])
                                                     # update my orderbook
                                                     my_order_book[instrument]["ask"] = {"price":newPrice,"volume":qty}
                                             if split_name2[3] == "C":
                                                 if my_order_book[instrument]["bid"]: # check if there is a existing outstanding bid order for this instrument
                                                     newPrice = calculateMarketMakerPrice("bid", instrument[:-1]+"P") # flip to put in order to use the calc function
-                                                    
-                                                    # THIS CODE NEEDS TO BE REVIEWED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-                                                    
-                                                    # calculate quanity based on quanity to hedged option
-                                                    qty = min(max_dSize, price*order_book[instrument[:-1]+"P"]["ask"]["price"][0]*order_book[instrument[:-1]+"P"]["ask"]["volume"][0])
-                                                    qty = round_down(qty/((price*order_book[instrument[:-1]+"P"]["ask"]["price"][0]))) # make qty denominated in bitcoin
+                                                                                                        
+                                                    qty = min(max_dSize, price*order_book[instrument[:-1]+"P"]["bid"]["price"][0]*order_book[instrument[:-1]+"P"]["bid"]["volume"][0])
+                                                    qty = round_down(qty/((price*order_book[instrument[:-1]+"P"]["bid"]["price"][0]))) # make qty denominated in bitcoin
                                                     # append to massquote list
-                                                    massQuoteList.append([instrument, newPrice, qty, "sell"])
+                                                    trading_queue.append([instrument, newPrice, qty, "buy"])
                                                     # update my orderbook
-                                                    my_order_book[instrument]["ask"] = {"price":newPrice,"volume":qty}
+                                                    my_order_book[instrument]["bid"] = {"price":newPrice,"volume":qty}
                                                     
-                                                    #REVIEW END!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
                                         
                                     # Mass quoute
                                     # Now the massQuote list should be filled up
@@ -705,28 +777,7 @@ while unload_qty > trade_qty:
                         #checkinig if there has been a change in the top listing, if so calc premium and act acordingly
                         #this will add sell limit orders to the unwind order book 
                         if top_listing !=  order_book[instrumetName]["ask"]["price"][0]: 
-                            if instrumetName == BUY and MM_SELL_ORDER == True:
-                                  # reager på prisendringer i i perp bid.
-                                  # hvis current order da ligger utenfor gitt premium +- range så oppdateres ordren
-                                if unwind_order - top_listing > top_range:
-                                    s.sendall(newOrder(SELL, 2, top_listing+enterprice, trade_qty, "sell", "mm").encode())
-                                    # print("=================")
-                                    # print("Over, adding")
-                                    # print(instrumetName)
-                                    # print(top_listing)
-                                    # print(unwind_order)
-                                    # print(top_listing-unwind_order)
-                                    unwind_order = top_listing+enterprice
-                                if unwind_order - top_listing < low_range:
-                                    # print("=================")
-                                    # print("Over, canceling")
-                                    # print(instrumetName)
-                                    # print(top_listing)
-                                    # print(unwind_order)
-                                    # print(top_listing-unwind_order)
-                                    s.sendall(massCancel(SELL).encode())
-                                    s.sendall(newOrder(SELL, 2, top_listing+enterprice, trade_qty, "sell", "mm").encode())
-                                    unwind_order = top_listing+enterprice
+                            print("no functionality added here yet")
             #print(order_book)
             #exit
         #else:
@@ -750,12 +801,7 @@ while unload_qty > trade_qty:
                     unload_qty -= qty
                     s.sendall(newOrder(SELL, 1, 0, qty, "sell").encode())
                     #print("Placeing market order as hedge, until order management is implementetd. The spread is: ", spread)
-                    """if spread > 0.51:
-                        s.sendall(newOrder("BTC-PERPETUAL", 2, order_book["BTC-PERPETUAL"]["ask"]["price"][0]-0.5, qty, "buy").encode())
-                        print("Placeing limit order as hedge, to avoid fees since the spread is: ", spread)
-                    else:
-                        s.sendall(newOrder("BTC-PERPETUAL", 1, 0, qty, "buy").encode())
-                        print("Placeing market order as hedge, since the spread is: ", spread)"""
+
 
         if str(msg.get(35)).split("'")[1] == "0": # Heartbeat to maintain the connection
             s.sendall(heartbeat().encode())
@@ -797,21 +843,7 @@ while unload_qty > trade_qty:
                         perpetual_qty = longqty - shortqty
                     else:
                         date_contract_qty = date_contract_qty + longqty - shortqty
-            # diff = perpetual_qty+date_contract_qty
-            # if diff != wanted_diff:
-            #     if old_diff == diff: # if the diff is the same as the last time, and its not equal to zero. a hedge should be made
-            #         if diff < 0: 
-            #             s.sendall(newOrder(crypto+"-PERPETUAL", 1, 0, -diff, "buy").encode())
-            #         else:
-            #             s.sendall(newOrder(crypto+"-PERPETUAL", 1, 0, diff, "sell").encode())
-            #             # perp 2 date -3 diff = -1 buy perp
-            #             # perp -2 date 3 diff = 1, sell perp 
-            #             # perp 3 date -2 diff = 1 sell perp
-            #             # perp -3 date 2 diff = -1, buy perp 
-            #             #buy perp
-            # old_diff = diff #update old diff for next check
-            #print("Perpeutal qty: ", perpetual_qty, " Date quantity: ", date_contract_qty, " Diff: ", perpetual_qty+date_contract_qty)   
-            #pos_val = msg.get(#num)
+
                               
             # GET THE CURRENT POSITION SIZE OF THE CONTRACT AND UPDATE A VALUE TO TRACK THE SIZE, THEN USE THAT VALUE TO DETERMINE IF THERE SHOULD BE
             # MORE TRADES AND IF THE SIZE OF THE TRADE SHOULD BE REDUCED (IF ITS LESS THAN THE ORIGINAL NUMBER)
@@ -873,24 +905,7 @@ while unload_qty > trade_qty:
                         except:
                             order_book[contract]["ask"]["mmPrice"] = 0
 
-                # mmList = []
-                # for price in order_book[contract]["ask"]["price"]:
-                #     if "-P" in contract:
-                #         contractName = contract.split("-")[0]+"-"+contract.split("-")[1]
-                #         strike = contract.split("-")[2]
-                #         futurePrice = order_book[contractName]["ask"]["price"][0]
-                #         callPrice = float(strike)-price-futurePrice
-                #         mmList.append(callPrice)
-                
-                #         #callPrice = order_book[contractName+"-"+strike]["ask"]["price"][0]
-                # order_book[contract]["ask"]["mmPrice"] = mmList
-                
-        
-        
-        #if str(msg.get(35)).split("'")[1] == "8":
-            #print(msg.get(52))
-            #t2 = int(str(msg.get(52)).split(".")[1][:3])
-            
+
             #print(t2-t1)
         if m2s(msg.get(35)) == "3": # ERROR / REJECTION
             if "rate_limit" in m2s(msg.get(58)):
