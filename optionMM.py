@@ -370,6 +370,7 @@ def posistionRequest():
     message.append_pair(710, "TESTing") #The request ID
     message.append_pair(724, 0) # 0 = Positions (currently)
     message.append_pair(263, 0) # 0=Receive snapshot, 1=subscribe, 2=unsubscribe
+    message.append_pair(15, "BTC") # currency specification
 
     inc +=1
     
@@ -393,6 +394,8 @@ def securityListRequest():
     inc +=1
     
     return message
+
+
 def mmProtection():
     global inc
     message = fix.FixMessage()
@@ -405,8 +408,8 @@ def mmProtection():
     message.append_pair(56, "DERIBITSERVER")
 
     message.append_pair(20114, "blabla") # unquie ID
-    message.append_pair(15, "BTC") # 4 = All
-    message.append_pair(20110, 1) # SubscriptionRequestType 0 = Snapshot, 1 = Snapshot + Subscribe, 2 = Unsubscribe
+    message.append_pair(15, "BTC") 
+    message.append_pair(20110, 1)
     message.append_pair(20111, 1)
     message.append_pair(20112, 10)
     message.append_pair(20116, 10)
@@ -416,6 +419,49 @@ def mmProtection():
     inc +=1
     
     return message
+
+def newOrder(symbol, orderType, price, qty, side, marketMaker="no"): # I need to be able to identify the Orders ID, when getting a confirmation. Will the uniquie ID be returned?
+    if side.lower() == "buy":
+        side = "1"
+    elif side.lower() == "sell":
+        side = "2"
+        
+    global inc
+    message = fix.FixMessage()
+    message.append_pair(8, "FIX.4.4")
+    message.append_pair(35, "D")
+    message.append_pair(34, inc) # this should be incremental
+    message.append_pair(49, "LSCMAS")
+    #message.append_pair(52, "20211228-18:28:27.000")
+    message.append_pair(56, "DERIBITSERVER")
+    message.append_pair(11, "TESTing") #Unique ID
+    message.append_pair(38, qty) # The desired quanity. OPS! 10USD = 1qty, uncertain of how options are handeld.
+    message.append_pair(40, orderType) # Order type. Valid values: 1 = Market, 2 = Limit. (default Limit)
+    message.append_pair(44, price) # The price of the limit order, should set to 0 if market
+    message.append_pair(54, side) # Buy(1) or sell(2)
+    message.append_pair(55, symbol) # The instrument to trade
+    if marketMaker.lower() == "mm": # check if the trades is supposed to be a market trade
+        message.append_pair(18, "6") # trades will not be posted if they will filled as taker
+    inc +=1
+    #s.sendall(message.encode())
+    return message
+
+def hedgeLogic(filledOrderName, filledBidAsk, filledQty):
+    if filledBidAsk == "bid":
+        flipBidAsk = "ask"
+    if filledBidAsk == "ask":
+        flipBidAsk = "bid"
+    futureName = filledOrderName.split("-")[0]+"-"+filledOrderName.split("-")[1]
+    # If the filled order was a put
+    if filledOrderName[-1:] == "P":
+        # if the filled put was a bid, we are long put, so we should short a call and long a future
+        newOrder(filledOrderName[:-1]+"C", 1, 0, filledQty, filledBidAsk) # enter into the call
+        newOrder(futureName, 1, 0, filledQty*order_book[futureName][flipBidAsk]["price"], flipBidAsk) # enter into the future with the filled qty * price
+
+    if filledOrderName[-1:] == "C":
+        # if the filled call was a bid, we are long call, so we should short a put and short a future
+        newOrder(filledOrderName[:-1]+"P", 1, 0, filledQty, filledBidAsk) # enter into the put
+        newOrder(futureName, 1, 0, filledQty*order_book[futureName][filledBidAsk]["price"], filledBidAsk) # enter into the future with the filled qty * price
 
 def massQuote(massQuoteList):
     global inc
@@ -494,7 +540,7 @@ def removeMarketOrder(orderName, bidask):
         trading_queue.append(orderName, my_order_book[orderName][bidask]["price"], 0, bidask)
         #remove from my order book
         my_order_book[orderName][bidask] = {}
-        
+
 
 # Vi lager en funksjon for å legge ordre i tradingqueuen. 
 def addToTradingQueue(instrumetName, bidask, updateType=1): # updatetype 1 = both price and vol, 2 = just vol
@@ -605,6 +651,7 @@ s.sendall(securityListRequest().encode())
 heartbeat_count=0
 order_book = {}
 order_book2 = {}
+position_book = {}
 c = 1
 parser = fix.FixParser()
 ARB_name=""
@@ -686,7 +733,7 @@ while unload_qty > trade_qty:
                 
                     if bidask == "0": # BIDs
                         # this is used to check if the toplistinig changed later
-                        top_listing = order_book[instrumetName]["bid"]["price"][0]
+                        top_listing = order_book[instrumetName]["bid"]["price"][0] # FIKS DETTE
                         top_listing_vol = order_book[instrumetName]["bid"]["volume"][0]
 
                         if orderType == "0": # New orders
@@ -796,10 +843,11 @@ while unload_qty > trade_qty:
             #exit
         #else:
             #print(msg)
-        if m2s(msg.get(35)) == "8":
-            status = m2s(msg.get(39))
+        if m2s(msg.get(35)) == "8": # Execution report
+            status = m2s(msg.get(39)) #0 = New, 1 = Partially filled, 2 = Filled, 4 = Cancelled 8 = Rejected
             symbol = m2s(msg.get(55))
-
+            side = m2s(msg.get(54)) # 1 = Buy, 2 = Sell
+            orderType = m2s(msg.get(40)) # 1 = Market, 2 = Limit, 4 = stop limit, S = stop market
 
 
         if str(msg.get(35)).split("'")[1] == "0": # Heartbeat to maintain the connection
@@ -831,17 +879,15 @@ while unload_qty > trade_qty:
             #pos_val = msg.get(#num)
             date_contract_qty = 0
             for t,v in msg.pairs: # Loop thorugh the msg to avoid multiple loops with .get function
-                long_tag = fix_tag(704) # tag determining new, change or del
+                long_tag = fix_tag(704) 
                 short_tag = fix_tag(705)
                 name_tag = fix_tag(55)  
-                if t == long_tag: longqty = m2f(v)
-                if t == short_tag: shortqty = m2f(v)
+                side_tag = fix_tag(54)
+                if t == long_tag: longqty = m2f(v) 
+                if t == short_tag: shortqty = m2f(v) 
                 if t == name_tag: 
                     instrumetName = m2s(v)
-                    if "PERPETUAL" in instrumetName:
-                        perpetual_qty = longqty - shortqty
-                    else:
-                        date_contract_qty = date_contract_qty + longqty - shortqty
+                    position_book[instrumetName] = {"ask":longqty,"bid":shortqty}
 
                               
             # GET THE CURRENT POSITION SIZE OF THE CONTRACT AND UPDATE A VALUE TO TRACK THE SIZE, THEN USE THAT VALUE TO DETERMINE IF THERE SHOULD BE
