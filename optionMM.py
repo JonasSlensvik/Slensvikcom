@@ -455,13 +455,13 @@ def hedgeLogic(filledOrderName, filledBidAsk, filledQty):
     # If the filled order was a put
     if filledOrderName[-1:] == "P":
         # if the filled put was a bid, we are long put, so we should short a call and long a future
-        newOrder(filledOrderName[:-1]+"C", 1, 0, filledQty, filledBidAsk) # enter into the call
-        newOrder(futureName, 1, 0, filledQty*order_book[futureName][flipBidAsk]["price"], flipBidAsk) # enter into the future with the filled qty * price
+        s.sendall(newOrder(filledOrderName[:-1]+"C", 1, 0, filledQty, filledBidAsk).encode()) # enter into the call
+        s.sendall(newOrder(futureName, 1, 0, filledQty*order_book[futureName][flipBidAsk]["price"]/10, flipBidAsk).encode()) # enter into the future with the filled qty * price
 
     if filledOrderName[-1:] == "C":
         # if the filled call was a bid, we are long call, so we should short a put and short a future
-        newOrder(filledOrderName[:-1]+"P", 1, 0, filledQty, filledBidAsk) # enter into the put
-        newOrder(futureName, 1, 0, filledQty*order_book[futureName][filledBidAsk]["price"], filledBidAsk) # enter into the future with the filled qty * price
+        s.sendall(newOrder(filledOrderName[:-1]+"P", 1, 0, filledQty, filledBidAsk).encode()) # enter into the put
+        s.sendall(newOrder(futureName, 1, 0, filledQty*order_book[futureName][filledBidAsk]["price"]/10, filledBidAsk).encode()) # enter into the future with the filled qty * price
 
 def massQuote(massQuoteList):
     global inc
@@ -733,17 +733,17 @@ while unload_qty > trade_qty:
                 
                     if bidask == "0": # BIDs
                         # this is used to check if the toplistinig changed later
-                        top_listing = order_book[instrumetName]["bid"]["price"][0] # FIKS DETTE
-                        top_listing_vol = order_book[instrumetName]["bid"]["volume"][0]
+                        if order_book[instrumetName]["bid"]["price"]:
+                            top_listing = order_book[instrumetName]["bid"]["price"][0] 
+                            top_listing_vol = order_book[instrumetName]["bid"]["volume"][0]
+                        else: # Hvis dette er et problem betyr det at new orders ikke nødvendigvis er det første som treffer en tom ordrebok
+                            top_listing = price
+                            top_listing_vol = vol
 
-                        if orderType == "0": # New orders
-                            #Check for arb first, then append to order_book
-                            top_listing = order_book[instrumetName]["bid"]["price"][0]
-                                        
+                        if orderType == "0": # New orders                                        
                             reverse_insort(order_book[instrumetName]["bid"]["price"], price)
                             idx = indexBID(order_book[instrumetName]["bid"]["price"], price) # find the pos of the price
                             order_book[instrumetName]["bid"]["volume"].insert(idx,vol)
-                            
                         
                         if orderType == "1": # Change
                             order_book[instrumetName]["bid"]["volume"][indexBID(order_book[instrumetName]["bid"]["price"], price)] = vol
@@ -762,6 +762,11 @@ while unload_qty > trade_qty:
                                     # We have a order in the market affected by the change in volume
                                     # cahnge current order OR delete and make a new one
                                     addToTradingQueue(instrumetName, "bid", 2)
+                            if instrumetName[-1:] == "C": # call update
+                                if my_order_book[instrumetName[:-1]+"P"]["bid"]: 
+                                    # We have a order in the market affected by the change in volume
+                                    # cahnge current order OR delete and make a new one
+                                    addToTradingQueue(instrumetName, "bid", 2)
                                     
                         # there has been a change in the top listing price
                         if top_listing != order_book[instrumetName]["bid"]["price"][0]: 
@@ -770,10 +775,12 @@ while unload_qty > trade_qty:
                                 print("adding to queue")
                                 #addToTradingQueue()
                                 addToTradingQueue(instrumetName, "bid")
+                                
                             else: # Futures
                                 # Check that the futures prices have moved by more than 10 to update our orders 
                                 if abs(order_book[instrumetName]["bid"]["spotChange"]-order_book[instrumetName]["bid"]["price"][0]) > future_upd_thshld:
-                                    # Mass Cancel
+                                    order_book[instrumetName]["bid"]["spotChange"] = price
+                                    # Mass Cancel needs to be added here if we are not able to amend previous orders
                                     # Remove "old" orders from the trading queue, so the orders dont double up
                                     ticker = instrumetName.split("-")[0] + "-" + instrumetName.split("-")[1] 
                                     trading_queue = [item for item in trading_queue if item[0].split("-")[0] + "-" + item[0].split("-")[1] != ticker]
@@ -818,7 +825,12 @@ while unload_qty > trade_qty:
                             
                             
                     if bidask == "1": # ASKS
-                        top_listing = order_book[instrumetName]["ask"]["price"][0]
+                        if order_book[instrumetName]["ask"]["price"]:
+                            top_listing = order_book[instrumetName]["ask"]["price"][0] 
+                            top_listing_vol = order_book[instrumetName]["ask"]["volume"][0]
+                        else: # Hvis dette er et problem betyr det at new orders ikke nødvendigvis er det første som treffer en tom ordrebok
+                            top_listing = price
+                            top_listing_vol = vol
                         
                         if orderType == "0": # New orders
                                     
@@ -837,8 +849,47 @@ while unload_qty > trade_qty:
                             
                         #checkinig if there has been a change in the top listing, if so calc premium and act acordingly
                         #this will add sell limit orders to the unwind order book 
-                        if top_listing !=  order_book[instrumetName]["ask"]["price"][0]: 
-                            print("no functionality added here yet")
+                        
+                        # When there is a change in volume for the top listing and not a change in price
+                        if top_listing == order_book[instrumetName]["ask"]["price"][0] and top_listing_vol != order_book[instrumetName]["ask"]["volume"][0]:
+                            # There was a change in the top listings volume, so we need to adjust the size of our posistion
+                            if instrumetName[-1:] == "P": # Put update
+                                # check if there is a position in my order book to change at all:
+                                if my_order_book[instrumetName[:-1]+"C"]["ask"]: 
+                                    # We have a order in the market affected by the change in volume
+                                    # cahnge current order OR delete and make a new one
+                                    addToTradingQueue(instrumetName, "ask", 2)
+                            if instrumetName[-1:] == "C": # call update
+                                if my_order_book[instrumetName[:-1]+"P"]["ask"]: 
+                                    # We have a order in the market affected by the change in volume
+                                    # cahnge current order OR delete and make a new one
+                                    addToTradingQueue(instrumetName, "ask", 2)
+                                    
+                        # there has been a change in the top listing price
+                        if top_listing != order_book[instrumetName]["ask"]["price"][0]: 
+                            split_name = instrumetName.split("-")
+                            if len(split_name) > 2: # Options
+                                addToTradingQueue(instrumetName, "ask")
+                            else: # Futures
+                                # Check that the futures prices have moved by more than 10 to update our orders 
+                                if abs(order_book[instrumetName]["ask"]["spotChange"]-order_book[instrumetName]["ask"]["price"][0]) > future_upd_thshld:
+                                    order_book[instrumetName]["ask"]["spotChange"] = price
+                                    # Mass Cancel needs to be added here if we are not able to amend previous orders
+                                    # Remove "old" orders from the trading queue, so the orders dont double up
+                                    ticker = instrumetName.split("-")[0] + "-" + instrumetName.split("-")[1] 
+                                    trading_queue = [item for item in trading_queue if item[0].split("-")[0] + "-" + item[0].split("-")[1] != ticker]
+                                    # Calculate price for entire option chain
+                                    # Get all the instrument names with the same expiration date
+                                    instrument_list = [key for key in list(my_order_book.keys()) if ticker in key]                                    
+                                    for instrument in instrument_list:
+                                        # instrument is the full name of the insturment i.e "BTC-1MAR24-57000-P" ops! can be future too!
+                                        split_name2 = instrument.split("-")
+                                        if len(split_name2) > 2: # Options
+                                            if split_name2[3] == "P":
+                                                addToTradingQueue(instrument[:-1]+"C", "bid")
+                                            if split_name2[3] == "C":
+                                                addToTradingQueue(instrument[:-1]+"P", "ask")
+
             #print(order_book)
             #exit
         #else:
@@ -848,6 +899,30 @@ while unload_qty > trade_qty:
             symbol = m2s(msg.get(55))
             side = m2s(msg.get(54)) # 1 = Buy, 2 = Sell
             orderType = m2s(msg.get(40)) # 1 = Market, 2 = Limit, 4 = stop limit, S = stop market
+        
+        if m2s(msg.get(35)) == "b": # Execution report for mass quote
+            status = m2s(msg.get(39)) #0 = New, 1 = Partially filled, 2 = Filled, 4 = Cancelled 8 = Rejected
+            symbol = m2s(msg.get(55))
+            side = m2s(msg.get(54)) # 1 = Buy, 2 = Sell
+            orderType = m2s(msg.get(40)) # 1 = Market, 2 = Limit, 4 = stop limit, S = stop market
+            for t,v in msg.pairs: # Loop thorugh the msg to avoid multiple loops with .get function
+                if t == fix_tag(297): quoteStatus = m2i(v) # 0 = Accepted, 5 = Rejected
+                if t == fix_tag(300): rejectReason = m2i(v) # 1=unknown symbol, 2=Exchange closed, 3= size limit exceeded, 9= not allowed to qoute security, 99= other
+                if t == fix_tag(9020): entryType = m2i(v) # 0 = order, 1 = trade, 2 = error
+                if t == fix_tag(1167): quoteStatus = m2i(v)  # 0 = accepted, 5 = rejected, 17 = canceled, REMEMBER TO CONFIRM IF QTY TO 0 EQUALS CANCEL OR ACCEPT
+                if t == fix_tag(55): orderName = m2s(v)  
+                if t == fix_tag(54): side = m2i(v)  # possibly 1 = buy and 2 = sell , not confrimed!!!
+                if t == fix_tag(192): filledQty = m2f(v)  # qty in case of a trade
+                # consider if we need to collect bid/ask vol and price in case we want to compare the posted orders with my orderbook
+                
+                if entryType == 1: # we have traded
+                    if side == 1:
+                        filledBidAsk = "bid"
+                    else:
+                        filledBidAsk = "ask"
+                    hedgeLogic(orderName, filledBidAsk, filledQty)
+
+
 
 
         if str(msg.get(35)).split("'")[1] == "0": # Heartbeat to maintain the connection
@@ -887,7 +962,10 @@ while unload_qty > trade_qty:
                 if t == short_tag: shortqty = m2f(v) 
                 if t == name_tag: 
                     instrumetName = m2s(v)
-                    position_book[instrumetName] = {"ask":longqty,"bid":shortqty}
+                    if instrumetName[-1:] != "P" or instrumetName[-1:] != "C": # if the pos is not a put or call its a future and we multiply the position with 10
+                        position_book[instrumetName] = {"ask":longqty*10,"bid":shortqty*10}
+                    else:
+                        position_book[instrumetName] = {"ask":longqty,"bid":shortqty}
 
                               
             # GET THE CURRENT POSITION SIZE OF THE CONTRACT AND UPDATE A VALUE TO TRACK THE SIZE, THEN USE THAT VALUE TO DETERMINE IF THERE SHOULD BE
