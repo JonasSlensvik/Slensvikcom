@@ -306,7 +306,7 @@ def subscribeMarketData(subArray):
   
     for instrument in sublist:
         message.append_pair(55, m2s(instrument))
-        print("subbing to: ", m2s(instrument))
+        #print("subbing to: ", m2s(instrument))
     inc +=1
     
     return message
@@ -652,26 +652,13 @@ current_order = 0
 unwind_order = 0
 swap_order = 0
 old_diff = 0
-
-api_credit = 5000
+cunt = 0
+api_credit = 500
 trading_queue = [] # pass list [instrument_name, price, qty, side(buy/sell)]
 timer = time.perf_counter()
 s.sendall(mmProtection().encode())
 while unload_qty > trade_qty:
-    if api_credit > 50000:
-        if trading_queue:
-            #newOrder(symbol, orderType, price, qty, side, "mm")
-            #s.sendall(massQuote([["BTC-14MAR24-72000-C", 0.001, 0.1, "bid"]]).encode())
-            #newOrder(trading_queue[0][0], 2, trading_queue[0][1], trading_queue[0][2], trading_queue[0][3], "mm")
-            api_credit -= 5000000
-            trading_queue = []
-            if len(trading_queue) > 200:
-                print("WARING! LARGE TRADING QUEUE OF: ", len(trading_queue))
-    if api_credit < 50000:
-        current_time = time.perf_counter()
-        api_credit += (current_time-timer)*10000
-        api_credit = min(api_credit,50000)
-        timer = time.perf_counter()
+    
 
     try:
         buf = s.recv(4096)
@@ -698,7 +685,35 @@ while unload_qty > trade_qty:
                     subArray.append(msg.get(55,i))
             print("Subscribing!")
             s.sendall(subscribeMarketData(subArray).encode())
-            
+        
+        if api_credit > 9000:
+            print("now")
+            if cunt == 3:
+                s.sendall(massQuote([["BTC-14MAR24-70000-C", 0.01, "null", "bid"],["BTC-14MAR24-71000-C", 0.01, "null", "bid"]]).encode())
+            if cunt == 5:
+                s.sendall(massQuote([["BTC-14MAR24-70000-C", "null", 0.2, "bid"],["BTC-14MAR24-71000-C", "null", 0.2, "bid"]]).encode())
+            if cunt == 7:
+                s.sendall(massQuote([["BTC-14MAR24-70000-C", "null", 0, "bid"],["BTC-14MAR24-71000-C", "null", 0, "bid"]]).encode())
+                
+            cunt +=1
+            api_credit = 0
+            if trading_queue:
+                #newOrder(symbol, orderType, price, qty, side, "mm")
+                #s.sendall(massQuote([["BTC-14MAR24-72000-C", 0.001, 0.1, "bid"]]).encode())
+                #newOrder(trading_queue[0][0], 2, trading_queue[0][1], trading_queue[0][2], trading_queue[0][3], "mm")
+                print("Now")
+                s.sendall(massQuote([["BTC-14MAR24-70000-C", 0.01, 0.1]]).encode())
+                api_credit -= 5000000
+                trading_queue = []
+                if len(trading_queue) > 200:
+                    print("WARING! LARGE TRADING QUEUE OF: ", len(trading_queue))
+        if api_credit < 9000:
+            #print(api_credit)
+            current_time = time.perf_counter()
+            api_credit += (current_time-timer)*10000
+            api_credit = min(api_credit,50000)
+            timer = time.perf_counter()
+        
         if m2s(msg.get(35)) == "X":
             #print(str(msg))
             #for t,v in msg.pairs: # DO THIS TO AVOID A LOT OF LOOPS
@@ -946,7 +961,7 @@ while unload_qty > trade_qty:
         if str(msg.get(35)).split("'")[1] == "MR": # user info like equity, margin, pnl etc
             status = m2s(msg.get(20117))
             if status == "Y":
-                s.sendall(massQuote([["BTC-14MAR24-72000-C", 0.001, 0.1, "bid"],["BTC-14MAR24-71000-C", 0.01, 0.1, "bid"]]).encode())
+                s.sendall(massQuote([["BTC-14MAR24-70000-C", 0.02, 0.1, "bid"],["BTC-14MAR24-71000-C", 0.01, 0.1, "bid"]]).encode())
                 
                 
                 
@@ -1053,7 +1068,7 @@ while unload_qty > trade_qty:
         if m2s(msg.get(35)) != "8" and m2s(msg.get(35)) != "r" and m2s(msg.get(35)) != "W" and m2s(msg.get(35)) != "5" and m2s(msg.get(35)) != "AP" and m2s(msg.get(35)) != "BF" and m2s(msg.get(35)) != "0" and m2s(msg.get(35)) != "X":
            print("=============")
            print(m2s(msg.get(35))) 
-           print(msg)
+           #print(msg)
 
 
 
