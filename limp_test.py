@@ -20,7 +20,7 @@ initMargin = 0
 localMargin = 0
 
 # Option Margin in dollars
-dOptionMargin = 250 # Our margin in dollar when calculating mmPrice
+dOptionMargin = 50 # Our margin in dollar when calculating mmPrice
 strike_interval = 5000 # what interval to calculate mmPrice at program init
 future_upd_thshld = 15
 max_dSize = 1000 # Maxium dollar size per order, can be adjusted to increase or lower init margin tolerance
@@ -160,25 +160,17 @@ def calculateMarketMakerPrice(bidask,contract):
     if bidask == "ask":
         if "-P" in contract: #if we are getting put and ask, we need to genereate price for a ask call
             mmPrice = (price*futureAskPrice + futureAskPrice - float(strike))/futureAskPrice
-            print(mmPrice)
             mmPrice += (tcost(mmPrice*futureAskPrice,price*futureAskPrice,futureAskPrice) + dOptionMargin)/futureAskPrice
-            print(mmPrice)
         if "-C" in contract: #if call
             mmPrice = (float(strike) + price*futureBidPrice - futureBidPrice)/futureBidPrice
-            print(mmPrice)
             mmPrice += (tcost(mmPrice*futureBidPrice,price*futureBidPrice,futureBidPrice) + dOptionMargin)/futureBidPrice
-            print(mmPrice)
     if bidask == "bid":
         if "-P" in contract: #if put
             mmPrice = (price*futureBidPrice + futureBidPrice - float(strike))/futureBidPrice
-            print(mmPrice)
             mmPrice += -(tcost(mmPrice*futureBidPrice,price*futureBidPrice,futureBidPrice) + dOptionMargin)/futureBidPrice
-            print(mmPrice)
         if "-C" in contract: #if call
             mmPrice = (float(strike) + price*futureAskPrice - futureAskPrice)/futureAskPrice
-            print(mmPrice)
             mmPrice += -(tcost(mmPrice*futureAskPrice,price*futureAskPrice,futureAskPrice) + dOptionMargin)/futureAskPrice
-            print(mmPrice)
             
     return mmPrice
 
@@ -661,18 +653,17 @@ unwind_order = 0
 swap_order = 0
 old_diff = 0
 
-api_credit = 50000
+api_credit = 5000
 trading_queue = [] # pass list [instrument_name, price, qty, side(buy/sell)]
 timer = time.perf_counter()
 s.sendall(mmProtection().encode())
-
 while unload_qty > trade_qty:
-    if api_credit > 5000:
+    if api_credit > 50000:
         if trading_queue:
             #newOrder(symbol, orderType, price, qty, side, "mm")
-            s.sendall(massQuote(trading_queue).encode())
+            #s.sendall(massQuote([["BTC-14MAR24-72000-C", 0.001, 0.1, "bid"]]).encode())
             #newOrder(trading_queue[0][0], 2, trading_queue[0][1], trading_queue[0][2], trading_queue[0][3], "mm")
-            api_credit -= 500
+            api_credit -= 5000000
             trading_queue = []
             if len(trading_queue) > 200:
                 print("WARING! LARGE TRADING QUEUE OF: ", len(trading_queue))
@@ -755,73 +746,73 @@ while unload_qty > trade_qty:
                             del order_book[instrumetName]["bid"]["price"][idx]
                             del order_book[instrumetName]["bid"]["volume"][idx]
                         
-                        if top_listing == order_book[instrumetName]["bid"]["price"][0] and top_listing_vol != order_book[instrumetName]["bid"]["volume"][0]:
-                            # There was a change in the top listings volume, so we need to adjust the size of our posistion
-                            if instrumetName[-1:] == "P": # Put update
-                                # check if there is a position in my order book to change at all:
-                                if my_order_book[instrumetName[:-1]+"C"]["bid"]: 
-                                    # We have a order in the market affected by the change in volume
-                                    # cahnge current order OR delete and make a new one
-                                    addToTradingQueue(instrumetName, "bid", 2)
-                            if instrumetName[-1:] == "C": # call update
-                                if my_order_book[instrumetName[:-1]+"P"]["bid"]: 
-                                    # We have a order in the market affected by the change in volume
-                                    # cahnge current order OR delete and make a new one
-                                    addToTradingQueue(instrumetName, "bid", 2)
+                        # if top_listing == order_book[instrumetName]["bid"]["price"][0] and top_listing_vol != order_book[instrumetName]["bid"]["volume"][0]:
+                        #     # There was a change in the top listings volume, so we need to adjust the size of our posistion
+                        #     if instrumetName[-1:] == "P": # Put update
+                        #         # check if there is a position in my order book to change at all:
+                        #         if my_order_book[instrumetName[:-1]+"C"]["bid"]: 
+                        #             # We have a order in the market affected by the change in volume
+                        #             # cahnge current order OR delete and make a new one
+                        #             addToTradingQueue(instrumetName, "bid", 2)
+                        #     if instrumetName[-1:] == "C": # call update
+                        #         if my_order_book[instrumetName[:-1]+"P"]["bid"]: 
+                        #             # We have a order in the market affected by the change in volume
+                        #             # cahnge current order OR delete and make a new one
+                        #             addToTradingQueue(instrumetName, "bid", 2)
                                     
-                        # there has been a change in the top listing price
-                        if top_listing != order_book[instrumetName]["bid"]["price"][0]: 
-                            split_name = instrumetName.split("-")
-                            if len(split_name) > 2: # Options
-                                print("adding to queue")
-                                #addToTradingQueue()
-                                addToTradingQueue(instrumetName, "bid")
+                        # # there has been a change in the top listing price
+                        # if top_listing != order_book[instrumetName]["bid"]["price"][0]: 
+                        #     split_name = instrumetName.split("-")
+                        #     if len(split_name) > 2: # Options
+                        #         print("adding to queue")
+                        #         #addToTradingQueue()
+                        #         addToTradingQueue(instrumetName, "bid")
                                 
-                            else: # Futures
-                                # Check that the futures prices have moved by more than 10 to update our orders 
-                                if abs(order_book[instrumetName]["bid"]["spotChange"]-order_book[instrumetName]["bid"]["price"][0]) > future_upd_thshld:
-                                    order_book[instrumetName]["bid"]["spotChange"] = price
-                                    # Mass Cancel needs to be added here if we are not able to amend previous orders
-                                    # Remove "old" orders from the trading queue, so the orders dont double up
-                                    ticker = instrumetName.split("-")[0] + "-" + instrumetName.split("-")[1] 
-                                    trading_queue = [item for item in trading_queue if item[0].split("-")[0] + "-" + item[0].split("-")[1] != ticker]
-                                    # Calculate price for entire option chain
-                                    # Get all the instrument names with the same expiration date
-                                    instrument_list = [key for key in list(my_order_book.keys()) if ticker in key]
-                                    #massQuoteList = []
+                        #     else: # Futures
+                        #         # Check that the futures prices have moved by more than 10 to update our orders 
+                        #         if abs(order_book[instrumetName]["bid"]["spotChange"]-order_book[instrumetName]["bid"]["price"][0]) > future_upd_thshld:
+                        #             order_book[instrumetName]["bid"]["spotChange"] = price
+                        #             # Mass Cancel needs to be added here if we are not able to amend previous orders
+                        #             # Remove "old" orders from the trading queue, so the orders dont double up
+                        #             ticker = instrumetName.split("-")[0] + "-" + instrumetName.split("-")[1] 
+                        #             trading_queue = [item for item in trading_queue if item[0].split("-")[0] + "-" + item[0].split("-")[1] != ticker]
+                        #             # Calculate price for entire option chain
+                        #             # Get all the instrument names with the same expiration date
+                        #             instrument_list = [key for key in list(my_order_book.keys()) if ticker in key]
+                        #             #massQuoteList = []
                                     
-                                    for instrument in instrument_list:
-                                        # instrument is the full name of the insturment i.e "BTC-1MAR24-57000-P" ops! can be future too!
-                                        split_name2 = instrument.split("-")
-                                        if len(split_name2) > 2: # Options
-                                            if split_name2[3] == "P":
-                                                addToTradingQueue(instrument[:-1]+"C", "ask")
-                                                # if my_order_book[instrument]["ask"]: # check if there is a existing outstanding ask order for this instrument
-                                                #     # calculates the new price
-                                                #     newPrice = calculateMarketMakerPrice("ask", instrument[:-1]+"C") # flip to call in order to use the calc function
-                                                #     # calculate quanity based on quanity to hedged option
-                                                #     qty = min(max_dSize, price*order_book[instrument[:-1]+"C"]["ask"]["price"][0]*order_book[instrument[:-1]+"C"]["ask"]["volume"][0])
-                                                #     qty = round_downQTY(qty/((price*order_book[instrument[:-1]+"C"]["ask"]["price"][0]))) # make qty denominated in bitcoin 
-                                                #     # append to massquote list
-                                                #     trading_queue.append([instrument, newPrice, qty, "ask"])
-                                                #     # update my orderbook
-                                                #     my_order_book[instrument]["ask"] = {"price":newPrice,"volume":qty}
-                                            if split_name2[3] == "C":
-                                                addToTradingQueue(instrument[:-1]+"P", "bid")
-                                                # if my_order_book[instrument]["bid"]: # check if there is a existing outstanding bid order for this instrument
-                                                #     newPrice = calculateMarketMakerPrice("bid", instrument[:-1]+"P") # flip to put in order to use the calc function
+                        #             for instrument in instrument_list:
+                        #                 # instrument is the full name of the insturment i.e "BTC-1MAR24-57000-P" ops! can be future too!
+                        #                 split_name2 = instrument.split("-")
+                        #                 if len(split_name2) > 2: # Options
+                        #                     if split_name2[3] == "P":
+                        #                         addToTradingQueue(instrument[:-1]+"C", "ask")
+                        #                         # if my_order_book[instrument]["ask"]: # check if there is a existing outstanding ask order for this instrument
+                        #                         #     # calculates the new price
+                        #                         #     newPrice = calculateMarketMakerPrice("ask", instrument[:-1]+"C") # flip to call in order to use the calc function
+                        #                         #     # calculate quanity based on quanity to hedged option
+                        #                         #     qty = min(max_dSize, price*order_book[instrument[:-1]+"C"]["ask"]["price"][0]*order_book[instrument[:-1]+"C"]["ask"]["volume"][0])
+                        #                         #     qty = round_downQTY(qty/((price*order_book[instrument[:-1]+"C"]["ask"]["price"][0]))) # make qty denominated in bitcoin 
+                        #                         #     # append to massquote list
+                        #                         #     trading_queue.append([instrument, newPrice, qty, "ask"])
+                        #                         #     # update my orderbook
+                        #                         #     my_order_book[instrument]["ask"] = {"price":newPrice,"volume":qty}
+                        #                     if split_name2[3] == "C":
+                        #                         addToTradingQueue(instrument[:-1]+"P", "bid")
+                        #                         # if my_order_book[instrument]["bid"]: # check if there is a existing outstanding bid order for this instrument
+                        #                         #     newPrice = calculateMarketMakerPrice("bid", instrument[:-1]+"P") # flip to put in order to use the calc function
                                                                                                         
-                                                #     qty = min(max_dSize, price*order_book[instrument[:-1]+"P"]["bid"]["price"][0]*order_book[instrument[:-1]+"P"]["bid"]["volume"][0])
-                                                #     qty = round_downQTY(qty/((price*order_book[instrument[:-1]+"P"]["bid"]["price"][0]))) # make qty denominated in bitcoin
-                                                #     # append to massquote list
-                                                #     trading_queue.append([instrument, newPrice, qty, "bid"])
-                                                #     # update my orderbook
-                                                #     my_order_book[instrument]["bid"] = {"price":newPrice,"volume":qty}
+                        #                         #     qty = min(max_dSize, price*order_book[instrument[:-1]+"P"]["bid"]["price"][0]*order_book[instrument[:-1]+"P"]["bid"]["volume"][0])
+                        #                         #     qty = round_downQTY(qty/((price*order_book[instrument[:-1]+"P"]["bid"]["price"][0]))) # make qty denominated in bitcoin
+                        #                         #     # append to massquote list
+                        #                         #     trading_queue.append([instrument, newPrice, qty, "bid"])
+                        #                         #     # update my orderbook
+                        #                         #     my_order_book[instrument]["bid"] = {"price":newPrice,"volume":qty}
                                                     
                                         
-                                    # Mass quoute
-                                    # Now the massQuote list should be filled up
-                                    # Now either loop thorugh all the orders adding them to trading queue or pass the list to a mass qute function
+                        #             # Mass quoute
+                        #             # Now the massQuote list should be filled up
+                        #             # Now either loop thorugh all the orders adding them to trading queue or pass the list to a mass qute function
                             
                             
                             
@@ -851,55 +842,55 @@ while unload_qty > trade_qty:
                         #checkinig if there has been a change in the top listing, if so calc premium and act acordingly
                         #this will add sell limit orders to the unwind order book 
                         
-                        # When there is a change in volume for the top listing and not a change in price
-                        if top_listing == order_book[instrumetName]["ask"]["price"][0] and top_listing_vol != order_book[instrumetName]["ask"]["volume"][0]:
-                            # There was a change in the top listings volume, so we need to adjust the size of our posistion
-                            if instrumetName[-1:] == "P": # Put update
-                                # check if there is a position in my order book to change at all:
-                                if my_order_book[instrumetName[:-1]+"C"]["ask"]: 
-                                    # We have a order in the market affected by the change in volume
-                                    # cahnge current order OR delete and make a new one
-                                    addToTradingQueue(instrumetName, "ask", 2)
-                            if instrumetName[-1:] == "C": # call update
-                                if my_order_book[instrumetName[:-1]+"P"]["ask"]: 
-                                    # We have a order in the market affected by the change in volume
-                                    # cahnge current order OR delete and make a new one
-                                    addToTradingQueue(instrumetName, "ask", 2)
+                        # # When there is a change in volume for the top listing and not a change in price
+                        # if top_listing == order_book[instrumetName]["ask"]["price"][0] and top_listing_vol != order_book[instrumetName]["ask"]["volume"][0]:
+                        #     # There was a change in the top listings volume, so we need to adjust the size of our posistion
+                        #     if instrumetName[-1:] == "P": # Put update
+                        #         # check if there is a position in my order book to change at all:
+                        #         if my_order_book[instrumetName[:-1]+"C"]["ask"]: 
+                        #             # We have a order in the market affected by the change in volume
+                        #             # cahnge current order OR delete and make a new one
+                        #             addToTradingQueue(instrumetName, "ask", 2)
+                        #     if instrumetName[-1:] == "C": # call update
+                        #         if my_order_book[instrumetName[:-1]+"P"]["ask"]: 
+                        #             # We have a order in the market affected by the change in volume
+                        #             # cahnge current order OR delete and make a new one
+                        #             addToTradingQueue(instrumetName, "ask", 2)
                                     
-                        # there has been a change in the top listing price
-                        if top_listing != order_book[instrumetName]["ask"]["price"][0]: 
-                            split_name = instrumetName.split("-")
-                            if len(split_name) > 2: # Options
-                                addToTradingQueue(instrumetName, "ask")
-                            else: # Futures
-                                # Check that the futures prices have moved by more than 10 to update our orders 
-                                if abs(order_book[instrumetName]["ask"]["spotChange"]-order_book[instrumetName]["ask"]["price"][0]) > future_upd_thshld:
-                                    order_book[instrumetName]["ask"]["spotChange"] = price
-                                    # Mass Cancel needs to be added here if we are not able to amend previous orders
-                                    # Remove "old" orders from the trading queue, so the orders dont double up
-                                    ticker = instrumetName.split("-")[0] + "-" + instrumetName.split("-")[1] 
-                                    trading_queue = [item for item in trading_queue if item[0].split("-")[0] + "-" + item[0].split("-")[1] != ticker]
-                                    # Calculate price for entire option chain
-                                    # Get all the instrument names with the same expiration date
-                                    instrument_list = [key for key in list(my_order_book.keys()) if ticker in key]                                    
-                                    for instrument in instrument_list:
-                                        # instrument is the full name of the insturment i.e "BTC-1MAR24-57000-P" ops! can be future too!
-                                        split_name2 = instrument.split("-")
-                                        if len(split_name2) > 2: # Options
-                                            if split_name2[3] == "P":
-                                                addToTradingQueue(instrument[:-1]+"C", "bid")
-                                            if split_name2[3] == "C":
-                                                addToTradingQueue(instrument[:-1]+"P", "ask")
+                        # # there has been a change in the top listing price
+                        # if top_listing != order_book[instrumetName]["ask"]["price"][0]: 
+                        #     split_name = instrumetName.split("-")
+                        #     if len(split_name) > 2: # Options
+                        #         addToTradingQueue(instrumetName, "ask")
+                        #     else: # Futures
+                        #         # Check that the futures prices have moved by more than 10 to update our orders 
+                        #         if abs(order_book[instrumetName]["ask"]["spotChange"]-order_book[instrumetName]["ask"]["price"][0]) > future_upd_thshld:
+                        #             order_book[instrumetName]["ask"]["spotChange"] = price
+                        #             # Mass Cancel needs to be added here if we are not able to amend previous orders
+                        #             # Remove "old" orders from the trading queue, so the orders dont double up
+                        #             ticker = instrumetName.split("-")[0] + "-" + instrumetName.split("-")[1] 
+                        #             trading_queue = [item for item in trading_queue if item[0].split("-")[0] + "-" + item[0].split("-")[1] != ticker]
+                        #             # Calculate price for entire option chain
+                        #             # Get all the instrument names with the same expiration date
+                        #             instrument_list = [key for key in list(my_order_book.keys()) if ticker in key]                                    
+                        #             for instrument in instrument_list:
+                        #                 # instrument is the full name of the insturment i.e "BTC-1MAR24-57000-P" ops! can be future too!
+                        #                 split_name2 = instrument.split("-")
+                        #                 if len(split_name2) > 2: # Options
+                        #                     if split_name2[3] == "P":
+                        #                         addToTradingQueue(instrument[:-1]+"C", "bid")
+                        #                     if split_name2[3] == "C":
+                        #                         addToTradingQueue(instrument[:-1]+"P", "ask")
 
             #print(order_book)
             #exit
         #else:
             #print(msg)
         if m2s(msg.get(35)) == "8": # Execution report
-            status = m2s(msg.get(39)) #0 = New, 1 = Partially filled, 2 = Filled, 4 = Cancelled 8 = Rejected
+            status = m2i(msg.get(39)) #0 = New, 1 = Partially filled, 2 = Filled, 4 = Cancelled 8 = Rejected
             symbol = m2s(msg.get(55))
-            side = m2s(msg.get(54)) # 1 = Buy, 2 = Sell
-            orderType = m2s(msg.get(40)) # 1 = Market, 2 = Limit, 4 = stop limit, S = stop market
+            side = m2i(msg.get(54)) # 1 = Buy, 2 = Sell
+            orderType = m2i(msg.get(40)) # 1 = Market, 2 = Limit, 4 = stop limit, S = stop market
         
         if m2s(msg.get(35)) == "b": # Execution report for mass quote
             print(msg)
@@ -935,6 +926,7 @@ while unload_qty > trade_qty:
                         side = -1
                         filledQty = -1
                         orderName = ""
+                    
 
 
 
@@ -950,6 +942,14 @@ while unload_qty > trade_qty:
             if heartbeat_count>60*6:
                 print("1 hour!")
                 heartbeat_count=0
+    
+        if str(msg.get(35)).split("'")[1] == "MR": # user info like equity, margin, pnl etc
+            status = m2s(msg.get(20117))
+            if status == "Y":
+                s.sendall(massQuote([["BTC-14MAR24-72000-C", 0.001, 0.1, "bid"],["BTC-14MAR24-71000-C", 0.01, 0.1, "bid"]]).encode())
+                
+                
+                
                 
         if str(msg.get(35)).split("'")[1] == "BF": # user info like equity, margin, pnl etc
             MaintenanceMargin = m2f(msg.get(100004))
