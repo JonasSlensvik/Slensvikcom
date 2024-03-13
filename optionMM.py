@@ -534,10 +534,12 @@ def bestOrder(orderName, bidask, calc_price):
             return True
 
 def removeMarketOrder(orderName, bidask):
+    global localMargin
     #Removes the order from the market
     if my_order_book[orderName][bidask]: 
         # if the order exists in my order book, delete it
         trading_queue.append(orderName, my_order_book[orderName][bidask]["price"], 0, bidask)
+        localMargin -= my_order_book[orderName][bidask]["volume"]*0.15
         #remove from my order book
         my_order_book[orderName][bidask] = {}
 
@@ -562,7 +564,7 @@ def addToTradingQueue(instrumetName, bidask, updateType=1): # updatetype 1 = bot
             # check at ordren vi hedger med ikke er vår egen
             print("d1")
             if notMatchingOrder(instrumetName, bidask):
-                print("d2")
+                print("d2", orderName)
                 if bidask == "bid":
                     # calculates price for our new order using the hedgeing instrument(instrument name)
                     calc_price = round_down(calculateMarketMakerPrice("bid", instrumetName))
@@ -596,8 +598,8 @@ def addToTradingQueue(instrumetName, bidask, updateType=1): # updatetype 1 = bot
                         else:    
                             my_order_book[orderName]["bid"] = {"price":calc_price,"volume":qty}
                     else:
-                        removeMarketOrder(instrumetName, bidask)
-                        localMargin -= my_order_book[orderName]["bid"]["volume"]*0.15
+                        removeMarketOrder(orderName, bidask)
+                        #localMargin -= my_order_book[orderName]["bid"]["volume"]*0.15
 
 
                                 
@@ -637,8 +639,8 @@ def addToTradingQueue(instrumetName, bidask, updateType=1): # updatetype 1 = bot
                         else:    
                             my_order_book[orderName]["ask"] = {"price":calc_price,"volume":qty}
                     else:
-                        removeMarketOrder(instrumetName, bidask)
-                        localMargin -= my_order_book[orderName]["ask"]["volume"]*0.15
+                        removeMarketOrder(orderName, bidask)
+                        #localMargin -= my_order_book[orderName]["ask"]["volume"]*0.15
             
         
 
@@ -661,26 +663,13 @@ unwind_order = 0
 swap_order = 0
 old_diff = 0
 
-api_credit = 50000
+api_credit = 25000
 trading_queue = [] # pass list [instrument_name, price, qty, side(buy/sell)]
 timer = time.perf_counter()
 s.sendall(mmProtection().encode())
 
 while unload_qty > trade_qty:
-    if api_credit > 5000:
-        if trading_queue:
-            #newOrder(symbol, orderType, price, qty, side, "mm")
-            s.sendall(massQuote(trading_queue).encode())
-            #newOrder(trading_queue[0][0], 2, trading_queue[0][1], trading_queue[0][2], trading_queue[0][3], "mm")
-            api_credit -= 500
-            trading_queue = []
-            if len(trading_queue) > 200:
-                print("WARING! LARGE TRADING QUEUE OF: ", len(trading_queue))
-    if api_credit < 50000:
-        current_time = time.perf_counter()
-        api_credit += (current_time-timer)*10000
-        api_credit = min(api_credit,50000)
-        timer = time.perf_counter()
+    
 
     try:
         buf = s.recv(4096)
@@ -707,7 +696,22 @@ while unload_qty > trade_qty:
                     subArray.append(msg.get(55,i))
             print("Subscribing!")
             s.sendall(subscribeMarketData(subArray).encode())
-            
+        
+        if api_credit > 5000:
+            if trading_queue:
+                #newOrder(symbol, orderType, price, qty, side, "mm")
+                s.sendall(massQuote(trading_queue).encode())
+                #newOrder(trading_queue[0][0], 2, trading_queue[0][1], trading_queue[0][2], trading_queue[0][3], "mm")
+                api_credit -= 500
+                trading_queue = []
+                if len(trading_queue) > 200:
+                    print("WARING! LARGE TRADING QUEUE OF: ", len(trading_queue))
+        if api_credit < 25000:
+            current_time = time.perf_counter()
+            api_credit += (current_time-timer)*7500
+            api_credit = min(api_credit,25000)
+            timer = time.perf_counter()
+        
         if m2s(msg.get(35)) == "X":
             #print(str(msg))
             #for t,v in msg.pairs: # DO THIS TO AVOID A LOT OF LOOPS

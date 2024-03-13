@@ -693,7 +693,7 @@ while unload_qty > trade_qty:
             if cunt == 5:
                 s.sendall(massQuote([["BTC-14MAR24-70000-C", "null", 0.2, "bid"],["BTC-14MAR24-71000-C", "null", 0.2, "bid"]]).encode())
             if cunt == 7:
-                s.sendall(massQuote([["BTC-14MAR24-70000-C", "null", 0, "bid"],["BTC-14MAR24-71000-C", "null", 0, "bid"]]).encode())
+                s.sendall(massQuote([["BTC-14MAR24-70000-C", "null", 0, "bid"],["BTC-14MAR24-72000-C", "null", 0, "bid"]]).encode())
                 
             cunt +=1
             api_credit = 0
