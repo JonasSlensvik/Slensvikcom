@@ -26,6 +26,8 @@ future_upd_thshld = 15
 max_dSize = 1000 # Maxium dollar size per order, can be adjusted to increase or lower init margin tolerance
 my_order_book = {}
 
+tradeDate = "15MAR24"
+
 # Imports
 import simplefix as fix
 import time
@@ -300,21 +302,25 @@ def subscribeMarketData(subArray):
                 if "VIX" not in m2s(instrument):
                     if "INDEX" not in m2s(instrument):
                         if "ETH" not in m2s(instrument):
-                            futures.append(instrument)
-                            sublist.append(instrument) 
+                            if tradeDate in m2s(instrument):
+                                futures.append(instrument)
+                                sublist.append(instrument) 
                         
     for option in options:  
+        print(option)
         option_date = m2s(option).split("-")[0] +"-" + m2s(option).split("-")[1]
         for future in futures:
             future_date = m2s(future)
             if future_date == option_date:
-                sublist.append(option) 
+                if tradeDate in m2s(option):
+                    print(m2s(option))
+                    sublist.append(option) 
     
     message.append_pair(146, len(sublist)) # Number of symbols requested. Necessary if more than 1 Symbol requested
   
     for instrument in sublist:
         message.append_pair(55, m2s(instrument))
-        print("subbing to: ", m2s(instrument))
+        #print("subbing to: ", m2s(instrument))
     inc +=1
     
     return message
@@ -547,7 +553,7 @@ def removeMarketOrder(orderName, bidask):
 # Vi lager en funksjon for å legge ordre i tradingqueuen. 
 def addToTradingQueue(instrumetName, bidask, updateType=1): # updatetype 1 = both price and vol, 2 = just vol
     global localMargin
-    if order_book[instrumetName][bidask]["mmPrice"]:     # check om det finnes en mmPrice, slik at vi ikke havner utenfor 5000 dollar intervallet
+    if "mmPrice" in order_book[instrumetName][bidask].keys():     # check om det finnes en mmPrice, slik at vi ikke havner utenfor 5000 dollar intervallet
 
         split_name = instrumetName.split("-")
         if instrumetName[-1:] == "P": # name of the order we are executing 
@@ -569,8 +575,8 @@ def addToTradingQueue(instrumetName, bidask, updateType=1): # updatetype 1 = bot
                     # calculates price for our new order using the hedgeing instrument(instrument name)
                     calc_price = round_down(calculateMarketMakerPrice("bid", instrumetName))
                     if bestOrder(orderName, "bid", calc_price): # check if our order is best priced OR there are no other quotes in the orderbook
-                        
-                        calc_price = order_book[orderName]["bid"]["price"][0] + 0.0005
+                        if order_book[orderName]["bid"]["price"]:
+                            calc_price = order_book[orderName]["bid"]["price"][0] + 0.0005
                                                             
                         print(calc_price)
                         #oppdater my_order_book med den nye ordren
@@ -609,8 +615,8 @@ def addToTradingQueue(instrumetName, bidask, updateType=1): # updatetype 1 = bot
                     calc_price = round_up(calculateMarketMakerPrice("ask", instrumetName))
                     
                     if bestOrder(orderName, "ask", calc_price): # check if our order is best priced OR there are no other quotes in the orderbook
-
-                        calc_price = order_book[orderName]["ask"]["price"][0] - 0.0005
+                        if order_book[orderName]["ask"]["price"]:
+                            calc_price = order_book[orderName]["ask"]["price"][0] - 0.0005
                     
                         
                         #oppdater my_order_book med den nye ordren
@@ -759,19 +765,20 @@ while unload_qty > trade_qty:
                             del order_book[instrumetName]["bid"]["price"][idx]
                             del order_book[instrumetName]["bid"]["volume"][idx]
                         
-                        if top_listing == order_book[instrumetName]["bid"]["price"][0] and top_listing_vol != order_book[instrumetName]["bid"]["volume"][0]:
-                            # There was a change in the top listings volume, so we need to adjust the size of our posistion
-                            if instrumetName[-1:] == "P": # Put update
-                                # check if there is a position in my order book to change at all:
-                                if my_order_book[instrumetName[:-1]+"C"]["bid"]: 
-                                    # We have a order in the market affected by the change in volume
-                                    # cahnge current order OR delete and make a new one
-                                    addToTradingQueue(instrumetName, "bid", 2)
-                            if instrumetName[-1:] == "C": # call update
-                                if my_order_book[instrumetName[:-1]+"P"]["bid"]: 
-                                    # We have a order in the market affected by the change in volume
-                                    # cahnge current order OR delete and make a new one
-                                    addToTradingQueue(instrumetName, "bid", 2)
+                        if order_book[instrumetName]["bid"]["price"]:
+                            if top_listing == order_book[instrumetName]["bid"]["price"][0] and top_listing_vol != order_book[instrumetName]["bid"]["volume"][0]:
+                                # There was a change in the top listings volume, so we need to adjust the size of our posistion
+                                if instrumetName[-1:] == "P": # Put update
+                                    # check if there is a position in my order book to change at all:
+                                    if my_order_book[instrumetName[:-1]+"C"]["bid"]: 
+                                        # We have a order in the market affected by the change in volume
+                                        # cahnge current order OR delete and make a new one
+                                        addToTradingQueue(instrumetName, "bid", 2)
+                                if instrumetName[-1:] == "C": # call update
+                                    if my_order_book[instrumetName[:-1]+"P"]["bid"]: 
+                                        # We have a order in the market affected by the change in volume
+                                        # cahnge current order OR delete and make a new one
+                                        addToTradingQueue(instrumetName, "bid", 2)
                                     
                         # there has been a change in the top listing price
                         if top_listing != order_book[instrumetName]["bid"]["price"][0]: 
@@ -856,19 +863,20 @@ while unload_qty > trade_qty:
                         #this will add sell limit orders to the unwind order book 
                         
                         # When there is a change in volume for the top listing and not a change in price
-                        if top_listing == order_book[instrumetName]["ask"]["price"][0] and top_listing_vol != order_book[instrumetName]["ask"]["volume"][0]:
-                            # There was a change in the top listings volume, so we need to adjust the size of our posistion
-                            if instrumetName[-1:] == "P": # Put update
-                                # check if there is a position in my order book to change at all:
-                                if my_order_book[instrumetName[:-1]+"C"]["ask"]: 
-                                    # We have a order in the market affected by the change in volume
-                                    # cahnge current order OR delete and make a new one
-                                    addToTradingQueue(instrumetName, "ask", 2)
-                            if instrumetName[-1:] == "C": # call update
-                                if my_order_book[instrumetName[:-1]+"P"]["ask"]: 
-                                    # We have a order in the market affected by the change in volume
-                                    # cahnge current order OR delete and make a new one
-                                    addToTradingQueue(instrumetName, "ask", 2)
+                        if order_book[instrumetName]["ask"]["price"]:
+                            if top_listing == order_book[instrumetName]["ask"]["price"][0] and top_listing_vol != order_book[instrumetName]["ask"]["volume"][0]:
+                                # There was a change in the top listings volume, so we need to adjust the size of our posistion
+                                if instrumetName[-1:] == "P": # Put update
+                                    # check if there is a position in my order book to change at all:
+                                    if my_order_book[instrumetName[:-1]+"C"]["ask"]: 
+                                        # We have a order in the market affected by the change in volume
+                                        # cahnge current order OR delete and make a new one
+                                        addToTradingQueue(instrumetName, "ask", 2)
+                                if instrumetName[-1:] == "C": # call update
+                                    if my_order_book[instrumetName[:-1]+"P"]["ask"]: 
+                                        # We have a order in the market affected by the change in volume
+                                        # cahnge current order OR delete and make a new one
+                                        addToTradingQueue(instrumetName, "ask", 2)
                                     
                         # there has been a change in the top listing price
                         if top_listing != order_book[instrumetName]["ask"]["price"][0]: 
@@ -1031,6 +1039,13 @@ while unload_qty > trade_qty:
             #order_book[instrumetName] = {"ask":{"price":askPrice,"volume":askVol},"bid":{"price":bidPrice,"volume":bidVol}}
             order_book[instrumetName] = {"ask":{"price":askPrice,"volume":askVol,"spotChange":spotChangeAsk},"bid":{"price":bidPrice,"volume":bidVol,"spotChange":spotChangeBid}}
             my_order_book[instrumetName] = {"ask":{},"bid":{}}
+            
+            # To populate my_order_book with a opposite trade in case it does not exist
+            # This is to fix a issue where we try to check if we have a position, and its not there
+            if instrumetName[-1:] == "P": 
+                my_order_book[instrumetName[:-1]+"C"] = {"ask":{},"bid":{}}
+            if instrumetName[-1:] == "C":
+                my_order_book[instrumetName[:-1]+"P"] = {"ask":{},"bid":{}}
 
             for contract in order_book:
                 splitcontract = contract.split("-")
