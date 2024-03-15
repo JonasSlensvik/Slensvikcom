@@ -20,10 +20,10 @@ initMargin = 0
 localMargin = 0
 
 # Option Margin in dollars
-dOptionMargin = 250 # Our margin in dollar when calculating mmPrice
-strike_interval = 15000 # what interval to calculate mmPrice at program init
+dOptionMargin = 200 # Our margin in dollar when calculating mmPrice
+strike_interval = 20000 # what interval to calculate mmPrice at program init
 future_upd_thshld = 15
-max_dSize = 1000 # Maxium dollar size per order, can be adjusted to increase or lower init margin tolerance
+max_dSize = 2000 # Maxium dollar size per order, can be adjusted to increase or lower init margin tolerance
 my_order_book = {}
 
 tradeDate = "22MAR24"
@@ -415,10 +415,10 @@ def mmProtection():
 
     message.append_pair(20114, "blabla") # unquie ID
     message.append_pair(15, "BTC") 
-    message.append_pair(20110, 1)
-    message.append_pair(20111, 1)
-    message.append_pair(20112, 10)
-    message.append_pair(20116, 10)
+    message.append_pair(20110, 2)
+    message.append_pair(20111, 2)
+    message.append_pair(20112, 30)
+    message.append_pair(20116, 30)
     message.append_pair(9019, "MMgroup1")
 
 
@@ -427,9 +427,9 @@ def mmProtection():
     return message
 
 def newOrder(symbol, orderType, price, qty, side, marketMaker="no"): # I need to be able to identify the Orders ID, when getting a confirmation. Will the uniquie ID be returned?
-    if side.lower() == "buy":
+    if side.lower() == "bid":
         side = "1"
-    elif side.lower() == "sell":
+    elif side.lower() == "ask":
         side = "2"
         
     global inc
@@ -462,12 +462,12 @@ def hedgeLogic(filledOrderName, filledBidAsk, filledQty):
     if filledOrderName[-1:] == "P":
         # if the filled put was a bid, we are long put, so we should short a call and long a future
         s.sendall(newOrder(filledOrderName[:-1]+"C", 1, 0, filledQty, filledBidAsk).encode()) # enter into the call
-        s.sendall(newOrder(futureName, 1, 0, filledQty*order_book[futureName][flipBidAsk]["price"]/10, flipBidAsk).encode()) # enter into the future with the filled qty * price
+        s.sendall(newOrder(futureName, 1, 0, int(round(filledQty*order_book[futureName][flipBidAsk]["price"][0]/10,0)), flipBidAsk).encode()) # enter into the future with the filled qty * price
 
     if filledOrderName[-1:] == "C":
         # if the filled call was a bid, we are long call, so we should short a put and short a future
         s.sendall(newOrder(filledOrderName[:-1]+"P", 1, 0, filledQty, filledBidAsk).encode()) # enter into the put
-        s.sendall(newOrder(futureName, 1, 0, filledQty*order_book[futureName][filledBidAsk]["price"]/10, filledBidAsk).encode()) # enter into the future with the filled qty * price
+        s.sendall(newOrder(futureName, 1, 0, int(round(filledQty*order_book[futureName][filledBidAsk]["price"][0]/10,0)), filledBidAsk).encode()) # enter into the future with the filled qty * price
 
 def massQuote(massQuoteList):
     global inc
@@ -582,13 +582,15 @@ def addToTradingQueue(instrumetName, bidask, updateType=1): # updatetype 1 = bot
                         #oppdater my_order_book med den nye ordren
                         if updateType == 2:
                             #add to queue
-                            trading_queue.append([orderName, "null", qty, "bid"])
+                            if qty != 0:
+                                trading_queue.append([orderName, "null", qty, "bid"])
                         elif updateType == 3:
                             trading_queue.append([orderName, calc_price, "null", "bid"])
                             
                         else:
                             #add to queue
-                            trading_queue.append([orderName, calc_price, qty, "bid"])
+                            if qty != 0:
+                                trading_queue.append([orderName, calc_price, qty, "bid"])
                         
                         #increase local margin
                         if not my_order_book[orderName]["bid"]: # there is no entry in my_order_book, meaning this is a new order -> add margin
@@ -624,12 +626,14 @@ def addToTradingQueue(instrumetName, bidask, updateType=1): # updatetype 1 = bot
                         #oppdater my_order_book med den nye ordren
                         if updateType == 2:
                             #add to queue
-                            trading_queue.append([orderName, "null", qty, "ask"])
+                            if qty != 0:
+                                trading_queue.append([orderName, "null", qty, "ask"])
                         elif updateType == 3:
                             trading_queue.append([orderName, calc_price, "null", "ask"])
                         else:
                             #add to queue
-                            trading_queue.append([orderName, calc_price, qty, "ask"])
+                            if qty != 0:
+                                trading_queue.append([orderName, calc_price, qty, "ask"])
                         # OLD : add to queue
                         # OLD : trading_queue.append([orderName, calc_price, qty, "sell"])
                         
@@ -928,9 +932,23 @@ while unload_qty > trade_qty:
             print("EXECUTION REPORT")
             print(msg)
             status = m2s(msg.get(39)) #0 = New, 1 = Partially filled, 2 = Filled, 4 = Cancelled 8 = Rejected
-            symbol = m2s(msg.get(55))
+            orderName = m2s(msg.get(55)) 
             side = m2s(msg.get(54)) # 1 = Buy, 2 = Sell
+            ordType = m2i(msg.get(40)) # 1 = Market, 2 = Limit
+            filledQty = 0
+            for t,v in msg.pairs:
+                if t == fix_tag(1365): # fill qty
+                    filledQty += m2f(v) 
+
             orderType = m2s(msg.get(40)) # 1 = Market, 2 = Limit, 4 = stop limit, S = stop market
+            if ordType == 2: # If a limit order
+                if status == "1" or status == "2": # filled or partial fill
+                    if side == 1:
+                        filledBidAsk = "bid"
+                    else:
+                        filledBidAsk = "ask"
+                    hedgeLogic(orderName, filledBidAsk, filledQty)
+
         
         if m2s(msg.get(35)) == "b": # Execution report for mass quote
             print("MQ EXECUTION REPORT")    
@@ -939,34 +957,34 @@ while unload_qty > trade_qty:
             #symbol = m2s(msg.get(55))
             #side = m2i(msg.get(54)) # 1 = Buy, 2 = Sell
             #orderType = m2i(msg.get(40)) # 1 = Market, 2 = Limit, 4 = stop limit, S = stop market
-            entryType = -1
-            side = -1
-            filledQty = -1
-            orderName = ""
-            for t,v in msg.pairs: # Loop thorugh the msg to avoid multiple loops with .get function
-                if t == fix_tag(297): quoteStatus = m2i(v) # 0 = Accepted, 5 = Rejected
-                if t == fix_tag(300): rejectReason = m2i(v) # 1=unknown symbol, 2=Exchange closed, 3= size limit exceeded, 9= not allowed to qoute security, 99= other
-                if t == fix_tag(9020): 
-                    entryType = m2i(v) # 0 = order, 1 = trade, 2 = error@
-                if t == fix_tag(1167): quoteStatus = m2i(v)  # 0 = accepted, 5 = rejected, 17 = canceled, REMEMBER TO CONFIRM IF QTY TO 0 EQUALS CANCEL OR ACCEPT
-                if t == fix_tag(55): orderName = m2s(v)  
-                if t == fix_tag(54): side = m2i(v)  # possibly 1 = buy and 2 = sell , not confrimed!!!
+            # entryType = -1
+            # side = -1
+            # filledQty = -1
+            # orderName = ""
+            # for t,v in msg.pairs: # Loop thorugh the msg to avoid multiple loops with .get function
+            #     if t == fix_tag(297): quoteStatus = m2i(v) # 0 = Accepted, 5 = Rejected
+            #     if t == fix_tag(300): rejectReason = m2i(v) # 1=unknown symbol, 2=Exchange closed, 3= size limit exceeded, 9= not allowed to qoute security, 99= other
+            #     if t == fix_tag(9020): 
+            #         entryType = m2i(v) # 0 = order, 1 = trade, 2 = error@
+            #     if t == fix_tag(1167): quoteStatus = m2i(v)  # 0 = accepted, 5 = rejected, 17 = canceled, REMEMBER TO CONFIRM IF QTY TO 0 EQUALS CANCEL OR ACCEPT
+            #     if t == fix_tag(55): orderName = m2s(v)  
+            #     if t == fix_tag(54): side = m2i(v)  # possibly 1 = buy and 2 = sell , not confrimed!!!
                     
-                if t == fix_tag(192): filledQty = m2f(v)  # qty in case of a trade
-                # consider if we need to collect bid/ask vol and price in case we want to compare the posted orders with my orderbook
+            #     if t == fix_tag(192): filledQty = m2f(v)  # qty in case of a trade
+            #     # consider if we need to collect bid/ask vol and price in case we want to compare the posted orders with my orderbook
                 
                 
-                if entryType == 1: # we have traded
-                    if side != -1 and filledQty != -1 and orderName != "":
-                        if side == 1:
-                            filledBidAsk = "bid"
-                        else:
-                            filledBidAsk = "ask"
-                        hedgeLogic(orderName, filledBidAsk, filledQty)
-                        entryType = -1
-                        side = -1
-                        filledQty = -1
-                        orderName = ""
+            #     if entryType == 1: # we have traded
+            #         if side != -1 and filledQty != -1 and orderName != "":
+            #             if side == 1:
+            #                 filledBidAsk = "bid"
+            #             else:
+            #                 filledBidAsk = "ask"
+            #             hedgeLogic(orderName, filledBidAsk, filledQty)
+            #             entryType = -1
+            #             side = -1
+            #             filledQty = -1
+            #             orderName = ""
 
 
 
