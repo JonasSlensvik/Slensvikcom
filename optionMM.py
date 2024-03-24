@@ -23,10 +23,10 @@ localMargin = 0
 dOptionMargin = 200 # Our margin in dollar when calculating mmPrice
 strike_interval = 20000 # what interval to calculate mmPrice at program init
 future_upd_thshld = 15
-max_dSize = 2000 # Maxium dollar size per order, can be adjusted to increase or lower init margin tolerance
+max_dSize = 5000 # Maxium dollar size per order, can be adjusted to increase or lower init margin tolerance
 my_order_book = {}
 
-tradeDate = "22MAR24"
+tradeDates = ["22MAR24", "29MAR24"]
 
 # Imports
 import simplefix as fix
@@ -302,9 +302,10 @@ def subscribeMarketData(subArray):
                 if "VIX" not in m2s(instrument):
                     if "INDEX" not in m2s(instrument):
                         if "ETH" not in m2s(instrument):
-                            if tradeDate in m2s(instrument):
-                                futures.append(instrument)
-                                sublist.append(instrument) 
+                            for tradeDate in tradeDates:
+                                if tradeDate in m2s(instrument):
+                                    futures.append(instrument)
+                                    sublist.append(instrument) 
                         
     for option in options:  
         print(option)
@@ -312,9 +313,10 @@ def subscribeMarketData(subArray):
         for future in futures:
             future_date = m2s(future)
             if future_date == option_date:
-                if tradeDate in m2s(option):
-                    print(m2s(option))
-                    sublist.append(option) 
+                for tradeDate in tradeDates:
+                    if tradeDate in m2s(option):
+                        print(m2s(option))
+                        sublist.append(option) 
     
     message.append_pair(146, len(sublist)) # Number of symbols requested. Necessary if more than 1 Symbol requested
   
@@ -509,6 +511,14 @@ def massQuote(massQuoteList):
     inc +=1
     
     return message
+
+# def removeDuplicates(trading_queue):
+#     if len(trading_queue) > 1:
+#         for trade in trading_queue:
+#             if trade[0] == :
+                
+#     else:
+#         return trading_queue
 
 # Her lager vi en funksjon for å sjekke om vi allerede har en ordre ute i markedet
 # for å unngå at vi bruker vår egen ordre til å regne market maker prisen
@@ -712,6 +722,7 @@ while unload_qty > trade_qty:
         if api_credit > 5000:
             if trading_queue:
                 #newOrder(symbol, orderType, price, qty, side, "mm")
+                #trading_queue = removeDuplicates(trading_queue)
                 print("Sending order: ", trading_queue)
                 s.sendall(massQuote(trading_queue).encode())
                 #newOrder(trading_queue[0][0], 2, trading_queue[0][1], trading_queue[0][2], trading_queue[0][3], "mm")
@@ -785,14 +796,12 @@ while unload_qty > trade_qty:
                                     if my_order_book[instrumetName[:-1]+"P"]["bid"]: 
                                         # We have a order in the market affected by the change in volume
                                         # cahnge current order OR delete and make a new one
-                                        addToTradingQueue(instrumetName, "bid", 2)
-                                    
+                                        addToTradingQueue(instrumetName, "bid", 2)        
                             # there has been a change in the top listing price
                             if top_listing != order_book[instrumetName]["bid"]["price"][0]: 
                                 split_name = instrumetName.split("-")
                                 if len(split_name) > 2: # Options
                                     addToTradingQueue(instrumetName, "bid")
-                                    
                                 else: # Futures
                                     # Check that the futures prices have moved by more than 10 to update our orders 
                                     if abs(order_book[instrumetName]["bid"]["spotChange"]-order_book[instrumetName]["bid"]["price"][0]) > future_upd_thshld:
@@ -805,8 +814,6 @@ while unload_qty > trade_qty:
                                         # Get all the instrument names with the same expiration date
                                         instrument_list = [key for key in list(my_order_book.keys()) if ticker in key]
                                         instrument_list = [key for key in instrument_list if my_order_book[key]["bid"] or my_order_book[key]["ask"]]
-                                        #massQuoteList = []
-                                        
                                         for instrument in instrument_list:
                                             # instrument is the full name of the insturment i.e "BTC-1MAR24-57000-P" ops! can be future too!
                                             split_name2 = instrument.split("-")
@@ -835,14 +842,14 @@ while unload_qty > trade_qty:
                                                     #     # update my orderbook
                                                     #     my_order_book[instrument]["bid"] = {"price":newPrice,"volume":qty}
                                                         
-                            else:
-                                if instrumetName[-1:] == "P":
-                                    insFlipped = instrumetName[:-1] + "C"
-                                if instrumetName[-1:] == "C":
-                                    insFlipped = instrumetName[:-1] + "P"
+                        else:
+                            if instrumetName[-1:] == "P":
+                                insFlipped = instrumetName[:-1] + "C"
+                            if instrumetName[-1:] == "C":
+                                insFlipped = instrumetName[:-1] + "P"
                                 # if there is no order in the hedge orderbook and we have a outstanding order in our orderbook we remove it
-                                if instrumetName[-1:] == "P" or instrumetName[-1:] == "C":
-                                    removeMarketOrder(insFlipped, "bid")
+                            if instrumetName[-1:] == "P" or instrumetName[-1:] == "C":
+                                removeMarketOrder(insFlipped, "bid")
                                     
                                 
                             
