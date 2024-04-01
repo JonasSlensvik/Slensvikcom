@@ -428,7 +428,7 @@ def mmProtection():
     
     return message
 
-def newOrder(symbol, orderType, price, qty, side, marketMaker="no"): # I need to be able to identify the Orders ID, when getting a confirmation. Will the uniquie ID be returned?
+def newOrder(symbol, orderType, price, qty, side, marketMaker="no", tradeNumber=0): # I need to be able to identify the Orders ID, when getting a confirmation. Will the uniquie ID be returned?
     if side.lower() == "bid":
         side = "1"
     elif side.lower() == "ask":
@@ -442,7 +442,7 @@ def newOrder(symbol, orderType, price, qty, side, marketMaker="no"): # I need to
     message.append_pair(49, "LSCMAS")
     #message.append_pair(52, "20211228-18:28:27.000")
     message.append_pair(56, "DERIBITSERVER")
-    message.append_pair(11, "TESTing") #Unique ID
+    message.append_pair(11, str(tradeNumber)) #Unique ID
     message.append_pair(38, qty) # The desired quanity. OPS! 10USD = 1qty, uncertain of how options are handeld.
     message.append_pair(40, orderType) # Order type. Valid values: 1 = Market, 2 = Limit. (default Limit)
     message.append_pair(44, price) # The price of the limit order, should set to 0 if market
@@ -454,7 +454,7 @@ def newOrder(symbol, orderType, price, qty, side, marketMaker="no"): # I need to
     #s.sendall(message.encode())
     return message
 
-def hedgeLogic(filledOrderName, filledBidAsk, filledQty):
+def hedgeLogic(filledOrderName, filledBidAsk, filledQty, tradeNumber):
     if filledBidAsk == "bid":
         flipBidAsk = "ask"
     if filledBidAsk == "ask":
@@ -463,13 +463,13 @@ def hedgeLogic(filledOrderName, filledBidAsk, filledQty):
     # If the filled order was a put
     if filledOrderName[-1:] == "P":
         # if the filled put was a bid, we are long put, so we should short a call and long a future
-        s.sendall(newOrder(filledOrderName[:-1]+"C", 1, 0, filledQty, filledBidAsk).encode()) # enter into the call
-        s.sendall(newOrder(futureName, 1, 0, int(round(filledQty*order_book[futureName][flipBidAsk]["price"][0]/10,0)), flipBidAsk).encode()) # enter into the future with the filled qty * price
+        s.sendall(newOrder(filledOrderName[:-1]+"C", 1, 0, filledQty, filledBidAsk, tradeNumber).encode()) # enter into the call
+        s.sendall(newOrder(futureName, 1, 0, int(round(filledQty*order_book[futureName][flipBidAsk]["price"][0]/10,0)), flipBidAsk, tradeNumber).encode()) # enter into the future with the filled qty * price
 
     if filledOrderName[-1:] == "C":
         # if the filled call was a bid, we are long call, so we should short a put and short a future
-        s.sendall(newOrder(filledOrderName[:-1]+"P", 1, 0, filledQty, filledBidAsk).encode()) # enter into the put
-        s.sendall(newOrder(futureName, 1, 0, int(round(filledQty*order_book[futureName][filledBidAsk]["price"][0]/10,0)), filledBidAsk).encode()) # enter into the future with the filled qty * price
+        s.sendall(newOrder(filledOrderName[:-1]+"P", 1, 0, filledQty, filledBidAsk, tradeNumber).encode()) # enter into the put
+        s.sendall(newOrder(futureName, 1, 0, int(round(filledQty*order_book[futureName][filledBidAsk]["price"][0]/10,0)), filledBidAsk, tradeNumber).encode()) # enter into the future with the filled qty * price
 
 def massQuote(massQuoteList):
     global inc
@@ -676,6 +676,8 @@ heartbeat_count=0
 order_book = {}
 order_book2 = {}
 position_book = {}
+profitDict = {}
+tradeNumber = 0
 c = 1
 parser = fix.FixParser()
 ARB_name=""
@@ -942,19 +944,81 @@ while unload_qty > trade_qty:
             orderName = m2s(msg.get(55)) 
             side = m2s(msg.get(54)) # 1 = Buy, 2 = Sell
             ordType = m2i(msg.get(40)) # 1 = Market, 2 = Limit
+            if ordType == 1:
+                tradeID = m2i(msg.get(11))
             filledQty = 0
+            avgPrice = 0
             for t,v in msg.pairs:
+                if t == fix_tag(1364): #fill price
+                    tempPrice = m2f(v)
                 if t == fix_tag(1365): # fill qty
+                    tempQty = m2f(v)
+                    if orderName[-1:] != "P" and orderName[-1:] != "C": # if its not a option
+                        profitDict[tradeID]["SpotPrice"].append(tempPrice)
+                        profitDict[tradeID]["SpotQty"].append(tempQty)
+                    avgPrice += tempPrice * tempQty
                     filledQty += m2f(v) 
-
+                
+                
+                
             orderType = m2s(msg.get(40)) # 1 = Market, 2 = Limit, 4 = stop limit, S = stop market
             if ordType == 2: # If a limit order
                 if status == "1" or status == "2": # filled or partial fill
+                    strike = int(orderName.split("-")[2])
+                    
+                    profitDict[tradeNumber] = {"Call":0,"Put":0,"Strike":0,"SpotPrice":[],"SpotQty":[],"Spot":0}
+                    
                     if side == 1:
                         filledBidAsk = "bid"
+                        if orderName[-1:] == "P":
+                            profitDict[tradeNumber]["Put"] += avgPrice
+                            profitDict[tradeNumber]["Strike"] = -strike
+                        if orderName[-1:] == "C":
+                            profitDict[tradeNumber]["Call"] += avgPrice
+                            profitDict[tradeNumber]["Strike"] = strike
                     else:
                         filledBidAsk = "ask"
-                    hedgeLogic(orderName, filledBidAsk, filledQty)
+                        if orderName[-1:] == "P":
+                            profitDict[tradeNumber]["Put"] -= avgPrice
+                            profitDict[tradeNumber]["Strike"] = strike
+                        if orderName[-1:] == "C":
+                            profitDict[tradeNumber]["Call"] -= avgPrice
+                            profitDict[tradeNumber]["Strike"] = -strike
+                            
+                    hedgeLogic(orderName, filledBidAsk, filledQty, tradeNumber)
+                    tradeNumber += 1
+            elif ordType == 1: # if market order fill
+                if status == "1" or status == "2": # filled or partial fill
+                    tradeID = m2i(msg.get(11))
+                    if side == 1:
+                        filledBidAsk = "bid"
+                        if orderName[-1:] == "P":
+                            profitDict[tradeID]["Put"] += avgPrice
+                        elif orderName[-1:] == "C":
+                            profitDict[tradeID]["Call"] += avgPrice
+                        else: # future
+                            profitDict[tradeID]["Spot"] += avgPrice
+                        
+                    else:
+                        filledBidAsk = "ask"
+                        if orderName[-1:] == "P":
+                            profitDict[tradeID]["Put"] -= avgPrice
+                        elif orderName[-1:] == "C":
+                            profitDict[tradeID]["Call"] -= avgPrice
+                        else: # future
+                            profitDict[tradeID]["Spot"] -= avgPrice
+                if len(profitDict[tradeID]["SpotQty"]) > 0:
+                    totalSpotQty = sum(profitDict[tradeID]["SpotQty"])
+                    for i in range(0,len(profitDict[tradeID]["SpotQty"])):
+                        profitDict[tradeID]["Spot"] += profitDict[tradeID]["SpotQty"][i]/totalSpotQty * profitDict[tradeID]["SpotPrice"][i]
+                    if profitDict[tradeID]["Put"] > 0:
+                        profit = profitDict[tradeID]["Call"] + profitDict[tradeID]["Put"] + profitDict[tradeID]["Strike"] + profitDict[tradeID]["Spot"]
+                        print("Profit: ", profit)
+                    else:
+                        profit = profitDict[tradeID]["Call"] + profitDict[tradeID]["Put"] + profitDict[tradeID]["Strike"] - profitDict[tradeID]["Spot"]
+                        print("Profit: ", profit)
+                
+                    
 
         
         if m2s(msg.get(35)) == "b": # Execution report for mass quote
