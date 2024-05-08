@@ -20,13 +20,13 @@ initMargin = 0
 localMargin = 0
 
 # Option Margin in dollars
-dOptionMargin = 200 # Our margin in dollar when calculating mmPrice
-strike_interval = 20000 # what interval to calculate mmPrice at program init
+dOptionMargin = 10 # Our margin in dollar when calculating mmPrice
+strike_interval = 28000 # what interval to calculate mmPrice at program init
 future_upd_thshld = 15
 max_dSize = 5000 # Maxium dollar size per order, can be adjusted to increase or lower init margin tolerance
 my_order_book = {}
 
-tradeDates = ["10MAY24", "17MAY24"]
+tradeDates = ["24MAY24", "17MAY24"]
 
 # Imports
 import simplefix as fix
@@ -512,13 +512,33 @@ def massQuote(massQuoteList):
     
     return message
 
-# def removeDuplicates(trading_queue):
-#     if len(trading_queue) > 1:
-#         for trade in trading_queue:
-#             if trade[0] == :
+def removeDuplicates(TQ):
+    global localMargin
+
+    if len(TQ) == 2:
+        if TQ[0][0] == TQ[1][0]: 
+            
+            if TQ[0][1] == "null":
+                bidask = TQ[0][3]
+                orderName = TQ[0][0]
+                localMargin -= my_order_book[orderName][bidask]["volume"]*0.15
+                my_order_book[orderName][bidask] = {}
                 
-#     else:
-#         return trading_queue
+                TQ.pop(1)
+                
+                return TQ
+            
+            elif TQ[1][1] == "null":
+                bidask = TQ[1][3]
+                orderName = TQ[1][0]
+                localMargin -= my_order_book[orderName][bidask]["volume"]*0.15
+                my_order_book[orderName][bidask] = {}
+                TQ.pop(0)
+                return TQ
+        else:
+            return TQ
+    else:
+        return TQ
 
 # Her lager vi en funksjon for å sjekke om vi allerede har en ordre ute i markedet
 # for å unngå at vi bruker vår egen ordre til å regne market maker prisen
@@ -581,43 +601,48 @@ def addToTradingQueue(instrumetName, bidask, updateType=1): # updatetype 1 = bot
                 if bidask == "bid":
                     # calculates price for our new order using the hedgeing instrument(instrument name)
                     calc_price = round_down(calculateMarketMakerPrice("bid", instrumetName))
-                    if bestOrder(orderName, "bid", calc_price): # check if our order is best priced OR there are no other quotes in the orderbook
-                        if order_book[orderName]["bid"]["price"]:
-                            calc_price = order_book[orderName]["bid"]["price"][0] + 0.0005
-                        qty = min(max_dSize, ulPrice*calc_price*order_book[instrumetName][bidask]["volume"][0])
-                        qty = round_downQTY(qty/((ulPrice*calc_price))) # make qty denominated in bitcoin
-                        #print(qty)
-                        
-                        #print(calc_price)
-                        #oppdater my_order_book med den nye ordren
-                        if updateType == 2:
-                            #add to queue
-                            if qty != 0:
-                                trading_queue.append([orderName, "null", qty, "bid"])
-                        elif updateType == 3:
-                            trading_queue.append([orderName, calc_price, "null", "bid"])
-                            
-                        else:
-                            #add to queue
-                            if qty != 0:
-                                trading_queue.append([orderName, calc_price, qty, "bid"])
-                        
-                        #increase local margin
-                        if not my_order_book[orderName]["bid"]: # there is no entry in my_order_book, meaning this is a new order -> add margin
-                            localMargin += qty*0.15
-                        else: # order already exists in my orderbook
-                            if my_order_book[orderName]["bid"]["volume"] != qty: # we check if there is a change in quantity, if so update the local margin
-                                localMargin -= my_order_book[orderName]["bid"]["volume"]*0.15
-                                localMargin += qty*0.15
-                                
-                        # add the new order to my_order_book
-                        if qty == 0:
-                            my_order_book[orderName]["bid"] = {}
-                        else:    
-                            my_order_book[orderName]["bid"] = {"price":calc_price,"volume":qty}
+                    if calc_price < 0:
+                        if my_order_book[orderName]["bid"]:
+                            removeMarketOrder(orderName, bidask)
                     else:
-                        removeMarketOrder(orderName, bidask)
-                        #localMargin -= my_order_book[orderName]["bid"]["volume"]*0.15
+                        if bestOrder(orderName, "bid", calc_price): # check if our order is best priced OR there are no other quotes in the orderbook
+                            if order_book[orderName]["bid"]["price"]:
+                                calc_price = order_book[orderName]["bid"]["price"][0] + 0.0005
+                            qty = min(max_dSize, ulPrice*calc_price*order_book[instrumetName][bidask]["volume"][0])
+                            qty = round_downQTY(qty/((ulPrice*calc_price))) # make qty denominated in bitcoin
+                            #print(qty)
+                            
+                            #print(calc_price)
+                            #oppdater my_order_book med den nye ordren
+                            if updateType == 2:
+                                #add to queue
+                                if qty != 0:
+                                    trading_queue.append([orderName, "null", qty, "bid"])
+                            elif updateType == 3:
+                                
+                                trading_queue.append([orderName, calc_price, "null", "bid"])
+                                
+                            else:
+                                #add to queue
+                                if qty != 0:
+                                    trading_queue.append([orderName, calc_price, qty, "bid"])
+                            
+                            #increase local margin
+                            if not my_order_book[orderName]["bid"]: # there is no entry in my_order_book, meaning this is a new order -> add margin
+                                localMargin += qty*0.15
+                            else: # order already exists in my orderbook
+                                if my_order_book[orderName]["bid"]["volume"] != qty: # we check if there is a change in quantity, if so update the local margin
+                                    localMargin -= my_order_book[orderName]["bid"]["volume"]*0.15
+                                    localMargin += qty*0.15
+                                    
+                            # add the new order to my_order_book
+                            if qty == 0:
+                                my_order_book[orderName]["bid"] = {}
+                            else:    
+                                my_order_book[orderName]["bid"] = {"price":calc_price,"volume":qty}
+                        else:
+                            removeMarketOrder(orderName, bidask)
+                            #localMargin -= my_order_book[orderName]["bid"]["volume"]*0.15
 
 
                                 
@@ -625,44 +650,47 @@ def addToTradingQueue(instrumetName, bidask, updateType=1): # updatetype 1 = bot
                 if bidask == "ask":
                     # calculates price for our new order using the hedgeing instrument(instrument name)
                     calc_price = round_up(calculateMarketMakerPrice("ask", instrumetName))
-                    
-                    if bestOrder(orderName, "ask", calc_price): # check if our order is best priced OR there are no other quotes in the orderbook
-                        if order_book[orderName]["ask"]["price"]:
-                            calc_price = order_book[orderName]["ask"]["price"][0] - 0.0005
-                    
-                        qty = min(max_dSize, ulPrice*calc_price*order_book[instrumetName][bidask]["volume"][0])
-                        qty = round_downQTY(qty/((ulPrice*calc_price))) # make qty denominated in bitcoin
-                        #print(qty)
-                        #oppdater my_order_book med den nye ordren
-                        if updateType == 2:
-                            #add to queue
-                            if qty != 0:
-                                trading_queue.append([orderName, "null", qty, "ask"])
-                        elif updateType == 3:
-                            trading_queue.append([orderName, calc_price, "null", "ask"])
-                        else:
-                            #add to queue
-                            if qty != 0:
-                                trading_queue.append([orderName, calc_price, qty, "ask"])
-                        # OLD : add to queue
-                        # OLD : trading_queue.append([orderName, calc_price, qty, "sell"])
-                        
-                        #increase local margin
-                        if not my_order_book[orderName]["ask"]:
-                            localMargin += qty*0.15
-                        else: # order already exists in my orderbook
-                            if my_order_book[orderName]["ask"]["volume"] != qty: # we check if there is a change in quantity, if so update the local margin
-                                localMargin -= my_order_book[orderName]["ask"]["volume"]*0.15
-                                localMargin += qty*0.15
-                            
-                        ## add the new order to my_order_book
-                        if qty == 0:
-                            my_order_book[orderName]["ask"] = {}
-                        else:    
-                            my_order_book[orderName]["ask"] = {"price":calc_price,"volume":qty}
+                    if calc_price < 0:
+                        if my_order_book[orderName]["ask"]:
+                            removeMarketOrder(orderName, bidask)
                     else:
-                        removeMarketOrder(orderName, bidask)
-                        #localMargin -= my_order_book[orderName]["ask"]["volume"]*0.15
+                        if bestOrder(orderName, "ask", calc_price): # check if our order is best priced OR there are no other quotes in the orderbook
+                            if order_book[orderName]["ask"]["price"]:
+                                calc_price = order_book[orderName]["ask"]["price"][0] - 0.0005
+                        
+                            qty = min(max_dSize, ulPrice*calc_price*order_book[instrumetName][bidask]["volume"][0])
+                            qty = round_downQTY(qty/((ulPrice*calc_price))) # make qty denominated in bitcoin
+                            #print(qty)
+                            #oppdater my_order_book med den nye ordren
+                            if updateType == 2:
+                                #add to queue
+                                if qty != 0:
+                                    trading_queue.append([orderName, "null", qty, "ask"])
+                            elif updateType == 3:
+                                trading_queue.append([orderName, calc_price, "null", "ask"])
+                            else:
+                                #add to queue
+                                if qty != 0:
+                                    trading_queue.append([orderName, calc_price, qty, "ask"])
+                            # OLD : add to queue
+                            # OLD : trading_queue.append([orderName, calc_price, qty, "sell"])
+                            
+                            #increase local margin
+                            if not my_order_book[orderName]["ask"]:
+                                localMargin += qty*0.15
+                            else: # order already exists in my orderbook
+                                if my_order_book[orderName]["ask"]["volume"] != qty: # we check if there is a change in quantity, if so update the local margin
+                                    localMargin -= my_order_book[orderName]["ask"]["volume"]*0.15
+                                    localMargin += qty*0.15
+                                
+                            ## add the new order to my_order_book
+                            if qty == 0:
+                                my_order_book[orderName]["ask"] = {}
+                            else:    
+                                my_order_book[orderName]["ask"] = {"price":calc_price,"volume":qty}
+                        else:
+                            removeMarketOrder(orderName, bidask)
+                            #localMargin -= my_order_book[orderName]["ask"]["volume"]*0.15
             
         
 
@@ -724,7 +752,8 @@ while unload_qty > trade_qty:
         if api_credit > 5000:
             if trading_queue:
                 #newOrder(symbol, orderType, price, qty, side, "mm")
-                #trading_queue = removeDuplicates(trading_queue)
+                trading_queue = removeDuplicates(trading_queue)
+                
                 print("Sending order: ", trading_queue)
                 s.sendall(massQuote(trading_queue).encode())
                 #newOrder(trading_queue[0][0], 2, trading_queue[0][1], trading_queue[0][2], trading_queue[0][3], "mm")
@@ -1023,6 +1052,7 @@ while unload_qty > trade_qty:
         
         if m2s(msg.get(35)) == "b": # Execution report for mass quote
             print("MQ EXECUTION REPORT")    
+            print(localMargin)
             print(msg)
             #status = m2i(msg.get(39)) #0 = New, 1 = Partially filled, 2 = Filled, 4 = Cancelled 8 = Rejected
             #symbol = m2s(msg.get(55))
