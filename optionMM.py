@@ -463,13 +463,13 @@ def hedgeLogic(filledOrderName, filledBidAsk, filledQty, tradeNumber):
     # If the filled order was a put
     if filledOrderName[-1:] == "P":
         # if the filled put was a bid, we are long put, so we should short a call and long a future
-        s.sendall(newOrder(filledOrderName[:-1]+"C", 1, 0, filledQty, flipBidAsk, tradeNumber).encode()) # enter into the call
-        s.sendall(newOrder(futureName, 1, 0, int(round(filledQty*order_book[futureName][filledBidAsk]["price"][0]/10,0)), filledBidAsk, tradeNumber).encode()) # enter into the future with the filled qty * price
+        s.sendall(newOrder(filledOrderName[:-1]+"C", 1, 0, filledQty, flipBidAsk, "no", tradeNumber).encode()) # enter into the call
+        s.sendall(newOrder(futureName, 1, 0, int(round(filledQty*order_book[futureName][filledBidAsk]["price"][0]/10,0)), filledBidAsk, "no", tradeNumber).encode()) # enter into the future with the filled qty * price
 
     if filledOrderName[-1:] == "C":
         # if the filled call was a bid, we are long call, so we should short a put and short a future
-        s.sendall(newOrder(filledOrderName[:-1]+"P", 1, 0, filledQty, flipBidAsk, tradeNumber).encode()) # enter into the put
-        s.sendall(newOrder(futureName, 1, 0, int(round(filledQty*order_book[futureName][flipBidAsk]["price"][0]/10,0)), flipBidAsk, tradeNumber).encode()) # enter into the future with the filled qty * price
+        s.sendall(newOrder(filledOrderName[:-1]+"P", 1, 0, filledQty, flipBidAsk, "no", tradeNumber).encode()) # enter into the put
+        s.sendall(newOrder(futureName, 1, 0, int(round(filledQty*order_book[futureName][flipBidAsk]["price"][0]/10,0)), flipBidAsk, "no", tradeNumber).encode()) # enter into the future with the filled qty * price
 
 def massQuote(massQuoteList):
     global inc
