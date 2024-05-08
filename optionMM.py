@@ -26,7 +26,7 @@ future_upd_thshld = 15
 max_dSize = 5000 # Maxium dollar size per order, can be adjusted to increase or lower init margin tolerance
 my_order_book = {}
 
-tradeDates = ["22MAR24", "29MAR24"]
+tradeDates = ["10MAY24", "17MAY24"]
 
 # Imports
 import simplefix as fix
@@ -463,13 +463,13 @@ def hedgeLogic(filledOrderName, filledBidAsk, filledQty, tradeNumber):
     # If the filled order was a put
     if filledOrderName[-1:] == "P":
         # if the filled put was a bid, we are long put, so we should short a call and long a future
-        s.sendall(newOrder(filledOrderName[:-1]+"C", 1, 0, filledQty, filledBidAsk, tradeNumber).encode()) # enter into the call
-        s.sendall(newOrder(futureName, 1, 0, int(round(filledQty*order_book[futureName][flipBidAsk]["price"][0]/10,0)), flipBidAsk, tradeNumber).encode()) # enter into the future with the filled qty * price
+        s.sendall(newOrder(filledOrderName[:-1]+"C", 1, 0, filledQty, flipBidAsk, tradeNumber).encode()) # enter into the call
+        s.sendall(newOrder(futureName, 1, 0, int(round(filledQty*order_book[futureName][filledBidAsk]["price"][0]/10,0)), filledBidAsk, tradeNumber).encode()) # enter into the future with the filled qty * price
 
     if filledOrderName[-1:] == "C":
         # if the filled call was a bid, we are long call, so we should short a put and short a future
-        s.sendall(newOrder(filledOrderName[:-1]+"P", 1, 0, filledQty, filledBidAsk, tradeNumber).encode()) # enter into the put
-        s.sendall(newOrder(futureName, 1, 0, int(round(filledQty*order_book[futureName][filledBidAsk]["price"][0]/10,0)), filledBidAsk, tradeNumber).encode()) # enter into the future with the filled qty * price
+        s.sendall(newOrder(filledOrderName[:-1]+"P", 1, 0, filledQty, flipBidAsk, tradeNumber).encode()) # enter into the put
+        s.sendall(newOrder(futureName, 1, 0, int(round(filledQty*order_book[futureName][flipBidAsk]["price"][0]/10,0)), flipBidAsk, tradeNumber).encode()) # enter into the future with the filled qty * price
 
 def massQuote(massQuoteList):
     global inc
@@ -560,7 +560,7 @@ def removeMarketOrder(orderName, bidask):
         my_order_book[orderName][bidask] = {}
 
 
-# Vi lager en funksjon for å legge ordre i tradingqueuen. 
+    # Vi lager en funksjon for å legge ordre i tradingqueuen. 
 def addToTradingQueue(instrumetName, bidask, updateType=1): # updatetype 1 = both price and vol, 2 = just vol
     global localMargin
     if "mmPrice" in order_book[instrumetName][bidask].keys():     # check om det finnes en mmPrice, slik at vi ikke havner utenfor 5000 dollar intervallet
@@ -942,7 +942,7 @@ while unload_qty > trade_qty:
             print(msg)
             status = m2s(msg.get(39)) #0 = New, 1 = Partially filled, 2 = Filled, 4 = Cancelled 8 = Rejected
             orderName = m2s(msg.get(55)) 
-            side = m2s(msg.get(54)) # 1 = Buy, 2 = Sell
+            side = m2i(msg.get(54)) # 1 = Buy, 2 = Sell
             ordType = m2i(msg.get(40)) # 1 = Market, 2 = Limit
             if ordType == 1:
                 tradeID = m2i(msg.get(11))
