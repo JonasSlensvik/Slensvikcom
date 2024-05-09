@@ -535,6 +535,8 @@ def removeDuplicates(TQ):
                 my_order_book[orderName][bidask] = {}
                 TQ.pop(0)
                 return TQ
+            else:
+                return TQ
         else:
             return TQ
     else:
