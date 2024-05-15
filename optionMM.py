@@ -15,18 +15,20 @@ trade_qty = 100
 wanted_diff = 0 # if a certain hedged should be maintained
 
 margin = 0
-max_margin = 0.7
+max_margin = 8.3
 initMargin = 0
 localMargin = 0
 
 # Option Margin in dollars
-dOptionMargin = 10 # Our margin in dollar when calculating mmPrice
+dOptionMargin = 150 # Our margin in dollar when calculating mmPrice
 strike_interval = 28000 # what interval to calculate mmPrice at program init
 future_upd_thshld = 15
 max_dSize = 5000 # Maxium dollar size per order, can be adjusted to increase or lower init margin tolerance
+qtyBTCsize = 0.1 # our max btc position size in the market
+bestOrderActive = False # If we need to be the best order in the market or not
 my_order_book = {}
 
-tradeDates = ["24MAY24", "17MAY24"]
+tradeDates = ["24MAY24", "17MAY24", "31MAY24", "28JUN24"]#, "26JUL24", "27SEP24", "27DEC24"]
 
 # Imports
 import simplefix as fix
@@ -162,24 +164,56 @@ def calculateMarketMakerPrice(bidask,contract):
     if bidask == "ask":
         if "-P" in contract: #if we are getting put and ask, we need to genereate price for a ask call
             mmPrice = (price*futureAskPrice + futureAskPrice - float(strike))/futureAskPrice
+            # print("mmPrice1: " + str(mmPrice))
+            # print("strike: " + str(strike))
+            # print("price: " + str(price))
+            # print("futureBidPrice: " + str(futureAskPrice))
+            # print("mmPrice1: " + str(mmPrice))
             #print(mmPrice)
             mmPrice += (tcost(mmPrice*futureAskPrice,price*futureAskPrice,futureAskPrice) + dOptionMargin)/futureAskPrice
+            # print("mmPrice2: " + str(mmPrice))
+            # print("tcost: " + str(tcost(mmPrice*futureAskPrice,price*futureAskPrice,futureAskPrice)))
+            # print("mmpriceUSD: " + str((tcost(mmPrice*futureAskPrice,price*futureAskPrice,futureAskPrice) + dOptionMargin)))
             #print(mmPrice)
         if "-C" in contract: #if call
             mmPrice = (float(strike) + price*futureBidPrice - futureBidPrice)/futureBidPrice
+            # print("mmPrice1: " + str(mmPrice))
+            # print("strike: " + str(strike))
+            # print("price: " + str(price))
+            # print("futureBidPrice: " + str(futureBidPrice))
+            # print("mmPrice1: " + str(mmPrice))
             #print(mmPrice)
             mmPrice += (tcost(mmPrice*futureBidPrice,price*futureBidPrice,futureBidPrice) + dOptionMargin)/futureBidPrice
+            # print("mmPrice2: " + str(mmPrice))
+            # print("tcost: " + str(tcost(mmPrice*futureBidPrice,price*futureBidPrice,futureBidPrice)))
+            # print("mmpriceUSD: " + str((tcost(mmPrice*futureBidPrice,price*futureBidPrice,futureBidPrice) + dOptionMargin)))
             #print(mmPrice)
     if bidask == "bid":
         if "-P" in contract: #if put
             mmPrice = (price*futureBidPrice + futureBidPrice - float(strike))/futureBidPrice
+            # print("mmPrice1: " + str(mmPrice))
+            # print("strike: " + str(strike))
+            # print("price: " + str(price))
+            # print("futureBidPrice: " + str(futureBidPrice))
+            # print("mmPrice1: " + str(mmPrice))
             #print(mmPrice)
             mmPrice += -(tcost(mmPrice*futureBidPrice,price*futureBidPrice,futureBidPrice) + dOptionMargin)/futureBidPrice
+            # print("mmPrice2: " + str(mmPrice))
+            # print("tcost: " + str(-(tcost(mmPrice*futureBidPrice,price*futureBidPrice,futureBidPrice))))
+            # print("mmpriceUSD: " + str((-(tcost(mmPrice*futureBidPrice,price*futureBidPrice,futureBidPrice) + dOptionMargin))))
             #print(mmPrice)
         if "-C" in contract: #if call
             mmPrice = (float(strike) + price*futureAskPrice - futureAskPrice)/futureAskPrice
+            # print("mmPrice1: " + str(mmPrice))
+            # print("strike: " + str(strike))
+            # print("price: " + str(price))
+            # print("futureBidPrice: " + str(futureAskPrice))
+            # print("mmPrice1: " + str(mmPrice))
             #print(mmPrice)
             mmPrice += -(tcost(mmPrice*futureAskPrice,price*futureAskPrice,futureAskPrice) + dOptionMargin)/futureAskPrice
+            # print("mmPrice2: " + str(mmPrice))
+            # print("tcost: " + str(-(tcost(mmPrice*futureAskPrice,price*futureAskPrice,futureAskPrice))))
+            # print("mmpriceUSD: " + str((-(tcost(mmPrice*futureAskPrice,price*futureAskPrice,futureAskPrice) + dOptionMargin))))
             #print(mmPrice)
             
     return mmPrice
@@ -521,7 +555,7 @@ def removeDuplicates(TQ):
             if TQ[0][1] == "null":
                 bidask = TQ[0][3]
                 orderName = TQ[0][0]
-                localMargin -= my_order_book[orderName][bidask]["volume"]*0.15
+                localMargin -= my_order_book[orderName][bidask]["volume"]*0.13043478
                 my_order_book[orderName][bidask] = {}
                 
                 TQ.pop(1)
@@ -531,7 +565,7 @@ def removeDuplicates(TQ):
             elif TQ[1][1] == "null":
                 bidask = TQ[1][3]
                 orderName = TQ[1][0]
-                localMargin -= my_order_book[orderName][bidask]["volume"]*0.15
+                localMargin -= my_order_book[orderName][bidask]["volume"]*0.13043478
                 my_order_book[orderName][bidask] = {}
                 TQ.pop(0)
                 return TQ
@@ -554,22 +588,26 @@ def notMatchingOrder(instrumetName, bidask):
         return True
 
 def bestOrder(orderName, bidask, calc_price):
-    if bidask == "bid":
-        try:
-            if order_book[orderName][bidask]["price"][0] < calc_price:
+    if bestOrderActive:
+        if bidask == "bid":
+            try:
+                if order_book[orderName][bidask]["price"][0] < calc_price:
+                    return True
+                else:
+                    return False
+            except:
                 return True
-            else:
-                return False
-        except:
-            return True
+        else:
+            try:
+                if order_book[orderName][bidask]["price"][0] > calc_price:
+                    return True
+                else:
+                    return False
+            except:
+                return True
     else:
-        try:
-            if order_book[orderName][bidask]["price"][0] > calc_price:
-                return True
-            else:
-                return False
-        except:
-            return True
+        
+        return True
 
 def removeMarketOrder(orderName, bidask):
     global localMargin
@@ -577,7 +615,7 @@ def removeMarketOrder(orderName, bidask):
     if my_order_book[orderName][bidask]: 
         # if the order exists in my order book, delete it
         trading_queue.append([orderName, my_order_book[orderName][bidask]["price"], 0, bidask])
-        localMargin -= my_order_book[orderName][bidask]["volume"]*0.15
+        localMargin -= my_order_book[orderName][bidask]["volume"]*0.13043478
         #remove from my order book
         my_order_book[orderName][bidask] = {}
 
@@ -603,24 +641,32 @@ def addToTradingQueue(instrumetName, bidask, updateType=1): # updatetype 1 = bot
                 if bidask == "bid":
                     # calculates price for our new order using the hedgeing instrument(instrument name)
                     calc_price = round_down(calculateMarketMakerPrice("bid", instrumetName))
-                    if calc_price < 0:
+                    if calc_price <= 0:
                         if my_order_book[orderName]["bid"]:
                             removeMarketOrder(orderName, bidask)
                     else:
                         if bestOrder(orderName, "bid", calc_price): # check if our order is best priced OR there are no other quotes in the orderbook
-                            if order_book[orderName]["bid"]["price"]:
-                                calc_price = order_book[orderName]["bid"]["price"][0] + 0.0005
+                            if bestOrderActive:
+                                if order_book[orderName]["bid"]["price"]:
+                                    calc_price = order_book[orderName]["bid"]["price"][0] + 0.0005
+  
                             qty = min(max_dSize, ulPrice*calc_price*order_book[instrumetName][bidask]["volume"][0])
                             qty = round_downQTY(qty/((ulPrice*calc_price))) # make qty denominated in bitcoin
+                            
+
+
+                            if qty != 0:
+                                #if the calculated quantity is not equal to zero, we set the quantity equal to our qty parameter
+                                qty = qtyBTCsize
                             #print(qty)
                             
                             #print(calc_price)
                             #oppdater my_order_book med den nye ordren
-                            if updateType == 2:
-                                #add to queue
-                                if qty != 0:
-                                    trading_queue.append([orderName, "null", qty, "bid"])
-                            elif updateType == 3:
+                            # if updateType == 2:
+                            #     #add to queue
+                            #     if qty != 0:
+                            #         trading_queue.append([orderName, "null", qty, "bid"])
+                            if updateType == 3:
                                 
                                 trading_queue.append([orderName, calc_price, "null", "bid"])
                                 
@@ -634,7 +680,7 @@ def addToTradingQueue(instrumetName, bidask, updateType=1): # updatetype 1 = bot
                                 localMargin += qty*0.15
                             else: # order already exists in my orderbook
                                 if my_order_book[orderName]["bid"]["volume"] != qty: # we check if there is a change in quantity, if so update the local margin
-                                    localMargin -= my_order_book[orderName]["bid"]["volume"]*0.15
+                                    localMargin -= my_order_book[orderName]["bid"]["volume"]*0.13043478
                                     localMargin += qty*0.15
                                     
                             # add the new order to my_order_book
@@ -652,23 +698,28 @@ def addToTradingQueue(instrumetName, bidask, updateType=1): # updatetype 1 = bot
                 if bidask == "ask":
                     # calculates price for our new order using the hedgeing instrument(instrument name)
                     calc_price = round_up(calculateMarketMakerPrice("ask", instrumetName))
-                    if calc_price < 0:
+                    if calc_price <= 0:
                         if my_order_book[orderName]["ask"]:
                             removeMarketOrder(orderName, bidask)
                     else:
                         if bestOrder(orderName, "ask", calc_price): # check if our order is best priced OR there are no other quotes in the orderbook
-                            if order_book[orderName]["ask"]["price"]:
-                                calc_price = order_book[orderName]["ask"]["price"][0] - 0.0005
-                        
+                            if bestOrderActive:
+                                if order_book[orderName]["ask"]["price"]:
+                                    calc_price = order_book[orderName]["ask"]["price"][0] - 0.0005
+
                             qty = min(max_dSize, ulPrice*calc_price*order_book[instrumetName][bidask]["volume"][0])
                             qty = round_downQTY(qty/((ulPrice*calc_price))) # make qty denominated in bitcoin
+                            
+                            if qty != 0:
+                                #if the calculated quantity is not equal to zero, we set the quantity equal to our qty parameter
+                                qty = qtyBTCsize
                             #print(qty)
                             #oppdater my_order_book med den nye ordren
-                            if updateType == 2:
-                                #add to queue
-                                if qty != 0:
-                                    trading_queue.append([orderName, "null", qty, "ask"])
-                            elif updateType == 3:
+                            # if updateType == 2:
+                            #     #add to queue
+                            #     if qty != 0:
+                            #         trading_queue.append([orderName, "null", qty, "ask"])
+                            if updateType == 3:
                                 trading_queue.append([orderName, calc_price, "null", "ask"])
                             else:
                                 #add to queue
@@ -682,7 +733,7 @@ def addToTradingQueue(instrumetName, bidask, updateType=1): # updatetype 1 = bot
                                 localMargin += qty*0.15
                             else: # order already exists in my orderbook
                                 if my_order_book[orderName]["ask"]["volume"] != qty: # we check if there is a change in quantity, if so update the local margin
-                                    localMargin -= my_order_book[orderName]["ask"]["volume"]*0.15
+                                    localMargin -= my_order_book[orderName]["ask"]["volume"]*0.13043478
                                     localMargin += qty*0.15
                                 
                             ## add the new order to my_order_book
@@ -758,14 +809,15 @@ while unload_qty > trade_qty:
                 
                 print("Sending order: ", trading_queue)
                 s.sendall(massQuote(trading_queue).encode())
+                print(api_credit)
                 #newOrder(trading_queue[0][0], 2, trading_queue[0][1], trading_queue[0][2], trading_queue[0][3], "mm")
-                api_credit -= 500
+                api_credit -= 1500
                 trading_queue = []
-                if len(trading_queue) > 200:
+                if len(trading_queue) > 80:
                     print("WARING! LARGE TRADING QUEUE OF: ", len(trading_queue))
         if api_credit < 25000:
             current_time = time.perf_counter()
-            api_credit += (current_time-timer)*7500
+            api_credit += (current_time-timer)*6500
             api_credit = min(api_credit,25000)
             timer = time.perf_counter()
         
@@ -976,7 +1028,7 @@ while unload_qty > trade_qty:
             side = m2i(msg.get(54)) # 1 = Buy, 2 = Sell
             ordType = m2i(msg.get(40)) # 1 = Market, 2 = Limit
             if ordType == 1:
-                tradeID = m2i(msg.get(11))
+                tradeID = m2i(msg.get(41))
             filledQty = 0
             avgPrice = 0
             for t,v in msg.pairs:
@@ -984,10 +1036,18 @@ while unload_qty > trade_qty:
                     tempPrice = m2f(v)
                 if t == fix_tag(1365): # fill qty
                     tempQty = m2f(v)
-                    if orderName[-1:] != "P" and orderName[-1:] != "C": # if its not a option
-                        profitDict[tradeID]["SpotPrice"].append(tempPrice)
-                        profitDict[tradeID]["SpotQty"].append(tempQty)
-                    avgPrice += tempPrice * tempQty
+                    if ordType == 1:
+                        if orderName[-1:] != "P" and orderName[-1:] != "C": # if its not a option
+                            profitDict[tradeID]["SpotPrice"].append(tempPrice)
+                            profitDict[tradeID]["SpotQty"].append(tempQty)
+                        if orderName[-1:] == "P": # if put
+                            profitDict[tradeID]["PutPrice"].append(tempPrice)
+                            profitDict[tradeID]["PutQty"].append(tempQty)
+                        if orderName[-1:] == "C": # if put
+                            profitDict[tradeID]["CallPrice"].append(tempPrice)
+                            profitDict[tradeID]["CallQty"].append(tempQty)
+                        
+                    avgPrice += tempPrice * tempQty # tror denne skal fjernes
                     filledQty += m2f(v) 
                 
                 
@@ -1002,25 +1062,25 @@ while unload_qty > trade_qty:
                     if side == 1:
                         filledBidAsk = "bid"
                         if orderName[-1:] == "P":
-                            profitDict[tradeNumber]["Put"] += avgPrice
+                            #profitDict[tradeNumber]["Put"] += avgPrice
                             profitDict[tradeNumber]["Strike"] = -strike
                         if orderName[-1:] == "C":
-                            profitDict[tradeNumber]["Call"] += avgPrice
+                            #profitDict[tradeNumber]["Call"] += avgPrice
                             profitDict[tradeNumber]["Strike"] = strike
                     else:
                         filledBidAsk = "ask"
                         if orderName[-1:] == "P":
-                            profitDict[tradeNumber]["Put"] -= avgPrice
+                            #profitDict[tradeNumber]["Put"] -= avgPrice
                             profitDict[tradeNumber]["Strike"] = strike
                         if orderName[-1:] == "C":
-                            profitDict[tradeNumber]["Call"] -= avgPrice
+                            #profitDict[tradeNumber]["Call"] -= avgPrice
                             profitDict[tradeNumber]["Strike"] = -strike
                             
                     hedgeLogic(orderName, filledBidAsk, filledQty, tradeNumber)
                     tradeNumber += 1
             elif ordType == 1: # if market order fill
                 if status == "1" or status == "2": # filled or partial fill
-                    tradeID = m2i(msg.get(11))
+                    tradeID = m2i(msg.get(41))
                     if side == 1:
                         filledBidAsk = "bid"
                         if orderName[-1:] == "P":
@@ -1039,14 +1099,15 @@ while unload_qty > trade_qty:
                         else: # future
                             profitDict[tradeID]["Spot"] -= avgPrice
                 if len(profitDict[tradeID]["SpotQty"]) > 0:
+                    profitDict[tradeID]["Spot"] = 0
                     totalSpotQty = sum(profitDict[tradeID]["SpotQty"])
                     for i in range(0,len(profitDict[tradeID]["SpotQty"])):
                         profitDict[tradeID]["Spot"] += profitDict[tradeID]["SpotQty"][i]/totalSpotQty * profitDict[tradeID]["SpotPrice"][i]
                     if profitDict[tradeID]["Put"] > 0:
-                        profit = profitDict[tradeID]["Call"] + profitDict[tradeID]["Put"] + profitDict[tradeID]["Strike"] + profitDict[tradeID]["Spot"]
+                        profit = profitDict[tradeID]["Call"]*profitDict[tradeID]["Spot"] + profitDict[tradeID]["Put"]*profitDict[tradeID]["Spot"] + profitDict[tradeID]["Strike"] + profitDict[tradeID]["Spot"]
                         print("Profit: ", profit)
                     else:
-                        profit = profitDict[tradeID]["Call"] + profitDict[tradeID]["Put"] + profitDict[tradeID]["Strike"] - profitDict[tradeID]["Spot"]
+                        profit = profitDict[tradeID]["Call"]*profitDict[tradeID]["Spot"] + profitDict[tradeID]["Put"]*profitDict[tradeID]["Spot"] + profitDict[tradeID]["Strike"] - profitDict[tradeID]["Spot"]
                         print("Profit: ", profit)
                 
                     
@@ -1221,8 +1282,25 @@ massCancel()
 print("Shutting down")
 time.sleep(1)
 
+# OPUS PROMT
+# The following code is market making for bitcoin options. The program is not quite finished yet and I need some help 
+# ironing out some bugs before taking it live. The program works by recevieing a snapshot of the current orderbook of 
+# all the entire option chain for a given expiration date on the deribit exchange and the future with the same expiration date. 
+# It then proceeds to replicate said orderbooks locally in a dict and subscribe to the updates for said orderbooks receiving 
+# updates incrementally from deribit, updating price, volume and adding and deleting orders from the local orderbook based on t
+# he updates recevied from deribits API calls. Based on the programs kownledge of the current orderbook it calculates the put call 
+# parity prices for all the existing options and checks if it can provide the market with a better price than whats currently listed,
+#  if true it posts an order to the orderbook and continues to monitor that the current limit order can be hedged using putcall 
+#  parity should the order be filled. If there is a update to the instruments used to hedge the posted order, the program makes
+#  sure to update the price accordingly or removing the order all together if its no longer possible to hedge the posistion 
+#  using putcall parity + margin. Since we are limited by capital and therefore cant post hundres of orders we also check that
+#  our calculated price for our posted order will be the best price in the market, if its not we dont bother posting the order
+#  since its less likely it will be filled. 
 
-
+#With this basic rundown on how the program works and the code, i need help figuring out the error below. Note that the program is 
+#able to function fairly well at this point sometimes running for hours without interuption posting orders and hedgeing properly. 
+#However, I got this error suggesting its trying to calculate a price on a options thats already removed from the orderbook making 
+#me think there might be a fundemental flaw somewhere could you please help me to figure it out? 
 
 
 
