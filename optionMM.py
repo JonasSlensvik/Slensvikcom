@@ -28,7 +28,7 @@ qtyBTCsize = 0.1 # our max btc position size in the market
 bestOrderActive = False # If we need to be the best order in the market or not
 my_order_book = {}
 
-tradeDates = ["24MAY24", "17MAY24", "31MAY24", "28JUN24"]#, "26JUL24", "27SEP24", "27DEC24"]
+tradeDates = ["31MAY24"]#, "26JUL24", "27SEP24", "27DEC24"]
 
 # Imports
 import simplefix as fix
@@ -156,6 +156,7 @@ def tcost(option1, option2, ul):
 # we will receive the potentially profitable price of a put
 
 def calculateMarketMakerPrice(bidask,contract):
+    print(contract)
     contractName = contract.split("-")[0]+"-"+contract.split("-")[1]
     strike = contract.split("-")[2]
     futureAskPrice = order_book[contractName]["ask"]["price"][0]
@@ -546,35 +547,56 @@ def massQuote(massQuoteList):
     
     return message
 
-def removeDuplicates(TQ):
-    global localMargin
+# def removeDuplicates(TQ):
+#     global localMargin
 
-    if len(TQ) == 2:
-        if TQ[0][0] == TQ[1][0]: 
+#     if len(TQ) == 2:
+#         if TQ[0][0] == TQ[1][0]: 
             
-            if TQ[0][1] == "null":
-                bidask = TQ[0][3]
-                orderName = TQ[0][0]
-                localMargin -= my_order_book[orderName][bidask]["volume"]*0.13043478
-                my_order_book[orderName][bidask] = {}
+#             if TQ[0][1] == "null":
+#                 bidask = TQ[0][3]
+#                 orderName = TQ[0][0]
+#                 localMargin -= my_order_book[orderName][bidask]["volume"]*0.13043478
+#                 my_order_book[orderName][bidask] = {}
                 
-                TQ.pop(1)
+#                 TQ.pop(1)
                 
-                return TQ
+#                 return TQ
             
-            elif TQ[1][1] == "null":
-                bidask = TQ[1][3]
-                orderName = TQ[1][0]
-                localMargin -= my_order_book[orderName][bidask]["volume"]*0.13043478
-                my_order_book[orderName][bidask] = {}
-                TQ.pop(0)
-                return TQ
-            else:
-                return TQ
+#             elif TQ[1][1] == "null":
+#                 bidask = TQ[1][3]
+#                 orderName = TQ[1][0]
+#                 localMargin -= my_order_book[orderName][bidask]["volume"]*0.13043478
+#                 my_order_book[orderName][bidask] = {}
+#                 TQ.pop(0)
+#                 return TQ
+#             else:
+#                 return TQ
+#         else:
+#             return TQ
+#     else:
+#         return TQ
+    
+def removeDuplicates(lst):
+    seen = {}
+    for item in lst:
+        key = (item[0], item[-1])  # Create a key using the first and last elements
+        seen[key] = item
+    return list(seen.values())
+
+def removeDuplicatesBidAsk(lst):
+    seen = []
+    sendNow = []
+    DQ = []
+    for item in lst:
+        if item[0] in seen:
+            #item is already added so we add it to the delay queue
+            DQ.append(item)
         else:
-            return TQ
-    else:
-        return TQ
+            seen.append(item[0])
+            sendNow.append(item)
+    
+    return sendNow, DQ
 
 # Her lager vi en funksjon for å sjekke om vi allerede har en ordre ute i markedet
 # for å unngå at vi bruker vår egen ordre til å regne market maker prisen
@@ -754,6 +776,7 @@ s.sendall(securityListRequest().encode())
 #msg = msgToStr(s.recv(400096))
 #print(len(msg.split("55")))
 heartbeat_count=0
+delayQueue = []
 order_book = {}
 order_book2 = {}
 position_book = {}
@@ -785,7 +808,9 @@ while unload_qty > trade_qty:
     while True:
         try:
             msg = parser.get_message()
-            #print(msg.count(55))
+            #print(len(buf))
+            if sys.getsizeof(buf) > 4000:
+                print(sys.getsizeof(buf))
 
         except:
             pass
@@ -803,10 +828,11 @@ while unload_qty > trade_qty:
             s.sendall(subscribeMarketData(subArray).encode())
         
         if api_credit > 5000:
-            if trading_queue:
+            if trading_queue or delayQueue:
+                trading_queue = delayQueue + trading_queue
                 #newOrder(symbol, orderType, price, qty, side, "mm")
                 trading_queue = removeDuplicates(trading_queue)
-                
+                trading_queue, delayQueue = removeDuplicatesBidAsk(trading_queue)
                 print("Sending order: ", trading_queue)
                 s.sendall(massQuote(trading_queue).encode())
                 print(api_credit)
@@ -1021,8 +1047,8 @@ while unload_qty > trade_qty:
         #else:
             #print(msg)
         if m2s(msg.get(35)) == "8": # Execution report
-            print("EXECUTION REPORT")
-            print(msg)
+            #print("EXECUTION REPORT")
+            #print(msg)
             status = m2s(msg.get(39)) #0 = New, 1 = Partially filled, 2 = Filled, 4 = Cancelled 8 = Rejected
             orderName = m2s(msg.get(55)) 
             side = m2i(msg.get(54)) # 1 = Buy, 2 = Sell
@@ -1113,10 +1139,10 @@ while unload_qty > trade_qty:
                     
 
         
-        if m2s(msg.get(35)) == "b": # Execution report for mass quote
-            print("MQ EXECUTION REPORT")    
-            print(localMargin)
-            print(msg)
+        # if m2s(msg.get(35)) == "b": # Execution report for mass quote
+        #     print("MQ EXECUTION REPORT")    
+        #     print(localMargin)
+        #     print(msg)
             #status = m2i(msg.get(39)) #0 = New, 1 = Partially filled, 2 = Filled, 4 = Cancelled 8 = Rejected
             #symbol = m2s(msg.get(55))
             #side = m2i(msg.get(54)) # 1 = Buy, 2 = Sell
@@ -1275,7 +1301,6 @@ while unload_qty > trade_qty:
            print("=============")
            print(m2s(msg.get(35))) 
            print(msg)
-
 
 
 massCancel()
