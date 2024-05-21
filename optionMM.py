@@ -28,7 +28,7 @@ qtyBTCsize = 0.1 # our max btc position size in the market
 bestOrderActive = False # If we need to be the best order in the market or not
 my_order_book = {}
 
-tradeDates = ["31MAY24"]#, "26JUL24", "27SEP24", "27DEC24"]
+tradeDates = ["31MAY24", "24MAY24", "28JUN24"]#, "26JUL24", "27SEP24", "27DEC24"]
 
 # Imports
 import simplefix as fix
@@ -608,6 +608,15 @@ def notMatchingOrder(instrumetName, bidask):
             return True
     except:
         return True
+    
+# Her sjekker vi om det faktisk finnes en posisjon vi kan hedge med på den motsatte siden, 
+#hvis ikke returner vi false og passer på at vi går ut av en potensiell posisjon
+def isHedgePossible(instrumetName, bidask):
+    try:
+        if order_book[instrumetName][bidask]["price"][0]:
+            return True
+    except:
+        return False
 
 def bestOrder(orderName, bidask, calc_price):
     if bestOrderActive:
@@ -658,7 +667,7 @@ def addToTradingQueue(instrumetName, bidask, updateType=1): # updatetype 1 = bot
         if (max_margin > initMargin and max_margin > localMargin) or my_order_book[orderName][bidask]:
             # check at ordren vi hedger med ikke er vår egen
             #print("d1")
-            if notMatchingOrder(instrumetName, bidask):
+            if notMatchingOrder(instrumetName, bidask) and isHedgePossible(instrumetName, bidask):
                 #print("d2", orderName)
                 if bidask == "bid":
                     # calculates price for our new order using the hedgeing instrument(instrument name)
@@ -767,7 +776,8 @@ def addToTradingQueue(instrumetName, bidask, updateType=1): # updatetype 1 = bot
                             removeMarketOrder(orderName, bidask)
                             #localMargin -= my_order_book[orderName]["ask"]["volume"]*0.15
             
-        
+            else:
+                removeMarketOrder(orderName, bidask)
 
 logIn()
 
@@ -1186,7 +1196,7 @@ while unload_qty > trade_qty:
             s.sendall(userData().encode())
             #s.sendall(positionTracker().encode())
             #print("msg")
-            s.sendall(posistionRequest().encode())
+            #s.sendall(posistionRequest().encode())
             if heartbeat_count>60*6:
                 print("1 hour!")
                 heartbeat_count=0
@@ -1297,7 +1307,7 @@ while unload_qty > trade_qty:
                 logIn()
             
         # Trying to locate too many request 
-        if m2s(msg.get(35)) != "8" and m2s(msg.get(35)) != "r" and m2s(msg.get(35)) != "W" and m2s(msg.get(35)) != "5" and m2s(msg.get(35)) != "AP" and m2s(msg.get(35)) != "BF" and m2s(msg.get(35)) != "0" and m2s(msg.get(35)) != "X":
+        if m2s(msg.get(35)) != "8" and m2s(msg.get(35)) != "r" and m2s(msg.get(35)) != "W" and m2s(msg.get(35)) != "5" and m2s(msg.get(35)) != "AP" and m2s(msg.get(35)) != "BF" and m2s(msg.get(35)) != "0" and m2s(msg.get(35)) != "X" and m2s(msg.get(35)) != "b":
            print("=============")
            print(m2s(msg.get(35))) 
            print(msg)
