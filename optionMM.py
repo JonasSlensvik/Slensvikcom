@@ -20,7 +20,7 @@ initMargin = 0
 localMargin = 0
 
 # Option Margin in dollars
-dOptionMargin = 150 # Our margin in dollar when calculating mmPrice
+dOptionMargin = 75 # Our margin in dollar when calculating mmPrice
 strike_interval = 28000 # what interval to calculate mmPrice at program init
 future_upd_thshld = 15
 max_dSize = 5000 # Maxium dollar size per order, can be adjusted to increase or lower init margin tolerance
@@ -28,7 +28,7 @@ qtyBTCsize = 0.1 # our max btc position size in the market
 bestOrderActive = False # If we need to be the best order in the market or not
 my_order_book = {}
 
-tradeDates = ["31MAY24", "24MAY24", "28JUN24"]#, "26JUL24", "27SEP24", "27DEC24"]
+tradeDates = ["31MAY24", "7JUN24", "28JUN24"]#, "26JUL24", "27SEP24", "27DEC24"]
 
 # Imports
 import simplefix as fix
@@ -156,7 +156,7 @@ def tcost(option1, option2, ul):
 # we will receive the potentially profitable price of a put
 
 def calculateMarketMakerPrice(bidask,contract):
-    print(contract)
+    #print(contract)
     contractName = contract.split("-")[0]+"-"+contract.split("-")[1]
     strike = contract.split("-")[2]
     futureAskPrice = order_book[contractName]["ask"]["price"][0]
@@ -820,8 +820,8 @@ while unload_qty > trade_qty:
         try:
             msg = parser.get_message()
             #print(len(buf))
-            if sys.getsizeof(buf) > 4000:
-                print(sys.getsizeof(buf))
+            #if sys.getsizeof(buf) > 4000:
+                #print(sys.getsizeof(buf))
 
         except:
             pass
@@ -844,9 +844,9 @@ while unload_qty > trade_qty:
                 #newOrder(symbol, orderType, price, qty, side, "mm")
                 trading_queue = removeDuplicates(trading_queue)
                 trading_queue, delayQueue = removeDuplicatesBidAsk(trading_queue)
-                print("Sending order: ", trading_queue)
+                #print("Sending order: ", trading_queue)
                 s.sendall(massQuote(trading_queue).encode())
-                print(api_credit)
+                #print(api_credit)
                 #newOrder(trading_queue[0][0], 2, trading_queue[0][1], trading_queue[0][2], trading_queue[0][3], "mm")
                 api_credit -= 1500
                 trading_queue = []
