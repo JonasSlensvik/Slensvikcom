@@ -686,9 +686,10 @@ def addToTradingQueue(instrumetName, bidask, updateType=1): # updatetype 1 = bot
                             
 
 
-                            if qty != 0:
-                                #if the calculated quantity is not equal to zero, we set the quantity equal to our qty parameter
-                                qty = qtyBTCsize
+                            if qty != 0: #if the calculated quantity is not equal to zero, we set the quantity equal to our qty parameter
+                                if qty > qtyBTCsize: #If its greater than the max size we set it to the max size
+                                    
+                                    qty = qtyBTCsize
                             #print(qty)
                             
                             #print(calc_price)
@@ -1093,7 +1094,7 @@ while unload_qty > trade_qty:
                 if status == "1" or status == "2": # filled or partial fill
                     strike = int(orderName.split("-")[2])
                     
-                    profitDict[tradeNumber] = {"Call":0,"Put":0,"Strike":0,"SpotPrice":[],"SpotQty":[],"Spot":0}
+                    profitDict[tradeNumber] = {"Call":0,"CallPrice":[],"CallQty":[],"Put":0,"PutPrice":[],"PutQty":[],"Strike":0,"SpotPrice":[],"SpotQty":[],"Spot":0}
                     
                     if side == 1:
                         filledBidAsk = "bid"
@@ -1117,34 +1118,40 @@ while unload_qty > trade_qty:
             elif ordType == 1: # if market order fill
                 if status == "1" or status == "2": # filled or partial fill
                     tradeID = m2i(msg.get(41))
-                    if side == 1:
-                        filledBidAsk = "bid"
-                        if orderName[-1:] == "P":
-                            profitDict[tradeID]["Put"] += avgPrice
-                        elif orderName[-1:] == "C":
-                            profitDict[tradeID]["Call"] += avgPrice
-                        else: # future
-                            profitDict[tradeID]["Spot"] += avgPrice
+                    # if side == 1:
+                    #     filledBidAsk = "bid"
+                    #     if orderName[-1:] == "P":
+                    #         profitDict[tradeID]["Put"] += avgPrice
+                    #     elif orderName[-1:] == "C":
+                    #         profitDict[tradeID]["Call"] += avgPrice
+                    #     else: # future
+                    #         profitDict[tradeID]["Spot"] += avgPrice
                         
-                    else:
-                        filledBidAsk = "ask"
-                        if orderName[-1:] == "P":
-                            profitDict[tradeID]["Put"] -= avgPrice
-                        elif orderName[-1:] == "C":
-                            profitDict[tradeID]["Call"] -= avgPrice
-                        else: # future
-                            profitDict[tradeID]["Spot"] -= avgPrice
-                if len(profitDict[tradeID]["SpotQty"]) > 0:
-                    profitDict[tradeID]["Spot"] = 0
-                    totalSpotQty = sum(profitDict[tradeID]["SpotQty"])
-                    for i in range(0,len(profitDict[tradeID]["SpotQty"])):
-                        profitDict[tradeID]["Spot"] += profitDict[tradeID]["SpotQty"][i]/totalSpotQty * profitDict[tradeID]["SpotPrice"][i]
-                    if profitDict[tradeID]["Put"] > 0:
-                        profit = profitDict[tradeID]["Call"]*profitDict[tradeID]["Spot"] + profitDict[tradeID]["Put"]*profitDict[tradeID]["Spot"] + profitDict[tradeID]["Strike"] + profitDict[tradeID]["Spot"]
-                        print("Profit: ", profit)
-                    else:
-                        profit = profitDict[tradeID]["Call"]*profitDict[tradeID]["Spot"] + profitDict[tradeID]["Put"]*profitDict[tradeID]["Spot"] + profitDict[tradeID]["Strike"] - profitDict[tradeID]["Spot"]
-                        print("Profit: ", profit)
+                    # else:
+                    #     filledBidAsk = "ask"
+                    #     if orderName[-1:] == "P":
+                    #         profitDict[tradeID]["Put"] -= avgPrice
+                    #     elif orderName[-1:] == "C":
+                    #         profitDict[tradeID]["Call"] -= avgPrice
+                    #     else: # future
+                    #         profitDict[tradeID]["Spot"] -= avgPrice
+                    if len(profitDict[tradeID]["SpotQty"]) > 0:
+                        profitDict[tradeID]["Spot"] = 0
+                        totalSpotQty = sum(profitDict[tradeID]["SpotQty"])
+                        for i in range(0,len(profitDict[tradeID]["SpotQty"])):
+                            profitDict[tradeID]["Spot"] += profitDict[tradeID]["SpotQty"][i]/totalSpotQty * profitDict[tradeID]["SpotPrice"][i]
+                        totalCallQty = sum(profitDict[tradeID]["CallQty"])
+                        for i in range(0,len(profitDict[tradeID]["CallQty"])):
+                            profitDict[tradeID]["Call"] += profitDict[tradeID]["CallQty"][i]/totalCallQty * profitDict[tradeID]["CallPrice"][i]
+                        totalPutQty = sum(profitDict[tradeID]["PutQty"])
+                        for i in range(0,len(profitDict[tradeID]["PutQty"])):
+                            profitDict[tradeID]["Put"] += profitDict[tradeID]["PutQty"][i]/totalPutQty * profitDict[tradeID]["PutPrice"][i]
+                        if profitDict[tradeID]["Put"] > 0:
+                            profit = profitDict[tradeID]["Call"]*profitDict[tradeID]["Spot"] + profitDict[tradeID]["Put"]*profitDict[tradeID]["Spot"] + profitDict[tradeID]["Strike"] + profitDict[tradeID]["Spot"]
+                            print("Profit: ", profit)
+                        else:
+                            profit = profitDict[tradeID]["Call"]*profitDict[tradeID]["Spot"] + profitDict[tradeID]["Put"]*profitDict[tradeID]["Spot"] + profitDict[tradeID]["Strike"] - profitDict[tradeID]["Spot"]
+                            print("Profit: ", profit)
                 
                     
 
