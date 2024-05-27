@@ -20,15 +20,15 @@ initMargin = 0
 localMargin = 0
 
 # Option Margin in dollars
-dOptionMargin = 75 # Our margin in dollar when calculating mmPrice
+dOptionMargin = 125 # Our margin in dollar when calculating mmPrice
 strike_interval = 28000 # what interval to calculate mmPrice at program init
 future_upd_thshld = 15
 max_dSize = 5000 # Maxium dollar size per order, can be adjusted to increase or lower init margin tolerance
-qtyBTCsize = 0.1 # our max btc position size in the market
+qtyBTCsize = 0.2 # our max btc position size in the market
 bestOrderActive = False # If we need to be the best order in the market or not
 my_order_book = {}
 
-tradeDates = ["31MAY24", "7JUN24", "28JUN24"]#, "26JUL24", "27SEP24", "27DEC24"]
+tradeDates = ["31MAY24"]#, "7JUN24", "28JUN24"]#, "26JUL24", "27SEP24", "27DEC24"]
 
 # Imports
 import simplefix as fix
@@ -1100,17 +1100,26 @@ while unload_qty > trade_qty:
                         filledBidAsk = "bid"
                         if orderName[-1:] == "P":
                             #profitDict[tradeNumber]["Put"] += avgPrice
+                            profitDict[tradeNumber]["PutPrice"].append(m2f(msg.get(1364)))
+                            profitDict[tradeNumber]["PutQty"].append(m2f(msg.get(1365)))
                             profitDict[tradeNumber]["Strike"] = -strike
                         if orderName[-1:] == "C":
                             #profitDict[tradeNumber]["Call"] += avgPrice
+                            profitDict[tradeNumber]["CallPrice"].append(m2f(msg.get(1364)))
+                            profitDict[tradeNumber]["CallQty"].append(m2f(msg.get(1365)))
                             profitDict[tradeNumber]["Strike"] = strike
                     else:
                         filledBidAsk = "ask"
                         if orderName[-1:] == "P":
                             #profitDict[tradeNumber]["Put"] -= avgPrice
+                            
+                            profitDict[tradeNumber]["PutPrice"].append(-m2f(msg.get(1364)))
+                            profitDict[tradeNumber]["PutQty"].append(-m2f(msg.get(1365)))
                             profitDict[tradeNumber]["Strike"] = strike
                         if orderName[-1:] == "C":
                             #profitDict[tradeNumber]["Call"] -= avgPrice
+                            profitDict[tradeNumber]["CallPrice"].append(-m2f(msg.get(1364)))
+                            profitDict[tradeNumber]["CallQty"].append(-m2f(msg.get(1365)))
                             profitDict[tradeNumber]["Strike"] = -strike
                             
                     hedgeLogic(orderName, filledBidAsk, filledQty, tradeNumber)
