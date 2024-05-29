@@ -21,14 +21,16 @@ localMargin = 0
 
 # Option Margin in dollars
 dOptionMargin = 125 # Our margin in dollar when calculating mmPrice
-strike_interval = 28000 # what interval to calculate mmPrice at program init
-future_upd_thshld = 15
-max_dSize = 5000 # Maxium dollar size per order, can be adjusted to increase or lower init margin tolerance
-qtyBTCsize = 0.2 # our max btc position size in the market
+strike_interval = 280000 # what interval to calculate mmPrice at program init
+future_upd_thshld = 9
+max_dSize = 50000 # Maxium dollar size per order, can be adjusted to increase or lower init margin tolerance
+qtyBTCsize = 0.1 # our max btc position size in the market
+order_depth_buffer = 2 # The number of times we want to account for our order qty in calculating weighted average future price
+                       # increase for less slippage, decrease for more competitiveness
 bestOrderActive = False # If we need to be the best order in the market or not
 my_order_book = {}
 
-tradeDates = ["31MAY24"]#, "7JUN24", "28JUN24"]#, "26JUL24", "27SEP24", "27DEC24"]
+tradeDates = ["28JUN24"]#, "7JUN24", "28JUN24"]#, "26JUL24", "27SEP24", "27DEC24"]
 
 # Imports
 import simplefix as fix
@@ -151,6 +153,22 @@ def tcost(option1, option2, ul):
 
     return 0.00075*ul + trade1 + trade2 + delivery1 + delivery2
 
+def futurePriceIncDepth(contract, bidask):
+    contractName = contract.split("-")[0]+"-"+contract.split("-")[1]
+    
+    refrence_vol = order_book[contractName][bidask]["price"][0]*qtyBTCsize*order_depth_buffer
+    n_sum = 0
+    n = 0
+    while refrence_vol > n_sum:
+        n_sum += order_book[contractName][bidask]["volume"][n]
+        n +=1
+        
+    avg_price = 0
+    for i in range(0,n):
+        avg_price += order_book[contractName][bidask]["price"][i]*(order_book[contractName][bidask]["volume"][i]/n_sum)
+
+    return avg_price
+
 # This function uses the already existing orders in the market to calculate the 
 # price of the opposite contract. If we pass an existing call into this function
 # we will receive the potentially profitable price of a put
@@ -159,63 +177,36 @@ def calculateMarketMakerPrice(bidask,contract):
     #print(contract)
     contractName = contract.split("-")[0]+"-"+contract.split("-")[1]
     strike = contract.split("-")[2]
-    futureAskPrice = order_book[contractName]["ask"]["price"][0]
-    futureBidPrice = order_book[contractName]["bid"]["price"][0]
+    # refrence_vol = order_book[contractName]["ask"]["price"][0]*qtyBTCsize*order_depth_buffer
+    # n_sum = 0
+    # n = 0
+    # while refrence_vol < n_sum:
+    #     n_sum += order_book[contractName]["ask"]["vol"][n]
+    #     n +=1
+    # avg_ask_price = 0
+    # for i in range(0,n):
+    #     avg_ask_price += order_book[contractName]["ask"]["price"][i]*(order_book[contractName]["ask"]["vol"][i]/n_sum)
+    # futureAskPrice = order_book[contractName]["ask"]["price"][0]
+    # futureBidPrice = order_book[contractName]["bid"]["price"][0]
     price = order_book[contract][bidask]["price"][0]
     if bidask == "ask":
         if "-P" in contract: #if we are getting put and ask, we need to genereate price for a ask call
+            futureAskPrice = futurePriceIncDepth(contract, "ask")
             mmPrice = (price*futureAskPrice + futureAskPrice - float(strike))/futureAskPrice
-            # print("mmPrice1: " + str(mmPrice))
-            # print("strike: " + str(strike))
-            # print("price: " + str(price))
-            # print("futureBidPrice: " + str(futureAskPrice))
-            # print("mmPrice1: " + str(mmPrice))
-            #print(mmPrice)
             mmPrice += (tcost(mmPrice*futureAskPrice,price*futureAskPrice,futureAskPrice) + dOptionMargin)/futureAskPrice
-            # print("mmPrice2: " + str(mmPrice))
-            # print("tcost: " + str(tcost(mmPrice*futureAskPrice,price*futureAskPrice,futureAskPrice)))
-            # print("mmpriceUSD: " + str((tcost(mmPrice*futureAskPrice,price*futureAskPrice,futureAskPrice) + dOptionMargin)))
-            #print(mmPrice)
         if "-C" in contract: #if call
+            futureBidPrice = futurePriceIncDepth(contract, "bid")
             mmPrice = (float(strike) + price*futureBidPrice - futureBidPrice)/futureBidPrice
-            # print("mmPrice1: " + str(mmPrice))
-            # print("strike: " + str(strike))
-            # print("price: " + str(price))
-            # print("futureBidPrice: " + str(futureBidPrice))
-            # print("mmPrice1: " + str(mmPrice))
-            #print(mmPrice)
             mmPrice += (tcost(mmPrice*futureBidPrice,price*futureBidPrice,futureBidPrice) + dOptionMargin)/futureBidPrice
-            # print("mmPrice2: " + str(mmPrice))
-            # print("tcost: " + str(tcost(mmPrice*futureBidPrice,price*futureBidPrice,futureBidPrice)))
-            # print("mmpriceUSD: " + str((tcost(mmPrice*futureBidPrice,price*futureBidPrice,futureBidPrice) + dOptionMargin)))
-            #print(mmPrice)
     if bidask == "bid":
         if "-P" in contract: #if put
+            futureBidPrice = futurePriceIncDepth(contract, "bid")
             mmPrice = (price*futureBidPrice + futureBidPrice - float(strike))/futureBidPrice
-            # print("mmPrice1: " + str(mmPrice))
-            # print("strike: " + str(strike))
-            # print("price: " + str(price))
-            # print("futureBidPrice: " + str(futureBidPrice))
-            # print("mmPrice1: " + str(mmPrice))
-            #print(mmPrice)
             mmPrice += -(tcost(mmPrice*futureBidPrice,price*futureBidPrice,futureBidPrice) + dOptionMargin)/futureBidPrice
-            # print("mmPrice2: " + str(mmPrice))
-            # print("tcost: " + str(-(tcost(mmPrice*futureBidPrice,price*futureBidPrice,futureBidPrice))))
-            # print("mmpriceUSD: " + str((-(tcost(mmPrice*futureBidPrice,price*futureBidPrice,futureBidPrice) + dOptionMargin))))
-            #print(mmPrice)
         if "-C" in contract: #if call
+            futureAskPrice = futurePriceIncDepth(contract, "ask")
             mmPrice = (float(strike) + price*futureAskPrice - futureAskPrice)/futureAskPrice
-            # print("mmPrice1: " + str(mmPrice))
-            # print("strike: " + str(strike))
-            # print("price: " + str(price))
-            # print("futureBidPrice: " + str(futureAskPrice))
-            # print("mmPrice1: " + str(mmPrice))
-            #print(mmPrice)
             mmPrice += -(tcost(mmPrice*futureAskPrice,price*futureAskPrice,futureAskPrice) + dOptionMargin)/futureAskPrice
-            # print("mmPrice2: " + str(mmPrice))
-            # print("tcost: " + str(-(tcost(mmPrice*futureAskPrice,price*futureAskPrice,futureAskPrice))))
-            # print("mmpriceUSD: " + str((-(tcost(mmPrice*futureAskPrice,price*futureAskPrice,futureAskPrice) + dOptionMargin))))
-            #print(mmPrice)
             
     return mmPrice
 
@@ -498,11 +489,13 @@ def hedgeLogic(filledOrderName, filledBidAsk, filledQty, tradeNumber):
     # If the filled order was a put
     if filledOrderName[-1:] == "P":
         # if the filled put was a bid, we are long put, so we should short a call and long a future
+        print("Expected fill price Call: "+ str(order_book[filledOrderName[:-1]+"C"][flipBidAsk]["price"][0]) + " Expected fill future: " +  str(order_book[futureName][filledBidAsk]["price"][0]))
         s.sendall(newOrder(filledOrderName[:-1]+"C", 1, 0, filledQty, flipBidAsk, "no", tradeNumber).encode()) # enter into the call
         s.sendall(newOrder(futureName, 1, 0, int(round(filledQty*order_book[futureName][filledBidAsk]["price"][0]/10,0)), filledBidAsk, "no", tradeNumber).encode()) # enter into the future with the filled qty * price
 
     if filledOrderName[-1:] == "C":
         # if the filled call was a bid, we are long call, so we should short a put and short a future
+        print("Expected fill price Put: "+ str(order_book[filledOrderName[:-1]+"P"][flipBidAsk]["price"][0]) + " Expected fill future: " +  str(order_book[futureName][flipBidAsk]["price"][0]))
         s.sendall(newOrder(filledOrderName[:-1]+"P", 1, 0, filledQty, flipBidAsk, "no", tradeNumber).encode()) # enter into the put
         s.sendall(newOrder(futureName, 1, 0, int(round(filledQty*order_book[futureName][flipBidAsk]["price"][0]/10,0)), flipBidAsk, "no", tradeNumber).encode()) # enter into the future with the filled qty * price
 
