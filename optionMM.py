@@ -489,16 +489,33 @@ def hedgeLogic(filledOrderName, filledBidAsk, filledQty, tradeNumber):
     # If the filled order was a put
     if filledOrderName[-1:] == "P":
         # if the filled put was a bid, we are long put, so we should short a call and long a future
-        print("Expected fill price Call: "+ str(order_book[filledOrderName[:-1]+"C"][flipBidAsk]["price"][0]) + " Expected fill future: " +  str(order_book[futureName][filledBidAsk]["price"][0]))
         s.sendall(newOrder(filledOrderName[:-1]+"C", 1, 0, filledQty, flipBidAsk, "no", tradeNumber).encode()) # enter into the call
         s.sendall(newOrder(futureName, 1, 0, int(round(filledQty*order_book[futureName][filledBidAsk]["price"][0]/10,0)), filledBidAsk, "no", tradeNumber).encode()) # enter into the future with the filled qty * price
-
+        try: # If the filled order is a put ask, "filledBidAsk" is returned as "ASK". Now we want to see the expected price obtained by the market order i.e
+            # the hedge. Since the price we will get from longing a call is dependent on what the seller is willing to sell it for, we want to know
+            # the ask price of the call that we are going to buy. Which is why we pass filledBidAsk for the print.
+            #
+            # In parallel, when we are doing the hedging, we send the order to buy a call (the hedge) using flipBidAsk. The "ASK" value is converted
+            # to a "BID" which later is passed in the hedging logic as Side = 1 = buy.
+            print("Expected fill price Call: "+ str(order_book[filledOrderName[:-1]+"C"][filledBidAsk]["price"][0]))
+        except:
+            print("Failed to print: " + filledOrderName[:-1]+"C" + " Bidask: " + filledBidAsk)
+        try:
+            print("Expected fill future: " + str(order_book[futureName][flipBidAsk]["price"][0]))
+        except:
+            print("Failed to print: " + futureName + " Bidask: " + flipBidAsk)
     if filledOrderName[-1:] == "C":
         # if the filled call was a bid, we are long call, so we should short a put and short a future
-        print("Expected fill price Put: "+ str(order_book[filledOrderName[:-1]+"P"][flipBidAsk]["price"][0]) + " Expected fill future: " +  str(order_book[futureName][flipBidAsk]["price"][0]))
         s.sendall(newOrder(filledOrderName[:-1]+"P", 1, 0, filledQty, flipBidAsk, "no", tradeNumber).encode()) # enter into the put
         s.sendall(newOrder(futureName, 1, 0, int(round(filledQty*order_book[futureName][flipBidAsk]["price"][0]/10,0)), flipBidAsk, "no", tradeNumber).encode()) # enter into the future with the filled qty * price
-
+        try:
+            print("Expected fill price Put: "+ str(order_book[filledOrderName[:-1]+"P"][filledBidAsk]["price"][0]))
+        except:
+            print("Failed to print: " + filledOrderName[:-1]+"P" + " Bidask: " + filledBidAsk)
+        try:
+            print("Expected fill future: " +  str(order_book[futureName][filledBidAsk]["price"][0]))
+        except:
+            print("Failed to print: " + futureName + " Bidask: " + filledBidAsk)
 def massQuote(massQuoteList):
     global inc
     global quoteInc
@@ -1149,10 +1166,10 @@ while unload_qty > trade_qty:
                         for i in range(0,len(profitDict[tradeID]["PutQty"])):
                             profitDict[tradeID]["Put"] += profitDict[tradeID]["PutQty"][i]/totalPutQty * profitDict[tradeID]["PutPrice"][i]
                         if profitDict[tradeID]["Put"] > 0:
-                            profit = profitDict[tradeID]["Call"]*profitDict[tradeID]["Spot"] + profitDict[tradeID]["Put"]*profitDict[tradeID]["Spot"] + profitDict[tradeID]["Strike"] + profitDict[tradeID]["Spot"]
+                            profit = profitDict[tradeID]["Call"]*profitDict[tradeID]["Spot"] + profitDict[tradeID]["Put"]*profitDict[tradeID]["Spot"] + profitDict[tradeID]["Strike"] - profitDict[tradeID]["Spot"]
                             print("Profit: ", profit)
                         else:
-                            profit = profitDict[tradeID]["Call"]*profitDict[tradeID]["Spot"] + profitDict[tradeID]["Put"]*profitDict[tradeID]["Spot"] + profitDict[tradeID]["Strike"] - profitDict[tradeID]["Spot"]
+                            profit = profitDict[tradeID]["Call"]*profitDict[tradeID]["Spot"] + profitDict[tradeID]["Put"]*profitDict[tradeID]["Spot"] - profitDict[tradeID]["Strike"] + profitDict[tradeID]["Spot"]
                             print("Profit: ", profit)
                 
                     
