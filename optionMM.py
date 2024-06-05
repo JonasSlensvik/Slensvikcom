@@ -1166,10 +1166,10 @@ while unload_qty > trade_qty:
                         for i in range(0,len(profitDict[tradeID]["PutQty"])):
                             profitDict[tradeID]["Put"] += profitDict[tradeID]["PutQty"][i]/totalPutQty * profitDict[tradeID]["PutPrice"][i]
                         if profitDict[tradeID]["Put"] > 0:
-                            profit = profitDict[tradeID]["Call"]*profitDict[tradeID]["Spot"] + profitDict[tradeID]["Put"]*profitDict[tradeID]["Spot"] + profitDict[tradeID]["Strike"] - profitDict[tradeID]["Spot"]
+                            profit = -profitDict[tradeID]["Call"]*profitDict[tradeID]["Spot"] - profitDict[tradeID]["Put"]*profitDict[tradeID]["Spot"] + profitDict[tradeID]["Strike"] - profitDict[tradeID]["Spot"]
                             print("Profit: ", profit)
                         else:
-                            profit = profitDict[tradeID]["Call"]*profitDict[tradeID]["Spot"] + profitDict[tradeID]["Put"]*profitDict[tradeID]["Spot"] - profitDict[tradeID]["Strike"] + profitDict[tradeID]["Spot"]
+                            profit = -profitDict[tradeID]["Call"]*profitDict[tradeID]["Spot"] - profitDict[tradeID]["Put"]*profitDict[tradeID]["Spot"] - profitDict[tradeID]["Strike"] + profitDict[tradeID]["Spot"]
                             print("Profit: ", profit)
                 
                     
