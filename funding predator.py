@@ -20,6 +20,10 @@ class DeribitFIXClient:
         self.parser = simplefix.FixParser()
         self.running = False
         
+        # New attributes for storing market data
+        self.current_index = None
+        self.order_book = {}
+        
     def connect(self):
         """Establish connection and start message handling"""
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -84,46 +88,92 @@ class DeribitFIXClient:
         if symbol:
             symbol = symbol.decode('utf-8')
             print(f"\nMarket Data for {symbol}")
+        
+        # Initialize order book for the symbol if not exists
+        if symbol and symbol not in self.order_book:
+            self.order_book[symbol] = {
+                'bid': {'price': [], 'volume': []},
+                'ask': {'price': [], 'volume': []}
+            }
+        
+        # New parsing method for market data
+        md_entries = []
+        current_entry = {}
+        
+        # Iterate through all message fields
+        for field in msg.pairs:
+            tag, value = field
+            tag = int(tag)
+            value = value.decode('utf-8')
             
-        # Process each MDEntry in the message
-        num_entries = msg.get(268)  # NoMDEntries tag
-        if num_entries:
-            num_entries = int(num_entries)
+            # MDEntry related tags
+            if tag == 269:  # MDEntryType
+                if current_entry:
+                    md_entries.append(current_entry)
+                current_entry = {'type': value}
+            elif tag == 270:  # MDEntryPx
+                current_entry['price'] = float(value)
+            elif tag == 271:  # MDEntrySize
+                current_entry['size'] = float(value)
+        
+        # Add last entry
+        if current_entry:
+            md_entries.append(current_entry)
+        
+        # Process market data entries
+        for entry in md_entries:
+            type_desc = {
+                '0': 'Bid',
+                '1': 'Ask',
+                '2': 'Trade'
+            }.get(entry.get('type'), 'Unknown')
             
-            # New parsing method for market data
-            md_entries = []
-            current_entry = {}
+            print(f"{type_desc}: Price={entry.get('price', 'N/A')} Size={entry.get('size', 'N/A')}")
             
-            # Iterate through all message fields
-            for field in msg.pairs:
-                tag, value = field
-                tag = int(tag)
-                value = value.decode('utf-8')
-                
-                # MDEntry related tags
-                if tag == 269:  # MDEntryType
-                    if current_entry:
-                        md_entries.append(current_entry)
-                    current_entry = {'type': value}
-                elif tag == 270:  # MDEntryPx
-                    current_entry['price'] = float(value)
-                elif tag == 271:  # MDEntrySize
-                    current_entry['size'] = float(value)
+            # Handle different entry types
+            if type_desc == 'Bid' and symbol:
+                # Update bid side of the order book
+                self.order_book[symbol]['bid']['price'].append(entry.get('price', 0))
+                self.order_book[symbol]['bid']['volume'].append(entry.get('size', 0))
+                # Sort bids in descending order (highest bid first)
+                bid_prices = self.order_book[symbol]['bid']['price']
+                bid_volumes = self.order_book[symbol]['bid']['volume']
+                sorted_indices = sorted(range(len(bid_prices)), key=lambda k: bid_prices[k], reverse=True)
+                self.order_book[symbol]['bid']['price'] = [bid_prices[i] for i in sorted_indices]
+                self.order_book[symbol]['bid']['volume'] = [bid_volumes[i] for i in sorted_indices]
             
-            # Add last entry
-            if current_entry:
-                md_entries.append(current_entry)
+            elif type_desc == 'Ask' and symbol:
+                # Update ask side of the order book
+                self.order_book[symbol]['ask']['price'].append(entry.get('price', 0))
+                self.order_book[symbol]['ask']['volume'].append(entry.get('size', 0))
+                # Sort asks in ascending order (lowest ask first)
+                ask_prices = self.order_book[symbol]['ask']['price']
+                ask_volumes = self.order_book[symbol]['ask']['volume']
+                sorted_indices = sorted(range(len(ask_prices)), key=lambda k: ask_prices[k])
+                self.order_book[symbol]['ask']['price'] = [ask_prices[i] for i in sorted_indices]
+                self.order_book[symbol]['ask']['volume'] = [ask_volumes[i] for i in sorted_indices]
             
-            # Print market data entries
-            for entry in md_entries:
-                type_desc = {
-                    '0': 'Bid',
-                    '1': 'Ask',
-                    '2': 'Trade'
-                }.get(entry.get('type'), 'Unknown')
-                
-                print(f"{type_desc}: Price={entry.get('price', 'N/A')} Size={entry.get('size', 'N/A')}")
-
+            elif type_desc == 'Unknown':
+                # Assume this is an index update
+                if symbol:
+                    self.current_index = entry.get('price', 0)
+                    print(f"Updated Index for {symbol}: {self.current_index}")
+    
+    # Getter methods to access current index and order book
+    def get_current_index(self):
+        """Return the current index value"""
+        return self.current_index
+    
+    def get_order_book(self, symbol=None):
+        """
+        Return the entire order book or specific symbol's order book
+        
+        :param symbol: Optional. Specific symbol to retrieve order book for
+        :return: Order book dictionary
+        """
+        if symbol:
+            return self.order_book.get(symbol, {})
+        return self.order_book
 
                         
     def create_message(self, msg_type):
@@ -186,6 +236,7 @@ class DeribitFIXClient:
     def heartbeat(self):
         msg = self.create_message("0")  # MarketDataRequest
         self.send_message(msg)
+        print(self.order_book)
         
     def request_security_list(self):
         msg = self.create_message("x")  # MarketDataRequest
