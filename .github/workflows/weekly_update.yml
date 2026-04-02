@@ -1,0 +1,59 @@
+name: Weekly OSE Update
+
+on:
+  schedule:
+    # Every Monday at 07:00 UTC (09:00 Oslo time in summer, 08:00 in winter)
+    - cron: '0 7 * * 1'
+  workflow_dispatch:   # Allow manual triggering from the GitHub Actions UI
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      # ── 1. Checkout code ────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── 2. Python setup ─────────────────────────────────────────────────
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      # ── 3. Install Chrome + matching ChromeDriver ────────────────────────
+      #    The ubuntu-latest runner ships without Chrome; we install it here.
+      - name: Install Google Chrome
+        run: |
+          wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub \
+            | sudo gpg --dearmor -o /usr/share/keyrings/google-chrome.gpg
+          echo "deb [arch=amd64 signed-by=/usr/share/keyrings/google-chrome.gpg] \
+            http://dl.google.com/linux/chrome/deb/ stable main" \
+            | sudo tee /etc/apt/sources.list.d/google-chrome.list > /dev/null
+          sudo apt-get update -q
+          sudo apt-get install -y google-chrome-stable
+
+      # ── 4. Python dependencies ───────────────────────────────────────────
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      # ── 5. Run the weekly updater ────────────────────────────────────────
+      - name: Run OSE stock updater
+        env:
+          # Store the full contents of your Service Account JSON as this secret.
+          # Go to: GitHub repo → Settings → Secrets and variables → Actions → New repository secret
+          # Name:  GOOGLE_CREDENTIALS_JSON
+          # Value: paste the entire contents of datafeed_api_secret.json
+          GOOGLE_CREDENTIALS_JSON: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
+        run: python yfinance2.py
+
+      # ── 6. Upload log as artifact (available for 7 days) ─────────────────
+      - name: Upload run log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ose-run-log-${{ github.run_number }}
+          path: ose_stock_fetcher.log
+          retention-days: 7
