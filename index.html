@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="no">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Slensvik.com — Fastrente Strategi</title>
+<title>Slensvik.com — Galton Investment Strategy</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
@@ -13,17 +13,15 @@
     --bg0: #080b11; --bg1: #0e1218; --bg2: #141820; --bg3: #1c2230; --bg4: #222a3a;
     --border: rgba(255,255,255,0.06); --border2: rgba(255,255,255,0.11); --border3: rgba(255,255,255,0.18);
     --text1: #e6eaf4; --text2: #7f8799; --text3: #434b5e;
-    --green: #00e5a0; --green-bg: rgba(0,229,160,0.08); --green-border: rgba(0,229,160,0.22);
+    --green: #00e5a0; --green-bg: rgba(0,229,160,0.08); --green-border: rgba(0,229,160,0.18);
     --red: #ff4060; --red-bg: rgba(255,64,96,0.08); --red-border: rgba(255,64,96,0.18);
-    --blue: #4d8fff; --blue-bg: rgba(77,143,255,0.08); --blue-border: rgba(77,143,255,0.22);
-    --amber: #ffb020; --amber-bg: rgba(255,176,32,0.08); --amber-border: rgba(255,176,32,0.22);
-    --purple: #9b7fff; --purple-bg: rgba(155,127,255,0.08);
+    --blue: #4d8fff; --blue-bg: rgba(77,143,255,0.08);
+    --amber: #ffb020; --amber-bg: rgba(255,176,32,0.08);
     --accent: #4d8fff;
   }
   html { scroll-behavior: smooth; }
   body { background: var(--bg0); color: var(--text1); font-family: 'Syne', sans-serif; min-height: 100vh; overflow-x: hidden; }
 
-  /* ── TOPBAR ── */
   .topbar {
     position: sticky; top: 0; z-index: 100;
     display: flex; align-items: center; justify-content: space-between;
@@ -32,158 +30,132 @@
     border-bottom: 1px solid var(--border);
   }
   .logo-wrap { display: flex; align-items: baseline; gap: 10px; }
-  .logo { font-size: 15px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text1); text-decoration: none; }
+  .logo { font-size: 15px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text1); }
   .logo-dot { color: var(--accent); }
   .logo-sub { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--text3); letter-spacing: 0.08em; }
   .topbar-right { display: flex; align-items: center; gap: 16px; }
-  .nav-back { font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text2); text-decoration: none; padding: 6px 14px; border: 1px solid var(--border2); border-radius: 4px; transition: all 0.2s; }
-  .nav-back:hover { color: var(--text1); border-color: var(--border3); }
+  .status-dot { display: flex; align-items: center; gap: 6px; font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--green); letter-spacing: 0.06em; }
+  .status-dot::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--green); box-shadow: 0 0 6px var(--green); animation: pulse 2s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+  .status-dot-closed { display: flex; align-items: center; gap: 6px; font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--text3); letter-spacing: 0.06em; }
+  .status-dot-closed::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--text3); }
+  #last-updated { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--text3); }
 
-  /* ── HERO ── */
-  .hero { padding: 52px 36px 40px; border-bottom: 1px solid var(--border); position: relative; overflow: hidden; }
-  .hero::before { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse 50% 80% at 80% 50%, rgba(0,229,160,0.04) 0%, transparent 70%), radial-gradient(ellipse 30% 60% at 5% 20%, rgba(77,143,255,0.04) 0%, transparent 70%); pointer-events: none; }
-  .hero-eyebrow { font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.2em; color: var(--green); text-transform: uppercase; margin-bottom: 14px; }
-  .hero-title { font-size: clamp(28px, 3.5vw, 46px); font-weight: 800; line-height: 1.05; letter-spacing: -0.02em; color: var(--text1); margin-bottom: 12px; }
-  .hero-title span { color: var(--green); }
-  .hero-desc { font-size: 13px; line-height: 1.75; color: var(--text2); max-width: 560px; }
+  .hero { padding: 64px 36px 48px; border-bottom: 1px solid var(--border); position: relative; overflow: hidden; }
+  .hero::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: radial-gradient(ellipse 60% 50% at 10% 50%, rgba(77,143,255,0.05) 0%, transparent 70%), radial-gradient(ellipse 40% 60% at 90% 30%, rgba(123,95,255,0.04) 0%, transparent 70%); pointer-events: none; }
+  .hero-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; max-width: 1200px; }
+  .hero-left { padding-right: 48px; border-right: 1px solid var(--border); }
+  .hero-eyebrow { font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.2em; color: var(--accent); text-transform: uppercase; margin-bottom: 16px; }
+  .hero-title { font-size: clamp(32px, 4vw, 52px); font-weight: 800; line-height: 1.05; letter-spacing: -0.02em; color: var(--text1); margin-bottom: 16px; }
+  .hero-title span { color: var(--accent); }
+  .hero-desc { font-size: 14px; line-height: 1.7; color: var(--text2); max-width: 440px; }
+  .hero-right { padding-left: 48px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-content: center; }
 
-  /* ── MAIN LAYOUT ── */
-  .main { padding: 28px 36px; display: flex; flex-direction: column; gap: 20px; max-width: 1200px; }
+  .kpi { padding: 20px; background: var(--bg1); border: 1px solid var(--border); border-radius: 6px; position: relative; overflow: hidden; transition: border-color 0.2s; }
+  .kpi:hover { border-color: var(--border2); }
+  .kpi-accent-line { position: absolute; top: 0; left: 0; right: 0; height: 1px; }
+  .kpi .label { font-family: 'IBM Plex Mono', monospace; font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text3); margin-bottom: 10px; }
+  .kpi .value { font-size: 28px; font-weight: 700; letter-spacing: -0.03em; line-height: 1; }
+  .kpi .sub { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--text3); margin-top: 6px; }
+  .kpi.green .value { color: var(--green); } .kpi.green .kpi-accent-line { background: var(--green); opacity: 0.5; }
+  .kpi.blue .value { color: var(--blue); } .kpi.blue .kpi-accent-line { background: var(--blue); opacity: 0.5; }
+  .kpi.amber .value { color: var(--amber); } .kpi.amber .kpi-accent-line { background: var(--amber); opacity: 0.5; }
+  .kpi.red .value { color: var(--red); } .kpi.red .kpi-accent-line { background: var(--red); opacity: 0.5; }
+
+  .main { padding: 32px 36px; display: flex; flex-direction: column; gap: 24px; max-width: 1200px; }
   .card { background: var(--bg1); border: 1px solid var(--border); border-radius: 6px; padding: 22px 24px; }
   .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
   .card-title { font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--text2); }
   .card-meta { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--text3); }
 
-  /* ── WINDOW BANNER ── */
-  .window-banner {
-    border-radius: 6px; padding: 18px 24px;
-    display: flex; align-items: center; justify-content: space-between; gap: 20px;
-    flex-wrap: wrap;
-  }
-  .window-banner.open { background: var(--green-bg); border: 1px solid var(--green-border); }
-  .window-banner.closed { background: var(--bg1); border: 1px solid var(--border); }
-  .window-banner.soon { background: var(--amber-bg); border: 1px solid var(--amber-border); }
-  .banner-left { display: flex; align-items: center; gap: 16px; }
-  .banner-icon { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
-  .banner-icon.open { background: rgba(0,229,160,0.12); }
-  .banner-icon.closed { background: var(--bg3); }
-  .banner-icon.soon { background: rgba(255,176,32,0.12); }
-  .banner-title { font-size: 15px; font-weight: 700; margin-bottom: 3px; }
-  .banner-title.open { color: var(--green); }
-  .banner-title.closed { color: var(--text2); }
-  .banner-title.soon { color: var(--amber); }
-  .banner-sub { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--text3); }
-  .banner-right { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--text3); text-align: right; line-height: 1.7; }
-
-  /* ── RATE FORECAST GRID ── */
-  .forecast-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
-  .forecast-card {
-    background: var(--bg2); border: 1px solid var(--border); border-radius: 6px;
-    padding: 18px 20px; position: relative; overflow: hidden;
-  }
-  .forecast-card .fc-label { font-family: 'IBM Plex Mono', monospace; font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text3); margin-bottom: 10px; }
-  .forecast-card .fc-rate { font-size: 32px; font-weight: 800; letter-spacing: -0.04em; color: var(--text1); line-height: 1; margin-bottom: 4px; }
-  .forecast-card .fc-sub { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--text3); margin-bottom: 14px; }
-  .fc-confidence { margin-top: 2px; }
-  .fc-conf-label { font-family: 'IBM Plex Mono', monospace; font-size: 9px; color: var(--text3); margin-bottom: 5px; display: flex; justify-content: space-between; }
-  .fc-bar-bg { height: 3px; background: var(--bg3); border-radius: 2px; }
-  .fc-bar { height: 3px; border-radius: 2px; transition: width 1s ease; }
-  .fc-wednesdays { margin-top: 12px; display: flex; gap: 5px; }
-  .fc-wed { width: 20px; height: 20px; border-radius: 3px; display: flex; align-items: center; justify-content: center; font-family: 'IBM Plex Mono', monospace; font-size: 8px; }
-  .fc-wed.observed { background: rgba(77,143,255,0.18); color: var(--blue); border: 1px solid var(--blue-border); }
-  .fc-wed.pending { background: var(--bg3); color: var(--text3); border: 1px solid var(--border); }
-  .fc-accent-top { position: absolute; top: 0; left: 0; right: 0; height: 2px; }
-
-  /* ── TIMELINE ── */
-  .timeline { display: flex; align-items: flex-start; gap: 0; margin: 4px 0 20px; }
-  .tl-step { flex: 1; position: relative; }
-  .tl-step:not(:last-child)::after { content: ''; position: absolute; top: 14px; left: calc(50% + 18px); right: calc(-50% + 18px); height: 1px; background: var(--border2); }
-  .tl-dot { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 8px; font-family: 'IBM Plex Mono', monospace; font-size: 9px; font-weight: 500; }
-  .tl-dot.done { background: rgba(0,229,160,0.15); border: 1px solid var(--green-border); color: var(--green); }
-  .tl-dot.active { background: var(--blue-bg); border: 1px solid var(--blue-border); color: var(--blue); box-shadow: 0 0 10px rgba(77,143,255,0.2); }
-  .tl-dot.future { background: var(--bg3); border: 1px solid var(--border); color: var(--text3); }
-  .tl-label { font-family: 'IBM Plex Mono', monospace; font-size: 9px; text-align: center; color: var(--text3); line-height: 1.5; }
-  .tl-label strong { display: block; color: var(--text2); font-size: 9px; }
-
-  /* ── BENEFIT PANEL ── */
-  .benefit-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
-  .benefit-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 6px; padding: 18px 20px; }
-  .bc-label { font-family: 'IBM Plex Mono', monospace; font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text3); margin-bottom: 8px; }
-  .bc-value { font-size: 24px; font-weight: 800; letter-spacing: -0.03em; color: var(--green); line-height: 1; margin-bottom: 4px; }
-  .bc-sub { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--text3); line-height: 1.5; }
-  .bc-formula { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); font-family: 'IBM Plex Mono', monospace; font-size: 9px; color: var(--text3); line-height: 1.7; }
-
-  /* ── SWAP CHART ── */
-  .chart-outer { position: relative; width: 100%; height: 320px; }
+  .mid-row { display: grid; grid-template-columns: 1fr 300px; gap: 20px; }
+  .chart-outer { position: relative; width: 100%; height: 300px; }
   .chart-outer canvas { position: absolute; top: 0; left: 0; width: 100% !important; height: 100% !important; }
-  .chart-controls { display: flex; gap: 8px; flex-wrap: wrap; }
-  .chart-btn { font-family: 'IBM Plex Mono', monospace; font-size: 9px; letter-spacing: 0.08em; padding: 5px 12px; border-radius: 3px; border: 1px solid var(--border2); background: transparent; color: var(--text3); cursor: pointer; transition: all 0.15s; text-transform: uppercase; }
-  .chart-btn:hover { color: var(--text2); border-color: var(--border3); }
-  .chart-btn.active { background: var(--blue-bg); border-color: var(--blue-border); color: var(--blue); }
-  .curve-legend { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 12px; }
-  .cl-item { display: flex; align-items: center; gap: 6px; font-family: 'IBM Plex Mono', monospace; font-size: 9px; color: var(--text3); }
-  .cl-dot { width: 8px; height: 8px; border-radius: 50%; }
+  .chart-legend { display: flex; gap: 20px; }
+  .leg { display: flex; align-items: center; gap: 7px; font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--text3); }
+  .leg-line { width: 18px; height: 2px; border-radius: 1px; }
 
-  /* ── WEDNESDAY TABLE ── */
-  .wed-table { width: 100%; border-collapse: collapse; font-size: 11px; }
-  .wed-table th { font-family: 'IBM Plex Mono', monospace; font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text3); padding: 0 12px 10px; border-bottom: 1px solid var(--border); text-align: right; }
-  .wed-table th:first-child { text-align: left; }
-  .wed-table td { padding: 10px 12px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--text2); border-bottom: 1px solid var(--border); text-align: right; }
-  .wed-table td:first-child { text-align: left; }
-  .wed-table tr:last-child td { border-bottom: none; }
-  .wed-table tr:hover td { background: var(--bg2); }
-  .open-badge { display: inline-block; padding: 2px 7px; border-radius: 3px; font-size: 8px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
-  .open-badge.yes { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
-  .open-badge.no { background: var(--bg3); color: var(--text3); border: 1px solid var(--border); }
+  .weights-list { display: flex; flex-direction: column; gap: 10px; }
+  .weight-row { display: grid; grid-template-columns: 70px 1fr 46px; align-items: center; gap: 8px; }
+  .w-ticker { font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 500; color: var(--text1); }
+  .w-bar-bg { height: 3px; background: var(--bg3); border-radius: 2px; }
+  .w-bar { height: 3px; background: var(--accent); border-radius: 2px; }
+  .w-pct { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--text2); text-align: right; }
 
-  /* ── MISC ── */
+  .holdings-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  thead th { font-family: 'IBM Plex Mono', monospace; font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text3); padding: 0 12px 10px; border-bottom: 1px solid var(--border); text-align: right; white-space: nowrap; }
+  thead th:first-child { text-align: left; }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background 0.15s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: var(--bg2); }
+  tbody td { padding: 11px 12px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--text2); text-align: right; white-space: nowrap; }
+  tbody td:first-child { text-align: left; }
+  .td-ticker { display: flex; align-items: center; gap: 10px; }
+  .ticker-badge { width: 30px; height: 30px; border-radius: 5px; background: var(--bg3); border: 1px solid var(--border2); display: flex; align-items: center; justify-content: center; font-size: 8px; font-weight: 700; color: var(--text2); letter-spacing: 0.05em; flex-shrink: 0; }
+  .ticker-name-cell { font-size: 11px; color: var(--text1); font-weight: 500; }
+  .pos { color: var(--green); } .neg { color: var(--red); } .neutral { color: var(--text2); }
+  .sig { display: inline-block; padding: 3px 9px; border-radius: 3px; font-size: 9px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; }
+  .sig-in { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
+  .sig-out { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-border); }
+  .tbl-bar-wrap { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
+  .tbl-bar-bg { width: 50px; height: 3px; background: var(--bg3); border-radius: 2px; }
+  .tbl-bar { height: 3px; background: var(--accent); border-radius: 2px; }
+
   .loading { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 60vh; gap: 16px; }
-  .spinner { width: 32px; height: 32px; border-radius: 50%; border: 2px solid var(--border2); border-top-color: var(--green); animation: spin 0.8s linear infinite; }
+  .spinner { width: 36px; height: 36px; border-radius: 50%; border: 2px solid var(--border2); border-top-color: var(--accent); animation: spin 0.8s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
   .loading-text { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--text3); letter-spacing: 0.1em; }
   .error-box { background: var(--red-bg); border: 1px solid var(--red-border); border-radius: 6px; padding: 20px 24px; max-width: 520px; }
-  .footer { margin-top: 40px; padding: 24px 36px; border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  .error-title { color: var(--red); font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 500; margin-bottom: 8px; }
+  .error-detail { color: var(--text2); font-family: 'IBM Plex Mono', monospace; font-size: 10px; line-height: 1.7; }
+
+  .footer { margin-top: 48px; padding: 24px 36px; border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
   .footer-text { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--text3); line-height: 1.6; }
+
   .fade-in { animation: fadeIn 0.5s ease forwards; }
   @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-  .section-divider { font-family: 'IBM Plex Mono', monospace; font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text3); padding: 4px 0 2px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
-  @media (max-width: 700px) {
-    .main { padding: 20px 16px; }
-    .hero { padding: 36px 16px 28px; }
-    .topbar { padding: 0 16px; }
-    .forecast-grid, .benefit-row, .two-col { grid-template-columns: 1fr; }
-  }
 </style>
 </head>
 <body>
 <div id="app">
   <div class="loading">
     <div class="spinner"></div>
-    <div class="loading-text">Laster rentedata...</div>
+    <div class="loading-text">Fetching live data...</div>
   </div>
 </div>
 
 <script>
 // ── CONFIG ──
-// Published CSV endpoints — using the gviz/tq API with the private sheet ID
-const PRIVATE_SHEET_ID = '1PIZWStO5waUY7He56kiqK683_SpyM3UOiNo5pIZaT7Y';
+// Sheet ID (the short ID from the normal Google Sheets URL)
+const SHEET_ID = '18ZCDtj1DEEYpdfqP_el3HbQQfCHzyLesOxiy7pZD5-M';
+
+// GIDs for each tab (from File > Share > Publish to web URLs)
 const GIDS = {
-  renter: '70515895',
-  swaps:  '678947345'
+  summary:         '1991473757',
+  relWeights:      '1196691058',
+  portReturn:      '1911670326',
+  eligibleTickers: '228386853'
 };
 
-// ── DATA FETCHING ──
-async function fetchSheet(gid) {
-  const url = `https://docs.google.com/spreadsheets/d/${PRIVATE_SHEET_ID}/gviz/tq?tqx=out:csv&gid=${gid}`;
+// ── FETCH VIA GOOGLE VISUALIZATION QUERY API ──
+// gviz/tq is Google's own CORS-enabled endpoint — works with the short sheet ID.
+// Must use the short ID (not the long PACX- published ID).
+async function fetchSheet(key) {
+  const url = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID +
+              '/gviz/tq?tqx=out:csv&gid=' + GIDS[key];
   const res = await fetch(url, { cache: 'no-cache' });
-  if (!res.ok) throw new Error('HTTP ' + res.status);
-  return parseCSV(await res.text());
+  if (!res.ok) throw new Error('HTTP ' + res.status + ' fetching ' + key);
+  const text = await res.text();
+  if (!text || text.trim().length < 5) throw new Error('Empty response for ' + key);
+  return parseCSV(text);
 }
 
+// ── CSV PARSER ──
 function parseCSV(raw) {
   function splitLine(line) {
-    const result = []; let cur = '', inQ = false;
+    const result = [];
+    let cur = '', inQ = false;
     for (let i = 0; i < line.length; i++) {
       const c = line[i];
       if (c === '"') { inQ = !inQ; continue; }
@@ -204,588 +176,233 @@ function parseCSV(raw) {
   });
 }
 
-function pct(v) {
-  // handles "4.621%" or "4.621" or "0.04621"
-  if (!v || v === '') return null;
-  const s = String(v).replace('%', '').trim();
-  const n = parseFloat(s);
-  if (isNaN(n)) return null;
-  // if value looks like it's already in pct form (> 0.5) return as-is
-  return n > 0.5 ? n : n * 100;
-}
-function num(v) { const n = parseFloat(String(v).replace('%','')); return isNaN(n) ? null : n; }
+function num(v) { const n = parseFloat(v); return isNaN(n) ? null : n; }
+function tickerShort(t) { return (t || '').replace(/\.OL$|\.OS$/i, '').substring(0, 8); }
+function tickerInitials(t) { return tickerShort(t).substring(0, 2).toUpperCase(); }
 
-// ── DATE HELPERS ──
-const TODAY = new Date();
-
-function isFixingWindow(date) {
-  // Open: 10th–17th of Feb, Apr, Jun, Aug, Oct, Dec
-  const d = new Date(date);
-  const month = d.getMonth() + 1; // 1-12
-  const day = d.getDate();
-  const evenMonth = month % 2 === 0;
-  return evenMonth && day >= 10 && day <= 17;
-}
-
-function nextWindowInfo() {
-  // Find next opening date after today
-  const even = [2, 4, 6, 8, 10, 12];
-  const now = new Date(TODAY);
-  for (let i = 0; i < 24; i++) {
-    const m = now.getMonth() + 1;
-    const d = now.getDate();
-    if (even.includes(m) && d < 10) {
-      // window opens this month
-      const opens = new Date(now.getFullYear(), now.getMonth(), 10);
-      const days = Math.round((opens - NOW_MS) / 86400000);
-      return { month: opens.toLocaleString('no-NO', {month:'long', year:'numeric'}), days };
-    }
-    if (even.includes(m) && d > 17) {
-      // passed this month's window, go to next even month
-    }
-    // advance month
-    now.setDate(1);
-    now.setMonth(now.getMonth() + 1);
+// ── COMPUTE KPIs ──
+function computeKPIs(summary) {
+  const live = summary.filter(r => num(r.IndexedReturn) > 0);
+  if (!live.length) return null;
+  let latest = live[live.length - 1];
+  for (let i = live.length - 1; i >= 0; i--) {
+    if (live[i].Period && num(live[i].PortReturn) !== null) { latest = live[i]; break; }
   }
-  return null;
-}
-
-const NOW_MS = TODAY.getTime();
-
-function daysUntil(dateStr) {
-  const d = new Date(dateStr);
-  return Math.round((d - TODAY) / 86400000);
-}
-
-function formatDate(dateStr) {
-  if (!dateStr) return '';
-  const d = new Date(dateStr);
-  if (isNaN(d)) return dateStr;
-  return d.toLocaleDateString('no-NO', {day:'numeric', month:'short', year:'numeric'});
-}
-
-// ── WINDOW STATUS ──
-function getWindowStatus() {
-  const m = TODAY.getMonth() + 1;
-  const d = TODAY.getDate();
-  const evenMonths = [2, 4, 6, 8, 10, 12];
-  const isEven = evenMonths.includes(m);
-
-  if (isEven && d >= 10 && d <= 17) {
-    return { state: 'open', label: 'Vindu er åpent', color: 'open' };
-  }
-
-  // Find next window
-  let y = TODAY.getFullYear();
-  let searchM = m;
-  for (let i = 0; i < 14; i++) {
-    searchM++;
-    if (searchM > 12) { searchM = 1; y++; }
-    if (evenMonths.includes(searchM)) {
-      const opens = new Date(y, searchM - 1, 10);
-      const daysLeft = Math.round((opens - TODAY) / 86400000);
-      const monthName = opens.toLocaleString('no-NO', {month:'long'});
-      if (daysLeft <= 30) {
-        return { state: 'soon', label: `Neste vindu åpner om ${daysLeft} dager`, sub: `10.–17. ${monthName} ${y}`, color: 'soon', daysLeft };
-      }
-      return { state: 'closed', label: `Neste vindu: 10.–17. ${monthName} ${y}`, sub: `${daysLeft} dager`, color: 'closed', daysLeft };
-    }
-  }
-  return { state: 'closed', label: 'Ingen aktiv periode', color: 'closed' };
-}
-
-// ── PARSE RENTER DATA ──
-function parseRenterData(rows) {
-  // Expected columns (from your data):
-  // Period | Wednesdays(date) | 1week | 1month | 2month | 3month | 6month | Variabel | 3yr | 5yr | 10yr | Open | fwd3yr | fwd5yr | fwd10yr
-  // We detect columns by position since header names may vary
-  if (!rows.length) return { wednesdays: [], periods: {} };
-
-  // Group by Period (EOM date)
-  const periods = {};
-  const wednesdays = [];
-
-  rows.forEach(row => {
-    const vals = Object.values(row);
-    const keys = Object.keys(row);
-
-    // Try to identify columns by their content
-    const period   = vals[0];   // EOM date
-    const wedDate  = vals[1];   // Wednesday date
-    const variabel = pct(vals[7]);
-    const rate3yr  = pct(vals[8]);
-    const rate5yr  = pct(vals[9]);
-    const rate10yr = pct(vals[10]);
-    const openInd  = parseInt(vals[11]) || 0;
-    const fwd3yr   = num(vals[12]);
-    const fwd5yr   = num(vals[13]);
-    const fwd10yr  = num(vals[14]);
-
-    if (!period || !wedDate) return;
-
-    wednesdays.push({
-      period, wedDate, variabel,
-      rate3yr, rate5yr, rate10yr,
-      open: openInd === 1,
-      fwd3yr, fwd5yr, fwd10yr
-    });
-
-    if (!periods[period]) {
-      periods[period] = {
-        period, variabel,
-        wednesdays: [],
-        fwd3yr: null, fwd5yr: null, fwd10yr: null
-      };
-    }
-    periods[period].wednesdays.push({ wedDate, rate3yr, rate5yr, rate10yr, open: openInd === 1 });
-    // Forward rates — take first non-null value
-    if (fwd3yr  && !periods[period].fwd3yr)  periods[period].fwd3yr  = fwd3yr;
-    if (fwd5yr  && !periods[period].fwd5yr)  periods[period].fwd5yr  = fwd5yr;
-    if (fwd10yr && !periods[period].fwd10yr) periods[period].fwd10yr = fwd10yr;
+  const idxRet = num(latest.IndexedReturn);
+  const totalReturn = ((idxRet / 100) - 1) * 100;
+  const weeks = live.length;
+  const years = weeks / 52;
+  const annReturn = years > 0 ? (Math.pow(idxRet / 100, 1 / years) - 1) * 100 : 0;
+  const weeklyRets = live.map(r => num(r.PortReturn)).filter(v => v !== null);
+  const mean = weeklyRets.reduce((a, b) => a + b, 0) / weeklyRets.length;
+  const variance = weeklyRets.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / weeklyRets.length;
+  const weeklyVol = Math.sqrt(variance);
+  const rfWeekly = 0.0425 / 52;
+  const sharpe = weeklyVol > 0 ? (mean - rfWeekly) / weeklyVol * Math.sqrt(52) : 0;
+  let peak = -Infinity, maxDD = 0;
+  live.forEach(r => {
+    const idx = num(r.IndexedReturn);
+    if (!idx) return;
+    if (idx > peak) peak = idx;
+    const dd = (idx - peak) / peak * 100;
+    if (dd < maxDD) maxDD = dd;
   });
-
-  return { wednesdays, periods };
-}
-
-// ── PARSE SWAP DATA ──
-function parseSwapData(rows) {
-  // Columns: Timestamp | Date | 1Y | 2Y | 3Y | 4Y | 5Y | 6Y | 7Y | 8Y | 9Y | 10Y | 12Y | 15Y
-  const maturities = ['1Y','2Y','3Y','4Y','5Y','6Y','7Y','8Y','9Y','10Y','12Y','15Y'];
-  const matYears = [1,2,3,4,5,6,7,8,9,10,12,15];
-  const series = {}; // date -> {maturity: price}
-  const byDate = [];
-
-  rows.forEach(row => {
-    const vals = Object.values(row);
-    const date = vals[1] || vals[0];
-    if (!date || date.length < 8) return;
-    const entry = { date };
-    maturities.forEach((m, i) => {
-      const v = num(vals[i + 2]);
-      entry[m] = v;
-    });
-    byDate.push(entry);
-  });
-
-  // Deduplicate by date, keep last
-  const byDateMap = {};
-  byDate.forEach(e => { byDateMap[e.date] = e; });
-  const sorted = Object.values(byDateMap).sort((a,b) => a.date.localeCompare(b.date));
-
-  return { sorted, maturities, matYears };
-}
-
-// ── CURRENT OBSERVATION PERIOD ──
-function getCurrentObsPeriod(renterData) {
-  // The observation month is the current or most recent even month
-  // Lånekassen observes every Wednesday of that month
-  const m = TODAY.getMonth() + 1;
-  const y = TODAY.getFullYear();
-  const evenMonths = [2,4,6,8,10,12];
-
-  // Find the current EOM period that matches current month
-  // or the most recent period with data
-  const periodKeys = Object.keys(renterData.periods).sort();
-  if (!periodKeys.length) return null;
-
-  // Find current month period
-  const currentPeriodKey = periodKeys.find(p => {
-    const d = new Date(p);
-    return d.getMonth() + 1 === m && d.getFullYear() === y;
-  });
-
-  const periodKey = currentPeriodKey || periodKeys[periodKeys.length - 1];
-  const period = renterData.periods[periodKey];
-  if (!period) return null;
-
-  // Wednesdays in this period
-  const weds = period.wednesdays;
-  const observed = weds.filter(w => {
-    const wd = new Date(w.wedDate);
-    return wd <= TODAY && (w.rate3yr || w.rate5yr || w.rate10yr);
-  });
-  const pending = weds.filter(w => new Date(w.wedDate) > TODAY);
-
-  // Running averages from observed
-  const avg3  = observed.length ? observed.reduce((s,w) => s + (w.rate3yr||0), 0) / observed.length : null;
-  const avg5  = observed.length ? observed.reduce((s,w) => s + (w.rate5yr||0), 0) / observed.length : null;
-  const avg10 = observed.length ? observed.reduce((s,w) => s + (w.rate10yr||0), 0) / observed.length : null;
-
-  // Confidence = observed / total wednesdays
-  const total = weds.length || 5;
-  const confidence = observed.length / total;
-
   return {
-    periodKey, period,
-    weds, observed, pending,
-    avg3, avg5, avg10,
-    confidence,
-    total,
-    observedCount: observed.length
+    totalReturn: totalReturn.toFixed(1),
+    annReturn: annReturn.toFixed(1),
+    sharpe: sharpe.toFixed(2),
+    maxDD: maxDD.toFixed(1),
+    latestDate: latest.Period,
+    weeks
   };
 }
 
 // ── RENDER ──
-function render(renterData, swapData) {
-  const winStatus = getWindowStatus();
-  const obs = getCurrentObsPeriod(renterData);
+function render(summary, relWeights, portReturn, eligibleTickers) {
+  const kpis = computeKPIs(summary);
+  const liveSummary = summary.filter(r => num(r.IndexedReturn) > 0);
 
-  // Find June period (the activation month) — 2 months after current obs period
-  const obsMon = obs ? new Date(obs.periodKey) : new Date();
-  const activationDate = new Date(obsMon.getFullYear(), obsMon.getMonth() + 2, 1);
-  const activationPeriodKey = Object.keys(renterData.periods).find(p => {
-    const d = new Date(p);
-    return d.getMonth() === activationDate.getMonth() && d.getFullYear() === activationDate.getFullYear();
+  // Latest weights row — skip date column, treat rest as ticker: weight
+  const liveW = relWeights.filter(row => Object.values(row).some(v => num(v) > 0.0001));
+  const latestWRow = liveW[liveW.length - 1] || {};
+  const allCols = Object.keys(latestWRow);
+  const tickerCols = allCols.filter(k => k && !k.match(/^\d{4}-/) && k.toLowerCase() !== 'date' && k.trim() !== '');
+  const weightEntries = tickerCols
+    .map(ticker => ({ ticker, weight: num(latestWRow[ticker]) }))
+    .filter(e => e.weight !== null && Math.abs(e.weight) > 0.0001)
+    .sort((a, b) => Math.abs(b.weight) - Math.abs(a.weight));
+
+  // Eligible tickers set
+  const eligSet = new Set();
+  if (eligibleTickers && eligibleTickers.length) {
+    const liveE = eligibleTickers.filter(r => Object.values(r).some(v => v && v.includes('.')));
+    const lastE = liveE[liveE.length - 1] || {};
+    Object.values(lastE).forEach(v => { if (v && v.includes('.')) eligSet.add(v.trim()); });
+  }
+
+  const maxW = weightEntries.length ? Math.max(...weightEntries.map(e => Math.abs(e.weight))) : 1;
+  const perfLabels = liveSummary.map(r => r.Period);
+  const perfData = liveSummary.map(r => {
+    const v = num(r.IndexedReturn);
+    return v !== null ? parseFloat(((v / 100 - 1) * 100).toFixed(2)) : null;
   });
-  const activationPeriod = activationPeriodKey ? renterData.periods[activationPeriodKey] : null;
 
-  // Forward rates for activation period
-  const fwd3  = activationPeriod?.fwd3yr  || obs?.avg3  || null;
-  const fwd5  = activationPeriod?.fwd5yr  || obs?.avg5  || null;
-  const fwd10 = activationPeriod?.fwd10yr || obs?.avg10 || null;
-
-  // Current variable rate
-  const latestVarRow = [...renterData.wednesdays].reverse().find(w => w.variabel);
-  const variabel = latestVarRow?.variabel || null;
-
-  // Benefit calculation
-  // When you fix at rate X and cancel when Lånekassen rate becomes Y (Y > X),
-  // Lånekassen compensates (Y - X) / n_months worth of interest on your balance
-  // Approximate: benefit per 100k NOK over the fixed period ≈ (Y - X) * balance * months / 12
-  // Here we model: fix now in April window → active June → Lånekassen rate is fwd rate
-  // Benefit = (fwd - current_fixed) * balance * (months_fixed / 12) — simplified
-  // The numbers in your sheet (21.21, 19.49, 14.57) appear to be kr per 100k per month
-  // Let's display both the rate spread and the kr benefit
-
-  function calcBenefit(fwdRate, maturityYears, balanceNOK) {
-    if (!fwdRate || !variabel) return null;
-    const spread = fwdRate - variabel; // pp
-    if (spread <= 0) return null;
-    // Compensation ≈ spread% * balance * (1/12) per month, discounted
-    // Simplified: Lånekassen pays out the PV of interest differential
-    const monthlyBenefit = (spread / 100) * balanceNOK / 12;
-    return { spread, monthlyBenefit, annual: monthlyBenefit * 12 };
+  function getLatestReturn(ticker) {
+    const rows = portReturn.filter(r => r[ticker] && num(r[ticker]) !== null);
+    if (!rows.length) return null;
+    return num(rows[rows.length - 1][ticker]);
   }
-
-  const bal = 100000; // display per 100k
-  const b3  = calcBenefit(fwd3,  3,  bal);
-  const b5  = calcBenefit(fwd5,  5,  bal);
-  const b10 = calcBenefit(fwd10, 10, bal);
-
-  // Swap chart data
-  const { sorted: swapRows, maturities: swapMats, matYears } = swapData;
-  const recentSwaps = swapRows.slice(-90); // last 90 days
-  const latestSwap  = swapRows[swapRows.length - 1] || {};
-
-  // Month name helpers
-  const monthNames = ['jan','feb','mar','apr','mai','jun','jul','aug','sep','okt','nov','des'];
-  const obsMonthName = monthNames[obsMon.getMonth()];
-  const waitMonthName = monthNames[(obsMon.getMonth() + 1) % 12];
-  const actMonthName = monthNames[(obsMon.getMonth() + 2) % 12];
-
-  // Wednesday dots for forecast cards
-  function wedDots(totalW, observedN) {
-    return Array.from({length: totalW}, (_,i) =>
-      `<div class="fc-wed ${i < observedN ? 'observed' : 'pending'}">${i+1}</div>`
-    ).join('');
-  }
-
-  const confPct = obs ? Math.round(obs.confidence * 100) : 0;
-  const confColor = confPct >= 80 ? 'var(--green)' : confPct >= 40 ? 'var(--amber)' : 'var(--blue)';
 
   document.getElementById('app').innerHTML = `
     <div class="topbar fade-in">
-      <a href="/" class="logo-wrap" style="text-decoration:none">
+      <div class="logo-wrap">
         <div class="logo">Slensvik<span class="logo-dot">.</span>com</div>
         <div class="logo-sub">Galton Algorithm · Oslo Børs</div>
-      </a>
+      </div>
       <div class="topbar-right">
-        <a href="/" class="nav-back">← Tilbake</a>
+        <a href="fastrente.html" style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text2);text-decoration:none;padding:6px 14px;border:1px solid var(--border2);border-radius:4px;transition:all 0.2s" onmouseover="this.style.color='var(--text1)';this.style.borderColor='var(--border3)'" onmouseout="this.style.color='var(--text2)';this.style.borderColor='var(--border2)'">Fastrente →</a>
+        <div id="market-status"></div>
+        <span id="last-updated">${kpis ? 'Updated: ' + kpis.latestDate : ''}</span>
       </div>
     </div>
 
     <div class="hero fade-in">
-      <div class="hero-eyebrow">Lånekassen · Rentesstrategi</div>
-      <h1 class="hero-title">Fastrente<br><span>Strategi</span></h1>
-      <p class="hero-desc">Lånekassen observerer de 5 beste fastrentene i markedet hver onsdag i observasjonsperioden, trekker fra 0,15 prosentpoeng og konverterer til nominell rente. Den resulterende fastrenten aktiveres to måneder etter observasjonsperioden — og fordi vi vet dette på forhånd, kan vi beregne gevinsten allerede nå.</p>
+      <div class="hero-grid">
+        <div class="hero-left">
+          <div class="hero-eyebrow">Quantitative Equity Strategy</div>
+          <h1 class="hero-title">The Galton<br><span>Investment</span><br>Algorithm</h1>
+          <p class="hero-desc">A systematic, weekly-rebalanced long/short equity strategy applied to the Oslo Stock Exchange. Built on market cap eligibility screening, momentum, and cross-sectional ranking.</p>
+        </div>
+        <div class="hero-right">
+          <div class="kpi green">
+            <div class="kpi-accent-line"></div>
+            <div class="label">Total Return</div>
+            <div class="value">${kpis ? (parseFloat(kpis.totalReturn) >= 0 ? '+' : '') + kpis.totalReturn + '%' : '—'}</div>
+            <div class="sub">Since inception</div>
+          </div>
+          <div class="kpi green">
+            <div class="kpi-accent-line"></div>
+            <div class="label">Ann. Return</div>
+            <div class="value">${kpis ? (parseFloat(kpis.annReturn) >= 0 ? '+' : '') + kpis.annReturn + '%' : '—'}</div>
+            <div class="sub">${kpis ? kpis.weeks + ' weeks' : ''}</div>
+          </div>
+          <div class="kpi blue">
+            <div class="kpi-accent-line"></div>
+            <div class="label">Sharpe Ratio</div>
+            <div class="value">${kpis ? kpis.sharpe : '—'}</div>
+            <div class="sub">rf = 4.25% p.a.</div>
+          </div>
+          <div class="kpi ${kpis && parseFloat(kpis.maxDD) < -15 ? 'red' : 'amber'}">
+            <div class="kpi-accent-line"></div>
+            <div class="label">Max Drawdown</div>
+            <div class="value">${kpis ? kpis.maxDD + '%' : '—'}</div>
+            <div class="sub">Peak-to-trough</div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div class="main fade-in">
-
-      <!-- ── WINDOW BANNER ── -->
-      <div class="window-banner ${winStatus.color}">
-        <div class="banner-left">
-          <div class="banner-icon ${winStatus.color}">
-            ${winStatus.state === 'open' ? '🟢' : winStatus.state === 'soon' ? '🟡' : '⚪'}
-          </div>
-          <div>
-            <div class="banner-title ${winStatus.color}">${winStatus.label}</div>
-            <div class="banner-sub">${winStatus.sub || 'Bindingsperiode: 10.–17. i par måneder (feb, apr, jun, aug, okt, des)'}</div>
-          </div>
-        </div>
-        <div class="banner-right">
-          I dag: ${TODAY.toLocaleDateString('no-NO', {weekday:'long', day:'numeric', month:'long', year:'numeric'})}
-        </div>
-      </div>
-
-      <!-- ── TIMELINE ── -->
-      <div class="card">
-        <div class="card-header">
-          <span class="card-title">Hvordan fastrenten bestemmes</span>
-          <span class="card-meta">Tre-fase prosess</span>
-        </div>
-        <div class="timeline">
-          <div class="tl-step">
-            <div class="tl-dot active">OBS</div>
-            <div class="tl-label"><strong>${obsMonthName.toUpperCase()}</strong>Observasjon<br>5 onsdager<br>Finansportalen</div>
-          </div>
-          <div class="tl-step">
-            <div class="tl-dot future">⏳</div>
-            <div class="tl-label"><strong>${waitMonthName.toUpperCase()}</strong>Venteperiode<br>Ingen endring<br>mulig</div>
-          </div>
-          <div class="tl-step">
-            <div class="tl-dot future">★</div>
-            <div class="tl-label"><strong>${actMonthName.toUpperCase()}</strong>Aktivering<br>Ny fastrente<br>gjelder fra</div>
-          </div>
-        </div>
-        <div class="section-divider">Strategi</div>
-        <p style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text2);line-height:1.8;max-width:700px">
-          Dersom fastrenten som aktiveres i <strong style="color:var(--text1)">${actMonthName}</strong> er <em>høyere</em> enn dagens nivå, kan du binde renten nå og avslutte bindingen i ${actMonthName}. Lånekassen vil da kompensere deg med en reduksjon i lånesaldoen tilsvarende gevinsten de ville fått ved å selge bindingen til noen andre. Denne gevinsten er forutsigbar allerede nå.
-        </p>
-      </div>
-
-      <!-- ── RATE FORECAST ── -->
-      <div class="card">
-        <div class="card-header">
-          <span class="card-title">Estimert Lånekassen-rente · ${actMonthName.toUpperCase()}</span>
-          <span class="card-meta">${obs ? obs.observedCount + ' av ' + obs.total + ' onsdager observert' : 'laster...'}</span>
-        </div>
-        <div class="forecast-grid">
-          ${[
-            { label: '3-årig binding', key: '3y', avg: obs?.avg3, fwd: fwd3, b: b3, color: '#4d8fff' },
-            { label: '5-årig binding', key: '5y', avg: obs?.avg5, fwd: fwd5, b: b5, color: '#9b7fff' },
-            { label: '10-årig binding', key: '10y', avg: obs?.avg10, fwd: fwd10, b: b10, color: '#00e5a0' }
-          ].map(fc => `
-            <div class="forecast-card">
-              <div class="fc-accent-top" style="background:${fc.color}; opacity:0.6"></div>
-              <div class="fc-label">${fc.label}</div>
-              <div class="fc-rate" style="color:${fc.color}">${fc.fwd != null ? fc.fwd.toFixed(2) + '%' : fc.avg != null ? fc.avg.toFixed(2) + '%*' : '—'}</div>
-              <div class="fc-sub">${fc.fwd != null ? 'Lånekassen nominell · ' + actMonthName : fc.avg != null ? 'Løpende estimat · ' + obsMonthName : 'Ingen data ennå'}</div>
-              <div class="fc-confidence">
-                <div class="fc-conf-label">
-                  <span>Sikkerhet</span>
-                  <span style="color:${confColor}">${confPct}%</span>
-                </div>
-                <div class="fc-bar-bg"><div class="fc-bar" style="width:${confPct}%;background:${confColor}"></div></div>
-              </div>
-              <div class="fc-wednesdays">${obs ? wedDots(obs.total, obs.observedCount) : ''}</div>
+      <div class="mid-row">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Cumulative Performance</span>
+            <div class="chart-legend">
+              <div class="leg"><div class="leg-line" style="background:#4d8fff"></div>Galton Strategy</div>
             </div>
-          `).join('')}
+          </div>
+          <div class="chart-outer"><canvas id="perfChart"></canvas></div>
         </div>
-        <div style="margin-top:12px;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--text3)">
-          * Estimat basert på onsdager observert hittil. Konfidensintervallet øker for hver observasjonsdag.
-          Endelig rente publiseres av Lånekassen ved månedslutt.
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Current Weights</span>
+            <span class="card-meta">${weightEntries.length} positions</span>
+          </div>
+          <div class="weights-list">
+            ${weightEntries.map(e => {
+              const isShort = e.weight < 0;
+              const pct = (Math.abs(e.weight)/maxW*100).toFixed(1);
+              const col = isShort ? 'var(--red)' : 'var(--accent)';
+              return '<div class="weight-row">' +
+                '<div class="w-ticker" style="color:' + (isShort ? 'var(--red)' : 'var(--text1)') + '">' + tickerShort(e.ticker) + '</div>' +
+                '<div class="w-bar-bg"><div class="w-bar" style="width:' + pct + '%;background:' + col + '"></div></div>' +
+                '<div class="w-pct" style="color:' + (isShort ? 'var(--red)' : 'var(--text2)') + '">' + (isShort ? '' : '+') + (e.weight*100).toFixed(1) + '%</div>' +
+                '</div>';
+            }).join('') || '<div class="loading-text">No weight data</div>'}
+          </div>
         </div>
       </div>
 
-      <!-- ── BENEFIT PANEL ── -->
       <div class="card">
         <div class="card-header">
-          <span class="card-title">Potensiell gevinst · per 100 000 kr lånesaldo</span>
-          <span class="card-meta">Variabel: ${variabel != null ? variabel.toFixed(3) + '%' : '—'}</span>
+          <span class="card-title">Portfolio Holdings · Weekly Signals</span>
+          <span class="card-meta">Week of ${kpis ? kpis.latestDate : ''}</span>
         </div>
-        ${(b3 || b5 || b10) ? `
-        <div class="benefit-row">
-          ${[
-            {label:'3-årig', b:b3, color:'var(--blue)'},
-            {label:'5-årig', b:b5, color:'var(--purple)'},
-            {label:'10-årig', b:b10, color:'var(--green)'}
-          ].map(({label,b,color}) => `
-            <div class="benefit-card">
-              <div class="bc-label">${label} binding</div>
-              ${b ? `
-                <div class="bc-value" style="color:${color}">+${Math.round(b.annual).toLocaleString('no-NO')} kr</div>
-                <div class="bc-sub">estimert årlig gevinst<br>per 100 000 kr saldo</div>
-                <div class="bc-formula">
-                  Rentespread: +${b.spread.toFixed(3)} pp<br>
-                  Månedlig: ~${Math.round(b.monthlyBenefit).toLocaleString('no-NO')} kr / 100k
-                </div>
-              ` : `
-                <div class="bc-value" style="color:var(--text3)">—</div>
-                <div class="bc-sub">Ingen gevinst estimert<br>for denne løpetiden</div>
-              `}
-            </div>
-          `).join('')}
-        </div>
-        <div style="margin-top:16px;padding:14px 16px;background:var(--amber-bg);border:1px solid var(--amber-border);border-radius:5px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--amber);line-height:1.8">
-          ⚠ Gevinsten realiseres kun dersom du binder renten nå og avslutter bindingen i ${actMonthName}.
-          Lånekassen kompenserer differansen mellom din bindingsrente og markedsrenten som en reduksjon i lånesaldoen.
-          Dette er ikke finansiell rådgivning.
-        </div>
-        ` : `
-        <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text3);padding:20px 0">
-          Ingen gevinst beregnet — enten mangler data, eller fremtidig rente er ikke høyere enn variabel rente.
-        </div>
-        `}
-      </div>
-
-      <!-- ── WEDNESDAY TABLE ── -->
-      <div class="card">
-        <div class="card-header">
-          <span class="card-title">Onsdagsobservasjoner · ${obsMonthName.toUpperCase()} ${obsMon.getFullYear()}</span>
-          <span class="card-meta">Finansportalen topp-5 gjennomsnitt</span>
-        </div>
-        <div style="overflow-x:auto">
-          <table class="wed-table">
+        <div class="holdings-wrap">
+          <table>
             <thead>
               <tr>
-                <th>Onsdag</th>
-                <th>3-årig eff%</th>
-                <th>5-årig eff%</th>
-                <th>10-årig eff%</th>
-                <th>Åpent vindu</th>
+                <th>Ticker</th>
+                <th>Weight</th>
+                <th>Latest Weekly Ret.</th>
+                <th>Eligible</th>
               </tr>
             </thead>
-            <tbody id="wedTable">
-              ${obs && obs.weds.length ? obs.weds.map(w => `
-                <tr>
-                  <td style="color:var(--text1)">${formatDate(w.wedDate)}</td>
-                  <td>${w.rate3yr != null ? w.rate3yr.toFixed(3) + '%' : '<span style="color:var(--text3)">—</span>'}</td>
-                  <td>${w.rate5yr != null ? w.rate5yr.toFixed(3) + '%' : '<span style="color:var(--text3)">—</span>'}</td>
-                  <td>${w.rate10yr != null ? w.rate10yr.toFixed(3) + '%' : '<span style="color:var(--text3)">—</span>'}</td>
-                  <td><span class="open-badge ${w.open ? 'yes' : 'no'}">${w.open ? 'åpent' : 'lukket'}</span></td>
-                </tr>
-              `).join('') : '<tr><td colspan="5" style="color:var(--text3);text-align:center;padding:20px">Ingen observasjoner ennå</td></tr>'}
+            <tbody>
+              ${weightEntries.map(e => {
+                const wPct = (e.weight * 100).toFixed(2);
+                const barW = (e.weight / maxW * 100).toFixed(1);
+                const ret = getLatestReturn(e.ticker);
+                const retStr = ret !== null
+                  ? '<span class="' + (ret >= 0 ? 'pos' : 'neg') + '">' + (ret >= 0 ? '+' : '') + (ret*100).toFixed(2) + '%</span>'
+                  : '<span class="neutral">—</span>';
+                const inElig = eligSet.size === 0 || eligSet.has(e.ticker);
+                const sig = eligSet.size
+                  ? (inElig ? '<span class="sig sig-in">IN</span>' : '<span class="sig sig-out">OUT</span>')
+                  : '<span class="sig sig-in">LONG</span>';
+                const isShort = e.weight < 0;
+                const barCol = isShort ? 'var(--red)' : 'var(--accent)';
+                const wLabel = (isShort ? '' : '+') + wPct + '%';
+                return '<tr>' +
+                  '<td><div class="td-ticker"><div class="ticker-badge" style="' + (isShort ? 'border-color:var(--red-border);color:var(--red)' : '') + '">' + tickerInitials(e.ticker) + '</div><div class="ticker-name-cell">' + tickerShort(e.ticker) + (isShort ? ' <span style="font-size:9px;color:var(--red);margin-left:4px">SHORT</span>' : '') + '</div></div></td>' +
+                  '<td><div class="tbl-bar-wrap"><div class="tbl-bar-bg"><div class="tbl-bar" style="width:' + barW + '%;background:' + barCol + '"></div></div><span style="color:' + (isShort ? 'var(--red)' : 'var(--text2)') + '">' + wLabel + '</span></div></td>' +
+                  '<td>' + retStr + '</td>' +
+                  '<td>' + sig + '</td>' +
+                  '</tr>';
+              }).join('')}
             </tbody>
           </table>
         </div>
       </div>
-
-      <!-- ── SWAP CURVE CHART ── -->
-      <div class="card">
-        <div class="card-header">
-          <span class="card-title">NOK Swapkurve · SEB</span>
-          <div class="chart-controls" id="swapControls">
-            <button class="chart-btn active" data-mode="curve" onclick="setSwapMode('curve',this)">Kurve i dag</button>
-            <button class="chart-btn" data-mode="history3" onclick="setSwapMode('history3',this)">3Y historikk</button>
-            <button class="chart-btn" data-mode="history5" onclick="setSwapMode('history5',this)">5Y historikk</button>
-            <button class="chart-btn" data-mode="history10" onclick="setSwapMode('history10',this)">10Y historikk</button>
-            <button class="chart-btn" data-mode="animated" onclick="setSwapMode('animated',this)">Animert kurve</button>
-          </div>
-        </div>
-        <div class="chart-outer"><canvas id="swapChart"></canvas></div>
-        <div class="curve-legend" id="curveLegend"></div>
-        <div style="margin-top:8px;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--text3)" id="swapMeta">
-          Siste dato: ${latestSwap.date || '—'} · ${swapRows.length} datapunkter
-        </div>
-      </div>
-
     </div>
 
     <div class="footer">
-      <div class="footer-text">Slensvik.com · Fastrente Strategi<br>Kun til informasjonsformål. Ikke finansiell rådgivning.</div>
-      <div class="footer-text" style="text-align:right">Data: Finansportalen / SEB<br>Oppdateres daglig</div>
+      <div class="footer-text">Slensvik.com · Galton Investment Algorithm<br>For informational purposes only. Not financial advice.</div>
+      <div class="footer-text" style="text-align:right">Data: Oslo Børs via Google Finance<br>Rebalances every Monday</div>
     </div>
   `;
 
-  // ── SWAP CHART ENGINE ──
-  let swapChart = null;
-  let animFrame = null;
-  const COLORS = ['#4d8fff','#9b7fff','#00e5a0','#ffb020','#ff4060','#00c8ff','#ff8c42','#c0ff4d','#ff4dc4','#4dffc8','#ffd54d','#ff704d'];
-
-  const mats     = swapData.maturities;
-  const matYrs   = swapData.matYears;
-  const recent90 = swapRows.slice(-90);
-
-  function destroyChart() {
-    if (swapChart) { swapChart.destroy(); swapChart = null; }
-    if (animFrame) { clearInterval(animFrame); animFrame = null; }
-  }
-
-  function buildCurveChart() {
-    // Latest swap curve — all maturities as X axis
-    const latest = swapRows[swapRows.length - 1] || {};
-    const prev30  = swapRows[Math.max(0, swapRows.length - 30)] || {};
-    const prev90  = swapRows[Math.max(0, swapRows.length - 90)] || {};
-
-    document.getElementById('curveLegend').innerHTML = [
-      {label: 'I dag', color: '#4d8fff'},
-      {label: '−30 dager', color: 'rgba(77,143,255,0.35)'},
-      {label: '−90 dager', color: 'rgba(77,143,255,0.15)'},
-    ].map(l => `<div class="cl-item"><div class="cl-dot" style="background:${l.color}"></div>${l.label}</div>`).join('');
-
-    swapChart = new Chart(document.getElementById('swapChart').getContext('2d'), {
-      type: 'line',
-      data: {
-        labels: mats,
-        datasets: [
-          { label: 'I dag',     data: mats.map(m => latest[m] || null), borderColor: '#4d8fff', borderWidth: 2.5, pointRadius: 4, pointBackgroundColor: '#4d8fff', tension: 0.4, fill: false },
-          { label: '−30 dager', data: mats.map(m => prev30[m] || null), borderColor: 'rgba(77,143,255,0.35)', borderWidth: 1.5, pointRadius: 2, tension: 0.4, fill: false, borderDash: [4,3] },
-          { label: '−90 dager', data: mats.map(m => prev90[m] || null), borderColor: 'rgba(77,143,255,0.15)', borderWidth: 1, pointRadius: 0, tension: 0.4, fill: false, borderDash: [2,4] },
-        ]
-      },
-      options: chartOpts('Løpetid (år)', 'Swap rente (%)'),
-    });
-  }
-
-  function buildHistoryChart(mat) {
-    const labels = recent90.map(r => r.date);
-    const data   = recent90.map(r => r[mat] || null);
-    document.getElementById('curveLegend').innerHTML =
-      `<div class="cl-item"><div class="cl-dot" style="background:#4d8fff"></div>NOK ${mat} Swap · siste 90 dager</div>`;
-    swapChart = new Chart(document.getElementById('swapChart').getContext('2d'), {
-      type: 'line',
-      data: { labels, datasets: [{
-        data, borderColor: '#4d8fff',
+  new Chart(document.getElementById('perfChart').getContext('2d'), {
+    type: 'line',
+    data: {
+      labels: perfLabels,
+      datasets: [{
+        data: perfData,
+        borderColor: '#4d8fff',
         backgroundColor: ctx => {
           const {chartArea, ctx: c} = ctx.chart;
           if (!chartArea) return 'transparent';
           const g = c.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
-          g.addColorStop(0, 'rgba(77,143,255,0.14)'); g.addColorStop(1, 'rgba(77,143,255,0.01)');
+          g.addColorStop(0, 'rgba(77,143,255,0.16)');
+          g.addColorStop(1, 'rgba(77,143,255,0.01)');
           return g;
         },
-        borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, tension: 0.3, fill: true
-      }]},
-      options: chartOpts('Dato', 'Swap rente (%)', true),
-    });
-  }
-
-  function buildAnimatedChart() {
-    // Animate through swap curves chronologically — show last 20 days
-    const frames = swapRows.slice(-20);
-    if (!frames.length) return;
-    let idx = 0;
-
-    document.getElementById('curveLegend').innerHTML =
-      `<div class="cl-item"><div class="cl-dot" style="background:#4d8fff"></div><span id="animLabel">Animerer kurver...</span></div>`;
-
-    swapChart = new Chart(document.getElementById('swapChart').getContext('2d'), {
-      type: 'line',
-      data: {
-        labels: mats,
-        datasets: [{ label: '', data: mats.map(m => frames[0][m] || null), borderColor: '#4d8fff', borderWidth: 2.5, pointRadius: 4, pointBackgroundColor: '#4d8fff', tension: 0.4, fill: false }]
-      },
-      options: chartOpts('Løpetid', 'Swap rente (%)'),
-    });
-
-    animFrame = setInterval(() => {
-      if (!swapChart) { clearInterval(animFrame); return; }
-      const frame = frames[idx % frames.length];
-      swapChart.data.datasets[0].data = mats.map(m => frame[m] || null);
-      // Fade colour from old to new
-      const ratio = idx / frames.length;
-      const r = Math.round(0 + ratio * 77), g2 = Math.round(229 - ratio * 86), b2 = Math.round(160 - ratio * 15);
-      swapChart.data.datasets[0].borderColor = `rgb(${r},${g2},${b2})`;
-      swapChart.data.datasets[0].pointBackgroundColor = `rgb(${r},${g2},${b2})`;
-      swapChart.update('none');
-      const lbl = document.getElementById('animLabel');
-      if (lbl) lbl.textContent = frame.date;
-      idx = (idx + 1) % frames.length;
-    }, 400);
-  }
-
-  function chartOpts(xLabel, yLabel, dateX) {
-    return {
+        borderWidth: 2, pointRadius: 0, pointHoverRadius: 5,
+        pointHoverBackgroundColor: '#4d8fff', pointHoverBorderColor: '#0e1218', pointHoverBorderWidth: 2,
+        tension: 0.35, fill: true
+      }]
+    },
+    options: {
       responsive: true, maintainAspectRatio: false,
       interaction: { mode: 'index', intersect: false },
       plugins: {
@@ -794,46 +411,56 @@ function render(renterData, swapData) {
           backgroundColor: '#141820', borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1,
           titleColor: '#7f8799', bodyColor: '#e6eaf4',
           titleFont: { family: 'IBM Plex Mono', size: 10 },
-          bodyFont: { family: 'IBM Plex Mono', size: 11 }, padding: 12,
-          callbacks: { label: c => ' ' + (c.parsed.y != null ? c.parsed.y.toFixed(2) + '%' : '—') }
+          bodyFont: { family: 'IBM Plex Mono', size: 11 },
+          padding: 12,
+          callbacks: { label: c => ' ' + (c.parsed.y >= 0 ? '+' : '') + c.parsed.y.toFixed(2) + '%' }
         }
       },
       scales: {
-        x: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#434b5e', font: { size: 9, family: 'IBM Plex Mono' }, maxTicksLimit: dateX ? 10 : 15, maxRotation: 0 } },
-        y: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#434b5e', font: { size: 9, family: 'IBM Plex Mono' }, callback: v => v.toFixed(2) + '%' } }
+        x: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#434b5e', font: { size: 9, family: 'IBM Plex Mono' }, maxTicksLimit: 10, maxRotation: 0 } },
+        y: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#434b5e', font: { size: 9, family: 'IBM Plex Mono' }, callback: v => (v >= 0 ? '+' : '') + v.toFixed(0) + '%' } }
       }
-    };
-  }
+    }
+  });
+}
 
-  window.setSwapMode = function(mode, btn) {
-    document.querySelectorAll('.chart-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    destroyChart();
-    if (mode === 'curve')    buildCurveChart();
-    else if (mode === 'history3')  buildHistoryChart('3Y');
-    else if (mode === 'history5')  buildHistoryChart('5Y');
-    else if (mode === 'history10') buildHistoryChart('10Y');
-    else if (mode === 'animated')  buildAnimatedChart();
-  };
-
-  // Initial chart
-  buildCurveChart();
+// ── MARKET STATUS ──
+function updateMarketStatus() {
+  const el = document.getElementById('market-status');
+  if (!el) return;
+  // Oslo Børs: Mon-Fri 09:00-16:30 CET (UTC+1) / CEST (UTC+2 in summer)
+  const now = new Date();
+  const oslo = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Oslo' }));
+  const day = oslo.getDay(); // 0=Sun, 6=Sat
+  const h = oslo.getHours(), m = oslo.getMinutes();
+  const mins = h * 60 + m;
+  const isWeekday = day >= 1 && day <= 5;
+  const isMarketHours = mins >= 9*60 && mins < 16*60+30;
+  // Norwegian public holidays (fixed dates — extend as needed)
+  const holidays = ['01-01','05-01','05-17','12-25','12-26'];
+  const mmdd = String(oslo.getMonth()+1).padStart(2,'0') + '-' + String(oslo.getDate()).padStart(2,'0');
+  const isHoliday = holidays.includes(mmdd);
+  const isOpen = isWeekday && isMarketHours && !isHoliday;
+  el.className = isOpen ? 'status-dot' : 'status-dot-closed';
+  el.textContent = isOpen ? 'Market Open' : 'Market Closed';
 }
 
 // ── INIT ──
 (async () => {
   try {
-    const [renterRows, swapRows] = await Promise.all([
-      fetchSheet(GIDS.renter),
-      fetchSheet(GIDS.swaps)
+    const [summary, relWeights, portReturn, eligibleTickers] = await Promise.all([
+      fetchSheet('summary'),
+      fetchSheet('relWeights'),
+      fetchSheet('portReturn'),
+      fetchSheet('eligibleTickers').catch(e => { console.warn('eligibleTickers:', e); return []; })
     ]);
-    const renterData = parseRenterData(renterRows);
-    const swapData   = parseSwapData(swapRows);
-    render(renterData, swapData);
+    render(summary, relWeights, portReturn, eligibleTickers);
+    updateMarketStatus();
+    setInterval(updateMarketStatus, 60000); // refresh every minute
   } catch(err) {
     document.getElementById('app').innerHTML =
-      '<div class="loading"><div class="error-box"><div style="color:var(--red);font-family:\'IBM Plex Mono\',monospace;font-size:12px;font-weight:500;margin-bottom:8px">Feil ved lasting av data</div><div style="color:var(--text2);font-family:\'IBM Plex Mono\',monospace;font-size:10px;line-height:1.7">' +
-      err.message + '<br><br>Sjekk konsollen for detaljer.</div></div></div>';
+      '<div class="loading"><div class="error-box"><div class="error-title">Failed to load data</div><div class="error-detail">' +
+      err.message + '<br><br>Check browser console for details.</div></div></div>';
     console.error(err);
   }
 })();
