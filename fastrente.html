@@ -507,7 +507,7 @@ function render(renterData, swapData) {
     <div class="hero fade-in">
       <div class="hero-eyebrow">Lånekassen · Rentesstrategi</div>
       <h1 class="hero-title">Fastrente<br><span>Strategi</span></h1>
-      <p class="hero-desc">Lånekassen observerer de 5 beste fastrentene i markedet hver onsdag i observasjonsperioden, trekker fra 0,15 prosentpoeng og konverterer til nominell rente. Den resulterende fastrenten aktiveres to måneder etter observasjonsperioden — og fordi vi vet dette på forhånd, kan vi beregne gevinsten allerede nå.</p>
+      <p class="hero-desc">Lånekassen observerer de 5 beste fastrentene i markedet hver onsdag i observasjonsperioden, trekker fra 0,15 prosentpoeng og konverterer til nominell rente. Den resulterende fastrenten aktiveres to måneder etter observasjonsperioden</p>
     </div>
 
     <div class="main fade-in">
@@ -550,7 +550,7 @@ function render(renterData, swapData) {
         </div>
         <div class="section-divider">Strategi</div>
         <p style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text2);line-height:1.8;max-width:700px">
-          Dersom fastrenten som aktiveres i <strong style="color:var(--text1)">${actMonthName}</strong> er <em>høyere</em> enn dagens nivå, kan du binde renten nå og avslutte bindingen i ${actMonthName}. Lånekassen vil da kompensere deg med en reduksjon i lånesaldoen tilsvarende gevinsten de ville fått ved å selge bindingen til noen andre. Denne gevinsten er forutsigbar allerede nå.
+          Dersom fastrenten som aktiveres i <strong style="color:var(--text1)">${actMonthName}</strong> er <em>høyere</em> enn dagens nivå, kan du binde renten nå og avslutte bindingen i ${actMonthName}. 
         </p>
       </div>
 
@@ -584,7 +584,7 @@ function render(renterData, swapData) {
         </div>
         <div style="margin-top:12px;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--text3)">
           * Estimat basert på onsdager observert hittil. Konfidensintervallet øker for hver observasjonsdag.
-          Endelig rente publiseres av Lånekassen ved månedslutt.
+          Endelig rente publiseres ved månedslutt.
         </div>
       </div>
 
@@ -664,7 +664,7 @@ function render(renterData, swapData) {
       <!-- ── SWAP CURVE CHART ── -->
       <div class="card">
         <div class="card-header">
-          <span class="card-title">NOK Swapkurve · SEB</span>
+          <span class="card-title">Swapkurve · NOK</span>
           <div class="chart-controls" id="swapControls">
             <button class="chart-btn active" data-mode="curve" onclick="setSwapMode('curve',this)">Kurve i dag</button>
             <button class="chart-btn" data-mode="history3" onclick="setSwapMode('history3',this)">3Y historikk</button>
@@ -684,7 +684,7 @@ function render(renterData, swapData) {
 
     <div class="footer">
       <div class="footer-text">Slensvik.com · Fastrente Strategi<br>Kun til informasjonsformål. Ikke finansiell rådgivning.</div>
-      <div class="footer-text" style="text-align:right">Data: Finansportalen / SEB<br>Oppdateres daglig</div>
+      <div class="footer-text" style="text-align:right">Data: Hemmelighet!<br>Oppdateres daglig</div>
     </div>
   `;
 
