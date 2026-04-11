@@ -307,47 +307,29 @@ function getWindowStatus() {
 
 // ── PARSE RENTER DATA ──
 function parseRenterData(rows) {
-  if (!rows.length) return { wednesdays: [], periods: {}, debugHeaders: [] };
+  if (!rows.length) return { wednesdays: [], periods: {} };
 
-  // ── Column mapping — positional (confirmed layout) ──
-  // Period(0) | Wed(1) | 1w(2) | 1m(3) | 2m(4) | 3m(5) | 6m(6) | Variabel(7)
-  // | 3yr(8) | 5yr(9) | 10yr(10) | Open(11) | fwd3(12) | fwd5(13) | fwd10(14)
-  const headers = Object.keys(rows[0]);
-  const H = headers;
-  console.log('[Renter] headers:', headers);
-  console.log('[Renter] row sample:', rows.find(r => Object.values(r).some(v => v && v.includes && v.includes('%') && parseFloat(v) > 1)));
-
-  const COL = {
-    period:   H[0],
-    wedDate:  H[1],
-    variabel: H[7],
-    rate3yr:  H[8],
-    rate5yr:  H[9],
-    rate10yr: H[10],
-    open:     H[11],
-    fwd3yr:   H[12],
-    fwd5yr:   H[13],
-    fwd10yr:  H[14],
-  };
-  console.log('[Renter] COL map:', COL);
+  // Clean column names (set in sheet after restructure):
+  // date_eom | date_wednesday | nibor_1w | nibor_1m | nibor_2m | nibor_3m | nibor_6m
+  // | rate_variabel | rate_3yr | rate_5yr | rate_10yr | open_indicator
+  // | fp_obs_3yr | fp_obs_5yr | fp_obs_10yr | diff_bps_3yr | diff_bps_5yr | diff_bps_10yr
 
   const periods = {};
   const wednesdays = [];
 
   rows.forEach(row => {
-    const period   = row[COL.period];
-    const wedDate  = row[COL.wedDate];
+    const period   = row['date_eom'];
+    const wedDate  = row['date_wednesday'];
     if (!period || !wedDate) return;
 
-    const variabel = pct(row[COL.variabel]);
-    const rate3yr  = pct(row[COL.rate3yr]);
-    const rate5yr  = pct(row[COL.rate5yr]);
-    const rate10yr = pct(row[COL.rate10yr]);
-    const openRaw  = row[COL.open];
-    const openInd  = openRaw != null ? parseInt(openRaw) : 0;
-    const fwd3yr   = num(row[COL.fwd3yr]);
-    const fwd5yr   = num(row[COL.fwd5yr]);
-    const fwd10yr  = num(row[COL.fwd10yr]);
+    const variabel = pct(row['rate_variabel']);
+    const rate3yr  = pct(row['fp_obs_3yr']);
+    const rate5yr  = pct(row['fp_obs_5yr']);
+    const rate10yr = pct(row['fp_obs_10yr']);
+    const openInd  = parseInt(row['open_indicator']) || 0;
+    const fwd3yr   = num(row['rate_3yr']);
+    const fwd5yr   = num(row['rate_5yr']);
+    const fwd10yr  = num(row['rate_10yr']);
 
     wednesdays.push({
       period, wedDate, variabel,
@@ -773,26 +755,11 @@ function render(renterData, swapData) {
 
     </div>
 
-    <div id="debugPanel" style="display:none;margin:0 36px 20px;background:var(--amber-bg);border:1px solid var(--amber-border);border-radius:6px;padding:14px 18px">
-    </div>
-
     <div class="footer">
       <div class="footer-text">Slensvik.com · Fastrente Strategi<br>Kun til informasjonsformål. Ikke finansiell rådgivning.</div>
       <div class="footer-text" style="text-align:right">Data: Finansportalen / SEB<br>Oppdateres daglig</div>
     </div>
   `;
-
-  // ── DEBUG PANEL (remove once columns confirmed) ──
-  const dbgEl = document.getElementById('debugPanel');
-  if (dbgEl && renterData) {
-    const headers = renterData.debugHeaders || [];
-    const sampleRows = renterData.wednesdays.slice(0, 3);
-    dbgEl.style.display = 'block';
-    dbgEl.innerHTML = '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:9px;color:var(--text3);line-height:1.8">' +
-      '<strong style="color:var(--amber)">DEBUG — first 3 parsed wednesday rows:</strong><br>' +
-      sampleRows.map(w => JSON.stringify({wedDate:w.wedDate,r3:w.rate3yr,r5:w.rate5yr,r10:w.rate10yr,open:w.open,fwd3:w.fwd3yr})).join('<br>') +
-      '</div>';
-  }
 
   // ── SWAP CHART ENGINE ──
   let swapChart = null;
