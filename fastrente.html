@@ -514,20 +514,18 @@ function render(renterData, swapData) {
   // The numbers in your sheet (21.21, 19.49, 14.57) appear to be kr per 100k per month
   // Let's display both the rate spread and the kr benefit
 
-  function calcBenefit(fwdRate, maturityYears, balanceNOK) {
-    if (!fwdRate || !variabel) return null;
-    const spread = fwdRate - variabel; // pp
+  function calcBenefit(curRate, fwdRate, balanceNOK) {
+    if (curRate == null || fwdRate == null) return null;
+    const spread = fwdRate - curRate;
     if (spread <= 0) return null;
-    // Compensation ≈ spread% * balance * (1/12) per month, discounted
-    // Simplified: Lånekassen pays out the PV of interest differential
     const monthlyBenefit = (spread / 100) * balanceNOK / 12;
-    return { spread, monthlyBenefit, annual: monthlyBenefit * 12 };
+    return { spread, curRate, fwdRate, monthlyBenefit, annual: monthlyBenefit * 12 };
   }
 
-  const bal = 100000; // display per 100k
-  const b3  = calcBenefit(fwd3,  3,  bal);
-  const b5  = calcBenefit(fwd5,  5,  bal);
-  const b10 = calcBenefit(fwd10, 10, bal);
+  const bal = 100000;
+  const b3  = calcBenefit(cur3,  fwd3,  bal);
+  const b5  = calcBenefit(cur5,  fwd5,  bal);
+  const b10 = calcBenefit(cur10, fwd10, bal);
 
   // Swap chart data
   const { sorted: swapRows, maturities: swapMats, matYears } = swapData;
@@ -619,9 +617,9 @@ function render(renterData, swapData) {
         </div>
         <div class="forecast-grid">
           ${[
-            { label: '3-årig binding', key: '3y', avg: obs?.avg3, fwd: fwd3, b: b3, color: '#4d8fff' },
-            { label: '5-årig binding', key: '5y', avg: obs?.avg5, fwd: fwd5, b: b5, color: '#9b7fff' },
-            { label: '10-årig binding', key: '10y', avg: obs?.avg10, fwd: fwd10, b: b10, color: '#00e5a0' }
+            { label: '3-årig binding', key: '3y', avg: obs?.est3, fwd: fwd3, b: b3, color: '#4d8fff' },
+            { label: '5-årig binding', key: '5y', avg: obs?.est5, fwd: fwd5, b: b5, color: '#9b7fff' },
+            { label: '10-årig binding', key: '10y', avg: obs?.est10, fwd: fwd10, b: b10, color: '#00e5a0' }
           ].map(fc => `
             <div class="forecast-card">
               <div class="fc-accent-top" style="background:${fc.color}; opacity:0.6"></div>
