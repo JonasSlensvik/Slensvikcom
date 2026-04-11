@@ -332,19 +332,20 @@ function parseRenterData(rows) {
 
   console.log('[Renter] column map:', COL);
 
-  // ── Fallback: if name-matching fails, use positional indices ──
-  // Your sheet layout: Period(0) | Wed(1) | 1w(2) | 1m(3) | 2m(4) | 3m(5) | 6m(6) | Variabel(7) | 3yr(8) | 5yr(9) | 10yr(10) | Open(11) | fwd3(12) | fwd5(13) | fwd10(14)
+  // ── Fallback: positional indices ──
+  // Actual sheet layout (confirmed):
+  // Period(0) | Wed(1) | 1w(2) | 1m(3) | 2m(4) | 3m(5) | 6m(6) | Variabel(7) | Open(8) | fwd3(9) | fwd5(10) | fwd10(11) | 3yr(12) | 5yr(13) | 10yr(14)
   const H = headers;
   if (!COL.period)   COL.period   = H[0];
   if (!COL.wedDate)  COL.wedDate  = H[1];
   if (!COL.variabel) COL.variabel = H[7];
-  if (!COL.rate3yr)  COL.rate3yr  = H[8];
-  if (!COL.rate5yr)  COL.rate5yr  = H[9];
-  if (!COL.rate10yr) COL.rate10yr = H[10];
-  if (!COL.open)     COL.open     = H[11];
-  if (!COL.fwd3yr)   COL.fwd3yr   = H[12];
-  if (!COL.fwd5yr)   COL.fwd5yr   = H[13];
-  if (!COL.fwd10yr)  COL.fwd10yr  = H[14];
+  if (!COL.open)     COL.open     = H[8];
+  if (!COL.fwd3yr)   COL.fwd3yr   = H[9];
+  if (!COL.fwd5yr)   COL.fwd5yr   = H[10];
+  if (!COL.fwd10yr)  COL.fwd10yr  = H[11];
+  if (!COL.rate3yr)  COL.rate3yr  = H[12];
+  if (!COL.rate5yr)  COL.rate5yr  = H[13];
+  if (!COL.rate10yr) COL.rate10yr = H[14];
 
   console.log('[Renter] final column map (after fallback):', COL);
 
