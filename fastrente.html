@@ -298,56 +298,27 @@ function getWindowStatus() {
 function parseRenterData(rows) {
   if (!rows.length) return { wednesdays: [], periods: {}, debugHeaders: [] };
 
-  // ── Column detection ──
-  // Read actual header names from first row, then find each column by
-  // matching partial/case-insensitive name. This is robust to header
-  // renames and column reordering.
+  // ── Column mapping — positional (confirmed layout) ──
+  // Period(0) | Wed(1) | 1w(2) | 1m(3) | 2m(4) | 3m(5) | 6m(6) | Variabel(7)
+  // | 3yr(8) | 5yr(9) | 10yr(10) | Open(11) | fwd3(12) | fwd5(13) | fwd10(14)
   const headers = Object.keys(rows[0]);
-  console.log('[Renter] headers:', headers);
-  console.log('[Renter] first data row:', rows[0]);
-  console.log('[Renter] second data row:', rows[1]);
-
-  function findCol(patterns) {
-    for (const pat of patterns) {
-      const re = typeof pat === 'string' ? new RegExp(pat, 'i') : pat;
-      const match = headers.find(h => re.test(h));
-      if (match) return match;
-    }
-    return null;
-  }
-
-  // Map each logical field to its header key
-  const COL = {
-    period:   findCol(['^period$', 'period', 'eom', 'dato']),
-    wedDate:  findCol(['wednesday', 'onsdag', 'wed', 'week']),
-    variabel: findCol(['variabel', 'variable', 'var\b']),
-    rate3yr:  findCol(['3.?yr', '3.?år', '3 ?year', '^3yr$', '^3år$']),
-    rate5yr:  findCol(['5.?yr', '5.?år', '5 ?year', '^5yr$', '^5år$']),
-    rate10yr: findCol(['10.?yr', '10.?år', '10 ?year', '^10yr$', '^10år$']),
-    open:     findCol(['^open', 'open.?ind', 'åpen', 'indicator']),
-    fwd3yr:   findCol(['fwd.?3', 'forward.?3', '3yr.?fwd', '3.?fwd']),
-    fwd5yr:   findCol(['fwd.?5', 'forward.?5', '5yr.?fwd', '5.?fwd']),
-    fwd10yr:  findCol(['fwd.?10', 'forward.?10', '10yr.?fwd', '10.?fwd']),
-  };
-
-  console.log('[Renter] column map:', COL);
-
-  // ── Fallback: positional indices ──
-  // Actual sheet layout (confirmed):
-  // Period(0) | Wed(1) | 1w(2) | 1m(3) | 2m(4) | 3m(5) | 6m(6) | Variabel(7) | Open(8) | fwd3(9) | fwd5(10) | fwd10(11) | 3yr(12) | 5yr(13) | 10yr(14)
   const H = headers;
-  if (!COL.period)   COL.period   = H[0];
-  if (!COL.wedDate)  COL.wedDate  = H[1];
-  if (!COL.variabel) COL.variabel = H[7];
-  if (!COL.open)     COL.open     = H[8];
-  if (!COL.fwd3yr)   COL.fwd3yr   = H[9];
-  if (!COL.fwd5yr)   COL.fwd5yr   = H[10];
-  if (!COL.fwd10yr)  COL.fwd10yr  = H[11];
-  if (!COL.rate3yr)  COL.rate3yr  = H[12];
-  if (!COL.rate5yr)  COL.rate5yr  = H[13];
-  if (!COL.rate10yr) COL.rate10yr = H[14];
+  console.log('[Renter] headers:', headers);
+  console.log('[Renter] row sample:', rows.find(r => Object.values(r).some(v => v && v.includes && v.includes('%') && parseFloat(v) > 1)));
 
-  console.log('[Renter] final column map (after fallback):', COL);
+  const COL = {
+    period:   H[0],
+    wedDate:  H[1],
+    variabel: H[7],
+    rate3yr:  H[8],
+    rate5yr:  H[9],
+    rate10yr: H[10],
+    open:     H[11],
+    fwd3yr:   H[12],
+    fwd5yr:   H[13],
+    fwd10yr:  H[14],
+  };
+  console.log('[Renter] COL map:', COL);
 
   const periods = {};
   const wednesdays = [];
@@ -628,6 +599,48 @@ function render(renterData, swapData) {
         <div style="margin-top:12px;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--text3)">
           * Estimat basert på onsdager observert hittil. Konfidensintervallet øker for hver observasjonsdag.
           Endelig rente publiseres av Lånekassen ved månedslutt.
+        </div>
+      </div>
+
+      <!-- ── RATE COMPARISON ── -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Rente nå vs estimert rente · ${actMonthName.toUpperCase()}</span>
+          <span class="card-meta">Bind nå · aktiver ${actMonthName}</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">
+          ${[
+            { label:'3-årig', now: obs?.avg3, future: fwd3, color:'var(--blue)' },
+            { label:'5-årig', now: obs?.avg5, future: fwd5, color:'var(--purple)' },
+            { label:'10-årig', now: obs?.avg10, future: fwd10, color:'var(--green)' },
+          ].map(({label, now, future, color}) => {
+            const spread = (now != null && future != null) ? (future - now) : null;
+            const spreadPos = spread != null && spread > 0;
+            return \`<div style="background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:16px 18px">
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);margin-bottom:12px">\${label}</div>
+              <div style="display:grid;grid-template-columns:1fr 24px 1fr;align-items:center;gap:6px;margin-bottom:10px">
+                <div>
+                  <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--text3);margin-bottom:4px">I dag (${obsMonthName.toUpperCase()})</div>
+                  <div style="font-size:22px;font-weight:800;letter-spacing:-0.03em;color:var(--text1)">\${now != null ? now.toFixed(3)+'%' : '—'}</div>
+                </div>
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:14px;color:var(--text3);text-align:center">→</div>
+                <div>
+                  <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--text3);margin-bottom:4px">Lånekassen (${actMonthName.toUpperCase()})</div>
+                  <div style="font-size:22px;font-weight:800;letter-spacing:-0.03em;color:\${color}">\${future != null ? future.toFixed(3)+'%' : '—'}</div>
+                </div>
+              </div>
+              \${spread != null ? \`<div style="display:flex;align-items:center;justify-content:space-between;padding-top:10px;border-top:1px solid var(--border)">
+                <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--text3)">Spread</span>
+                <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:500;color:\${spreadPos ? 'var(--green)' : 'var(--red)'}">\${spreadPos ? '+' : ''}\${spread.toFixed(3)} pp</span>
+              </div>
+              <div style="margin-top:8px;height:3px;background:var(--bg3);border-radius:2px">
+                <div style="height:3px;border-radius:2px;background:\${spreadPos ? 'var(--green)' : 'var(--red)'};width:\${Math.min(Math.abs(spread)/2*100,100).toFixed(1)}%;transition:width 1s ease"></div>
+              </div>\` : ''}
+            </div>\`;
+          }).join('')}
+        </div>
+        <div style="margin-top:14px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text3);line-height:1.8">
+          Dersom spreaden er <span style="color:var(--green)">positiv</span>, er Lånekassens fremtidige rente høyere enn det du kan binde til nå — strategien er lønnsom. Du binder i dag og avslutter bindingen i ${actMonthName}, og Lånekassen krediterer differansen på lånesaldoen din.
         </div>
       </div>
 
