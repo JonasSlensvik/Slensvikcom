@@ -296,32 +296,75 @@ function getWindowStatus() {
 
 // ── PARSE RENTER DATA ──
 function parseRenterData(rows) {
-  // Expected columns (from your data):
-  // Period | Wednesdays(date) | 1week | 1month | 2month | 3month | 6month | Variabel | 3yr | 5yr | 10yr | Open | fwd3yr | fwd5yr | fwd10yr
-  // We detect columns by position since header names may vary
-  if (!rows.length) return { wednesdays: [], periods: {} };
+  if (!rows.length) return { wednesdays: [], periods: {}, debugHeaders: [] };
 
-  // Group by Period (EOM date)
+  // ── Column detection ──
+  // Read actual header names from first row, then find each column by
+  // matching partial/case-insensitive name. This is robust to header
+  // renames and column reordering.
+  const headers = Object.keys(rows[0]);
+  console.log('[Renter] headers:', headers);
+  console.log('[Renter] first data row:', rows[0]);
+  console.log('[Renter] second data row:', rows[1]);
+
+  function findCol(patterns) {
+    for (const pat of patterns) {
+      const re = typeof pat === 'string' ? new RegExp(pat, 'i') : pat;
+      const match = headers.find(h => re.test(h));
+      if (match) return match;
+    }
+    return null;
+  }
+
+  // Map each logical field to its header key
+  const COL = {
+    period:   findCol(['^period$', 'period', 'eom', 'dato']),
+    wedDate:  findCol(['wednesday', 'onsdag', 'wed', 'week']),
+    variabel: findCol(['variabel', 'variable', 'var\b']),
+    rate3yr:  findCol(['3.?yr', '3.?år', '3 ?year', '^3yr$', '^3år$']),
+    rate5yr:  findCol(['5.?yr', '5.?år', '5 ?year', '^5yr$', '^5år$']),
+    rate10yr: findCol(['10.?yr', '10.?år', '10 ?year', '^10yr$', '^10år$']),
+    open:     findCol(['^open', 'open.?ind', 'åpen', 'indicator']),
+    fwd3yr:   findCol(['fwd.?3', 'forward.?3', '3yr.?fwd', '3.?fwd']),
+    fwd5yr:   findCol(['fwd.?5', 'forward.?5', '5yr.?fwd', '5.?fwd']),
+    fwd10yr:  findCol(['fwd.?10', 'forward.?10', '10yr.?fwd', '10.?fwd']),
+  };
+
+  console.log('[Renter] column map:', COL);
+
+  // ── Fallback: if name-matching fails, use positional indices ──
+  // Your sheet layout: Period(0) | Wed(1) | 1w(2) | 1m(3) | 2m(4) | 3m(5) | 6m(6) | Variabel(7) | 3yr(8) | 5yr(9) | 10yr(10) | Open(11) | fwd3(12) | fwd5(13) | fwd10(14)
+  const H = headers;
+  if (!COL.period)   COL.period   = H[0];
+  if (!COL.wedDate)  COL.wedDate  = H[1];
+  if (!COL.variabel) COL.variabel = H[7];
+  if (!COL.rate3yr)  COL.rate3yr  = H[8];
+  if (!COL.rate5yr)  COL.rate5yr  = H[9];
+  if (!COL.rate10yr) COL.rate10yr = H[10];
+  if (!COL.open)     COL.open     = H[11];
+  if (!COL.fwd3yr)   COL.fwd3yr   = H[12];
+  if (!COL.fwd5yr)   COL.fwd5yr   = H[13];
+  if (!COL.fwd10yr)  COL.fwd10yr  = H[14];
+
+  console.log('[Renter] final column map (after fallback):', COL);
+
   const periods = {};
   const wednesdays = [];
 
   rows.forEach(row => {
-    const vals = Object.values(row);
-    const keys = Object.keys(row);
-
-    // Try to identify columns by their content
-    const period   = vals[0];   // EOM date
-    const wedDate  = vals[1];   // Wednesday date
-    const variabel = pct(vals[7]);
-    const rate3yr  = pct(vals[8]);
-    const rate5yr  = pct(vals[9]);
-    const rate10yr = pct(vals[10]);
-    const openInd  = parseInt(vals[11]) || 0;
-    const fwd3yr   = num(vals[12]);
-    const fwd5yr   = num(vals[13]);
-    const fwd10yr  = num(vals[14]);
-
+    const period   = row[COL.period];
+    const wedDate  = row[COL.wedDate];
     if (!period || !wedDate) return;
+
+    const variabel = pct(row[COL.variabel]);
+    const rate3yr  = pct(row[COL.rate3yr]);
+    const rate5yr  = pct(row[COL.rate5yr]);
+    const rate10yr = pct(row[COL.rate10yr]);
+    const openRaw  = row[COL.open];
+    const openInd  = openRaw != null ? parseInt(openRaw) : 0;
+    const fwd3yr   = num(row[COL.fwd3yr]);
+    const fwd5yr   = num(row[COL.fwd5yr]);
+    const fwd10yr  = num(row[COL.fwd10yr]);
 
     wednesdays.push({
       period, wedDate, variabel,
@@ -338,7 +381,6 @@ function parseRenterData(rows) {
       };
     }
     periods[period].wednesdays.push({ wedDate, rate3yr, rate5yr, rate10yr, open: openInd === 1 });
-    // Forward rates — take first non-null value
     if (fwd3yr  && !periods[period].fwd3yr)  periods[period].fwd3yr  = fwd3yr;
     if (fwd5yr  && !periods[period].fwd5yr)  periods[period].fwd5yr  = fwd5yr;
     if (fwd10yr && !periods[period].fwd10yr) periods[period].fwd10yr = fwd10yr;
@@ -507,7 +549,7 @@ function render(renterData, swapData) {
     <div class="hero fade-in">
       <div class="hero-eyebrow">Lånekassen · Rentesstrategi</div>
       <h1 class="hero-title">Fastrente<br><span>Strategi</span></h1>
-      <p class="hero-desc">Lånekassen observerer de 5 beste fastrentene i markedet hver onsdag i observasjonsperioden, trekker fra 0,15 prosentpoeng og konverterer til nominell rente. Den resulterende fastrenten aktiveres to måneder etter observasjonsperioden</p>
+      <p class="hero-desc">Lånekassen observerer de 5 beste fastrentene i markedet hver onsdag i observasjonsperioden, trekker fra 0,15 prosentpoeng og konverterer til nominell rente. Den resulterende fastrenten aktiveres to måneder etter observasjonsperioden — og fordi vi vet dette på forhånd, kan vi beregne gevinsten allerede nå.</p>
     </div>
 
     <div class="main fade-in">
@@ -550,7 +592,7 @@ function render(renterData, swapData) {
         </div>
         <div class="section-divider">Strategi</div>
         <p style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text2);line-height:1.8;max-width:700px">
-          Dersom fastrenten som aktiveres i <strong style="color:var(--text1)">${actMonthName}</strong> er <em>høyere</em> enn dagens nivå, kan du binde renten nå og avslutte bindingen i ${actMonthName}. 
+          Dersom fastrenten som aktiveres i <strong style="color:var(--text1)">${actMonthName}</strong> er <em>høyere</em> enn dagens nivå, kan du binde renten nå og avslutte bindingen i ${actMonthName}. Lånekassen vil da kompensere deg med en reduksjon i lånesaldoen tilsvarende gevinsten de ville fått ved å selge bindingen til noen andre. Denne gevinsten er forutsigbar allerede nå.
         </p>
       </div>
 
@@ -584,7 +626,7 @@ function render(renterData, swapData) {
         </div>
         <div style="margin-top:12px;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--text3)">
           * Estimat basert på onsdager observert hittil. Konfidensintervallet øker for hver observasjonsdag.
-          Endelig rente publiseres ved månedslutt.
+          Endelig rente publiseres av Lånekassen ved månedslutt.
         </div>
       </div>
 
@@ -664,7 +706,7 @@ function render(renterData, swapData) {
       <!-- ── SWAP CURVE CHART ── -->
       <div class="card">
         <div class="card-header">
-          <span class="card-title">Swapkurve · NOK</span>
+          <span class="card-title">NOK Swapkurve · SEB</span>
           <div class="chart-controls" id="swapControls">
             <button class="chart-btn active" data-mode="curve" onclick="setSwapMode('curve',this)">Kurve i dag</button>
             <button class="chart-btn" data-mode="history3" onclick="setSwapMode('history3',this)">3Y historikk</button>
@@ -682,11 +724,26 @@ function render(renterData, swapData) {
 
     </div>
 
+    <div id="debugPanel" style="display:none;margin:0 36px 20px;background:var(--amber-bg);border:1px solid var(--amber-border);border-radius:6px;padding:14px 18px">
+    </div>
+
     <div class="footer">
       <div class="footer-text">Slensvik.com · Fastrente Strategi<br>Kun til informasjonsformål. Ikke finansiell rådgivning.</div>
-      <div class="footer-text" style="text-align:right">Data: Hemmelighet!<br>Oppdateres daglig</div>
+      <div class="footer-text" style="text-align:right">Data: Finansportalen / SEB<br>Oppdateres daglig</div>
     </div>
   `;
+
+  // ── DEBUG PANEL (remove once columns confirmed) ──
+  const dbgEl = document.getElementById('debugPanel');
+  if (dbgEl && renterData) {
+    const headers = renterData.debugHeaders || [];
+    const sampleRows = renterData.wednesdays.slice(0, 3);
+    dbgEl.style.display = 'block';
+    dbgEl.innerHTML = '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:9px;color:var(--text3);line-height:1.8">' +
+      '<strong style="color:var(--amber)">DEBUG — first 3 parsed wednesday rows:</strong><br>' +
+      sampleRows.map(w => JSON.stringify({wedDate:w.wedDate,r3:w.rate3yr,r5:w.rate5yr,r10:w.rate10yr,open:w.open,fwd3:w.fwd3yr})).join('<br>') +
+      '</div>';
+  }
 
   // ── SWAP CHART ENGINE ──
   let swapChart = null;
