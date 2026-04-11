@@ -205,15 +205,26 @@ function parseCSV(raw) {
 }
 
 function pct(v) {
-  // handles "4.621%" or "4.621" or "0.04621"
   if (!v || v === '') return null;
   const s = String(v).replace('%', '').trim();
   const n = parseFloat(s);
   if (isNaN(n)) return null;
-  // if value looks like it's already in pct form (> 0.5) return as-is
   return n > 0.5 ? n : n * 100;
 }
 function num(v) { const n = parseFloat(String(v).replace('%','')); return isNaN(n) ? null : n; }
+
+// Parse dates that may be DD-MM-YYYY or YYYY-MM-DD
+function parseDate(s) {
+  if (!s) return null;
+  s = s.trim();
+  // DD-MM-YYYY or DD/MM/YYYY
+  const dmyMatch = s.match(/^(\d{1,2})[\-\/](\d{1,2})[\-\/](\d{4})$/);
+  if (dmyMatch) return new Date(dmyMatch[3], dmyMatch[2]-1, dmyMatch[1]);
+  // YYYY-MM-DD (ISO)
+  const isoMatch = s.match(/^(\d{4})[\-\/](\d{1,2})[\-\/](\d{1,2})$/);
+  if (isoMatch) return new Date(isoMatch[1], isoMatch[2]-1, isoMatch[3]);
+  return new Date(s); // fallback
+}
 
 // ── DATE HELPERS ──
 const TODAY = new Date();
@@ -259,8 +270,8 @@ function daysUntil(dateStr) {
 
 function formatDate(dateStr) {
   if (!dateStr) return '';
-  const d = new Date(dateStr);
-  if (isNaN(d)) return dateStr;
+  const d = parseDate(dateStr);
+  if (!d || isNaN(d)) return dateStr;
   return d.toLocaleDateString('no-NO', {day:'numeric', month:'short', year:'numeric'});
 }
 
@@ -404,8 +415,8 @@ function getCurrentObsPeriod(renterData) {
 
   // Find current month period
   const currentPeriodKey = periodKeys.find(p => {
-    const d = new Date(p);
-    return d.getMonth() + 1 === m && d.getFullYear() === y;
+    const d = parseDate(p);
+    return d && d.getMonth() + 1 === m && d.getFullYear() === y;
   });
 
   const periodKey = currentPeriodKey || periodKeys[periodKeys.length - 1];
@@ -415,10 +426,10 @@ function getCurrentObsPeriod(renterData) {
   // Wednesdays in this period
   const weds = period.wednesdays;
   const observed = weds.filter(w => {
-    const wd = new Date(w.wedDate);
-    return wd <= TODAY && (w.rate3yr || w.rate5yr || w.rate10yr);
+    const wd = parseDate(w.wedDate);
+    return wd && wd <= TODAY && (w.rate3yr || w.rate5yr || w.rate10yr);
   });
-  const pending = weds.filter(w => new Date(w.wedDate) > TODAY);
+  const pending = weds.filter(w => { const d = parseDate(w.wedDate); return d && d > TODAY; });
 
   // Running averages from observed
   const avg3  = observed.length ? observed.reduce((s,w) => s + (w.rate3yr||0), 0) / observed.length : null;
@@ -495,11 +506,11 @@ function render(renterData, swapData) {
   const obs = getCurrentObsPeriod(renterData);
 
   // Find June period (the activation month) — 2 months after current obs period
-  const obsMon = obs ? new Date(obs.periodKey) : new Date();
+  const obsMon = obs ? parseDate(obs.periodKey) : new Date();
   const activationDate = new Date(obsMon.getFullYear(), obsMon.getMonth() + 2, 1);
   const activationPeriodKey = Object.keys(renterData.periods).find(p => {
-    const d = new Date(p);
-    return d.getMonth() === activationDate.getMonth() && d.getFullYear() === activationDate.getFullYear();
+    const d = parseDate(p);
+    return d && d.getMonth() === activationDate.getMonth() && d.getFullYear() === activationDate.getFullYear();
   });
   const activationPeriod = activationPeriodKey ? renterData.periods[activationPeriodKey] : null;
 
