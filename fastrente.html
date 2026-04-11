@@ -439,6 +439,56 @@ function getCurrentObsPeriod(renterData) {
   };
 }
 
+// ── COMPARISON CARD BUILDER ──
+// Extracted to avoid nested template literals inside the main innerHTML block
+function buildCompareCards(obs, fwd3, fwd5, fwd10, obsMonthName, actMonthName) {
+  const items = [
+    { label: '3-årig',  now: obs && obs.avg3,  future: fwd3,  color: 'var(--blue)'   },
+    { label: '5-årig',  now: obs && obs.avg5,  future: fwd5,  color: 'var(--purple)' },
+    { label: '10-årig', now: obs && obs.avg10, future: fwd10, color: 'var(--green)'  },
+  ];
+  return items.map(function(fc) {
+    var now    = fc.now;
+    var future = fc.future;
+    var color  = fc.color;
+    var spread = (now != null && future != null) ? (future - now) : null;
+    var spreadPos = spread != null && spread > 0;
+    var spreadColor = spreadPos ? 'var(--green)' : 'var(--red)';
+    var spreadText  = spread != null
+      ? (spreadPos ? '+' : '') + spread.toFixed(3) + ' pp'
+      : null;
+    var barWidth = spread != null
+      ? Math.min(Math.abs(spread) / 2 * 100, 100).toFixed(1) + '%'
+      : '0%';
+
+    var spreadBlock = spread != null
+      ? '<div style="display:flex;align-items:center;justify-content:space-between;padding-top:10px;border-top:1px solid var(--border)">'
+          + '<span style="font-family:\'IBM Plex Mono\',monospace;font-size:9px;color:var(--text3)">Spread</span>'
+          + '<span style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;font-weight:500;color:' + spreadColor + '">' + spreadText + '</span>'
+        + '</div>'
+        + '<div style="margin-top:8px;height:3px;background:var(--bg3);border-radius:2px">'
+          + '<div style="height:3px;border-radius:2px;background:' + spreadColor + ';width:' + barWidth + ';transition:width 1s ease"></div>'
+        + '</div>'
+      : '';
+
+    return '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:16px 18px">'
+      + '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);margin-bottom:12px">' + fc.label + '</div>'
+      + '<div style="display:grid;grid-template-columns:1fr 24px 1fr;align-items:center;gap:6px;margin-bottom:10px">'
+        + '<div>'
+          + '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:9px;color:var(--text3);margin-bottom:4px">I dag (' + obsMonthName.toUpperCase() + ')</div>'
+          + '<div style="font-size:22px;font-weight:800;letter-spacing:-0.03em;color:var(--text1)">' + (now != null ? now.toFixed(3) + '%' : '—') + '</div>'
+        + '</div>'
+        + '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:14px;color:var(--text3);text-align:center">→</div>'
+        + '<div>'
+          + '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:9px;color:var(--text3);margin-bottom:4px">Lånekassen (' + actMonthName.toUpperCase() + ')</div>'
+          + '<div style="font-size:22px;font-weight:800;letter-spacing:-0.03em;color:' + color + '">' + (future != null ? future.toFixed(3) + '%' : '—') + '</div>'
+        + '</div>'
+      + '</div>'
+      + spreadBlock
+    + '</div>';
+  }).join('');
+}
+
 // ── RENDER ──
 function render(renterData, swapData) {
   const winStatus = getWindowStatus();
@@ -609,38 +659,12 @@ function render(renterData, swapData) {
           <span class="card-meta">Bind nå · aktiver ${actMonthName}</span>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">
-          ${[
-            { label:'3-årig', now: obs?.avg3, future: fwd3, color:'var(--blue)' },
-            { label:'5-årig', now: obs?.avg5, future: fwd5, color:'var(--purple)' },
-            { label:'10-årig', now: obs?.avg10, future: fwd10, color:'var(--green)' },
-          ].map(({label, now, future, color}) => {
-            const spread = (now != null && future != null) ? (future - now) : null;
-            const spreadPos = spread != null && spread > 0;
-            return \`<div style="background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:16px 18px">
-              <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);margin-bottom:12px">\${label}</div>
-              <div style="display:grid;grid-template-columns:1fr 24px 1fr;align-items:center;gap:6px;margin-bottom:10px">
-                <div>
-                  <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--text3);margin-bottom:4px">I dag (${obsMonthName.toUpperCase()})</div>
-                  <div style="font-size:22px;font-weight:800;letter-spacing:-0.03em;color:var(--text1)">\${now != null ? now.toFixed(3)+'%' : '—'}</div>
-                </div>
-                <div style="font-family:'IBM Plex Mono',monospace;font-size:14px;color:var(--text3);text-align:center">→</div>
-                <div>
-                  <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--text3);margin-bottom:4px">Lånekassen (${actMonthName.toUpperCase()})</div>
-                  <div style="font-size:22px;font-weight:800;letter-spacing:-0.03em;color:\${color}">\${future != null ? future.toFixed(3)+'%' : '—'}</div>
-                </div>
-              </div>
-              \${spread != null ? \`<div style="display:flex;align-items:center;justify-content:space-between;padding-top:10px;border-top:1px solid var(--border)">
-                <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--text3)">Spread</span>
-                <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:500;color:\${spreadPos ? 'var(--green)' : 'var(--red)'}">\${spreadPos ? '+' : ''}\${spread.toFixed(3)} pp</span>
-              </div>
-              <div style="margin-top:8px;height:3px;background:var(--bg3);border-radius:2px">
-                <div style="height:3px;border-radius:2px;background:\${spreadPos ? 'var(--green)' : 'var(--red)'};width:\${Math.min(Math.abs(spread)/2*100,100).toFixed(1)}%;transition:width 1s ease"></div>
-              </div>\` : ''}
-            </div>\`;
-          }).join('')}
+          ${buildCompareCards(obs, fwd3, fwd5, fwd10, obsMonthName, actMonthName)}
         </div>
         <div style="margin-top:14px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text3);line-height:1.8">
-          Dersom spreaden er <span style="color:var(--green)">positiv</span>, er Lånekassens fremtidige rente høyere enn det du kan binde til nå — strategien er lønnsom. Du binder i dag og avslutter bindingen i ${actMonthName}, og Lånekassen krediterer differansen på lånesaldoen din.
+          Dersom spreaden er <span style="color:var(--green)">positiv</span>, er Lånekassens fremtidige rente
+          høyere enn det du kan binde til nå — strategien er lønnsom. Du binder i dag og avslutter bindingen
+          i ${actMonthName}, og Lånekassen krediterer differansen på lånesaldoen din.
         </div>
       </div>
 
