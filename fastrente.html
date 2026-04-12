@@ -654,7 +654,7 @@ function render(renterData, swapData) {
           <span class="card-meta">Bind nå · aktiver ${actMonthName}</span>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">
-          ${buildCompareCards(obs, fwd3, fwd5, fwd10, obsMonthName, actMonthName)}
+          ${buildCompareCards(cur3, cur5, cur10, fwd3, fwd5, fwd10, obsMonthName, actMonthName)}
         </div>
         <div style="margin-top:14px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text3);line-height:1.8">
           Dersom spreaden er <span style="color:var(--green)">positiv</span>, er Lånekassens fremtidige rente
