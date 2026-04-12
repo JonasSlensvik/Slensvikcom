@@ -487,6 +487,34 @@ function buildCompareCards(cur3, cur5, cur10, fwd3, fwd5, fwd10, obsMonthName, a
   }).join('');
 }
 
+// ── BENEFIT CARD RENDERER (standalone so balance input can re-render) ──
+function renderBenefitCards(b3, b5, b10, balance, actMonthName) {
+  return [
+    {label:'3-årig',  b:b3,  color:'var(--blue)'},
+    {label:'5-årig',  b:b5,  color:'var(--purple)'},
+    {label:'10-årig', b:b10, color:'var(--green)'}
+  ].map(function(item) {
+    var b = item.b;
+    var color = item.color;
+    var gainStr = b ? '+' + Math.round(b.gain).toLocaleString('no-NO') + ' kr' : '—';
+    var formula = b
+      ? 'Rente nå: ' + b.curRate.toFixed(3) + '% → Jun: ' + b.fwdRate.toFixed(3) + '%<br>'
+        + 'Spread: +' + b.spread.toFixed(3) + ' pp · Binding: ' + b.termYears * 12 + ' mnd<br>'
+        + 'PV-faktor: ' + annuityFactor(b.fwdRate, b.n).toFixed(2)
+      : '';
+    return '<div class="benefit-card">'
+      + '<div class="bc-label">' + item.label + ' binding</div>'
+      + (b
+        ? '<div class="bc-value" style="color:' + color + '">' + gainStr + '</div>'
+          + '<div class="bc-sub">estimert gevinst ved brudd<br>per ' + (balance/1000).toFixed(0) + 'k kr saldo</div>'
+          + '<div class="bc-formula">' + formula + '</div>'
+        : '<div class="bc-value" style="color:var(--text3)">—</div>'
+          + '<div class="bc-sub">Ingen gevinst — fremtidig<br>rente ikke høyere enn nå</div>'
+      )
+      + '</div>';
+  }).join('');
+}
+
 // ── RENDER ──
 function render(renterData, swapData) {
   const winStatus = getWindowStatus();
@@ -509,27 +537,42 @@ function render(renterData, swapData) {
   const latestVarRow = [...renterData.wednesdays].reverse().find(w => w.variabel);
   const variabel = latestVarRow?.variabel || null;
 
-  // Benefit calculation
-  // When you fix at rate X and cancel when Lånekassen rate becomes Y (Y > X),
-  // Lånekassen compensates (Y - X) / n_months worth of interest on your balance
-  // Approximate: benefit per 100k NOK over the fixed period ≈ (Y - X) * balance * months / 12
-  // Here we model: fix now in April window → active June → Lånekassen rate is fwd rate
-  // Benefit = (fwd - current_fixed) * balance * (months_fixed / 12) — simplified
-  // The numbers in your sheet (21.21, 19.49, 14.57) appear to be kr per 100k per month
-  // Let's display both the rate spread and the kr benefit
+  // ── Lånekassen benefit calculation ──
+  // When you fix at r_cur now and break in June when Lånekassen sets r_fwd:
+  //   If r_fwd > r_cur: Lånekassen earns more on a new agreement → credits you the difference
+  //
+  // The credit = PV of the interest rate differential over the remaining binding period:
+  //   gain = balance * (r_fwd - r_cur)/1200 * annuityFactor(r_fwd, n_months)
+  //   annuityFactor = (1 - (1 + r_fwd/1200)^(-n)) / (r_fwd/1200)   [PV of annuity]
+  //
+  // n_months = binding term in months (36, 60, or 120)
+  // Balance and loan end date come from user input; defaults shown for 100k
 
-  function calcBenefit(curRate, fwdRate, balanceNOK) {
-    if (curRate == null || fwdRate == null) return null;
-    const spread = fwdRate - curRate;
-    if (spread <= 0) return null;
-    const monthlyBenefit = (spread / 100) * balanceNOK / 12;
-    return { spread, curRate, fwdRate, monthlyBenefit, annual: monthlyBenefit * 12 };
+  function annuityFactor(rPct, nMonths) {
+    // r_monthly = annual nominal rate % / 1200
+    const r = rPct / 1200;
+    if (r === 0) return nMonths;
+    return (1 - Math.pow(1 + r, -nMonths)) / r;
   }
 
-  const bal = 100000;
-  const b3  = calcBenefit(cur3,  fwd3,  bal);
-  const b5  = calcBenefit(cur5,  fwd5,  bal);
-  const b10 = calcBenefit(cur10, fwd10, bal);
+  function calcBenefit(curRate, fwdRate, balanceNOK, termYears) {
+    if (curRate == null || fwdRate == null || !balanceNOK || !termYears) return null;
+    const spread = fwdRate - curRate; // percentage points
+    if (spread <= 0) return null;
+    const n = termYears * 12;
+    const af = annuityFactor(fwdRate, n);
+    // Monthly interest differential * PV factor
+    const gain = balanceNOK * (spread / 1200) * af;
+    const spreadPct = spread;
+    return { spread: spreadPct, curRate, fwdRate, gain, termYears, n };
+  }
+
+  // User inputs — balance and loan end date (used for display, not the binding term)
+  // Binding term is fixed: 3yr=36m, 5yr=60m, 10yr=120m
+  const userBalance  = window._userBalance  || 100000;
+  const b3  = calcBenefit(cur3,  fwd3,  userBalance, 3);
+  const b5  = calcBenefit(cur5,  fwd5,  userBalance, 5);
+  const b10 = calcBenefit(cur10, fwd10, userBalance, 10);
 
   // Swap chart data
   const { sorted: swapRows, maturities: swapMats, matYears } = swapData;
@@ -670,31 +713,24 @@ function render(renterData, swapData) {
           <span class="card-meta">Variabel: ${variabel != null ? variabel.toFixed(3) + '%' : '—'}</span>
         </div>
         ${(b3 || b5 || b10) ? `
-        <div class="benefit-row">
-          ${[
-            {label:'3-årig', b:b3, color:'var(--blue)'},
-            {label:'5-årig', b:b5, color:'var(--purple)'},
-            {label:'10-årig', b:b10, color:'var(--green)'}
-          ].map(({label,b,color}) => `
-            <div class="benefit-card">
-              <div class="bc-label">${label} binding</div>
-              ${b ? `
-                <div class="bc-value" style="color:${color}">+${Math.round(b.annual).toLocaleString('no-NO')} kr</div>
-                <div class="bc-sub">estimert årlig gevinst<br>per 100 000 kr saldo</div>
-                <div class="bc-formula">
-                  Rentespread: +${b.spread.toFixed(3)} pp<br>
-                  Månedlig: ~${Math.round(b.monthlyBenefit).toLocaleString('no-NO')} kr / 100k
-                </div>
-              ` : `
-                <div class="bc-value" style="color:var(--text3)">—</div>
-                <div class="bc-sub">Ingen gevinst estimert<br>for denne løpetiden</div>
-              `}
-            </div>
-          `).join('')}
+        <!-- Balance input -->
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap">
+          <label style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text2);white-space:nowrap">Lånesaldo (kr):</label>
+          <input type="number" id="balanceInput" value="100000" min="1000" step="10000"
+            style="width:140px;font-family:'IBM Plex Mono',monospace;font-size:12px;background:var(--bg2);border:1px solid var(--border2);border-radius:4px;padding:6px 10px;color:var(--text1);outline:none"
+            oninput="window._userBalance=+this.value||100000; rerenderBenefits()">
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text3)">Juster for din faktiske saldo</span>
         </div>
-        <div style="margin-top:16px;padding:14px 16px;background:var(--amber-bg);border:1px solid var(--amber-border);border-radius:5px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--amber);line-height:1.8">
+        <div class="benefit-row" id="benefitRow">
+          ${renderBenefitCards(b3, b5, b10, userBalance, actMonthName)}
+        </div>
+        <div style="margin-top:16px;padding:14px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:5px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text3);line-height:1.8">
+          Beregningsmetode: PV av rentedifferansen over bindingstiden =
+          <span style="color:var(--text2)">Saldo × (r<sub>jun</sub> − r<sub>apr</sub>) / 1200 × annuitetsfaktor(r<sub>jun</sub>, n)</span><br>
+          der annuitetsfaktor = (1 − (1 + r/1200)<sup>−n</sup>) / (r/1200), n = antall måneder i bindingstiden.
+        </div>
+        <div style="margin-top:10px;padding:12px 16px;background:var(--amber-bg);border:1px solid var(--amber-border);border-radius:5px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--amber);line-height:1.8">
           ⚠ Gevinsten realiseres kun dersom du binder renten nå og avslutter bindingen i ${actMonthName}.
-          Lånekassen kompenserer differansen mellom din bindingsrente og markedsrenten som en reduksjon i lånesaldoen.
           Dette er ikke finansiell rådgivning.
         </div>
         ` : `
@@ -762,6 +798,19 @@ function render(renterData, swapData) {
       <div class="footer-text" style="text-align:right">Data: Finansportalen / SEB<br>Oppdateres daglig</div>
     </div>
   `;
+
+  // ── RE-RENDER BENEFITS ON BALANCE CHANGE ──
+  window._cur3 = cur3; window._cur5 = cur5; window._cur10 = cur10;
+  window._fwd3 = fwd3; window._fwd5 = fwd5; window._fwd10 = fwd10;
+  window._actMonthName = actMonthName;
+  window.rerenderBenefits = function() {
+    const bal = window._userBalance || 100000;
+    const b3r  = calcBenefit(window._cur3,  window._fwd3,  bal, 3);
+    const b5r  = calcBenefit(window._cur5,  window._fwd5,  bal, 5);
+    const b10r = calcBenefit(window._cur10, window._fwd10, bal, 10);
+    const el = document.getElementById('benefitRow');
+    if (el) el.innerHTML = renderBenefitCards(b3r, b5r, b10r, bal, window._actMonthName);
+  };
 
   // ── SWAP CHART ENGINE ──
   let swapChart = null;
@@ -840,7 +889,7 @@ function render(renterData, swapData) {
         labels: mats,
         datasets: [{ label: '', data: mats.map(m => frames[0][m] || null), borderColor: '#4d8fff', borderWidth: 2.5, pointRadius: 4, pointBackgroundColor: '#4d8fff', tension: 0.4, fill: false }]
       },
-      options: chartOpts('Løpetid', 'Swap rente (%)'),
+      options: chartOpts('Løpetid', 'Swap rente (%)', false, true),
     });
 
     animFrame = setInterval(() => {
@@ -859,9 +908,17 @@ function render(renterData, swapData) {
     }, 400);
   }
 
-  function chartOpts(xLabel, yLabel, dateX) {
+  // Compute fixed y-axis bounds from ALL swap data (used for animated chart)
+  const allSwapVals = swapRows.flatMap(r => swapData.maturities.map(m => r[m]).filter(v => v != null));
+  const swapYMin = allSwapVals.length ? Math.floor(Math.min(...allSwapVals) * 4) / 4 : 0;
+  const swapYMax = allSwapVals.length ? Math.ceil(Math.max(...allSwapVals) * 4) / 4 : 10;
+
+  function chartOpts(xLabel, yLabel, dateX, fixedY) {
+    const yScale = { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#434b5e', font: { size: 9, family: 'IBM Plex Mono' }, callback: v => v.toFixed(2) + '%' } };
+    if (fixedY) { yScale.min = swapYMin; yScale.max = swapYMax; }
     return {
       responsive: true, maintainAspectRatio: false,
+      animation: fixedY ? { duration: 200 } : { duration: 400 },
       interaction: { mode: 'index', intersect: false },
       plugins: {
         legend: { display: false },
@@ -875,7 +932,7 @@ function render(renterData, swapData) {
       },
       scales: {
         x: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#434b5e', font: { size: 9, family: 'IBM Plex Mono' }, maxTicksLimit: dateX ? 10 : 15, maxRotation: 0 } },
-        y: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#434b5e', font: { size: 9, family: 'IBM Plex Mono' }, callback: v => v.toFixed(2) + '%' } }
+        y: yScale
       }
     };
   }
