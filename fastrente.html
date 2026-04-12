@@ -487,6 +487,13 @@ function buildCompareCards(cur3, cur5, cur10, fwd3, fwd5, fwd10, obsMonthName, a
   }).join('');
 }
 
+// ── ANNUITY FACTOR (top-level so renderBenefitCards and calcBenefit can both use it) ──
+function annuityFactor(rPct, nMonths) {
+  const r = rPct / 1200;
+  if (r === 0) return nMonths;
+  return (1 - Math.pow(1 + r, -nMonths)) / r;
+}
+
 // ── BENEFIT CARD RENDERER (standalone so balance input can re-render) ──
 function renderBenefitCards(b3, b5, b10, balance, actMonthName) {
   return [
@@ -547,13 +554,6 @@ function render(renterData, swapData) {
   //
   // n_months = binding term in months (36, 60, or 120)
   // Balance and loan end date come from user input; defaults shown for 100k
-
-  function annuityFactor(rPct, nMonths) {
-    // r_monthly = annual nominal rate % / 1200
-    const r = rPct / 1200;
-    if (r === 0) return nMonths;
-    return (1 - Math.pow(1 + r, -nMonths)) / r;
-  }
 
   function calcBenefit(curRate, fwdRate, balanceNOK, termYears) {
     if (curRate == null || fwdRate == null || !balanceNOK || !termYears) return null;
