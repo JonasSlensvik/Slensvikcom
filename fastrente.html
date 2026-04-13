@@ -384,56 +384,91 @@ function parseSwapData(rows) {
 
 // ── CURRENT OBSERVATION PERIOD ──
 function getCurrentObsPeriod(renterData) {
-  // The observation month is the current or most recent even month
-  // Lånekassen observes every Wednesday of that month
-  const m = TODAY.getMonth() + 1;
-  const y = TODAY.getFullYear();
-  const evenMonths = [2,4,6,8,10,12];
+  // Correct timeline:
+  //   Even month T   (e.g. Apr): fixing window open 10–17th — lock in cur* rate
+  //   Odd month T+1  (e.g. May): Lånekassen observes Finansportalen every Wednesday → determines T+2 rate
+  //   Even month T+2 (e.g. Jun): new Lånekassen rate activates → break agreement → receive gain
+  //
+  // So:
+  //   cur*  = rate_3yr/5yr/10yr from the CURRENT even month (what you lock in today)
+  //   est*  = fp_obs_* averaged from the NEXT odd month (what Lånekassen will observe in May)
+  //   fwd*  = the June rate — unknown until May ends, estimated from May fp_obs_* as they arrive
 
-  // Find the current EOM period that matches current month
-  // or the most recent period with data
+  function r4(v) { return v != null ? Math.round(v * 10000) / 10000 : null; }
+
   const periodKeys = Object.keys(renterData.periods).sort();
   if (!periodKeys.length) return null;
 
-  // Find current month period
-  const currentPeriodKey = periodKeys.find(p => {
+  const m = TODAY.getMonth() + 1; // 1-12
+  const y = TODAY.getFullYear();
+  const evenMonths = [2,4,6,8,10,12];
+  const oddMonths  = [1,3,5,7,9,11];
+
+  // ── Find the LOCK period (current or most recent even month) ──
+  // This is where cur* rates come from
+  let lockPeriodKey = periodKeys.slice().reverse().find(p => {
     const d = parseDate(p);
-    return d && d.getMonth() + 1 === m && d.getFullYear() === y;
+    return d && evenMonths.includes(d.getMonth() + 1) && (d.getFullYear() < y || (d.getFullYear() === y && d.getMonth() + 1 <= m));
   });
+  if (!lockPeriodKey) lockPeriodKey = periodKeys[periodKeys.length - 1];
+  const lockPeriod = renterData.periods[lockPeriodKey];
+  const lockDate   = parseDate(lockPeriodKey);
 
-  const periodKey = currentPeriodKey || periodKeys[periodKeys.length - 1];
-  const period = renterData.periods[periodKey];
-  if (!period) return null;
+  // ── Find the OBSERVATION period (odd month after lock month) ──
+  // This is where est* rates come from — May observes for June's rate
+  const obsMonthNum = lockDate ? (lockDate.getMonth() + 2) % 12 + 1 : null; // e.g. Apr(4) → May(5)
+  const obsYear     = lockDate && lockDate.getMonth() >= 11 ? lockDate.getFullYear() + 1 : lockDate?.getFullYear();
+  // Actually: month after lockDate
+  const obsDate = lockDate ? new Date(lockDate.getFullYear(), lockDate.getMonth() + 1, 15) : null;
 
-  // Wednesdays in this period
-  const weds = period.wednesdays;
+  const obsPeriodKey = obsDate ? periodKeys.find(p => {
+    const d = parseDate(p);
+    return d && d.getMonth() === obsDate.getMonth() && d.getFullYear() === obsDate.getFullYear();
+  }) : null;
+  const obsPeriod = obsPeriodKey ? renterData.periods[obsPeriodKey] : null;
+
+  // ── Current lockable rates (from lock period) ──
+  const cur3  = lockPeriod?.cur3yr  || null;
+  const cur5  = lockPeriod?.cur5yr  || null;
+  const cur10 = lockPeriod?.cur10yr || null;
+
+  // ── Wednesday observations from the observation period (May) ──
+  const weds = obsPeriod ? obsPeriod.wednesdays : (lockPeriod ? lockPeriod.wednesdays : []);
   const observed = weds.filter(w => {
     const wd = parseDate(w.wedDate);
     return wd && wd <= TODAY && (w.fp_obs_3yr || w.fp_obs_5yr || w.fp_obs_10yr);
   });
   const pending = weds.filter(w => { const d = parseDate(w.wedDate); return d && d > TODAY; });
 
-  // Average fp_obs_* across observed Wednesdays — these are already Lånekassen nominal rates
-  function r4(v) { return v != null ? Math.round(v * 10000) / 10000 : null; }
+  // ── Estimated future rate from observation period Wednesdays seen so far ──
   const est3  = observed.length ? r4(observed.reduce((s,w) => s + (w.fp_obs_3yr  || 0), 0) / observed.length) : null;
   const est5  = observed.length ? r4(observed.reduce((s,w) => s + (w.fp_obs_5yr  || 0), 0) / observed.length) : null;
   const est10 = observed.length ? r4(observed.reduce((s,w) => s + (w.fp_obs_10yr || 0), 0) / observed.length) : null;
 
-  // Current lockable rate (constant per period from rate_3yr/5yr/10yr columns)
-  const cur3  = period.cur3yr  || null;
-  const cur5  = period.cur5yr  || null;
-  const cur10 = period.cur10yr || null;
-
-  const total = weds.length || 5;
+  const total      = weds.length || 5;
   const confidence = observed.length / total;
 
+  // Month names for display
+  const monthNames = ['jan','feb','mar','apr','mai','jun','jul','aug','sep','okt','nov','des'];
+  const lockMonthName = lockDate ? monthNames[lockDate.getMonth()] : '?';
+  const obsMonthName2 = obsDate  ? monthNames[obsDate.getMonth()]  : '?';
+  const actMonthName2 = lockDate ? monthNames[(lockDate.getMonth() + 2) % 12] : '?';
+
   return {
-    periodKey, period,
+    // Period keys and raw objects
+    lockPeriodKey, lockPeriod, lockDate,
+    obsPeriodKey,  obsPeriod,  obsDate,
+    // Wednesday tracking (from observation period)
     weds, observed, pending,
-    est3, est5, est10,
-    cur3, cur5, cur10,
-    confidence, total,
-    observedCount: observed.length
+    // Rates
+    cur3, cur5, cur10,       // lock-in rates (April)
+    est3, est5, est10,       // estimated future rates (from May observations)
+    // Metadata
+    confidence, total, observedCount: observed.length,
+    // Derived month names
+    lockMonthName, obsMonthName: obsMonthName2, actMonthName: actMonthName2,
+    // For compatibility with periodKey usage in render()
+    periodKey: lockPeriodKey,
   };
 }
 
@@ -527,18 +562,14 @@ function render(renterData, swapData) {
   const winStatus = getWindowStatus();
   const obs = getCurrentObsPeriod(renterData);
 
-  // Month base for labels
-  const obsMon = obs ? parseDate(obs.periodKey) : new Date();
-
-  // Current lockable rate — from obs (rate_3yr/5yr/10yr columns, constant per period)
-  const cur3  = obs ? obs.cur3  : null;
-  const cur5  = obs ? obs.cur5  : null;
-  const cur10 = obs ? obs.cur10 : null;
-
-  // Estimated future Lånekassen rate (t+2) — average of fp_obs_* observed so far
-  const fwd3  = obs ? obs.est3  : null;
-  const fwd5  = obs ? obs.est5  : null;
-  const fwd10 = obs ? obs.est10 : null;
+  // Rates and month names come directly from obs
+  const obsMon    = obs?.lockDate || new Date();
+  const cur3  = obs?.cur3  || null;
+  const cur5  = obs?.cur5  || null;
+  const cur10 = obs?.cur10 || null;
+  const fwd3  = obs?.est3  || null;
+  const fwd5  = obs?.est5  || null;
+  const fwd10 = obs?.est10 || null;
 
   // Current variable rate
   const latestVarRow = [...renterData.wednesdays].reverse().find(w => w.variabel);
@@ -579,11 +610,11 @@ function render(renterData, swapData) {
   const recentSwaps = swapRows.slice(-90); // last 90 days
   const latestSwap  = swapRows[swapRows.length - 1] || {};
 
-  // Month name helpers
-  const monthNames = ['jan','feb','mar','apr','mai','jun','jul','aug','sep','okt','nov','des'];
-  const obsMonthName = monthNames[obsMon.getMonth()];
-  const waitMonthName = monthNames[(obsMon.getMonth() + 1) % 12];
-  const actMonthName = monthNames[(obsMon.getMonth() + 2) % 12];
+  // Month name helpers — use names computed in getCurrentObsPeriod
+  const monthNames    = ['jan','feb','mar','apr','mai','jun','jul','aug','sep','okt','nov','des'];
+  const obsMonthName  = obs?.lockMonthName  || monthNames[obsMon.getMonth()];        // April — lock month
+  const waitMonthName = obs?.obsMonthName   || monthNames[(obsMon.getMonth()+1)%12]; // May   — observation month
+  const actMonthName = obs?.actMonthName || monthNames[(obsMon.getMonth() + 2) % 12];
 
   // Wednesday dots for forecast cards
   function wedDots(totalW, observedN) {
@@ -609,7 +640,7 @@ function render(renterData, swapData) {
     <div class="hero fade-in">
       <div class="hero-eyebrow">Lånekassen · Rentesstrategi</div>
       <h1 class="hero-title">Fastrente<br><span>Strategi</span></h1>
-      <p class="hero-desc">Lånekassen observerer de 5 beste fastrentene i markedet hver onsdag i observasjonsperioden, trekker fra 0,15 prosentpoeng og konverterer til nominell rente. Den resulterende fastrenten aktiveres to måneder etter observasjonsperioden — og fordi vi vet dette på forhånd, kan vi beregne gevinsten allerede nå.</p>
+      <p class="hero-desc">Du kan binde fastrenten din i Lånekassen i et kort vindu (10.–17.) i partallsmåneder. Lånekassen bestemmer den neste fastrenten ved å observere de 5 beste markedsrentene hver onsdag i måneden <em>etter</em> bindingsvinduet. Vi følger disse observasjonene løpende — jo lenger inn i observasjonsmåneden vi er, desto sikrere vet vi hva gevinsten blir.</p>
     </div>
 
     <div class="main fade-in">
@@ -642,8 +673,8 @@ function render(renterData, swapData) {
             <div class="tl-label"><strong>${obsMonthName.toUpperCase()}</strong>Observasjon<br>5 onsdager<br>Finansportalen</div>
           </div>
           <div class="tl-step">
-            <div class="tl-dot future">⏳</div>
-            <div class="tl-label"><strong>${waitMonthName.toUpperCase()}</strong>Venteperiode<br>Ingen endring<br>mulig</div>
+            <div class="tl-dot ${obs && obs.observed.length > 0 ? 'active' : 'future'}">OBS</div>
+            <div class="tl-label"><strong>${waitMonthName.toUpperCase()}</strong>Observasjon<br>${obs ? obs.observedCount + '/' + obs.total + ' onsdager' : '0/5 onsdager'}<br>Bestemmer jun-rente</div>
           </div>
           <div class="tl-step">
             <div class="tl-dot future">★</div>
@@ -652,7 +683,7 @@ function render(renterData, swapData) {
         </div>
         <div class="section-divider">Strategi</div>
         <p style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text2);line-height:1.8;max-width:700px">
-          Dersom fastrenten som aktiveres i <strong style="color:var(--text1)">${actMonthName}</strong> er <em>høyere</em> enn dagens nivå, kan du binde renten nå og avslutte bindingen i ${actMonthName}. Lånekassen vil da kompensere deg med en reduksjon i lånesaldoen tilsvarende gevinsten de ville fått ved å selge bindingen til noen andre. Denne gevinsten er forutsigbar allerede nå.
+          Bind renten i <strong style="color:var(--text1)">${obsMonthName}</strong> (nå). Lånekassen observerer markedet hver onsdag i <strong style="color:var(--text1)">${waitMonthName}</strong> for å sette renten som gjelder fra <strong style="color:var(--text1)">${actMonthName}</strong>. Dersom ${actMonthName}-renten er høyere enn det du bandt i ${obsMonthName}, avslutt bindingen i ${actMonthName} — Lånekassen krediterer differansen på lånesaldoen din. Vi oppdaterer estimatet løpende etter hvert som ${waitMonthName}-onsdagene passerer.
         </p>
       </div>
 
@@ -660,7 +691,7 @@ function render(renterData, swapData) {
       <div class="card">
         <div class="card-header">
           <span class="card-title">Estimert Lånekassen-rente · ${actMonthName.toUpperCase()}</span>
-          <span class="card-meta">${obs ? obs.observedCount + ' av ' + obs.total + ' onsdager observert' : 'laster...'}</span>
+          <span class="card-meta">${obs ? obs.observedCount + ' av ' + obs.total + ' onsdager observert i ' + waitMonthName : 'laster...'}</span>
         </div>
         <div class="forecast-grid">
           ${[
@@ -672,7 +703,7 @@ function render(renterData, swapData) {
               <div class="fc-accent-top" style="background:${fc.color}; opacity:0.6"></div>
               <div class="fc-label">${fc.label}</div>
               <div class="fc-rate" style="color:${fc.color}">${fc.fwd != null ? fc.fwd.toFixed(2) + '%' : fc.avg != null ? fc.avg.toFixed(2) + '%*' : '—'}</div>
-              <div class="fc-sub">${fc.fwd != null ? 'Lånekassen nominell · ' + actMonthName : fc.avg != null ? 'Løpende estimat · ' + obsMonthName : 'Ingen data ennå'}</div>
+              <div class="fc-sub">${fc.fwd != null ? 'Lånekassen nominell · ' + actMonthName : fc.avg != null ? 'Estimat fra ' + waitMonthName + ' (' + obs.observedCount + '/' + obs.total + ')' : 'Venter på ' + waitMonthName + '-data'}</div>
               <div class="fc-confidence">
                 <div class="fc-conf-label">
                   <span>Sikkerhet</span>
@@ -694,7 +725,7 @@ function render(renterData, swapData) {
       <div class="card">
         <div class="card-header">
           <span class="card-title">Rente nå vs estimert rente · ${actMonthName.toUpperCase()}</span>
-          <span class="card-meta">Bind nå · aktiver ${actMonthName}</span>
+          <span class="card-meta">Bind i ${obsMonthName} · observeres i ${waitMonthName} · aktiveres i ${actMonthName}</span>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">
           ${buildCompareCards(cur3, cur5, cur10, fwd3, fwd5, fwd10, obsMonthName, actMonthName)}
@@ -743,8 +774,8 @@ function render(renterData, swapData) {
       <!-- ── WEDNESDAY TABLE ── -->
       <div class="card">
         <div class="card-header">
-          <span class="card-title">Onsdagsobservasjoner · ${obsMonthName.toUpperCase()} ${obsMon.getFullYear()}</span>
-          <span class="card-meta">Finansportalen topp-5 gjennomsnitt</span>
+          <span class="card-title">Onsdagsobservasjoner · ${waitMonthName.toUpperCase()} ${obsMon.getFullYear() + (obsMon.getMonth() >= 11 ? 1 : 0)}</span>
+          <span class="card-meta">Finansportalen topp-5 gjennomsnitt · bestemmer ${actMonthName}-renten</span>
         </div>
         <div style="overflow-x:auto">
           <table class="wed-table">
