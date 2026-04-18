@@ -1,0 +1,1114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Markedsradar — Norwegian Equity Intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne+Mono&family=Syne:wght@400;600;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+
+<style>
+/* ─── Variables ─────────────────────────────────────────────────────────── */
+:root {
+  --bg:           #070b12;
+  --bg2:          #0d1420;
+  --bg3:          #111927;
+  --border:       #1e2d42;
+  --border-glow:  #1e3a5f;
+  --text:         #c8d8e8;
+  --text-dim:     #5a7a96;
+  --text-bright:  #e8f4ff;
+  --amber:        #f5a623;
+  --amber-dim:    #7a4e0a;
+  --amber-glow:   rgba(245,166,35,0.12);
+  --ice:          #4fc3f7;
+  --ice-dim:      #0a3a52;
+  --ice-glow:     rgba(79,195,247,0.10);
+  --green:        #43e097;
+  --green-dim:    #0a3320;
+  --red:          #f06060;
+  --red-dim:      #3a1010;
+  --purple:       #a78bfa;
+  --gold:         #ffd700;
+  --mono:         'Syne Mono', monospace;
+  --sans:         'Syne', sans-serif;
+  --body:         'DM Sans', sans-serif;
+}
+
+/* ─── Reset & Base ──────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--body);
+  font-size: 14px;
+  line-height: 1.5;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Subtle scan-line texture */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(255,255,255,0.012) 2px,
+    rgba(255,255,255,0.012) 4px
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ─── Layout ────────────────────────────────────────────────────────────── */
+.page { max-width: 1440px; margin: 0 auto; padding: 0 24px 64px; position: relative; z-index: 1; }
+
+/* ─── Header ────────────────────────────────────────────────────────────── */
+header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding: 40px 0 32px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 32px;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.logo-block { display: flex; flex-direction: column; gap: 4px; }
+.logo {
+  font-family: var(--sans);
+  font-weight: 800;
+  font-size: 28px;
+  letter-spacing: -0.5px;
+  color: var(--text-bright);
+}
+.logo span { color: var(--ice); }
+.logo-sub {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+.header-meta { display: flex; gap: 24px; align-items: flex-end; flex-wrap: wrap; }
+.meta-pill {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 4px 10px;
+  letter-spacing: 1px;
+}
+.meta-pill.live { border-color: var(--green); color: var(--green); }
+.meta-pill.live::before {
+  content: '● ';
+  animation: pulse 2s infinite;
+}
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+/* ─── Date selector ─────────────────────────────────────────────────────── */
+.date-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 32px;
+  flex-wrap: wrap;
+}
+.date-bar label { font-family: var(--mono); font-size: 11px; color: var(--text-dim); letter-spacing: 1px; }
+.date-bar select, .date-bar input {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-family: var(--mono);
+  font-size: 12px;
+  cursor: pointer;
+}
+.date-bar select:focus, .date-bar input:focus { outline: none; border-color: var(--ice); }
+.btn {
+  background: var(--ice-dim);
+  border: 1px solid var(--ice);
+  color: var(--ice);
+  padding: 6px 16px;
+  border-radius: 4px;
+  font-family: var(--mono);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+  letter-spacing: 1px;
+}
+.btn:hover { background: var(--ice); color: var(--bg); }
+
+/* ─── Section headers ───────────────────────────────────────────────────── */
+.section { margin-bottom: 40px; }
+.section-head {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.section-title {
+  font-family: var(--sans);
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text-bright);
+}
+.section-desc {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.section-count {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--amber);
+  margin-left: auto;
+}
+
+/* ─── Stat cards ────────────────────────────────────────────────────────── */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 32px;
+}
+.stat-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 16px 18px;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+.stat-card:hover { border-color: var(--border-glow); }
+.stat-card::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+}
+.stat-card.ice::after  { background: var(--ice); }
+.stat-card.amber::after { background: var(--amber); }
+.stat-card.green::after { background: var(--green); }
+.stat-card.red::after   { background: var(--red); }
+.stat-card.purple::after { background: var(--purple); }
+.stat-label { font-family: var(--mono); font-size: 10px; color: var(--text-dim); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 8px; }
+.stat-value { font-family: var(--mono); font-size: 24px; color: var(--text-bright); line-height: 1; }
+.stat-value.sm { font-size: 18px; }
+.stat-sub { font-size: 11px; color: var(--text-dim); margin-top: 4px; }
+
+/* ─── Tables ────────────────────────────────────────────────────────────── */
+.table-wrap { overflow-x: auto; border-radius: 6px; border: 1px solid var(--border); }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+thead tr { background: var(--bg3); }
+th {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  padding: 10px 14px;
+  text-align: left;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--border);
+}
+th.r { text-align: right; }
+td {
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  white-space: nowrap;
+}
+td.r { text-align: right; font-family: var(--mono); font-size: 12px; }
+td.mono { font-family: var(--mono); font-size: 12px; }
+tbody tr:last-child td { border-bottom: none; }
+tbody tr {
+  cursor: pointer;
+  transition: background 0.12s;
+}
+tbody tr:hover { background: var(--bg3); }
+tbody tr.selected { background: var(--ice-dim); }
+
+/* ─── Badges ────────────────────────────────────────────────────────────── */
+.badge {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 3px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  font-weight: 500;
+}
+.badge-amber  { background: var(--amber-dim); color: var(--amber); border: 1px solid var(--amber-dim); }
+.badge-ice    { background: var(--ice-dim); color: var(--ice); border: 1px solid var(--ice-dim); }
+.badge-green  { background: var(--green-dim); color: var(--green); }
+.badge-red    { background: var(--red-dim); color: var(--red); }
+.badge-purple { background: #2d1f5e; color: var(--purple); }
+.badge-dim    { background: var(--bg3); color: var(--text-dim); }
+
+/* ─── Bar fills ─────────────────────────────────────────────────────────── */
+.bar-wrap { display: flex; align-items: center; gap: 8px; }
+.bar-track { flex: 1; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; min-width: 60px; }
+.bar-fill  { height: 100%; border-radius: 2px; }
+.bar-ice   { background: var(--ice); }
+.bar-amber { background: var(--amber); }
+.bar-green { background: var(--green); }
+.bar-pct   { font-family: var(--mono); font-size: 11px; color: var(--text-dim); width: 42px; text-align: right; }
+
+/* ─── Chart containers ──────────────────────────────────────────────────── */
+.chart-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 32px;
+}
+@media (max-width: 900px) { .chart-grid { grid-template-columns: 1fr; } }
+.chart-box {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 20px;
+}
+.chart-box.full { grid-column: 1 / -1; }
+.chart-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 16px;
+}
+.chart-container { position: relative; height: 220px; }
+.chart-container.tall { height: 300px; }
+
+/* ─── Whale alert cards ─────────────────────────────────────────────────── */
+.whale-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+.whale-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 16px;
+  border-left: 3px solid var(--amber);
+  transition: border-color 0.2s, background 0.2s;
+  animation: fadeIn 0.4s ease both;
+}
+.whale-card:hover { background: var(--bg3); border-left-color: var(--gold); }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.whale-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+.whale-isin { font-family: var(--mono); font-size: 14px; color: var(--text-bright); }
+.whale-venue { font-family: var(--mono); font-size: 11px; color: var(--text-dim); }
+.whale-notional { font-family: var(--mono); font-size: 18px; color: var(--amber); margin-bottom: 6px; }
+.whale-meta { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.whale-time { font-family: var(--mono); font-size: 11px; color: var(--text-dim); }
+
+/* ─── Signal cards ──────────────────────────────────────────────────────── */
+.signal-list { display: flex; flex-direction: column; gap: 8px; }
+.signal-row {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  transition: background 0.12s;
+  animation: fadeIn 0.3s ease both;
+}
+.signal-row:hover { background: var(--bg3); }
+.signal-icon { font-size: 18px; flex-shrink: 0; }
+.signal-body { flex: 1; }
+.signal-type { font-family: var(--mono); font-size: 11px; color: var(--amber); letter-spacing: 1px; margin-bottom: 2px; }
+.signal-desc { font-size: 12px; color: var(--text); }
+.signal-isin { font-family: var(--mono); font-size: 13px; color: var(--text-bright); }
+.signal-strength { font-family: var(--mono); font-size: 10px; }
+.signal-strength.STRONG { color: var(--amber); }
+.signal-strength.MODERATE { color: var(--text-dim); }
+
+/* ─── ISIN drill-down panel ─────────────────────────────────────────────── */
+#drilldown {
+  background: var(--bg2);
+  border: 1px solid var(--ice);
+  border-radius: 8px;
+  padding: 24px;
+  margin-top: 16px;
+  display: none;
+}
+#drilldown.open { display: block; animation: fadeIn 0.3s ease; }
+.drill-header { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
+.drill-isin { font-family: var(--mono); font-size: 22px; color: var(--ice); }
+.drill-venue { font-family: var(--mono); font-size: 13px; color: var(--text-dim); }
+.drill-close {
+  margin-left: auto;
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  padding: 4px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 12px;
+  transition: all 0.12s;
+}
+.drill-close:hover { border-color: var(--red); color: var(--red); }
+.drill-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; margin-bottom: 20px; }
+.drill-stat { background: var(--bg3); border-radius: 4px; padding: 12px; }
+.drill-stat-label { font-family: var(--mono); font-size: 10px; color: var(--text-dim); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 4px; }
+.drill-stat-value { font-family: var(--mono); font-size: 16px; color: var(--text-bright); }
+
+/* ─── Loader ────────────────────────────────────────────────────────────── */
+.loader { text-align: center; padding: 48px; font-family: var(--mono); color: var(--text-dim); letter-spacing: 2px; animation: pulse 1.5s infinite; }
+.error-msg { color: var(--red); font-family: var(--mono); font-size: 12px; padding: 16px; background: var(--red-dim); border-radius: 4px; }
+
+/* ─── Split layout ──────────────────────────────────────────────────────── */
+.split { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+@media (max-width: 800px) { .split { grid-template-columns: 1fr; } }
+
+/* ─── Scrollbar ─────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-glow); }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- ── Header ──────────────────────────────────────────────────────────── -->
+  <header>
+    <div class="logo-block">
+      <div class="logo">Markeds<span>radar</span></div>
+      <div class="logo-sub">Norwegian Equity Intelligence · XOSL / MERK</div>
+    </div>
+    <div class="header-meta">
+      <div class="meta-pill live" id="statusPill">T-1 DATA</div>
+      <div class="meta-pill" id="tradeDatePill">—</div>
+      <div class="meta-pill" id="totalTradesPill">— TRADES</div>
+    </div>
+  </header>
+
+  <!-- ── Date selector ───────────────────────────────────────────────────── -->
+  <div class="date-bar">
+    <label>VIEWING DATE</label>
+    <select id="dateSelect"></select>
+    <button class="btn" onclick="loadDate()">LOAD</button>
+    <label style="margin-left:16px">JUMP TO ISIN</label>
+    <input type="text" id="isinSearch" placeholder="e.g. NO0010715139" style="width:180px">
+    <button class="btn" onclick="searchISIN()">FIND</button>
+  </div>
+
+  <!-- ── Overview KPIs ───────────────────────────────────────────────────── -->
+  <div class="section">
+    <div class="section-head">
+      <div class="section-title">Market Overview</div>
+      <div class="section-desc">Aggregated statistics across all Norwegian-listed equities for the selected trading day</div>
+    </div>
+    <div class="stat-grid" id="kpiGrid">
+      <div class="loader">LOADING …</div>
+    </div>
+  </div>
+
+  <!-- ── Whale Alerts ────────────────────────────────────────────────────── -->
+  <div class="section">
+    <div class="section-head">
+      <div class="section-title">🐋 Whale Alerts</div>
+      <div class="section-desc">Exceptional single trades — large notional (&gt;5M NOK), block trades, negotiated OTC deals, dark pool large prints</div>
+      <div class="section-count" id="whaleCount">—</div>
+    </div>
+    <div class="whale-grid" id="whaleGrid">
+      <div class="loader">LOADING …</div>
+    </div>
+  </div>
+
+  <!-- ── Smart Money Signals ─────────────────────────────────────────────── -->
+  <div class="section">
+    <div class="section-head">
+      <div class="section-title">⚡ Smart Money Signals</div>
+      <div class="section-desc">Patterns that suggest informed or institutional activity — dark accumulation, EOD sweeps, deferred large prints</div>
+      <div class="section-count" id="signalCount">—</div>
+    </div>
+    <div class="signal-list" id="signalList">
+      <div class="loader">LOADING …</div>
+    </div>
+  </div>
+
+  <!-- ── Charts row ──────────────────────────────────────────────────────── -->
+  <div class="chart-grid">
+    <div class="chart-box">
+      <div class="chart-label">Algo vs Human vs Auction — Market Wide</div>
+      <div class="chart-container"><canvas id="algoDonut"></canvas></div>
+    </div>
+    <div class="chart-box">
+      <div class="chart-label">Dark Pool Ratio — Top 20 ISINs by Volume</div>
+      <div class="chart-container"><canvas id="darkBar"></canvas></div>
+    </div>
+    <div class="chart-box full">
+      <div class="chart-label">Intraday Volume Profile — <span id="intradayLabel">Market Aggregate</span></div>
+      <div class="chart-container tall"><canvas id="intradayChart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- ── ISIN Summary table ──────────────────────────────────────────────── -->
+  <div class="section">
+    <div class="section-head">
+      <div class="section-title">ISIN Intelligence</div>
+      <div class="section-desc">Per-ticker microstructure metrics — click any row to drill down into intraday profile, latency, and dark pool breakdown</div>
+      <div class="section-count" id="isinCount">—</div>
+    </div>
+    <div class="table-wrap">
+      <table id="summaryTable">
+        <thead>
+          <tr>
+            <th>ISIN</th>
+            <th>VENUE</th>
+            <th class="r">TRADES</th>
+            <th class="r">EST. ADV</th>
+            <th class="r">AVG SIZE</th>
+            <th>ALGO %</th>
+            <th>DARK %</th>
+            <th class="r">GINI</th>
+            <th class="r">PUB LAG</th>
+            <th>OPEN AUC</th>
+            <th>CLOSE AUC</th>
+          </tr>
+        </thead>
+        <tbody id="summaryBody">
+          <tr><td colspan="11" class="loader">LOADING …</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Drill-down panel -->
+    <div id="drilldown">
+      <div class="drill-header">
+        <div>
+          <div class="drill-isin" id="drillISIN">—</div>
+          <div class="drill-venue" id="drillVenue">—</div>
+        </div>
+        <div class="drill-grid" id="drillStats" style="flex:1; margin: 0 16px;"></div>
+        <button class="drill-close" onclick="closeDrill()">✕ CLOSE</button>
+      </div>
+      <div class="chart-grid">
+        <div class="chart-box">
+          <div class="chart-label">Intraday Profile — Volume per Minute</div>
+          <div class="chart-container tall"><canvas id="drillIntraday"></canvas></div>
+        </div>
+        <div class="chart-box">
+          <div class="chart-label">Participant Classification Mix</div>
+          <div class="chart-container tall"><canvas id="drillMix"></canvas></div>
+        </div>
+        <div class="chart-box full">
+          <div class="chart-label">Dark Pool vs Lit vs LIS — Volume Breakdown</div>
+          <div class="chart-container"><canvas id="drillDark"></canvas></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Latency Fingerprinting ──────────────────────────────────────────── -->
+  <div class="section">
+    <div class="section-head">
+      <div class="section-title">⚡ Latency Fingerprinting</div>
+      <div class="section-desc">Publication lag from trade event to tape — sub-10ms indicates HFT / co-located systems; &gt;500ms indicates manual/human flow</div>
+    </div>
+    <div class="split">
+      <div class="table-wrap">
+        <table id="latencyTable">
+          <thead>
+            <tr>
+              <th>ISIN</th>
+              <th class="r">AVG LAG</th>
+              <th class="r">MIN LAG</th>
+              <th>HFT &lt;10ms</th>
+              <th>ALGO 10–500ms</th>
+              <th>HUMAN &gt;500ms</th>
+            </tr>
+          </thead>
+          <tbody id="latencyBody">
+            <tr><td colspan="6" class="loader">LOADING …</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="chart-box" style="height: fit-content;">
+        <div class="chart-label">Speed Tier Distribution — Aggregate</div>
+        <div class="chart-container"><canvas id="latencyDonut"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Execution Chains ────────────────────────────────────────────────── -->
+  <div class="section">
+    <div class="section-head">
+      <div class="section-title">🔗 Execution Chains</div>
+      <div class="section-desc">Multi-leg executions reconstructed from shared execution IDs — reveals order slicing patterns by institutional participants</div>
+      <div class="section-count" id="chainCount">—</div>
+    </div>
+    <div class="table-wrap">
+      <table id="chainTable">
+        <thead>
+          <tr>
+            <th>ISIN</th>
+            <th>VENUE</th>
+            <th class="r">LEGS</th>
+            <th class="r">TOTAL QTY</th>
+            <th class="r">NOTIONAL</th>
+            <th class="r">DURATION</th>
+            <th class="r">AVG INTERVAL</th>
+            <th>TYPE</th>
+            <th>CLASSES</th>
+          </tr>
+        </thead>
+        <tbody id="chainBody">
+          <tr><td colspan="9" class="loader">LOADING …</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div><!-- /page -->
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════════════
+   CONFIG — set your Supabase anon key here
+═══════════════════════════════════════════════════════════════════════════ */
+const SUPABASE_URL = 'https://esttjwaoytcatbteotwp.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVzdHRqd2FveXRjYXRidGVvdHdwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyODA3MTIsImV4cCI6MjA5MTg1NjcxMn0.Sg7GuM0MC-tKJVwhu1jwOi8oNwUZik1FeJLKdQW9osA'; // Replace with your anon key from Supabase dashboard → Settings → API
+
+const API = (table, params = '') =>
+  fetch(`${SUPABASE_URL}/rest/v1/${table}?${params}`, {
+    headers: {
+      'apikey': SUPABASE_KEY,
+      'Authorization': `Bearer ${SUPABASE_KEY}`
+    }
+  }).then(r => { if (!r.ok) throw new Error(`${r.status} on ${table}`); return r.json(); });
+
+/* ─── Chart.js global defaults ──────────────────────────────────────────── */
+Chart.defaults.color = '#5a7a96';
+Chart.defaults.borderColor = '#1e2d42';
+Chart.defaults.font.family = "'Syne Mono', monospace";
+Chart.defaults.font.size = 11;
+
+/* ─── State ─────────────────────────────────────────────────────────────── */
+let currentDate = null;
+let allSummary = [];
+let allIntraday = [];
+let allDark = [];
+let allLatency = [];
+let drillChart1 = null, drillChart2 = null, drillChart3 = null;
+let algoDonutChart = null, darkBarChart = null, intradayChartInst = null, latencyDonutChart = null;
+
+/* ─── Formatters ────────────────────────────────────────────────────────── */
+const fmt = {
+  num:  v => v == null ? '—' : Number(v).toLocaleString('nb-NO'),
+  nok:  v => v == null ? '—' : `NOK ${(v/1e6).toFixed(2)}M`,
+  pct:  v => v == null ? '—' : `${Number(v).toFixed(1)}%`,
+  ms:   v => v == null ? '—' : `${Number(v).toFixed(1)}ms`,
+  dec:  v => v == null ? '—' : Number(v).toFixed(3),
+  time: v => v ? v.slice(0,5) : '—',
+};
+
+/* ─── Init: load available dates ────────────────────────────────────────── */
+async function init() {
+  try {
+    const dates = await API('euronext_daily_summary',
+      'select=trade_date&order=trade_date.desc&limit=90');
+    const unique = [...new Set(dates.map(r => r.trade_date))];
+    const sel = document.getElementById('dateSelect');
+    unique.forEach(d => {
+      const opt = document.createElement('option');
+      opt.value = d; opt.textContent = d;
+      sel.appendChild(opt);
+    });
+    if (unique.length) { currentDate = unique[0]; await loadDate(); }
+    else { showError('No data found. Run the pipeline first.'); }
+  } catch(e) { showError('Could not connect to Supabase. Check your API key. ' + e.message); }
+}
+
+async function loadDate() {
+  currentDate = document.getElementById('dateSelect').value;
+  document.getElementById('tradeDatePill').textContent = currentDate;
+  closeDrill();
+  await Promise.all([
+    loadKPIs(), loadWhales(), loadSignals(),
+    loadSummaryTable(), loadLatency(), loadChains(), loadIntraday()
+  ]);
+}
+
+/* ─── KPIs ──────────────────────────────────────────────────────────────── */
+async function loadKPIs() {
+  const data = await API('euronext_daily_summary',
+    `trade_date=eq.${currentDate}&select=total_trades,adv_estimate,algo_ratio_pct,dark_pct,gini,avg_pub_lag_ms`);
+  if (!data.length) return;
+
+  const totTrades = data.reduce((s,r) => s + (r.total_trades||0), 0);
+  const totADV    = data.reduce((s,r) => s + (r.adv_estimate||0), 0);
+  const avgAlgo   = (data.reduce((s,r) => s + (r.algo_ratio_pct||0), 0) / data.length).toFixed(1);
+  const avgDark   = (data.reduce((s,r) => s + (r.dark_pct||0), 0) / data.length).toFixed(1);
+  const avgGini   = (data.reduce((s,r) => s + (r.gini||0), 0) / data.length).toFixed(3);
+  const avgLag    = (data.reduce((s,r) => s + (r.avg_pub_lag_ms||0), 0) / data.length).toFixed(0);
+
+  document.getElementById('totalTradesPill').textContent =
+    `${(totTrades/1000).toFixed(0)}K TRADES`;
+
+  document.getElementById('kpiGrid').innerHTML = `
+    <div class="stat-card ice">
+      <div class="stat-label">Total Trades</div>
+      <div class="stat-value">${(totTrades/1000).toFixed(1)}<span style="font-size:14px">K</span></div>
+      <div class="stat-sub">XOSL + MERK combined</div>
+    </div>
+    <div class="stat-card ice">
+      <div class="stat-label">Est. Daily Value</div>
+      <div class="stat-value sm">${(totADV/1e9).toFixed(2)}<span style="font-size:14px">B NOK</span></div>
+      <div class="stat-sub">price × quantity proxy</div>
+    </div>
+    <div class="stat-card amber">
+      <div class="stat-label">Avg Algo Ratio</div>
+      <div class="stat-value">${avgAlgo}<span style="font-size:14px">%</span></div>
+      <div class="stat-sub">flagged + burst-detected</div>
+    </div>
+    <div class="stat-card purple">
+      <div class="stat-label">Avg Dark Pool %</div>
+      <div class="stat-value">${avgDark}<span style="font-size:14px">%</span></div>
+      <div class="stat-sub">mech. 3 & 4 of total vol.</div>
+    </div>
+    <div class="stat-card green">
+      <div class="stat-label">ISINs Active</div>
+      <div class="stat-value">${data.length}</div>
+      <div class="stat-sub">on XOSL / MERK</div>
+    </div>
+    <div class="stat-card ice">
+      <div class="stat-label">Avg Trade Size Gini</div>
+      <div class="stat-value">${avgGini}</div>
+      <div class="stat-sub">0=equal, 1=one giant</div>
+    </div>
+    <div class="stat-card amber">
+      <div class="stat-label">Avg Pub Lag</div>
+      <div class="stat-value sm">${avgLag}<span style="font-size:14px">ms</span></div>
+      <div class="stat-sub">event → tape latency</div>
+    </div>
+  `;
+}
+
+/* ─── Whales ────────────────────────────────────────────────────────────── */
+async function loadWhales() {
+  const data = await API('euronext_whale_alerts',
+    `trade_date=eq.${currentDate}&order=notional.desc.nullslast&limit=50`);
+  document.getElementById('whaleCount').textContent = `${data.length} EVENTS`;
+
+  if (!data.length) {
+    document.getElementById('whaleGrid').innerHTML =
+      '<div style="color:var(--text-dim);font-family:var(--mono);font-size:12px;padding:16px">No whale events detected for this date.</div>';
+    return;
+  }
+
+  const SIGNAL_ICONS = {
+    LARGE_NOK: '💰', LARGE_EUR: '💶', BLOCK_TRADE: '🧱',
+    NEGOTIATED_OTC: '🤝', DARK_POOL_LARGE: '🌑', DEFERRED_PRINT: '⏳',
+  };
+
+  document.getElementById('whaleGrid').innerHTML = data.map(r => {
+    const notional = r.notional ? `NOK ${(r.notional/1e6).toFixed(2)}M`
+      : r.price && r.quantity ? `NOK ${(r.price*r.quantity/1e6).toFixed(2)}M` : '—';
+    const alerts = [r.size_alert, r.block_alert, r.otc_alert, r.dark_alert, r.deferral_alert]
+      .filter(Boolean);
+    const time = r.trading_time ? r.trading_time.slice(11,19) : '—';
+    return `
+      <div class="whale-card">
+        <div class="whale-top">
+          <div>
+            <div class="whale-isin">${r.isin}</div>
+            <div class="whale-venue">${r.venue} · ${time}</div>
+          </div>
+          <div>${r.participant_class === 'ALGO' || r.algo_ind === 'ALGO'
+            ? '<span class="badge badge-amber">ALGO</span>'
+            : '<span class="badge badge-dim">HUMAN</span>'}</div>
+        </div>
+        <div class="whale-notional">${notional}</div>
+        <div style="font-size:12px;color:var(--text-dim)">
+          ${r.quantity ? fmt.num(r.quantity) + ' shares' : ''} @ ${r.price ? 'NOK '+Number(r.price).toFixed(2) : '—'}
+        </div>
+        <div class="whale-meta">
+          ${alerts.map(a => `<span class="badge badge-amber">${SIGNAL_ICONS[a]||''} ${a}</span>`).join('')}
+          ${r.market_mechanism ? `<span class="badge badge-ice">MECH ${r.market_mechanism}</span>` : ''}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+/* ─── Smart Money Signals ───────────────────────────────────────────────── */
+async function loadSignals() {
+  const data = await API('euronext_smart_signals',
+    `trade_date=eq.${currentDate}&order=notional.desc.nullslast`);
+  document.getElementById('signalCount').textContent = `${data.length} SIGNALS`;
+
+  const ICONS = {
+    DARK_ACCUMULATION: '🌑',
+    EOD_SWEEP: '🌅',
+    DEFERRED_LARGE_PRINT: '⏳',
+    ALGO_DOMINANCE: '🤖',
+    BURST_STORM: '⚡',
+  };
+
+  document.getElementById('signalList').innerHTML = !data.length
+    ? '<div style="color:var(--text-dim);font-family:var(--mono);font-size:12px;padding:16px">No smart money signals detected for this date.</div>'
+    : data.map((r, i) => `
+      <div class="signal-row" style="animation-delay:${i*0.05}s" onclick="drillIntoISIN('${r.isin}','${r.venue}')">
+        <div class="signal-icon">${ICONS[r.signal_type] || '📊'}</div>
+        <div class="signal-body">
+          <div class="signal-type">${r.signal_type}</div>
+          <div class="signal-desc">${r.signal_desc || '—'}</div>
+        </div>
+        <div style="text-align:right">
+          <div class="signal-isin">${r.isin}</div>
+          <div class="signal-strength ${r.strength}">${r.strength || ''}</div>
+          ${r.notional ? `<div style="font-family:var(--mono);font-size:11px;color:var(--amber)">NOK ${(r.notional/1e6).toFixed(1)}M</div>` : ''}
+        </div>
+      </div>`).join('');
+}
+
+/* ─── Summary Table + Algo/Dark charts ─────────────────────────────────── */
+async function loadSummaryTable() {
+  allSummary = await API('euronext_daily_summary',
+    `trade_date=eq.${currentDate}&order=adv_estimate.desc.nullslast`);
+  allDark = await API('euronext_dark_pool',
+    `trade_date=eq.${currentDate}&order=total_notional.desc.nullslast`);
+
+  document.getElementById('isinCount').textContent = `${allSummary.length} ISINs`;
+  renderSummaryTable(allSummary);
+  renderAlgoDonut(allSummary);
+  renderDarkBar(allDark);
+}
+
+function renderSummaryTable(data) {
+  document.getElementById('summaryBody').innerHTML = data.map(r => {
+    const algoPct = r.algo_ratio_pct || 0;
+    const darkPct = r.dark_pct || 0;
+    const openAuc = r.open_auction_notional ? fmt.nok(r.open_auction_notional) : '—';
+    const closeAuc = r.close_auction_notional ? fmt.nok(r.close_auction_notional) : '—';
+    return `
+      <tr onclick="drillIntoISIN('${r.isin}','${r.venue}')">
+        <td class="mono">${r.isin}</td>
+        <td><span class="badge ${r.venue==='XOSL'?'badge-ice':'badge-amber'}">${r.venue}</span></td>
+        <td class="r">${fmt.num(r.total_trades)}</td>
+        <td class="r">${fmt.nok(r.adv_estimate)}</td>
+        <td class="r">${fmt.num(r.avg_trade_size)}</td>
+        <td>
+          <div class="bar-wrap">
+            <div class="bar-track"><div class="bar-fill bar-amber" style="width:${Math.min(algoPct,100)}%"></div></div>
+            <div class="bar-pct">${fmt.pct(algoPct)}</div>
+          </div>
+        </td>
+        <td>
+          <div class="bar-wrap">
+            <div class="bar-track"><div class="bar-fill bar-purple" style="width:${Math.min(darkPct,100)}%;background:var(--purple)"></div></div>
+            <div class="bar-pct">${fmt.pct(darkPct)}</div>
+          </div>
+        </td>
+        <td class="r">${fmt.dec(r.gini)}</td>
+        <td class="r">${fmt.ms(r.avg_pub_lag_ms)}</td>
+        <td class="r" style="color:var(--green)">${openAuc}</td>
+        <td class="r" style="color:var(--ice)">${closeAuc}</td>
+      </tr>`;
+  }).join('');
+}
+
+function renderAlgoDonut(data) {
+  const totalAlgo    = data.reduce((s,r) => s + (r.algo_flag||0), 0);
+  const totalBurst   = data.reduce((s,r) => s + (r.burst_algo||0), 0);
+  const totalAuction = data.reduce((s,r) => s + (r.auction||0), 0);
+  const totalHuman   = data.reduce((s,r) => s + (r.human||0), 0);
+
+  if (algoDonutChart) algoDonutChart.destroy();
+  algoDonutChart = new Chart(document.getElementById('algoDonut'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Flagged Algo', 'Burst Algo', 'Auction', 'Human'],
+      datasets: [{
+        data: [totalAlgo, totalBurst, totalAuction, totalHuman],
+        backgroundColor: ['#f5a623', '#a78bfa', '#4fc3f7', '#43e097'],
+        borderWidth: 0,
+        hoverOffset: 8,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom', labels: { padding: 16, usePointStyle: true } },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${fmt.num(ctx.parsed)} trades` } }
+      },
+      cutout: '62%',
+    }
+  });
+}
+
+function renderDarkBar(data) {
+  const top20 = data.slice(0, 20);
+  if (darkBarChart) darkBarChart.destroy();
+  darkBarChart = new Chart(document.getElementById('darkBar'), {
+    type: 'bar',
+    data: {
+      labels: top20.map(r => r.isin.slice(-6)),
+      datasets: [
+        { label: 'Lit', data: top20.map(r => r.lit_volume||0), backgroundColor: '#4fc3f7', stack: 'v' },
+        { label: 'Dark', data: top20.map(r => r.dark_volume||0), backgroundColor: '#a78bfa', stack: 'v' },
+        { label: 'LIS', data: top20.map(r => r.lis_volume||0), backgroundColor: '#f5a623', stack: 'v' },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: {
+        x: { stacked: true, ticks: { maxRotation: 45 } },
+        y: { stacked: true, ticks: { callback: v => (v/1e6).toFixed(0)+'M' } }
+      },
+      plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, padding: 12 } } }
+    }
+  });
+}
+
+/* ─── Intraday Aggregate Chart ──────────────────────────────────────────── */
+async function loadIntraday() {
+  allIntraday = await API('euronext_intraday',
+    `trade_date=eq.${currentDate}&order=minute_bucket.asc`);
+  renderIntradayAggregate();
+}
+
+function renderIntradayAggregate() {
+  document.getElementById('intradayLabel').textContent = 'Market Aggregate';
+  const buckets = {};
+  allIntraday.forEach(r => {
+    if (!buckets[r.minute_bucket]) buckets[r.minute_bucket] = { algo: 0, human: 0, auction: 0 };
+    buckets[r.minute_bucket].algo    += r.algo_volume || 0;
+    buckets[r.minute_bucket].human   += r.human_volume || 0;
+    buckets[r.minute_bucket].auction += r.auction_volume || 0;
+  });
+  const labels = Object.keys(buckets).sort();
+  renderIntradayChart('intradayChart', labels,
+    labels.map(l => buckets[l].algo),
+    labels.map(l => buckets[l].human),
+    labels.map(l => buckets[l].auction));
+}
+
+function renderIntradayChart(canvasId, labels, algoData, humanData, auctionData) {
+  const existing = Chart.getChart(canvasId);
+  if (existing) existing.destroy();
+  new Chart(document.getElementById(canvasId), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Auction', data: auctionData, backgroundColor: '#4fc3f7', stack: 'v', borderWidth: 0 },
+        { label: 'Algo',    data: algoData,    backgroundColor: '#f5a623', stack: 'v', borderWidth: 0 },
+        { label: 'Human',   data: humanData,   backgroundColor: '#43e097', stack: 'v', borderWidth: 0 },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      animation: { duration: 400 },
+      scales: {
+        x: {
+          stacked: true,
+          ticks: {
+            maxTicksLimit: 20, maxRotation: 0,
+            callback: (_, i, arr) => i % Math.ceil(arr.length / 20) === 0 ? labels[i]?.slice(0,5) : ''
+          }
+        },
+        y: { stacked: true, ticks: { callback: v => (v/1e3).toFixed(0)+'K' } }
+      },
+      plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, padding: 12 } } }
+    }
+  });
+}
+
+/* ─── Latency table + chart ─────────────────────────────────────────────── */
+async function loadLatency() {
+  allLatency = await API('euronext_latency',
+    `trade_date=eq.${currentDate}&order=trade_count.desc&limit=50`);
+
+  document.getElementById('latencyBody').innerHTML = allLatency.slice(0,30).map(r => {
+    const total = (r.hft_count||0) + (r.algo_dma_count||0) + (r.human_count||0);
+    const hftPct = total ? ((r.hft_count||0)/total*100).toFixed(0) : 0;
+    const algoPct = total ? ((r.algo_dma_count||0)/total*100).toFixed(0) : 0;
+    const humPct = total ? ((r.human_count||0)/total*100).toFixed(0) : 0;
+    return `
+      <tr>
+        <td class="mono">${r.isin}</td>
+        <td class="r">${fmt.ms(r.avg_lag_ms)}</td>
+        <td class="r">${fmt.ms(r.min_lag_ms)}</td>
+        <td>
+          <div class="bar-wrap">
+            <div class="bar-track"><div class="bar-fill bar-amber" style="width:${hftPct}%"></div></div>
+            <div class="bar-pct">${hftPct}%</div>
+          </div>
+        </td>
+        <td>
+          <div class="bar-wrap">
+            <div class="bar-track"><div class="bar-fill bar-ice" style="width:${algoPct}%"></div></div>
+            <div class="bar-pct">${algoPct}%</div>
+          </div>
+        </td>
+        <td>
+          <div class="bar-wrap">
+            <div class="bar-track"><div class="bar-fill bar-green" style="width:${humPct}%"></div></div>
+            <div class="bar-pct">${humPct}%</div>
+          </div>
+        </td>
+      </tr>`;
+  }).join('');
+
+  // Aggregate speed tier donut
+  const totHFT  = allLatency.reduce((s,r) => s + (r.hft_count||0), 0);
+  const totAlgo = allLatency.reduce((s,r) => s + (r.algo_dma_count||0), 0);
+  const totHum  = allLatency.reduce((s,r) => s + (r.human_count||0), 0);
+  if (latencyDonutChart) latencyDonutChart.destroy();
+  latencyDonutChart = new Chart(document.getElementById('latencyDonut'), {
+    type: 'doughnut',
+    data: {
+      labels: ['HFT < 10ms', 'Algo DMA 10–500ms', 'Human > 500ms'],
+      datasets: [{ data: [totHFT, totAlgo, totHum],
+        backgroundColor: ['#f5a623','#4fc3f7','#43e097'], borderWidth: 0 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '58%',
+      plugins: {
+        legend: { position: 'bottom', labels: { padding: 12, usePointStyle: true } },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${fmt.num(ctx.parsed)}` } }
+      }
+    }
+  });
+}
+
+/* ─── Execution Chains ──────────────────────────────────────────────────── */
+async function loadChains() {
+  const data = await API('euronext_chains',
+    `trade_date=eq.${currentDate}&order=total_notional.desc.nullslast`);
+  document.getElementById('chainCount').textContent = `${data.length} CHAINS`;
+
+  const TYPE_BADGE = {
+    RAPID_SLICER: 'badge-amber', SLICER: 'badge-amber',
+    BURST_EXEC: 'badge-purple', MULTI_LEG: 'badge-ice',
+  };
+
+  document.getElementById('chainBody').innerHTML = !data.length
+    ? '<tr><td colspan="9" style="color:var(--text-dim);font-family:var(--mono);font-size:12px;padding:16px">No multi-leg chains detected. Only single-execution trades found.</td></tr>'
+    : data.map(r => `
+      <tr>
+        <td class="mono">${r.isin}</td>
+        <td><span class="badge ${r.venue==='XOSL'?'badge-ice':'badge-amber'}">${r.venue}</span></td>
+        <td class="r">${r.leg_count}</td>
+        <td class="r">${fmt.num(Math.round(r.total_qty))}</td>
+        <td class="r">${r.total_notional ? fmt.nok(r.total_notional) : '—'}</td>
+        <td class="r">${r.duration_ms != null ? (r.duration_ms/1000).toFixed(1)+'s' : '—'}</td>
+        <td class="r">${r.avg_interval_ms != null ? r.avg_interval_ms+'ms' : '—'}</td>
+        <td><span class="badge ${TYPE_BADGE[r.chain_type]||'badge-dim'}">${r.chain_type||'—'}</span></td>
+        <td style="font-size:11px;color:var(--text-dim)">${r.classes||'—'}</td>
+      </tr>`).join('');
+}
+
+/* ─── ISIN Drill-Down ───────────────────────────────────────────────────── */
+async function drillIntoISIN(isin, venue) {
+  document.querySelectorAll('#summaryBody tr').forEach(tr => tr.classList.remove('selected'));
+  const row = [...document.querySelectorAll('#summaryBody tr')]
+    .find(tr => tr.textContent.includes(isin));
+  if (row) row.classList.add('selected');
+
+  document.getElementById('drillISIN').textContent = isin;
+  document.getElementById('drillVenue').textContent = venue + ' · ' + currentDate;
+  document.getElementById('drilldown').classList.add('open');
+  document.getElementById('drilldown').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  // Summary stats for this ISIN
+  const summary = allSummary.find(r => r.isin === isin && r.venue === venue) || {};
+  document.getElementById('drillStats').innerHTML = [
+    ['TRADES', fmt.num(summary.total_trades)],
+    ['EST. ADV', fmt.nok(summary.adv_estimate)],
+    ['AVG SIZE', fmt.num(summary.avg_trade_size)],
+    ['ALGO %', fmt.pct(summary.algo_ratio_pct)],
+    ['DARK %', fmt.pct(summary.dark_pct)],
+    ['GINI', fmt.dec(summary.gini)],
+    ['PUB LAG', fmt.ms(summary.avg_pub_lag_ms)],
+    ['OPEN AUC', fmt.nok(summary.open_auction_notional)],
+  ].map(([l,v]) => `
+    <div class="drill-stat">
+      <div class="drill-stat-label">${l}</div>
+      <div class="drill-stat-value">${v}</div>
+    </div>`).join('');
+
+  // Intraday chart
+  document.getElementById('intradayLabel').textContent = isin;
+  const rows = allIntraday.filter(r => r.isin === isin && r.venue === venue)
+    .sort((a,b) => a.minute_bucket.localeCompare(b.minute_bucket));
+  const labels = rows.map(r => r.minute_bucket.slice(0,5));
+  renderIntradayChart('drillIntraday', labels,
+    rows.map(r => r.algo_volume||0),
+    rows.map(r => r.human_volume||0),
+    rows.map(r => r.auction_volume||0));
+
+  // Mix donut
+  const dark = allDark.find(r => r.isin === isin && r.venue === venue) || {};
+  if (drillChart2) drillChart2.destroy();
+  drillChart2 = new Chart(document.getElementById('drillMix'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Flagged Algo', 'Burst Algo', 'Auction', 'Human'],
+      datasets: [{ data: [summary.algo_flag||0, summary.burst_algo||0, summary.auction||0, summary.human||0],
+        backgroundColor: ['#f5a623','#a78bfa','#4fc3f7','#43e097'], borderWidth: 0 }]
+    },
+    options: { responsive: true, maintainAspectRatio: false, cutout: '58%',
+      plugins: { legend: { position: 'bottom', labels: { padding: 10, usePointStyle: true } } } }
+  });
+
+  // Dark breakdown bar
+  if (drillChart3) drillChart3.destroy();
+  drillChart3 = new Chart(document.getElementById('drillDark'), {
+    type: 'bar',
+    data: {
+      labels: ['Lit (CLOB)', 'Dark MTF', 'Large-in-Scale', 'OTC / Negotiated', 'Deferred'],
+      datasets: [{
+        label: 'Volume (shares)',
+        data: [dark.lit_volume||0, dark.dark_volume||0, dark.lis_volume||0, dark.otc_volume||0, dark.deferred_volume||0],
+        backgroundColor: ['#4fc3f7','#a78bfa','#f5a623','#43e097','#f06060'],
+        borderWidth: 0, borderRadius: 3,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, indexAxis: 'y',
+      plugins: { legend: { display: false } },
+      scales: { x: { ticks: { callback: v => (v/1e3).toFixed(0)+'K' } } }
+    }
+  });
+}
+
+function closeDrill() {
+  document.getElementById('drilldown').classList.remove('open');
+  document.querySelectorAll('#summaryBody tr').forEach(tr => tr.classList.remove('selected'));
+  renderIntradayAggregate();
+}
+
+function searchISIN() {
+  const q = document.getElementById('isinSearch').value.trim().toUpperCase();
+  if (!q) return;
+  const match = allSummary.find(r => r.isin === q);
+  if (match) drillIntoISIN(match.isin, match.venue);
+  else alert(`ISIN ${q} not found in ${currentDate} data.`);
+}
+
+function showError(msg) {
+  document.getElementById('kpiGrid').innerHTML = `<div class="error-msg">${msg}</div>`;
+}
+
+/* ─── Boot ──────────────────────────────────────────────────────────────── */
+init();
+</script>
+</body>
+</html>
