@@ -404,7 +404,7 @@ tbody tr.selected { background: var(--ice-dim); }
     <select id="dateSelect"></select>
     <button class="btn" onclick="loadDate()">LOAD</button>
     <label style="margin-left:16px">JUMP TO ISIN</label>
-    <input type="text" id="isinSearch" placeholder="e.g. NO0010715139" style="width:180px">
+    <input type="text" id="isinSearch" placeholder="ISIN or ticker, e.g. EQNR" style="width:180px">
     <button class="btn" onclick="searchISIN()">FIND</button>
   </div>
 
@@ -583,7 +583,7 @@ tbody tr.selected { background: var(--ice-dim); }
    CONFIG — set your Supabase anon key here
 ═══════════════════════════════════════════════════════════════════════════ */
 const SUPABASE_URL = 'https://esttjwaoytcatbteotwp.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVzdHRqd2FveXRjYXRidGVvdHdwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyODA3MTIsImV4cCI6MjA5MTg1NjcxMn0.Sg7GuM0MC-tKJVwhu1jwOi8oNwUZik1FeJLKdQW9osA'; // Replace with your anon key from Supabase dashboard → Settings → API
+const SUPABASE_KEY = 'YOUR_ANON_KEY_HERE'; // Replace with your anon key from Supabase dashboard → Settings → API
 
 const API = (table, params = '') =>
   fetch(`${SUPABASE_URL}/rest/v1/${table}?${params}`, {
@@ -592,6 +592,21 @@ const API = (table, params = '') =>
       'Authorization': `Bearer ${SUPABASE_KEY}`
     }
   }).then(r => { if (!r.ok) throw new Error(`${r.status} on ${table}`); return r.json(); });
+
+
+/* ─── ISIN → Ticker / Name lookup (DNB SI register) ──────────────────────── */
+const ISIN_MAP={'NO0010859580':{t:'ABS',n:'ARCTIC BIOSCIENCE AS'},'NO0012861683':{t:'AIX',n:'AYFIE INTERNATIONAL AS'},'SE0015193412':{t:'AKOBO',n:'AKOBO MINERALS AB (PUB)'},'NO0010829765':{t:'ANDF',n:'ANDFJORD SALMON GROUP AS'},'NO0010950249':{t:'BCS',n:'BERGEN CARBON SOLUTIONS AS'},'BMG1466R1732':{t:'BORR',n:'BORR DRILLING LIMITED'},'NO0013036814':{t:'BRUT',n:'BRUTON LIMITED'},'NO0010078850':{t:'CAMBI',n:'CAMBI ASA'},'NO0010015175':{t:'CYVIZ',n:'CYVIZ AS'},'NO0013711739':{t:'DDRIL',n:'DOLPHIN DRILLING AS'},'NO0010963275':{t:'DSRT',n:'DESERT CONTROL AS'},'NO0010955917':{t:'DVD',n:'DEEP VALUE DRILLER AS'},'NO0013601245':{t:'EAM',n:'EAM SOLAR AS'},'NO0010911902':{t:'ELIMP',n:'ELEKTROIMPORTØREN AS'},'NO0010907744':{t:'GEM',n:'GREEN MINERALS AS'},'NO0011013765':{t:'GIGA',n:'GIGANTE SALMON AS'},'NO0010931918':{t:'HAV',n:'HAV GROUP ASA'},'NO0013696799':{t:'HKY',n:'HAVILA KYSTRUTEN AS'},'NO0010859648':{t:'HUDL',n:'HUDDLESTOCK FINTECH'},'NO0010536048':{t:'INDCT',n:'INDUCT'},'NO0010762792':{t:'INSTA',n:'INSTABANK'},'NO0010724701':{t:'ISLAX',n:'ICELANDIC SALMON'},'NO0010815103':{t:'KRAB',n:'KRAFT BANK ASA'},'NO0010921299':{t:'LOKO',n:'LOKOTECH GROUP AS'},'NO0010405780':{t:'LYTIX',n:'LYTIX BIOPHARMA AS'},'NO0010974983':{t:'MAS',n:'MÅSØVAL AS'},'NO0012928805':{t:'NOAP',n:'NORDIC AQUA PARTNERS AS'},'NO0010360019':{t:'NORAM',n:'NORAM DRILLING AS'},'NO0011002651':{t:'NORDH',n:'NORDHEALTH AS A-AKSJER'},'NO0010969108':{t:'NTI',n:'NORSK TITANIUM AS'},'NO0010894512':{t:'OMDA',n:'OMDA AS'},'NO0010893902':{t:'PROXI',n:'PROXIMAR SEAFOOD AS'},'KYG812291253':{t:'SEA1',n:'Sea1 Offshore Inc.'},'NO0010811961':{t:'SOFTX',n:'SOFTOX SOLUTIONS'},'NO0012780958':{t:'STST',n:'STAINLESS TANKERS ASA'},'BMG730931091':{t:'VTURA',n:'VENTURA OFFSHORE HOLDING LTD.'},'NO0010768096':{t:'WEST',n:'WESTERN BULK CHARTERING AS'},'NO0010895782':{t:'XPLRA',n:'XPLORA TECHNOLOGIES'},'CA98936C8584':{t:'ZENA',n:'ZENITH ENERGY'},'NO0010607971':{t:'ALNG',n:'AWILCO LNG'},'NO0012953720':{t:'HUNT',n:'HUNTER GROUP'},'NO0013683409':{t:'NOFIN',n:'NORDIC FINANCIALS ASA'},'NO0012885252':{t:'NORSE',n:'NORSE ATLANTIC ASA'},'NO0010550056':{t:'NORTH',n:'NORTH ENERGY'},'NO0010713571':{t:'STECH',n:'SOILTECH ASA'},'BMG9156K1018':{t:'2020',n:'2020 BULKERS'},'NO0003021909':{t:'ABG',n:'ABG SUNDAL COLLIER HOLDING'},'NO0010715394':{t:'ABL',n:'ABL GROUP ASA'},'NO0010840515':{t:'ACR',n:'AXACTOR ASA'},'NO0003078107':{t:'AFG',n:'AF GRUPPEN'},'NO0003572802':{t:'AFK',n:'ARENDALS FOSSEKOMPANI'},'NO0010872468':{t:'AGLX',n:'AGILYX ASA'},'NO0010215684':{t:'AKAST',n:'AKASTOR'},'NO0010886625':{t:'AKBM',n:'AKER BIOMARINE ASA'},'NO0010234552':{t:'AKER',n:'AKER'},'NO0010921232':{t:'AKH',n:'AKER HORIZONS ASA'},'NO0010345853':{t:'AKRBP',n:'AKER BP'},'NO0010716582':{t:'AKSO',n:'AKER SOLUTIONS'},'NO0003097503':{t:'AKVA',n:'AKVA GROUP'},'NO0013683821':{t:'APR',n:'APPEAR ASA'},'BMG0451H2087':{t:'ARCH',n:'ARCHER'},'NO0013682948':{t:'ARR',n:'ARRIBATEC GROUP ASA'},'NO0013464750':{t:'ASA',n:'ATLANTIC SAPPHIRE'},'NO0004822503':{t:'ATEA',n:'ATEA'},'NO0010073489':{t:'AUSS',n:'AUSTEVOLL SEAFOOD'},'BMG0670A1099':{t:'AUTO',n:'AUTOSTORE HOLDINGS LTD.'},'NO0010014632':{t:'AZT',n:'ARCTICZYMES TECHNOLOGIES'},'NO0010633951':{t:'B2I',n:'B2 Impact ASA'},'FO0000000179':{t:'BAKKA',n:'BAKKAFROST'},'NO0010890965':{t:'BEWI',n:'BEWI'},'NO0012706763':{t:'BIEN',n:'BIEN SPAREBANK ASA'},'NO0010379266':{t:'BNOR',n:'BLUENORD ASA'},'NO0003110603':{t:'BONHR',n:'BONHEUR'},'NO0010360266':{t:'BOUV',n:'BOUVET'},'NO0010657505':{t:'BRG',n:'BORREGAARD'},'BMG0702P1086':{t:'BWE',n:'BW ENERGY LIMITED'},'SGXZ69436764':{t:'BWLPG',n:'BW LPG'},'BMG1738J1247':{t:'BWO',n:'BW OFFSHORE LIMITED'},'DK0061412772':{t:'CADLR',n:'CADELER A/S'},'NO0010923121':{t:'CAPSL',n:'CAPSOL TECHNOLOGIES ASA'},'NO0013219535':{t:'CAVEN',n:'CAVENDISH HYDROGEN ASA'},'NO0010876642':{t:'CLOUD',n:'CLOUDBERRY CLEAN ENERGY ASA'},'BE0003816338':{t:'CMBTO',n:'CMB.TECH NV'},'SE0014731154':{t:'CONTX',n:'CONTEXTVISION'},'NO0013033795':{t:'CRNA',n:'CIRCIO HOLDING ASA'},'NO0012697095':{t:'DELIA',n:'DELLIA GROUP'},'NO0013647693':{t:'DFENS',n:'FJORD DEFENCE GROUP ASA'},'NO0010161896':{t:'DNB',n:'DNB BANK ASA'},'NO0003921009':{t:'DNO',n:'DNO'},'NO0012851874':{t:'DOFG',n:'DOF GROUP ASA'},'NO0010263023':{t:'EIOF',n:'EIDESVIK OFFSHORE'},'NO0010722283':{t:'ELABS',n:'ELLIPTIC LABORATORIES ASA'},'NO0010816093':{t:'ELK',n:'ELKEM'},'NO0010815673':{t:'ELMRA',n:'ELMERA GROUP ASA'},'NO0011002586':{t:'ELO',n:'ELOPAK ASA'},'NO0010358484':{t:'EMGS',n:'ELECTROMAGNETIC GEOSERVICES'},'NO0012555459':{t:'ENDUR',n:'ENDÚR'},'CY0101162119':{t:'ENH',n:'SED ENERGY HOLDINGS PLC'},'NO0013186460':{t:'ENSU',n:'ENSURGE MICROPOWER ASA'},'NO0010716418':{t:'ENTRA',n:'ENTRA'},'NL0015000GX8':{t:'ENVIP',n:'ENVIPCO HOLDING N.V.'},'NO0010735343':{t:'EPR',n:'EUROPRIS'},'NO0010096985':{t:'EQNR',n:'EQUINOR'},'NO0010708605':{t:'EQVA',n:'EQVA ASA'},'CY0200352116':{t:'FRO',n:'FRONTLINE PLC'},'NO0010748866':{t:'GENT',n:'GENTIAN DIAGNOSTICS ASA'},'NO0010582521':{t:'GJF',n:'GJENSIDIGE FORSIKRING'},'NO0004913609':{t:'GOD',n:'GOODTECH'},'NO0010365521':{t:'GSF',n:'GRIEG SEAFOOD'},'SGXZ53070850':{t:'HAFNI',n:'HAFNIA LIMITED'},'NO0011082075':{t:'HAUTO',n:'HOEGH AUTOLINERS ASA'},'NO0010257728':{t:'HAVI',n:'HAVILA SHIPPING'},'NO0010029804':{t:'HELG',n:'SPAREBANK 1 HELGELAND'},'NO0013401380':{t:'HERMA',n:'HERMANA HOLDING ASA'},'NO0003067902':{t:'HEX',n:'HEXAGON COMPOSITES'},'NO0010904923':{t:'HPUR',n:'HEXAGON PURUS ASA'},'BMG4660A1036':{t:'HSHP',n:'HIMALAYA SHIPPING LTD'},'NO0010892359':{t:'HYPRO',n:'HYDROGENPRO ASA'},'NO0013536078':{t:'IDEX',n:'IDEX BIOMETRICS'},'NO0010001118':{t:'ITERA',n:'ITERA'},'NO0013461350':{t:'IWS',n:'INTEGRATED WIND SOLUTIONS ASA'},'BMG5137R1088':{t:'JIN',n:'JINHUI SHIPPING AND TRANSPORTATION'},'NO0010833262':{t:'KCC',n:'KLAVENESS COMBINATION CARRIERS'},'NO0010743545':{t:'KID',n:'KID'},'NO0003079709':{t:'KIT',n:'KITRON'},'NO0013711721':{t:'KMCP',n:'KMC PROPERTIES ASA'},'NO0003033102':{t:'KOA',n:'KONGSBERG AUTOMOTIVE'},'NO0013536151':{t:'KOG',n:'KONGSBERG GRUPPEN'},'NO0011016040':{t:'KOMPL',n:'KOMPLETT ASA'},'NO0013355859':{t:'LIFE',n:'LIFECARE ASA'},'NO0010894231':{t:'LINK',n:'LINK MOBILITY GROUP HOLDING'},'NO0003096208':{t:'LSG',n:'LERØY SEAFOOD GROUP'},'NO0010159684':{t:'MEDI',n:'MEDISTIM'},'NO0010187032':{t:'MGN',n:'MAGNORA'},'NO0006390301':{t:'MING',n:'SPAREBANK 1 SMN'},'NO0012483207':{t:'MORG',n:'SPAREBANKEN MØRE'},'NO0013325506':{t:'MORLD',n:'MORELD ASA'},'NO0003054108':{t:'MOWI',n:'MOWI'},'NO0010791353':{t:'MPCC',n:'MPC CONTAINER SHIPS'},'NO0010734338':{t:'MULTI',n:'MULTICONSULT'},'DK0060520450':{t:'NAPA',n:'NAPATECH'},'NO0010196140':{t:'NAS',n:'NORWEGIAN AIR SHUTTLE'},'NO0010205966':{t:'NAVA',n:'NAVAMEDIC'},'NO0010081235':{t:'NEL',n:'NEL'},'NO0010629108':{t:'NEXT',n:'NEXT BIOMETRICS GROUP'},'NO0005052605':{t:'NHY',n:'NORSK HYDRO'},'NO0003049405':{t:'NKR',n:'NEKKAR'},'NO0003055501':{t:'NOD',n:'NORDIC SEMICONDUCTOR'},'BMG6682J1036':{t:'NOL',n:'NORTHERN OCEAN LTD.'},'NO0013162693':{t:'NOM',n:'NORDIC MINING'},'NO0006000801':{t:'NONG',n:'SPAREBANK 1 NORD-NORGE'},'NO0010856511':{t:'NORBT',n:'NORBIT'},'NO0013052209':{t:'NORCO',n:'NORCONSULT ASA'},'NO0003679102':{t:'NRC',n:'NRC GROUP'},'NO0010861115':{t:'NSKOG',n:'NORSKE SKOG'},'NO0010714785':{t:'NYKD',n:'NYKODE THERAPEUTICS ASA'},'NO0003399909':{t:'ODF',n:'ODFJELL SER. A'},'NO0003399917':{t:'ODFB',n:'ODFJELL SER. B'},'BMG671801022':{t:'ODL',n:'ODFJELL DRILLING'},'MHY641771016':{t:'OET',n:'OKEANIS ECO TANKERS'},'NO0010816895':{t:'OKEA',n:'OKEA'},'NO0013711713':{t:'ONCIN',n:'ONCOINVENT ASA'},'NO0003733800':{t:'ORK',n:'ORKLA'},'NO0010040611':{t:'OTEC',n:'OTELLO CORPORATION'},'BMG6716L1081':{t:'OTL',n:'ODFJELL TECHNOLOGY LTD'},'NO0013721613':{t:'OTOVO',n:'OTOVO ASA'},'NO0010397581':{t:'PARB',n:'PARETO BANK'},'NO0010405640':{t:'PCIB',n:'PCI BIOTECH HOLDING'},'NO0010564701':{t:'PEN',n:'PANORO ENERGY'},'NO0010840507':{t:'PEXIP',n:'PEXIP HOLDING'},'NO0010000045':{t:'PHO',n:'PHOTOCURE'},'BMG6904D1083':{t:'PLSV',n:'PARATUS ENERGY SERVICES LTD.'},'NO0012535832':{t:'PLT',n:'POLIGHT'},'NO0012942525':{t:'PNOR',n:'PETRONOR E&amp;P ASA'},'NO0010209331':{t:'PROT',n:'PROTECTOR FORSIKRING'},'NO0010861990':{t:'PRS',n:'PROSAFE'},'NO0013178616':{t:'PUBLI',n:'PUBLIC PROPERTY INVEST ASA'},'CA74836K1003':{t:'QEC',n:'QUESTERRE ENERGY CORPORATION'},'NO0010907389':{t:'RANA',n:'RANA GRUBER ASA'},'NO0003117202':{t:'REACH',n:'REACH SUBSEA'},'NO0010112675':{t:'RECSI',n:'REC SILICON'},'NO0006390400':{t:'RING',n:'SPAREBANK 1 RINGERIKE HADELAND'},'NO0006001007':{t:'ROGS',n:'ROGALAND SPAREBANK'},'NO0010572589':{t:'SAGA',n:'SAGA PURE'},'NO0010310956':{t:'SALM',n:'SALMAR'},'NO0010892094':{t:'SALME',n:'SALMON EVOLUTION ASA'},'NO0010863285':{t:'SATS',n:'SATS'},'NO0010631567':{t:'SB1NO',n:'SPAREBANK 1 SØR-NORGE ASA'},'NO0006000900':{t:'SBNOR',n:'SPAREBANKEN NORGE'},'NO0010612450':{t:'SBO',n:'SELVAAG BOLIG'},'NO0003053308':{t:'SCANA',n:'SCANA'},'NO0010715139':{t:'SCATC',n:'SCATEC ASA'},'CY0101550917':{t:'SDSD',n:'S.D. STANDARD ETC PLC'},'NO0006001809':{t:'SKUE',n:'SKUE SPAREBANK'},'NO0011012502':{t:'SMOP',n:'SMARTOPTICS GROUP ASA'},'BMG850801025':{t:'SNI',n:'STOLT-NIELSEN'},'NO0010691660':{t:'SNOR',n:'SPAREBANK 1 NORDMØRE'},'NO0013573014':{t:'SNTIA',n:'SENTIA ASA'},'NO0010285562':{t:'SOAG',n:'SPAREBANK 1 ØSTFOLD AKERSHUS'},'NO0003080608':{t:'SOFF',n:'SOLSTAD OFFSHORE'},'NO0013135368':{t:'SOMA',n:'SOLSTAD MARITIME ASA'},'NO0006222009':{t:'SPOG',n:'SPAREBANKEN ØST'},'NO0010751910':{t:'SPOL',n:'SPAREBANK 1 ØSTLANDET'},'NO0003053605':{t:'STB',n:'STOREBRAND'},'NO0010098247':{t:'STRO',n:'STRONGPOINT'},'LU0075646355':{t:'SUBC',n:'SUBSEA 7'},'CH0496451508':{t:'SWON',n:'SOFTWAREONE HOLDING'},'NO0012916131':{t:'TECH',n:'TECHSTEP'},'NO0010063308':{t:'TEL',n:'TELENOR'},'NO0003078800':{t:'TGS',n:'TGS ASA'},'NO0012470089':{t:'TOM',n:'TOMRA SYSTEMS'},'NO0010597883':{t:'TRMED',n:'THOR MEDICAL ASA'},'NO0011202772':{t:'VAR',n:'VÅR ENERGI ASA'},'NO0005806802':{t:'VEI',n:'VEIDEKKE'},'NO0010736879':{t:'VEND',n:'VEND MARKETPLACES ASA'},'NO0010734122':{t:'VISTN',n:'VISTIN PHARMA'},'NO0010708068':{t:'VOW',n:'VOW'},'NO0010571680':{t:'WAWI',n:'WALLENIUS WILHELMSEN'},'NO0010609662':{t:'WSTEP',n:'WEBSTEP'},'NO0010571698':{t:'WWI',n:'WILH. WILHELMSEN HOLDING SER. A'},'NO0010576010':{t:'WWIB',n:'WILH. WILHELMSEN HOLDING SER. B'},'NO0010208051':{t:'YAR',n:'YARA INTERNATIONAL'},'NO0010708910':{t:'ZAL',n:'ZALARIS'},'NO0010713936':{t:'ZAP',n:'ZAPTEC ASA'},'NO0013524942':{t:'ZLNA',n:'ZELLUNA'}};
+
+const isinInfo = isin => ISIN_MAP[isin] || { t: isin.slice(-6), n: '—' };
+const isinTicker = isin => (ISIN_MAP[isin] || {}).t || isin.slice(-6);
+const isinName   = isin => (ISIN_MAP[isin] || {}).n || '';
+
+/* ─── Render a compact ISIN cell: shows ticker bold + name dim ─────────────── */
+const isinCell = isin => {
+  const info = ISIN_MAP[isin];
+  if (info) return `<div style="font-family:var(--mono);font-size:13px;font-weight:600;color:var(--text-bright)">${info.t}</div><div style="font-size:11px;color:var(--text-dim);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${info.n}">${info.n}</div>`;
+  return `<div style="font-family:var(--mono);font-size:12px">${isin}</div>`;
+};
 
 /* ─── Chart.js global defaults ──────────────────────────────────────────── */
 Chart.defaults.color = '#5a7a96';
@@ -727,7 +742,7 @@ async function loadWhales() {
       <div class="whale-card">
         <div class="whale-top">
           <div>
-            <div class="whale-isin">${r.isin}</div>
+            <div class="whale-isin">${isinTicker(r.isin)} <span style="font-size:11px;color:var(--text-dim)">${isinName(r.isin)}</span></div>
             <div class="whale-venue">${r.venue} · ${time}</div>
           </div>
           <div>${r.participant_class === 'ALGO' || r.algo_ind === 'ALGO'
@@ -770,7 +785,7 @@ async function loadSignals() {
           <div class="signal-desc">${r.signal_desc || '—'}</div>
         </div>
         <div style="text-align:right">
-          <div class="signal-isin">${r.isin}</div>
+          <div class="signal-isin">${isinTicker(r.isin)}</div><div style="font-size:11px;color:var(--text-dim)">${isinName(r.isin)}</div>
           <div class="signal-strength ${r.strength}">${r.strength || ''}</div>
           ${r.notional ? `<div style="font-family:var(--mono);font-size:11px;color:var(--amber)">NOK ${(r.notional/1e6).toFixed(1)}M</div>` : ''}
         </div>
@@ -798,7 +813,7 @@ function renderSummaryTable(data) {
     const closeAuc = r.close_auction_notional ? fmt.nok(r.close_auction_notional) : '—';
     return `
       <tr onclick="drillIntoISIN('${r.isin}','${r.venue}')">
-        <td class="mono">${r.isin}</td>
+        <td>${isinCell(r.isin)}</td>
         <td><span class="badge ${r.venue==='XOSL'?'badge-ice':'badge-amber'}">${r.venue}</span></td>
         <td class="r">${fmt.num(r.total_trades)}</td>
         <td class="r">${fmt.nok(r.adv_estimate)}</td>
@@ -942,7 +957,7 @@ async function loadLatency() {
     const humPct = total ? ((r.human_count||0)/total*100).toFixed(0) : 0;
     return `
       <tr>
-        <td class="mono">${r.isin}</td>
+        <td>${isinCell(r.isin)}</td>
         <td class="r">${fmt.ms(r.avg_lag_ms)}</td>
         <td class="r">${fmt.ms(r.min_lag_ms)}</td>
         <td>
@@ -1003,7 +1018,7 @@ async function loadChains() {
     ? '<tr><td colspan="9" style="color:var(--text-dim);font-family:var(--mono);font-size:12px;padding:16px">No multi-leg chains detected. Only single-execution trades found.</td></tr>'
     : data.map(r => `
       <tr>
-        <td class="mono">${r.isin}</td>
+        <td>${isinCell(r.isin)}</td>
         <td><span class="badge ${r.venue==='XOSL'?'badge-ice':'badge-amber'}">${r.venue}</span></td>
         <td class="r">${r.leg_count}</td>
         <td class="r">${fmt.num(Math.round(r.total_qty))}</td>
@@ -1022,8 +1037,10 @@ async function drillIntoISIN(isin, venue) {
     .find(tr => tr.textContent.includes(isin));
   if (row) row.classList.add('selected');
 
-  document.getElementById('drillISIN').textContent = isin;
-  document.getElementById('drillVenue').textContent = venue + ' · ' + currentDate;
+  const _info = ISIN_MAP[isin];
+  document.getElementById('drillISIN').textContent = _info ? `${_info.t}` : isin;
+  document.getElementById('drillISIN').title = _info ? _info.n : '';
+  document.getElementById('drillVenue').innerHTML = `${venue} &nbsp;·&nbsp; ${currentDate}${_info ? '<br><span style="font-size:13px;color:var(--text);font-family:var(--body)">' + _info.n + '</span>' : ''}`;
   document.getElementById('drilldown').classList.add('open');
   document.getElementById('drilldown').scrollIntoView({ behavior: 'smooth', block: 'start' });
 
@@ -1045,7 +1062,7 @@ async function drillIntoISIN(isin, venue) {
     </div>`).join('');
 
   // Intraday chart
-  document.getElementById('intradayLabel').textContent = isin;
+  document.getElementById('intradayLabel').textContent = isinTicker(isin) + ' — Intraday Profile';
   const rows = allIntraday.filter(r => r.isin === isin && r.venue === venue)
     .sort((a,b) => a.minute_bucket.localeCompare(b.minute_bucket));
   const labels = rows.map(r => r.minute_bucket.slice(0,5));
@@ -1098,9 +1115,13 @@ function closeDrill() {
 function searchISIN() {
   const q = document.getElementById('isinSearch').value.trim().toUpperCase();
   if (!q) return;
-  const match = allSummary.find(r => r.isin === q);
+  // Accept both ISIN and ticker
+  const match = allSummary.find(r =>
+    r.isin === q ||
+    (ISIN_MAP[r.isin] && ISIN_MAP[r.isin].t.toUpperCase() === q)
+  );
   if (match) drillIntoISIN(match.isin, match.venue);
-  else alert(`ISIN ${q} not found in ${currentDate} data.`);
+  else alert(`"${q}" not found in ${currentDate} data.`);
 }
 
 function showError(msg) {
