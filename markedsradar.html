@@ -583,12 +583,12 @@ tbody tr.selected { background: var(--ice-dim); }
    CONFIG — set your Supabase anon key here
 ═══════════════════════════════════════════════════════════════════════════ */
 const SUPABASE_URL = 'https://esttjwaoytcatbteotwp.supabase.co';
-const SUPABASE_KEY = 'YOUR_ANON_KEY_HERE'; // Replace with your anon key from Supabase dashboard → Settings → API
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVzdHRqd2FveXRjYXRidGVvdHdwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyODA3MTIsImV4cCI6MjA5MTg1NjcxMn0.Sg7GuM0MC-tKJVwhu1jwOi8oNwUZik1FeJLKdQW9osA'; // Replace with your anon key from Supabase dashboard → Settings → API
 
 const API = (table, params = '') =>
   fetch(`${SUPABASE_URL}/rest/v1/${table}?${params}`, {
     headers: {
-      'apikey': eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVzdHRqd2FveXRjYXRidGVvdHdwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyODA3MTIsImV4cCI6MjA5MTg1NjcxMn0.Sg7GuM0MC-tKJVwhu1jwOi8oNwUZik1FeJLKdQW9osA,
+      'apikey': SUPABASE_KEY,
       'Authorization': `Bearer ${SUPABASE_KEY}`
     }
   }).then(r => { if (!r.ok) throw new Error(`${r.status} on ${table}`); return r.json(); });
