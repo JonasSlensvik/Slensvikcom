@@ -583,12 +583,12 @@ tbody tr.selected { background: var(--ice-dim); }
    CONFIG — set your Supabase anon key here
 ═══════════════════════════════════════════════════════════════════════════ */
 const SUPABASE_URL = 'https://esttjwaoytcatbteotwp.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVzdHRqd2FveXRjYXRidGVvdHdwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyODA3MTIsImV4cCI6MjA5MTg1NjcxMn0.Sg7GuM0MC-tKJVwhu1jwOi8oNwUZik1FeJLKdQW9osA'; // Replace with your anon key from Supabase dashboard → Settings → API
+const SUPABASE_KEY = 'YOUR_ANON_KEY_HERE'; // Replace with your anon key from Supabase dashboard → Settings → API
 
 const API = (table, params = '') =>
   fetch(`${SUPABASE_URL}/rest/v1/${table}?${params}`, {
     headers: {
-      'apikey': SUPABASE_KEY,
+      'apikey': eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVzdHRqd2FveXRjYXRidGVvdHdwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyODA3MTIsImV4cCI6MjA5MTg1NjcxMn0.Sg7GuM0MC-tKJVwhu1jwOi8oNwUZik1FeJLKdQW9osA,
       'Authorization': `Bearer ${SUPABASE_KEY}`
     }
   }).then(r => { if (!r.ok) throw new Error(`${r.status} on ${table}`); return r.json(); });
@@ -868,12 +868,15 @@ function renderAlgoDonut(data) {
 }
 
 function renderDarkBar(data) {
-  const top20 = data.slice(0, 20);
+  const top20 = data
+    .map(r => ({ ...r, _vol: (r.lit_volume||0) + (r.dark_volume||0) + (r.lis_volume||0) }))
+    .sort((a, b) => b._vol - a._vol)
+    .slice(0, 20);
   if (darkBarChart) darkBarChart.destroy();
   darkBarChart = new Chart(document.getElementById('darkBar'), {
     type: 'bar',
     data: {
-      labels: top20.map(r => r.isin.slice(-6)),
+      labels: top20.map(r => isinTicker(r.isin)),
       datasets: [
         { label: 'Lit', data: top20.map(r => r.lit_volume||0), backgroundColor: '#4fc3f7', stack: 'v' },
         { label: 'Dark', data: top20.map(r => r.dark_volume||0), backgroundColor: '#a78bfa', stack: 'v' },
@@ -886,7 +889,14 @@ function renderDarkBar(data) {
         x: { stacked: true, ticks: { maxRotation: 45 } },
         y: { stacked: true, ticks: { callback: v => (v/1e6).toFixed(0)+'M' } }
       },
-      plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, padding: 12 } } }
+      plugins: {
+        legend: { position: 'bottom', labels: { usePointStyle: true, padding: 12 } },
+        tooltip: { callbacks: { title: ctx => {
+          const r = top20[ctx[0].dataIndex];
+          const n = isinName(r.isin);
+          return n ? `${isinTicker(r.isin)} — ${n}` : isinTicker(r.isin);
+        }}}
+      }
     }
   });
 }
@@ -894,7 +904,7 @@ function renderDarkBar(data) {
 /* ─── Intraday Aggregate Chart ──────────────────────────────────────────── */
 async function loadIntraday() {
   allIntraday = await API('euronext_intraday',
-    `trade_date=eq.${currentDate}&order=minute_bucket.asc`);
+    `trade_date=eq.${currentDate}&order=minute_bucket.asc&limit=100000`);
   renderIntradayAggregate();
 }
 
