@@ -450,7 +450,7 @@ tbody tr.selected { background: var(--ice-dim); }
       <div class="chart-container"><canvas id="algoDonut"></canvas></div>
     </div>
     <div class="chart-box">
-      <div class="chart-label">Dark Pool Ratio — Top 20 ISINs by Volume</div>
+      <div class="chart-label">Dark Pool % — Top 20 ISINs by Volume</div>
       <div class="chart-container"><canvas id="darkBar"></canvas></div>
     </div>
     <div class="chart-box full">
@@ -868,43 +868,74 @@ function renderAlgoDonut(data) {
 }
 
 function renderDarkBar(data) {
+  // Sort by total volume (lit+dark+lis) to get the most active ISINs
   const top20 = data
     .map(r => ({ ...r, _vol: (r.lit_volume||0) + (r.dark_volume||0) + (r.lis_volume||0) }))
     .sort((a, b) => b._vol - a._vol)
     .slice(0, 20);
+
+  // On XOSL/MERK, raw dark volumes are close to zero for most stocks.
+  // Show dark_pct as a horizontal bar — this is the meaningful signal.
   if (darkBarChart) darkBarChart.destroy();
   darkBarChart = new Chart(document.getElementById('darkBar'), {
     type: 'bar',
     data: {
       labels: top20.map(r => isinTicker(r.isin)),
-      datasets: [
-        { label: 'Lit', data: top20.map(r => r.lit_volume||0), backgroundColor: '#4fc3f7', stack: 'v' },
-        { label: 'Dark', data: top20.map(r => r.dark_volume||0), backgroundColor: '#a78bfa', stack: 'v' },
-        { label: 'LIS', data: top20.map(r => r.lis_volume||0), backgroundColor: '#f5a623', stack: 'v' },
-      ]
+      datasets: [{
+        label: 'Dark Pool %',
+        data: top20.map(r => r.dark_pct || 0),
+        backgroundColor: top20.map(r => (r.dark_pct||0) > 10 ? '#a78bfa' : '#4fc3f7'),
+        borderWidth: 0,
+        borderRadius: 3,
+      }]
     },
     options: {
       responsive: true, maintainAspectRatio: false,
+      indexAxis: 'y',
       scales: {
-        x: { stacked: true, ticks: { maxRotation: 45 } },
-        y: { stacked: true, ticks: { callback: v => (v/1e6).toFixed(0)+'M' } }
+        x: {
+          min: 0, max: 100,
+          ticks: { callback: v => v + '%' },
+          grid: { color: 'rgba(255,255,255,0.04)' }
+        },
+        y: { ticks: { font: { family: "'Syne Mono', monospace", size: 11 } } }
       },
       plugins: {
-        legend: { position: 'bottom', labels: { usePointStyle: true, padding: 12 } },
-        tooltip: { callbacks: { title: ctx => {
-          const r = top20[ctx[0].dataIndex];
-          const n = isinName(r.isin);
-          return n ? `${isinTicker(r.isin)} — ${n}` : isinTicker(r.isin);
-        }}}
+        legend: { display: false },
+        tooltip: { callbacks: {
+          title: ctx => {
+            const r = top20[ctx[0].dataIndex];
+            return isinName(r.isin) || isinTicker(r.isin);
+          },
+          label: ctx => {
+            const r = top20[ctx.dataIndex];
+            const pct = (r.dark_pct||0).toFixed(1);
+            const vol = ((r.dark_volume||0)/1e6).toFixed(2);
+            return ` Dark: ${pct}%  (${vol}M shares)`;
+          }
+        }}
       }
     }
   });
 }
 
+/* ─── Paginated Supabase fetch (bypasses 1000-row server cap) ───────────── */
+async function APIall(table, params, pageSize = 1000) {
+  let rows = [], offset = 0;
+  while (true) {
+    const page = await API(table, `${params}&limit=${pageSize}&offset=${offset}`);
+    rows = rows.concat(page);
+    if (page.length < pageSize) break;   // last page
+    offset += pageSize;
+  }
+  return rows;
+}
+
 /* ─── Intraday Aggregate Chart ──────────────────────────────────────────── */
 async function loadIntraday() {
-  allIntraday = await API('euronext_intraday',
-    `trade_date=eq.${currentDate}&order=minute_bucket.asc&limit=100000`);
+  // Supabase defaults to 1000 rows max; paginate to get all ~24k minute-bucket rows
+  allIntraday = await APIall('euronext_intraday',
+    `trade_date=eq.${currentDate}&order=minute_bucket.asc`);
   renderIntradayAggregate();
 }
 
@@ -1071,10 +1102,10 @@ async function drillIntoISIN(isin, venue) {
       <div class="drill-stat-value">${v}</div>
     </div>`).join('');
 
-  // Intraday chart
+  // Intraday chart — fetch only this ISIN's rows directly (max ~90, no pagination needed)
   document.getElementById('intradayLabel').textContent = isinTicker(isin) + ' — Intraday Profile';
-  const rows = allIntraday.filter(r => r.isin === isin && r.venue === venue)
-    .sort((a,b) => a.minute_bucket.localeCompare(b.minute_bucket));
+  const rows = await API('euronext_intraday',
+    `trade_date=eq.${currentDate}&isin=eq.${isin}&venue=eq.${venue}&order=minute_bucket.asc&limit=500`);
   const labels = rows.map(r => r.minute_bucket.slice(0,5));
   renderIntradayChart('drillIntraday', labels,
     rows.map(r => r.algo_volume||0),
