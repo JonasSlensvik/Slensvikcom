@@ -636,10 +636,13 @@ const fmt = {
 /* ─── Init: load available dates ────────────────────────────────────────── */
 async function init() {
   try {
-    const dates = await API('euronext_daily_summary',
-      'select=trade_date&order=trade_date.desc&limit=90');
-    const unique = [...new Set(dates.map(r => r.trade_date))];
+    // euronext_latency has one row per ISIN per date — fetch just trade_date column
+    // with a large enough limit to cover many dates (276 ISINs × N dates)
+    const dates = await APIall('euronext_latency',
+      'select=trade_date&order=trade_date.desc');
+    const unique = [...new Set(dates.map(r => r.trade_date))].sort((a,b) => b.localeCompare(a));
     const sel = document.getElementById('dateSelect');
+    sel.innerHTML = '';   // clear any existing options
     unique.forEach(d => {
       const opt = document.createElement('option');
       opt.value = d; opt.textContent = d;
