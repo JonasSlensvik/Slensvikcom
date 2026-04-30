@@ -580,17 +580,13 @@ tbody tr.selected { background: var(--ice-dim); }
 
 <script>
 /* ═══════════════════════════════════════════════════════════════════════════
-   CONFIG — set your Supabase anon key here
+   CONFIG — set your PostgREST endpoint here
 ═══════════════════════════════════════════════════════════════════════════ */
-const SUPABASE_URL = 'https://esttjwaoytcatbteotwp.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVzdHRqd2FveXRjYXRidGVvdHdwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyODA3MTIsImV4cCI6MjA5MTg1NjcxMn0.Sg7GuM0MC-tKJVwhu1jwOi8oNwUZik1FeJLKdQW9osA'; // Replace with your anon key from Supabase dashboard → Settings → API
+const API_URL = 'https://api.slensvik.com'; 
 
 const API = (table, params = '') =>
-  fetch(`${SUPABASE_URL}/rest/v1/${table}?${params}`, {
-    headers: {
-      'apikey': SUPABASE_KEY,
-      'Authorization': `Bearer ${SUPABASE_KEY}`
-    }
+  fetch(`${API_URL}/${table}?${params}`, {
+    headers: { 'Accept': 'application/json' }
   }).then(r => { if (!r.ok) throw new Error(`${r.status} on ${table}`); return r.json(); });
 
 
@@ -600,6 +596,19 @@ const ISIN_MAP={'NO0010859580':{t:'ABS',n:'ARCTIC BIOSCIENCE AS'},'NO0012861683'
 const isinInfo = isin => ISIN_MAP[isin] || { t: isin.slice(-6), n: '—' };
 const isinTicker = isin => (ISIN_MAP[isin] || {}).t || isin.slice(-6);
 const isinName   = isin => (ISIN_MAP[isin] || {}).n || '';
+
+// Enrich ISIN map from instruments table (async, fills in after page load)
+async function loadInstruments() {
+  try {
+    const rows = await APIall('instruments', 'select=isin,ticker,name');
+    rows.forEach(r => {
+      if (r.ticker) {
+        if (!ISIN_MAP[r.isin]) ISIN_MAP[r.isin] = { t: r.ticker, n: r.name || '' };
+        else { ISIN_MAP[r.isin].t = r.ticker; if (r.name) ISIN_MAP[r.isin].n = r.name; }
+      }
+    });
+  } catch(e) { console.warn('Could not load instruments:', e); }
+}
 
 /* ─── Render a compact ISIN cell: shows ticker bold + name dim ─────────────── */
 const isinCell = isin => {
@@ -633,12 +642,13 @@ const fmt = {
   time: v => v ? v.slice(0,5) : '—',
 };
 
-/* ─── Init: load available dates ────────────────────────────────────────── */
+/* ─── Init: load instruments + available dates ─────────────────────────── */
 async function init() {
   try {
-    // euronext_latency has one row per ISIN per date — fetch just trade_date column
-    // with a large enough limit to cover many dates (276 ISINs × N dates)
-    const dates = await APIall('euronext_latency',
+    await loadInstruments();  // Enrich ISIN map from instruments table
+
+    // latency table: one row per ISIN per date — paginate to get all dates
+    const dates = await APIall('latency',
       'select=trade_date&order=trade_date.desc');
     const unique = [...new Set(dates.map(r => r.trade_date))].sort((a,b) => b.localeCompare(a));
     const sel = document.getElementById('dateSelect');
@@ -650,7 +660,7 @@ async function init() {
     });
     if (unique.length) { currentDate = unique[0]; await loadDate(); }
     else { showError('No data found. Run the pipeline first.'); }
-  } catch(e) { showError('Could not connect to Supabase. Check your API key. ' + e.message); }
+  } catch(e) { showError('Could not connect to API. Check your PostgREST endpoint. ' + e.message); }
 }
 
 async function loadDate() {
@@ -665,7 +675,7 @@ async function loadDate() {
 
 /* ─── KPIs ──────────────────────────────────────────────────────────────── */
 async function loadKPIs() {
-  const data = await API('euronext_daily_summary',
+  const data = await API('daily_summary',
     `trade_date=eq.${currentDate}&select=total_trades,adv_estimate,algo_ratio_pct,dark_pct,gini,avg_pub_lag_ms`);
   if (!data.length) return;
 
@@ -720,7 +730,7 @@ async function loadKPIs() {
 
 /* ─── Whales ────────────────────────────────────────────────────────────── */
 async function loadWhales() {
-  const data = await API('euronext_whale_alerts',
+  const data = await API('whale_alerts',
     `trade_date=eq.${currentDate}&order=notional.desc.nullslast&limit=50`);
   document.getElementById('whaleCount').textContent = `${data.length} EVENTS`;
 
@@ -766,7 +776,7 @@ async function loadWhales() {
 
 /* ─── Smart Money Signals ───────────────────────────────────────────────── */
 async function loadSignals() {
-  const data = await API('euronext_smart_signals',
+  const data = await API('smart_signals',
     `trade_date=eq.${currentDate}&order=notional.desc.nullslast`);
   document.getElementById('signalCount').textContent = `${data.length} SIGNALS`;
 
@@ -797,10 +807,10 @@ async function loadSignals() {
 
 /* ─── Summary Table + Algo/Dark charts ─────────────────────────────────── */
 async function loadSummaryTable() {
-  allSummary = await API('euronext_daily_summary',
+  allSummary = await API('daily_summary',
     `trade_date=eq.${currentDate}&order=adv_estimate.desc.nullslast`);
-  allDark = await API('euronext_dark_pool',
-    `trade_date=eq.${currentDate}&order=total_notional.desc.nullslast`);
+  allDark = await API('dark_flow_summary',
+    `trade_date=eq.${currentDate}&order=total_volume.desc.nullslast`);
 
   document.getElementById('isinCount').textContent = `${allSummary.length} ISINs`;
   renderSummaryTable(allSummary);
@@ -922,7 +932,7 @@ function renderDarkBar(data) {
   });
 }
 
-/* ─── Paginated Supabase fetch (bypasses 1000-row server cap) ───────────── */
+/* ─── Paginated API fetch (bypasses PostgREST default row cap) ──────────── */
 async function APIall(table, params, pageSize = 1000) {
   let rows = [], offset = 0;
   while (true) {
@@ -936,8 +946,8 @@ async function APIall(table, params, pageSize = 1000) {
 
 /* ─── Intraday Aggregate Chart ──────────────────────────────────────────── */
 async function loadIntraday() {
-  // Supabase defaults to 1000 rows max; paginate to get all ~24k minute-bucket rows
-  allIntraday = await APIall('euronext_intraday',
+  // PostgREST may limit rows; paginate to get all ~24k minute-bucket rows
+  allIntraday = await APIall('intraday',
     `trade_date=eq.${currentDate}&order=minute_bucket.asc`);
   renderIntradayAggregate();
 }
@@ -991,7 +1001,7 @@ function renderIntradayChart(canvasId, labels, algoData, humanData, auctionData)
 
 /* ─── Latency table + chart ─────────────────────────────────────────────── */
 async function loadLatency() {
-  allLatency = await API('euronext_latency',
+  allLatency = await API('latency',
     `trade_date=eq.${currentDate}&order=trade_count.desc&limit=50`);
 
   document.getElementById('latencyBody').innerHTML = allLatency.slice(0,30).map(r => {
@@ -1049,7 +1059,7 @@ async function loadLatency() {
 
 /* ─── Execution Chains ──────────────────────────────────────────────────── */
 async function loadChains() {
-  const data = await API('euronext_chains',
+  const data = await API('chains',
     `trade_date=eq.${currentDate}&order=total_notional.desc.nullslast`);
   document.getElementById('chainCount').textContent = `${data.length} CHAINS`;
 
@@ -1107,7 +1117,7 @@ async function drillIntoISIN(isin, venue) {
 
   // Intraday chart — fetch only this ISIN's rows directly (max ~90, no pagination needed)
   document.getElementById('intradayLabel').textContent = isinTicker(isin) + ' — Intraday Profile';
-  const rows = await API('euronext_intraday',
+  const rows = await API('intraday',
     `trade_date=eq.${currentDate}&isin=eq.${isin}&venue=eq.${venue}&order=minute_bucket.asc&limit=500`);
   const labels = rows.map(r => r.minute_bucket.slice(0,5));
   renderIntradayChart('drillIntraday', labels,
@@ -1129,22 +1139,27 @@ async function drillIntoISIN(isin, venue) {
       plugins: { legend: { position: 'bottom', labels: { padding: 10, usePointStyle: true } } } }
   });
 
-  // Dark breakdown bar
+  // Dark breakdown bar + side bias
   if (drillChart3) drillChart3.destroy();
+  const biasLabel = dark.dark_side_bias === 'BUY' ? '🟢 BUY bias' : dark.dark_side_bias === 'SELL' ? '🔴 SELL bias' : '⚪ NEUTRAL';
   drillChart3 = new Chart(document.getElementById('drillDark'), {
     type: 'bar',
     data: {
-      labels: ['Lit (CLOB)', 'Dark MTF', 'Large-in-Scale', 'OTC / Negotiated', 'Deferred'],
+      labels: ['Lit (CLOB)', 'Dark MTF', 'Large-in-Scale', 'Dark @ Ask (buy)', 'Dark @ Bid (sell)'],
       datasets: [{
         label: 'Volume (shares)',
-        data: [dark.lit_volume||0, dark.dark_volume||0, dark.lis_volume||0, dark.otc_volume||0, dark.deferred_volume||0],
+        data: [dark.lit_volume||0, dark.dark_volume||0, dark.lis_volume||0, dark.dark_volume_at_ask||0, dark.dark_volume_at_bid||0],
         backgroundColor: ['#4fc3f7','#a78bfa','#f5a623','#43e097','#f06060'],
         borderWidth: 0, borderRadius: 3,
       }]
     },
     options: {
       responsive: true, maintainAspectRatio: false, indexAxis: 'y',
-      plugins: { legend: { display: false } },
+      plugins: {
+        legend: { display: false },
+        title: { display: true, text: `Dark: ${(dark.dark_pct||0).toFixed(1)}% — ${biasLabel} — Modal: ${dark.modal_price||'—'}`,
+          color: '#e8f4ff', font: { size: 12 } }
+      },
       scales: { x: { ticks: { callback: v => (v/1e3).toFixed(0)+'K' } } }
     }
   });
