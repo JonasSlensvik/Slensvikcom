@@ -1390,6 +1390,7 @@ async function loadTrends() {
 }
 
 
+function closeDrill() {
   document.getElementById('drilldown').classList.remove('open');
   document.querySelectorAll('#summaryBody tr').forEach(tr => tr.classList.remove('selected'));
   renderIntradayAggregate();
