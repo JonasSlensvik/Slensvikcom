@@ -631,7 +631,7 @@ tbody tr.selected { background: var(--ice-dim); }
 /* ═══════════════════════════════════════════════════════════════════════════
    CONFIG — set your PostgREST endpoint here
 ═══════════════════════════════════════════════════════════════════════════ */
-const API_URL = 'https://api.slensvik.com';;  // TODO: replace with https://api.slensvik.com once Caddy is set up
+const API_URL = 'https://api.slensvik.com';  // TODO: replace with https://api.slensvik.com once Caddy is set up
 
 const API = (table, params = '') =>
   fetch(`${API_URL}/${table}?${params}`, {
