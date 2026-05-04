@@ -631,7 +631,7 @@ tbody tr.selected { background: var(--ice-dim); }
 /* ═══════════════════════════════════════════════════════════════════════════
    CONFIG — set your PostgREST endpoint here
 ═══════════════════════════════════════════════════════════════════════════ */
-const API_URL = 'https://api.slensvik.com';  // TODO: replace with https://api.slensvik.com once Caddy is set up
+const API_URL = 'https://api.slensvik.com' 
 
 const API = (table, params = '') =>
   fetch(`${API_URL}/${table}?${params}`, {
@@ -645,6 +645,17 @@ const ISIN_MAP={'NO0010859580':{t:'ABS',n:'ARCTIC BIOSCIENCE AS'},'NO0012861683'
 const isinInfo = isin => ISIN_MAP[isin] || { t: isin.slice(-6), n: '—' };
 const isinTicker = isin => (ISIN_MAP[isin] || {}).t || isin.slice(-6);
 const isinName   = isin => (ISIN_MAP[isin] || {}).n || '';
+
+// Convert UTC timestamp from PostgreSQL to Oslo local time HH:MM
+const toOsloHHMM = ts => {
+  if (!ts) return '00:00';
+  try {
+    return new Date(ts).toLocaleTimeString('no-NO', {
+      timeZone: 'Europe/Oslo',
+      hour: '2-digit', minute: '2-digit', hour12: false
+    });
+  } catch(e) { return ts.slice(11,16); }
+};
 
 // Enrich ISIN map from instruments table (async, fills in after page load)
 async function loadInstruments() {
@@ -801,7 +812,7 @@ async function loadWhales() {
       : r.price && r.quantity ? `NOK ${(r.price*r.quantity/1e6).toFixed(2)}M` : '—';
     const alerts = [r.size_alert, r.block_alert, r.otc_alert, r.dark_alert, r.deferral_alert]
       .filter(Boolean);
-    const time = r.trading_time ? r.trading_time.slice(11,19) : '—';
+    const time = r.trading_time ? toOsloHHMM(r.trading_time) : '—';
     return `
       <div class="whale-card">
         <div class="whale-top">
@@ -1245,7 +1256,7 @@ async function loadDarkFlowChart(isin, venue) {
   const darkTrades = impactRows
     .filter(r => r.is_dark && r.price)
     .map(r => ({
-      x: r.trading_time ? r.trading_time.slice(11,16) : '00:00',
+      x: toOsloHHMM(r.trading_time),
       y: parseFloat(r.price),
       r: Math.min(Math.max(Math.sqrt((r.notional||0) / 50000), 3), 25),
       notional: r.notional,
@@ -1258,7 +1269,7 @@ async function loadDarkFlowChart(isin, venue) {
     .filter(r => !r.is_dark && r.price)
     .slice(0, 2000)  // cap for performance
     .map(r => ({
-      x: r.trading_time ? r.trading_time.slice(11,16) : '00:00',
+      x: toOsloHHMM(r.trading_time),
       y: parseFloat(r.price),
       r: 2,
     }));
