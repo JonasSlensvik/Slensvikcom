@@ -257,6 +257,12 @@ tbody tr.selected { background: var(--ice-dim); }
 .badge-red    { background: var(--red-dim); color: var(--red); }
 .badge-purple { background: #2d1f5e; color: var(--purple); }
 .badge-dim    { background: var(--bg3); color: var(--text-dim); }
+.evt-btn { background: var(--card); color: var(--text-dim); border: 1px solid var(--border); padding: 4px 10px; border-radius: 4px; cursor: pointer; font-family: var(--mono); font-size: 11px; transition: all 0.15s; }
+.evt-btn:hover  { border-color: var(--ice); color: var(--text); }
+.evt-btn.active { background: var(--ice-dim); color: var(--ice); border-color: var(--ice); }
+.prox-IMMINENT    { color: #f06060; font-weight: 600; }
+.prox-UPCOMING    { color: var(--amber); }
+.prox-JUST_PASSED { color: var(--text-dim); font-style: italic; }
 
 /* ─── Bar fills ─────────────────────────────────────────────────────────── */
 .bar-wrap { display: flex; align-items: center; gap: 8px; }
@@ -597,6 +603,71 @@ tbody tr.selected { background: var(--ice-dim); }
     </div>
   </div>
 
+  <!-- ── Corporate Events Calendar ────────────────────────────────────────── -->
+  <div class="section">
+    <div class="section-head">
+      <div class="section-title">📅 Corporate Events</div>
+      <div class="section-desc">Upcoming and recent regulatory announcements — results, dividends, profit warnings. Signals near events are highlighted.</div>
+      <div class="section-count" id="eventsCount">—</div>
+    </div>
+    <div style="display:flex;gap:8px;padding:0 0 12px 0;flex-wrap:wrap" id="eventFilters">
+      <button onclick="filterEvents('ALL')"      class="evt-btn active" data-f="ALL">ALL</button>
+      <button onclick="filterEvents('RESULTS')"  class="evt-btn" data-f="RESULTS">📊 RESULTS</button>
+      <button onclick="filterEvents('DIVIDEND')" class="evt-btn" data-f="DIVIDEND">💰 DIVIDEND</button>
+      <button onclick="filterEvents('EX_DATE')"  class="evt-btn" data-f="EX_DATE">📌 EX DATE</button>
+      <button onclick="filterEvents('WARNING')"  class="evt-btn" data-f="WARNING">⚠️ WARNING</button>
+      <button onclick="filterEvents('INSIDER')"  class="evt-btn" data-f="INSIDER">👤 INSIDER</button>
+    </div>
+    <div class="table-wrap">
+      <table id="eventsTable">
+        <thead>
+          <tr>
+            <th>DATE</th>
+            <th>TYPE</th>
+            <th>ISSUER</th>
+            <th>TITLE</th>
+            <th class="r">DAYS</th>
+            <th>SIGNAL PROXIMITY</th>
+          </tr>
+        </thead>
+        <tbody id="eventsBody">
+          <tr><td colspan="6" class="loader">LOADING …</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── Signal × Event Proximity ──────────────────────────────────────────── -->
+  <div class="section">
+    <div class="section-head">
+      <div class="section-title">🔔 Signal × Event Proximity</div>
+      <div class="section-desc">Smart money signals that occurred within 30 days of a corporate event — the core informed trading pattern. Red = event imminent when signal fired.</div>
+      <div class="section-count" id="proximityCount">—</div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>SIGNAL DATE</th>
+            <th>ISIN</th>
+            <th>SIGNAL</th>
+            <th>STRENGTH</th>
+            <th>EVENT TYPE</th>
+            <th>EVENT DATE</th>
+            <th class="r">DAYS TO EVENT</th>
+            <th>PROXIMITY</th>
+            <th class="r">T+1</th>
+            <th class="r">T+5</th>
+            <th class="r">T+20</th>
+          </tr>
+        </thead>
+        <tbody id="proximityBody">
+          <tr><td colspan="11" class="loader">LOADING …</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
   <!-- ── Trend Monitoring ───────────────────────────────────────────────── -->
   <div class="section">
     <div class="section-head">
@@ -734,7 +805,7 @@ async function loadDate() {
   await Promise.all([
     loadKPIs(), loadWhales(), loadSignals(),
     loadSummaryTable(), loadLatency(), loadIntraday(),
-    loadTrends()
+    loadCorporateEvents(), loadSignalProximity(), loadTrends()
   ]);
   // Reset chains to unloaded state on date change
   document.getElementById('chainWrap').style.display = 'none';
@@ -1373,6 +1444,142 @@ async function loadDarkFlowChart(isin, venue) {
   const biasStr = bias === 'SELL' ? '🔴 SELL wall' : bias === 'BUY' ? '🟢 BUY wall' : '⚪ Neutral';
   document.getElementById('darkFlowStats').textContent =
     `Dark: ${(dark.dark_pct||0).toFixed(1)}% · ${biasStr} · Modal: ${modalPrice ? parseFloat(modalPrice).toFixed(2) : '—'} · ${darkTrades.length} dark trades`;
+}
+
+/* ─── Corporate Events Calendar ─────────────────────────────────────────── */
+let allEvents = [];
+let currentEventFilter = 'ALL';
+
+async function loadCorporateEvents() {
+  try {
+    // Load events in a ±30 day window around current date
+    const from = new Date(currentDate);
+    from.setDate(from.getDate() - 7);
+    const to = new Date(currentDate);
+    to.setDate(to.getDate() + 30);
+    const fromStr = from.toISOString().slice(0,10);
+    const toStr   = to.toISOString().slice(0,10);
+
+    allEvents = await APIall('corporate_events',
+      `event_date=gte.${fromStr}&event_date=lte.${toStr}&order=event_date.asc`);
+    document.getElementById('eventsCount').textContent = `${allEvents.length} events`;
+    renderEvents(allEvents);
+  } catch(e) {
+    document.getElementById('eventsBody').innerHTML =
+      `<tr><td colspan="6" style="color:var(--text-dim);font-family:var(--mono);font-size:12px;padding:16px">
+        Corporate events not yet available — run the corporate_events_scraper workflow first.
+      </td></tr>`;
+    document.getElementById('eventsCount').textContent = 'not ready';
+  }
+}
+
+function filterEvents(type) {
+  currentEventFilter = type;
+  document.querySelectorAll('.evt-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.f === type);
+  });
+  const filtered = type === 'ALL' ? allEvents : allEvents.filter(e => e.event_type === type);
+  renderEvents(filtered);
+}
+
+function renderEvents(data) {
+  const today = currentDate;
+  const TYPE_ICON = {
+    RESULTS: '📊', DIVIDEND: '💰', EX_DATE: '📌',
+    WARNING: '⚠️', INSIDER: '👤', OTHER: '📋'
+  };
+  const TYPE_COLOR = {
+    RESULTS: 'badge-ice', DIVIDEND: 'badge-amber', EX_DATE: 'badge-purple',
+    WARNING: 'badge-red',  INSIDER: 'badge-dim',   OTHER: 'badge-dim'
+  };
+
+  document.getElementById('eventsBody').innerHTML = !data.length
+    ? `<tr><td colspan="6" style="color:var(--text-dim);font-size:12px;padding:16px;font-family:var(--mono)">No events in this window.</td></tr>`
+    : data.map(e => {
+        const days = Math.round((new Date(e.event_date) - new Date(today)) / 86400000);
+        const daysStr = days === 0 ? 'TODAY' : days > 0 ? `+${days}d` : `${days}d`;
+        const daysColor = days === 0 ? 'color:#f06060;font-weight:600' :
+                          days > 0 && days <= 5 ? 'color:var(--amber)' :
+                          days < 0 ? 'color:var(--text-dim)' : '';
+        const dividendInfo = e.dividend_amount
+          ? `<span style="color:var(--amber);margin-left:8px">${e.dividend_ccy||''} ${e.dividend_amount}</span>` : '';
+        const isin = e.isin || '';
+        return `<tr style="cursor:${isin?'pointer':'default'}" onclick="${isin?`drillIntoISIN('${isin}','XOSL')`:''}">
+          <td style="font-family:var(--mono);font-size:11px">${e.event_date}</td>
+          <td><span class="badge ${TYPE_COLOR[e.event_type]||'badge-dim'}">${TYPE_ICON[e.event_type]||''}${e.event_type}</span></td>
+          <td>${e.issuer||isinName(isin)||isin}</td>
+          <td style="font-size:12px">${e.title||'—'}${dividendInfo}</td>
+          <td class="r" style="${daysColor};font-family:var(--mono)">${daysStr}</td>
+          <td id="evt-prox-${e.id}">—</td>
+        </tr>`;
+      }).join('');
+
+  // Async: check if any events have nearby signals
+  checkEventProximity(data);
+}
+
+async function checkEventProximity(events) {
+  // For each event with an ISIN, check if there's a smart signal within 7 days
+  const isins = [...new Set(events.filter(e => e.isin).map(e => e.isin))];
+  if (!isins.length) return;
+  try {
+    const signals = await API('smart_signals',
+      `isin=in.(${isins.join(',')})&order=trade_date.desc&limit=200`);
+    events.forEach(e => {
+      if (!e.isin || !e.id) return;
+      const nearby = signals.find(s =>
+        s.isin === e.isin &&
+        Math.abs(new Date(e.event_date) - new Date(s.trade_date)) / 86400000 <= 7
+      );
+      const el = document.getElementById(`evt-prox-${e.id}`);
+      if (el && nearby) {
+        el.innerHTML = `<span class="badge badge-purple">🌑 ${nearby.signal_type}</span>`;
+      } else if (el) {
+        el.textContent = '—';
+      }
+    });
+  } catch(e) { /* silent fail */ }
+}
+
+/* ─── Signal × Event Proximity ─────────────────────────────────────────── */
+async function loadSignalProximity() {
+  try {
+    const data = await APIall('signal_event_proximity',
+      'order=trade_date.desc');
+    document.getElementById('proximityCount').textContent =
+      `${data.length} signal-event pairs`;
+
+    const RET_COLOR = v => {
+      if (v == null) return '';
+      return v > 2 ? 'color:var(--green)' : v < -2 ? 'color:#f06060' : '';
+    };
+    const fmt_ret = v => v == null ? '—' :
+      `<span style="${RET_COLOR(v)}">${v > 0 ? '+':''}${v.toFixed(2)}%</span>`;
+
+    document.getElementById('proximityBody').innerHTML = !data.length
+      ? `<tr><td colspan="11" style="color:var(--text-dim);font-size:12px;padding:16px;font-family:var(--mono)">
+           No signal-event pairs found yet. Accumulates as signals and events build up.
+         </td></tr>`
+      : data.slice(0, 100).map(r => `
+          <tr>
+            <td style="font-family:var(--mono);font-size:11px">${r.trade_date}</td>
+            <td>${isinCell(r.isin)}</td>
+            <td style="font-size:11px">${r.signal_type}</td>
+            <td><span class="badge ${r.strength==='STRONG'?'badge-purple':'badge-ice'}">${r.strength||'—'}</span></td>
+            <td><span class="badge badge-ice">${r.event_type}</span></td>
+            <td style="font-family:var(--mono);font-size:11px">${r.event_date}</td>
+            <td class="r prox-${r.proximity}" style="font-family:var(--mono)">${r.days_to_event > 0 ? '+':''}${r.days_to_event}d</td>
+            <td class="prox-${r.proximity}">${r.proximity||'—'}</td>
+            <td class="r">${fmt_ret(r.return_t1_pct)}</td>
+            <td class="r">${fmt_ret(r.return_t5_pct)}</td>
+            <td class="r">${fmt_ret(r.return_t20_pct)}</td>
+          </tr>`).join('');
+  } catch(e) {
+    document.getElementById('proximityBody').innerHTML =
+      `<tr><td colspan="11" style="color:var(--text-dim);font-size:12px;padding:16px;font-family:var(--mono)">
+        Proximity view not yet initialised — run create_trend_view in Database Maintenance workflow.
+      </td></tr>`;
+  }
 }
 
 /* ─── Trend Monitoring ──────────────────────────────────────────────────── */
