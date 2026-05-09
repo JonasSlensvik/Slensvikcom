@@ -1,0 +1,289 @@
+{
+  "generated_at": "2026-05-09T19:57:12.869514Z",
+  "trade_date": "2026-05-09",
+  "tone": "neutral",
+  "headline": "No significant dark pool activity recorded on 2026-05-09.",
+  "sections": [
+    {
+      "title": "Market Pulse",
+      "icon": "📊",
+      "tone": "neutral",
+      "headline": "No significant dark pool activity recorded on 2026-05-09.",
+      "text": "No significant dark pool activity recorded on 2026-05-09."
+    },
+    {
+      "title": "Smart Money Signals",
+      "icon": "⚡",
+      "text": "16 signals today: 16 DARK_BLOCK.\n\nStrong signals (9):\n  🌑 KIT (KITRON): DARK_BLOCK — Dark pool = 85.0% of total (neutral bias)\n  🌑 COSH (CONSTELLATION OIL): DARK_BLOCK — Dark pool = 81.7% of total (neutral bias)\n  🌑 HSHP (HIMALAYA SHIPPING): DARK_BLOCK — Dark pool = 68.6% of total (neutral bias)\n  🌑 LSG (LER\\u00d8Y SEAFOOD GP): DARK_BLOCK — Dark pool = 69.2% of total (neutral bias)\n  🌑 SATS: DARK_BLOCK — Dark pool = 55.2% of total (neutral bias)\n  🌑 INSTA (INSTABANK): DARK_BLOCK — Dark pool = 92.8% of total (neutral bias)\n  🌑 NKR (NEKKAR): DARK_BLOCK — Dark pool = 52.7% of total (neutral bias)\n  🌑 XPLRA (XPLORA TECHNOLOGIE): DARK_BLOCK — Dark pool = 59.3% of total (neutral bias)",
+      "rows": [
+        {
+          "isin": "NO0003079709",
+          "ticker": "KIT",
+          "name": "KITRON",
+          "signal_type": "DARK_BLOCK",
+          "strength": "STRONG",
+          "signal_desc": "Dark pool = 85.0% of total (neutral bias)"
+        },
+        {
+          "isin": "NO0013597419",
+          "ticker": "COSH",
+          "name": "CONSTELLATION OIL",
+          "signal_type": "DARK_BLOCK",
+          "strength": "STRONG",
+          "signal_desc": "Dark pool = 81.7% of total (neutral bias)"
+        },
+        {
+          "isin": "BMG4660A1036",
+          "ticker": "HSHP",
+          "name": "HIMALAYA SHIPPING",
+          "signal_type": "DARK_BLOCK",
+          "strength": "STRONG",
+          "signal_desc": "Dark pool = 68.6% of total (neutral bias)"
+        },
+        {
+          "isin": "NO0003096208",
+          "ticker": "LSG",
+          "name": "LER\\u00d8Y SEAFOOD GP",
+          "signal_type": "DARK_BLOCK",
+          "strength": "STRONG",
+          "signal_desc": "Dark pool = 69.2% of total (neutral bias)"
+        },
+        {
+          "isin": "NO0010571680",
+          "ticker": "WAWI",
+          "name": "WALLENIUS WILHELMS",
+          "signal_type": "DARK_BLOCK",
+          "strength": "MODERATE",
+          "signal_desc": "Dark pool = 32.7% of total (neutral bias)"
+        },
+        {
+          "isin": "NO0010863285",
+          "ticker": "SATS",
+          "name": "",
+          "signal_type": "DARK_BLOCK",
+          "strength": "STRONG",
+          "signal_desc": "Dark pool = 55.2% of total (neutral bias)"
+        },
+        {
+          "isin": "NO0010762792",
+          "ticker": "INSTA",
+          "name": "INSTABANK",
+          "signal_type": "DARK_BLOCK",
+          "strength": "STRONG",
+          "signal_desc": "Dark pool = 92.8% of total (neutral bias)"
+        },
+        {
+          "isin": "NO0010840507",
+          "ticker": "PEXIP",
+          "name": "PEXIP HOLDING",
+          "signal_type": "DARK_BLOCK",
+          "strength": "MODERATE",
+          "signal_desc": "Dark pool = 30.3% of total (neutral bias)"
+        },
+        {
+          "isin": "MHY1096C1093",
+          "ticker": "CAPT",
+          "name": "CAPITAL TANKERS",
+          "signal_type": "DARK_BLOCK",
+          "strength": "MODERATE",
+          "signal_desc": "Dark pool = 42.7% of total (neutral bias)"
+        },
+        {
+          "isin": "NO0013325506",
+          "ticker": "MORLD",
+          "name": "MORELD",
+          "signal_type": "DARK_BLOCK",
+          "strength": "MODERATE",
+          "signal_desc": "Dark pool = 49.6% of total (neutral bias)"
+        },
+        {
+          "isin": "NO0003049405",
+          "ticker": "NKR",
+          "name": "NEKKAR",
+          "signal_type": "DARK_BLOCK",
+          "strength": "STRONG",
+          "signal_desc": "Dark pool = 52.7% of total (neutral bias)"
+        },
+        {
+          "isin": "NO0013713115",
+          "ticker": "GENO",
+          "name": "GENERAL OCEANS",
+          "signal_type": "DARK_BLOCK",
+          "strength": "MODERATE",
+          "signal_desc": "Dark pool = 38.9% of total (neutral bias)"
+        },
+        {
+          "isin": "NO0010895782",
+          "ticker": "XPLRA",
+          "name": "XPLORA TECHNOLOGIE",
+          "signal_type": "DARK_BLOCK",
+          "strength": "STRONG",
+          "signal_desc": "Dark pool = 59.3% of total (neutral bias)"
+        },
+        {
+          "isin": "NO0010815673",
+          "ticker": "ELMRA",
+          "name": "ELMERA GROUP",
+          "signal_type": "DARK_BLOCK",
+          "strength": "MODERATE",
+          "signal_desc": "Dark pool = 31.9% of total (neutral bias)"
+        },
+        {
+          "isin": "NO0010892094",
+          "ticker": "SALME",
+          "name": "SALMON EVOLUTION",
+          "signal_type": "DARK_BLOCK",
+          "strength": "MODERATE",
+          "signal_desc": "Dark pool = 49.3% of total (neutral bias)"
+        },
+        {
+          "isin": "NO0010927288",
+          "ticker": "LUMI",
+          "name": "LUMI GRUPPEN",
+          "signal_type": "DARK_BLOCK",
+          "strength": "STRONG",
+          "signal_desc": "Dark pool = 59.7% of total (neutral bias)"
+        }
+      ]
+    },
+    {
+      "title": "Whale Alerts",
+      "icon": "🐋",
+      "text": "20 whale alert(s):\n\n  🐋 BWLPG (BW LPG):  — 0 EUR\n  🐋 BWLPG (BW LPG):  — 0 EUR\n  🐋 BWLPG (BW LPG):  — 0 EUR\n  🐋 BWLPG (BW LPG):  — 0 EUR\n  🐋 BWLPG (BW LPG):  — 0 EUR\n  🐋 BWLPG (BW LPG):  — 0 EUR\n  🐋 HAFNI (HAFNIA LIMITED):  — 0 EUR\n  🐋 HAFNI (HAFNIA LIMITED):  — 0 EUR"
+    },
+    {
+      "title": "Corporate Events Calendar",
+      "icon": "📅",
+      "text": "100 corporate events in the next 14 days:\n\n  📅 2026-05-11  None: REGULATED — Basis for reporting capital adequacy for owner banks in\n  📅 2026-05-11  None: REGULATED — Underlag til rapportering av soliditet for eierbanker i\n  🏛️ 2026-05-11  BWE (BW ENERGY LIMITED): AGM — BW Energy: 2026 Annual General Meeting   Notice\n  📅 2026-05-11  TGS: REGULATED — TGS Quarterly Dividend\n  📅 2026-05-11  HEX (HEXAGON COMPOSITES): REGULATED — Hexagon Composites ASA: Key information relating to pot\n  🏛️ 2026-05-11  POL (POLARIS MEDIA): AGM — Polaris Media ASA (POL)   Innkalling til ordinær genera\n  📅 2026-05-11  AKRBP (AKER BP): REGULATED — Aker BP: Key information related to cash dividend\n  🏛️ 2026-05-11  NHY (NORSK HYDRO): AGM — Norsk Hydro: Minutes from the Annual General Meeting 20\n  🏛️ 2026-05-11  ELO (ELOPAK): AGM — Elopak ASA: Notice of annual general meeting 2026\n  🏛️ 2026-05-11  KID: AGM — Kid ASA - Notice of Annual General Meeting 2026\n  🏛️ 2026-05-11  NHY (NORSK HYDRO): AGM — Norsk Hydro: Protokoll fra ordinær generalforsamling 20\n  🏛️ 2026-05-12  NOL (NORTHERN OCEAN LTD): AGM — NOL: Notice of Annual General Meeting 2026\n  📞 2026-05-12  NOM (NORDIC MINING): EARNINGS_CALL — Nordic Mining ASA: Invitation to the presentation of th\n  🏛️ 2026-05-12  AFK (ARENDALS FOSSEKOMP): AGM — Arendals Fossekompani: Notice of Annual General Meeting\n  📅 2026-05-12  EQNR (EQUINOR): REGULATED — Equinor to commence second tranche of the 2026 share bu",
+      "rows": [
+        {
+          "isin": null,
+          "ticker": null,
+          "name": "",
+          "event_type": "REGULATED",
+          "event_date": "2026-05-11",
+          "title": "Basis for reporting capital adequacy for owner banks in"
+        },
+        {
+          "isin": null,
+          "ticker": null,
+          "name": "",
+          "event_type": "REGULATED",
+          "event_date": "2026-05-11",
+          "title": "Underlag til rapportering av soliditet for eierbanker i"
+        },
+        {
+          "isin": "BMG0702P1086",
+          "ticker": "BWE",
+          "name": "BW ENERGY LIMITED",
+          "event_type": "AGM",
+          "event_date": "2026-05-11",
+          "title": "BW Energy: 2026 Annual General Meeting   Notice"
+        },
+        {
+          "isin": "NO0003078800",
+          "ticker": "TGS",
+          "name": "",
+          "event_type": "REGULATED",
+          "event_date": "2026-05-11",
+          "title": "TGS Quarterly Dividend"
+        },
+        {
+          "isin": "NO0003067902",
+          "ticker": "HEX",
+          "name": "HEXAGON COMPOSITES",
+          "event_type": "REGULATED",
+          "event_date": "2026-05-11",
+          "title": "Hexagon Composites ASA: Key information relating to pot"
+        },
+        {
+          "isin": "NO0010466022",
+          "ticker": "POL",
+          "name": "POLARIS MEDIA",
+          "event_type": "AGM",
+          "event_date": "2026-05-11",
+          "title": "Polaris Media ASA (POL)   Innkalling til ordinær genera"
+        },
+        {
+          "isin": "NO0010345853",
+          "ticker": "AKRBP",
+          "name": "AKER BP",
+          "event_type": "REGULATED",
+          "event_date": "2026-05-11",
+          "title": "Aker BP: Key information related to cash dividend"
+        },
+        {
+          "isin": "NO0005052605",
+          "ticker": "NHY",
+          "name": "NORSK HYDRO",
+          "event_type": "AGM",
+          "event_date": "2026-05-11",
+          "title": "Norsk Hydro: Minutes from the Annual General Meeting 20"
+        },
+        {
+          "isin": "NO0011002586",
+          "ticker": "ELO",
+          "name": "ELOPAK",
+          "event_type": "AGM",
+          "event_date": "2026-05-11",
+          "title": "Elopak ASA: Notice of annual general meeting 2026"
+        },
+        {
+          "isin": "NO0010743545",
+          "ticker": "KID",
+          "name": "",
+          "event_type": "AGM",
+          "event_date": "2026-05-11",
+          "title": "Kid ASA - Notice of Annual General Meeting 2026"
+        },
+        {
+          "isin": "NO0005052605",
+          "ticker": "NHY",
+          "name": "NORSK HYDRO",
+          "event_type": "AGM",
+          "event_date": "2026-05-11",
+          "title": "Norsk Hydro: Protokoll fra ordinær generalforsamling 20"
+        },
+        {
+          "isin": "BMG6682J1036",
+          "ticker": "NOL",
+          "name": "NORTHERN OCEAN LTD",
+          "event_type": "AGM",
+          "event_date": "2026-05-12",
+          "title": "NOL: Notice of Annual General Meeting 2026"
+        },
+        {
+          "isin": "NO0013162693",
+          "ticker": "NOM",
+          "name": "NORDIC MINING",
+          "event_type": "EARNINGS_CALL",
+          "event_date": "2026-05-12",
+          "title": "Nordic Mining ASA: Invitation to the presentation of th"
+        },
+        {
+          "isin": "NO0003572802",
+          "ticker": "AFK",
+          "name": "ARENDALS FOSSEKOMP",
+          "event_type": "AGM",
+          "event_date": "2026-05-12",
+          "title": "Arendals Fossekompani: Notice of Annual General Meeting"
+        },
+        {
+          "isin": "NO0010096985",
+          "ticker": "EQNR",
+          "name": "EQUINOR",
+          "event_type": "REGULATED",
+          "event_date": "2026-05-12",
+          "title": "Equinor to commence second tranche of the 2026 share bu"
+        }
+      ]
+    }
+  ],
+  "data_snapshot": {
+    "dark_flow_rows": 0,
+    "signals_rows": 16,
+    "whale_rows": 20,
+    "catalyst_rows": 0,
+    "events_rows": 100
+  }
+}
