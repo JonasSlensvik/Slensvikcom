@@ -1485,11 +1485,11 @@ async function drillIntoISIN(isin, venue) {
 
   // Dark breakdown bar + side bias
   if (drillChart3) drillChart3.destroy();
-  const biasLabel = dark.dark_side_bias === 'SELL' ? '🔴 SELL wall (informed seller)' : dark.dark_side_bias === 'BUY' ? '🟢 BUY wall (informed buyer)' : '⚪ NEUTRAL';
+  const biasLabel = dark.dark_side_bias === 'SELL' ? '🔴 Distribution (dark below modal)' : dark.dark_side_bias === 'BUY' ? '🟢 Accumulation (dark above modal)' : '⚪ No clear bias';
   drillChart3 = new Chart(document.getElementById('drillDark'), {
     type: 'bar',
     data: {
-      labels: ['Lit (CLOB)', 'Dark MTF', 'Large-in-Scale', 'Sell wall (dark offers)', 'Buy wall (dark bids)'],
+      labels: ['Lit (CLOB)', 'Dark MTF', 'Large-in-Scale', 'Dark ≥ modal (ask side)', 'Dark < modal (bid side)'],
       datasets: [{
         label: 'Volume (shares)',
         data: [dark.lit_volume||0, dark.dark_volume||0, dark.lis_volume||0, dark.dark_volume_at_ask||0, dark.dark_volume_at_bid||0],
@@ -1642,7 +1642,7 @@ async function loadDarkFlowChart(isin, venue) {
   });
 
   const bias = dark.dark_side_bias;
-  const biasStr = bias === 'SELL' ? '🔴 SELL wall' : bias === 'BUY' ? '🟢 BUY wall' : '⚪ Neutral';
+  const biasStr = bias === 'SELL' ? '🔴 Distribution' : bias === 'BUY' ? '🟢 Accumulation' : '⚪ Neutral';
   document.getElementById('darkFlowStats').textContent =
     `Dark: ${(dark.dark_pct||0).toFixed(1)}% · ${biasStr} · Modal: ${modalPrice ? parseFloat(modalPrice).toFixed(2) : '—'} · ${darkTrades.length} dark trades`;
 }
@@ -1835,7 +1835,7 @@ function renderCatalystCard(r) {
 
   // Direction
   const type_lc   = (r.signal_type || '').toLowerCase();
-  const dir       = /sell|short|bear|dump|unload/.test(type_lc) ? 'bearish'
+  const dir       = /sell|short|bear|dump|unload|distrib/.test(type_lc) ? 'bearish'
                   : /buy|accum|long|bull|load|sweep/.test(type_lc) ? 'bullish'
                   : 'neutral';
   const dirLabel  = dir === 'bearish' ? '↓ BEARISH' : dir === 'bullish' ? '↑ BULLISH' : '◆ WATCH';
