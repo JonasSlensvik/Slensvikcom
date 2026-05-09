@@ -386,6 +386,191 @@ tbody tr.selected { background: var(--ice-dim); }
 ::-webkit-scrollbar-track { background: var(--bg); }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--border-glow); }
+
+/* ─── Catalyst Alert Cards ──────────────────────────────────────────────── */
+.catalyst-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+  gap: 16px;
+  padding: 4px 0;
+}
+.cat-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  transition: border-color .2s, box-shadow .2s;
+  cursor: pointer;
+}
+.cat-card:hover { border-color: var(--border-glow); box-shadow: 0 0 20px rgba(30,58,95,0.5); }
+.cat-card.bearish { border-left: 3px solid var(--red); }
+.cat-card.bullish  { border-left: 3px solid var(--green); }
+.cat-card.neutral  { border-left: 3px solid var(--amber); }
+.cat-card.bearish:hover { box-shadow: 0 0 24px rgba(240,96,96,0.15); }
+.cat-card.bullish:hover  { box-shadow: 0 0 24px rgba(67,224,151,0.15); }
+
+.cat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px 10px;
+  border-bottom: 1px solid var(--border);
+}
+.cat-ticker {
+  font-family: var(--mono);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-bright);
+  letter-spacing: 1px;
+}
+.cat-company {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-left: 8px;
+}
+.cat-dir {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 1px;
+  padding: 3px 8px;
+  border-radius: 3px;
+  font-weight: 600;
+}
+.cat-dir.bearish { background: var(--red-dim); color: var(--red); }
+.cat-dir.bullish  { background: var(--green-dim); color: var(--green); }
+.cat-dir.neutral  { background: var(--amber-dim); color: var(--amber); }
+
+.cat-panels {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+}
+.cat-panel {
+  padding: 14px 16px;
+}
+.cat-panel + .cat-panel {
+  border-left: 1px solid var(--border);
+}
+.cat-panel-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.cat-type {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--text-bright);
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cat-date {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-bottom: 10px;
+}
+.cat-date em { font-style: normal; color: var(--text); }
+.cat-strength-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+.cat-bar-track {
+  flex: 1;
+  height: 3px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.cat-bar-fill { height: 100%; border-radius: 2px; transition: width .4s; }
+.cat-bar-val { font-family: var(--mono); font-size: 10px; color: var(--text-dim); white-space: nowrap; }
+
+.cat-countdown {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+  margin-top: 6px;
+}
+.cat-countdown.imminent { background: var(--red-dim); color: var(--red); animation: pulse 2s infinite; }
+.cat-countdown.soon     { background: var(--amber-dim); color: var(--amber); }
+.cat-countdown.upcoming { background: var(--ice-dim); color: var(--ice); }
+
+.cat-timeline {
+  padding: 10px 16px 14px;
+  border-top: 1px solid var(--border);
+}
+.cat-tl-track {
+  position: relative;
+  height: 3px;
+  background: var(--border);
+  border-radius: 2px;
+  margin: 14px 0 6px;
+}
+.cat-tl-fill {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  border-radius: 2px;
+  opacity: 0.5;
+}
+.cat-tl-dot {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 2px solid var(--bg2);
+}
+.cat-tl-today {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  background: var(--amber);
+  border: 2px solid var(--bg2);
+  rotate: 45deg;
+}
+.cat-tl-labels {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--text-dim);
+  letter-spacing: 0.5px;
+  padding: 0 0px;
+}
+
+.cat-score {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-dim);
+  padding: 0 16px 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.cat-score-bar {
+  flex: 1;
+  height: 2px;
+  background: var(--border);
+  border-radius: 1px;
+  overflow: hidden;
+}
+.cat-score-fill { height: 100%; border-radius: 1px; }
 </style>
 </head>
 <body>
@@ -603,6 +788,18 @@ tbody tr.selected { background: var(--ice-dim); }
     </div>
   </div>
 
+  <!-- ── Catalyst Alerts ───────────────────────────────────────────────────── -->
+  <div class="section">
+    <div class="section-head">
+      <div class="section-title">🎯 Catalyst Alerts</div>
+      <div class="section-desc">Smart money activity detected ahead of a known corporate event — the informed trading fingerprint. Cards turn red when a sell signal precedes results or an AGM.</div>
+      <div class="section-count" id="catalystCount">—</div>
+    </div>
+    <div class="catalyst-grid" id="catalystGrid">
+      <div class="loader">LOADING …</div>
+    </div>
+  </div>
+
   <!-- ── Corporate Events Calendar ────────────────────────────────────────── -->
   <div class="section">
     <div class="section-head">
@@ -809,7 +1006,7 @@ async function loadDate() {
   await Promise.all([
     loadKPIs(), loadWhales(), loadSignals(),
     loadSummaryTable(), loadLatency(), loadIntraday(),
-    loadCorporateEvents(), loadSignalProximity(), loadTrends()
+    loadCatalystAlerts(), loadCorporateEvents(), loadSignalProximity(), loadTrends()
   ]);
   // Reset chains to unloaded state on date change
   document.getElementById('chainWrap').style.display = 'none';
@@ -1590,6 +1787,150 @@ async function loadSignalProximity() {
         Proximity view not yet initialised — run create_trend_view in Database Maintenance workflow.
       </td></tr>`;
   }
+}
+
+/* ─── Catalyst Alerts ───────────────────────────────────────────────────── */
+async function loadCatalystAlerts() {
+  try {
+    const today     = new Date().toISOString().slice(0,10);
+    const lookback  = new Date(); lookback.setDate(lookback.getDate() - 14);
+    const lookbackStr = lookback.toISOString().slice(0,10);
+
+    const rows = await APIall('signal_event_proximity',
+      `trade_date=gte.${lookbackStr}&event_date=gte.${today}` +
+      `&proximity=in.(imminent,before,same)&order=days_to_event.asc&limit=200`);
+
+    // Deduplicate: one card per (isin, event_date, event_type) — keep strongest signal
+    const seen = new Map();
+    for (const r of rows) {
+      const key = `${r.isin}|${r.event_date}|${r.event_type}`;
+      const prev = seen.get(key);
+      if (!prev || (r.strength || 0) > (prev.strength || 0)) seen.set(key, r);
+    }
+    const cards = [...seen.values()].sort((a,b) => a.days_to_event - b.days_to_event);
+
+    document.getElementById('catalystCount').textContent =
+      cards.length ? `${cards.length} alert${cards.length > 1 ? 's' : ''}` : 'no alerts';
+
+    document.getElementById('catalystGrid').innerHTML = !cards.length
+      ? `<div style="font-family:var(--mono);font-size:12px;color:var(--text-dim);padding:32px;text-align:center">
+           No catalyst alerts detected — no smart money signals precede any upcoming event in the current data window.
+         </div>`
+      : cards.map(renderCatalystCard).join('');
+
+  } catch(e) {
+    document.getElementById('catalystGrid').innerHTML =
+      `<div style="font-family:var(--mono);font-size:12px;color:var(--text-dim);padding:32px;text-align:center">
+         Catalyst alerts require ISIN-linked corporate events. Run the corporate_events_scraper workflow first.
+       </div>`;
+  }
+}
+
+function renderCatalystCard(r) {
+  const today     = new Date();
+  const sigDate   = new Date(r.trade_date);
+  const evtDate   = new Date(r.event_date);
+  const daysAgo   = Math.round((today - sigDate) / 86400000);
+  const daysUntil = r.days_to_event;
+
+  // Direction
+  const type_lc   = (r.signal_type || '').toLowerCase();
+  const dir       = /sell|short|bear|dump|unload/.test(type_lc) ? 'bearish'
+                  : /buy|accum|long|bull|load|sweep/.test(type_lc) ? 'bullish'
+                  : 'neutral';
+  const dirLabel  = dir === 'bearish' ? '↓ BEARISH' : dir === 'bullish' ? '↑ BULLISH' : '◆ WATCH';
+
+  // Urgency
+  const urgency   = daysUntil <= 5 ? 'imminent' : daysUntil <= 14 ? 'soon' : 'upcoming';
+  const urgLabel  = urgency === 'imminent' ? `🔴 ${daysUntil}d — IMMINENT`
+                  : urgency === 'soon'     ? `🟡 in ${daysUntil} days`
+                  :                          `🔵 in ${daysUntil} days`;
+
+  // Suspicion score (0–100)
+  const timePts   = urgency === 'imminent' ? 35 : urgency === 'soon' ? 22 : 10;
+  const sigPts    = /dark/.test(type_lc) ? 30 : /iceberg/.test(type_lc) ? 25
+                  : /whale/.test(type_lc) ? 18 : 12;
+  const evtPts    = ['RESULTS','EARNINGS_CALL','WARNING'].includes(r.event_type) ? 20
+                  : ['AGM','EX_DATE'].includes(r.event_type) ? 14 : 8;
+  const strPts    = Math.min(15, ((r.strength || 0) / 10) * 15);
+  const score     = Math.min(100, Math.round(timePts + sigPts + evtPts + strPts));
+  const scoreColor= score >= 70 ? 'var(--red)' : score >= 45 ? 'var(--amber)' : 'var(--ice)';
+
+  // Strength bar
+  const strPct    = Math.min(100, ((r.strength || 0) / 10) * 100);
+  const strColor  = dir === 'bearish' ? 'var(--red)' : dir === 'bullish' ? 'var(--green)' : 'var(--amber)';
+
+  // Event type display
+  const EVT_ICON  = { RESULTS:'📊', EARNINGS_CALL:'📞', AGM:'🏛️', EX_DATE:'📌',
+                      WARNING:'⚠️', INSIDER:'👤', PLACEMENT:'💼', DELISTING:'🚫',
+                      IPO:'🚀', PROSPECTUS:'📄', REGULATED:'📋', PRESS_RELEASE:'📰' };
+  const SIG_ICON  = /dark/.test(type_lc) ? '🌑' : /iceberg/.test(type_lc) ? '🧊'
+                  : /whale/.test(type_lc) ? '🐋' : '⚡';
+
+  // Timeline positions (%)
+  const totalSpan = Math.max(1, (evtDate - sigDate) / 86400000);
+  const todayPct  = Math.min(99, Math.max(1, ((today - sigDate) / 86400000) / totalSpan * 100));
+  const fillColor = urgency === 'imminent' ? 'var(--red)' : urgency === 'soon' ? 'var(--amber)' : 'var(--ice)';
+
+  const issuer    = r.issuer || '';
+  const ticker    = isinTicker(r.isin) || issuer.split(' ')[0] || r.isin?.slice(-4) || '—';
+  const company   = issuer || r.isin || '';
+  const isin      = r.isin || '';
+
+  const fmtDate   = d => new Date(d).toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+
+  return `
+  <div class="cat-card ${dir}" onclick="${isin ? `drillIntoISIN('${isin}','XOSL')` : ''}">
+    <div class="cat-header">
+      <div>
+        <span class="cat-ticker">${ticker}</span>
+        <span class="cat-company">${company}</span>
+      </div>
+      <span class="cat-dir ${dir}">${dirLabel}</span>
+    </div>
+
+    <div class="cat-panels">
+      <div class="cat-panel">
+        <div class="cat-panel-label">Signal Fired</div>
+        <div class="cat-type">${SIG_ICON} ${r.signal_type || '—'}</div>
+        <div class="cat-date">${fmtDate(r.trade_date)} · <em>${daysAgo}d ago</em></div>
+        <div class="cat-strength-row">
+          <div class="cat-bar-track">
+            <div class="cat-bar-fill" style="width:${strPct}%;background:${strColor}"></div>
+          </div>
+          <span class="cat-bar-val">str ${r.strength != null ? Number(r.strength).toFixed(1) : '—'}</span>
+        </div>
+      </div>
+      <div class="cat-panel">
+        <div class="cat-panel-label">Upcoming Event</div>
+        <div class="cat-type">${EVT_ICON[r.event_type] || '📋'} ${r.event_type}</div>
+        <div class="cat-date">${fmtDate(r.event_date)}</div>
+        <div class="cat-countdown ${urgency}">${urgLabel}</div>
+      </div>
+    </div>
+
+    <div class="cat-timeline">
+      <div class="cat-tl-track">
+        <div class="cat-tl-fill" style="left:${todayPct}%;right:0;background:${fillColor}"></div>
+        <div class="cat-tl-dot"  style="left:0;background:${strColor}"></div>
+        <div class="cat-tl-today" style="left:${todayPct}%"></div>
+        <div class="cat-tl-dot"  style="left:100%;background:${fillColor}"></div>
+      </div>
+      <div class="cat-tl-labels">
+        <span>${fmtDate(r.trade_date)}</span>
+        <span style="color:var(--amber)">TODAY</span>
+        <span>${fmtDate(r.event_date)}</span>
+      </div>
+    </div>
+
+    <div class="cat-score">
+      <span>SUSPICION</span>
+      <div class="cat-score-bar">
+        <div class="cat-score-fill" style="width:${score}%;background:${scoreColor}"></div>
+      </div>
+      <span style="color:${scoreColor};min-width:28px;text-align:right">${score}</span>
+    </div>
+  </div>`;
 }
 
 /* ─── Trend Monitoring ──────────────────────────────────────────────────── */
