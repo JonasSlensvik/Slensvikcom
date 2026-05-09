@@ -1805,7 +1805,8 @@ async function loadCatalystAlerts() {
     for (const r of rows) {
       const key = `${r.isin}|${r.event_date}|${r.event_type}`;
       const prev = seen.get(key);
-      if (!prev || (r.strength || 0) > (prev.strength || 0)) seen.set(key, r);
+      const sn = s => s === 'STRONG' ? 8 : s === 'MODERATE' ? 5 : (Number(s) || 0);
+      if (!prev || sn(r.strength) > sn(prev.strength)) seen.set(key, r);
     }
     const cards = [...seen.values()].sort((a,b) => a.days_to_event - b.days_to_event);
 
@@ -1846,18 +1847,22 @@ function renderCatalystCard(r) {
                   : urgency === 'soon'     ? `🟡 in ${daysUntil} days`
                   :                          `🔵 in ${daysUntil} days`;
 
+  // Strength: DB stores "STRONG"/"MODERATE" as strings — map to 0–10 numeric scale
+  const strNum    = r.strength === 'STRONG' ? 8 : r.strength === 'MODERATE' ? 5 : (Number(r.strength) || 0);
+  const strLabel  = r.strength === 'STRONG' ? 'STRONG' : r.strength === 'MODERATE' ? 'MOD' : (r.strength || '—');
+
   // Suspicion score (0–100)
   const timePts   = urgency === 'imminent' ? 35 : urgency === 'soon' ? 22 : 10;
   const sigPts    = /dark/.test(type_lc) ? 30 : /iceberg/.test(type_lc) ? 25
                   : /whale/.test(type_lc) ? 18 : 12;
   const evtPts    = ['RESULTS','EARNINGS_CALL','WARNING'].includes(r.event_type) ? 20
                   : ['AGM','EX_DATE'].includes(r.event_type) ? 14 : 8;
-  const strPts    = Math.min(15, ((r.strength || 0) / 10) * 15);
+  const strPts    = Math.min(15, (strNum / 10) * 15);
   const score     = Math.min(100, Math.round(timePts + sigPts + evtPts + strPts));
   const scoreColor= score >= 70 ? 'var(--red)' : score >= 45 ? 'var(--amber)' : 'var(--ice)';
 
   // Strength bar
-  const strPct    = Math.min(100, ((r.strength || 0) / 10) * 100);
+  const strPct    = Math.min(100, (strNum / 10) * 100);
   const strColor  = dir === 'bearish' ? 'var(--red)' : dir === 'bullish' ? 'var(--green)' : 'var(--amber)';
 
   // Event type display
@@ -1898,7 +1903,7 @@ function renderCatalystCard(r) {
           <div class="cat-bar-track">
             <div class="cat-bar-fill" style="width:${strPct}%;background:${strColor}"></div>
           </div>
-          <span class="cat-bar-val">str ${r.strength != null ? Number(r.strength).toFixed(1) : '—'}</span>
+          <span class="cat-bar-val">${strLabel}</span>
         </div>
       </div>
       <div class="cat-panel">
