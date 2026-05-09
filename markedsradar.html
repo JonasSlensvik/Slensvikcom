@@ -611,12 +611,16 @@ tbody tr.selected { background: var(--ice-dim); }
       <div class="section-count" id="eventsCount">—</div>
     </div>
     <div style="display:flex;gap:8px;padding:0 0 12px 0;flex-wrap:wrap" id="eventFilters">
-      <button onclick="filterEvents('ALL')"      class="evt-btn active" data-f="ALL">ALL</button>
-      <button onclick="filterEvents('RESULTS')"  class="evt-btn" data-f="RESULTS">📊 RESULTS</button>
-      <button onclick="filterEvents('DIVIDEND')" class="evt-btn" data-f="DIVIDEND">💰 DIVIDEND</button>
-      <button onclick="filterEvents('EX_DATE')"  class="evt-btn" data-f="EX_DATE">📌 EX DATE</button>
-      <button onclick="filterEvents('WARNING')"  class="evt-btn" data-f="WARNING">⚠️ WARNING</button>
-      <button onclick="filterEvents('INSIDER')"  class="evt-btn" data-f="INSIDER">👤 INSIDER</button>
+      <button onclick="filterEvents('ALL')"           class="evt-btn active" data-f="ALL">ALL</button>
+      <button onclick="filterEvents('AGM')"           class="evt-btn" data-f="AGM">🏛️ AGM</button>
+      <button onclick="filterEvents('EARNINGS_CALL')" class="evt-btn" data-f="EARNINGS_CALL">📞 EARNINGS</button>
+      <button onclick="filterEvents('RESULTS')"       class="evt-btn" data-f="RESULTS">📊 RESULTS</button>
+      <button onclick="filterEvents('EX_DATE')"       class="evt-btn" data-f="EX_DATE">📌 EX DATE</button>
+      <button onclick="filterEvents('WARNING')"       class="evt-btn" data-f="WARNING">⚠️ WARNING</button>
+      <button onclick="filterEvents('INSIDER')"       class="evt-btn" data-f="INSIDER">👤 INSIDER</button>
+      <button onclick="filterEvents('PLACEMENT')"     class="evt-btn" data-f="PLACEMENT">💼 PLACEMENT</button>
+      <button onclick="filterEvents('DELISTING')"     class="evt-btn" data-f="DELISTING">🚫 DELISTING</button>
+      <button onclick="filterEvents('IPO')"           class="evt-btn" data-f="IPO">🚀 IPO</button>
     </div>
     <div class="table-wrap">
       <table id="eventsTable">
@@ -1452,10 +1456,10 @@ let currentEventFilter = 'ALL';
 
 async function loadCorporateEvents() {
   try {
-    // Load events in a ±30 day window around current date
-    const from = new Date(currentDate);
+    // Always anchor to today — corporate events are a calendar, not tied to selected trade date
+    const from = new Date();
     from.setDate(from.getDate() - 7);
-    const to = new Date(currentDate);
+    const to = new Date();
     to.setDate(to.getDate() + 30);
     const fromStr = from.toISOString().slice(0,10);
     const toStr   = to.toISOString().slice(0,10);
@@ -1483,14 +1487,20 @@ function filterEvents(type) {
 }
 
 function renderEvents(data) {
-  const today = currentDate;
+  const today = new Date().toISOString().slice(0,10);
   const TYPE_ICON = {
-    RESULTS: '📊', DIVIDEND: '💰', EX_DATE: '📌',
-    WARNING: '⚠️', INSIDER: '👤', OTHER: '📋'
+    RESULTS:       '📊', EX_DATE:      '📌', WARNING:   '⚠️',
+    INSIDER:       '👤', AGM:          '🏛️', EARNINGS_CALL: '📞',
+    REGULATED:     '📋', PRESS_RELEASE:'📰', PLACEMENT: '💼',
+    DELISTING:     '🚫', IPO:          '🚀', PROSPECTUS:'📄',
+    SUSPENSION:    '🚫',
   };
   const TYPE_COLOR = {
-    RESULTS: 'badge-ice', DIVIDEND: 'badge-amber', EX_DATE: 'badge-purple',
-    WARNING: 'badge-red',  INSIDER: 'badge-dim',   OTHER: 'badge-dim'
+    RESULTS:       'badge-ice',    EX_DATE:      'badge-purple', WARNING:   'badge-red',
+    INSIDER:       'badge-dim',    AGM:          'badge-amber',  EARNINGS_CALL: 'badge-ice',
+    REGULATED:     'badge-dim',    PRESS_RELEASE:'badge-dim',    PLACEMENT: 'badge-amber',
+    DELISTING:     'badge-red',    IPO:          'badge-green',  PROSPECTUS:'badge-dim',
+    SUSPENSION:    'badge-red',
   };
 
   document.getElementById('eventsBody').innerHTML = !data.length
