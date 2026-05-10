@@ -610,6 +610,18 @@ tbody tr.selected { background: var(--ice-dim); }
   margin-bottom: 10px;
 }
 .cat-date em { font-style: normal; color: var(--text); }
+.cat-sig-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--border);
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-bright);
+}
+.cat-sig-row:last-child { border-bottom: none; }
+.cat-sig-row .cat-date { margin-bottom: 0; margin-left: auto; }
 .cat-strength-row {
   display: flex;
   align-items: center;
@@ -2200,15 +2212,14 @@ async function loadCatalystAlerts() {
       `trade_date=gte.${lookbackStr}&event_date=gte.${today}` +
       `&proximity=in.(imminent,before,same)&order=days_to_event.asc&limit=200`);
 
-    // Deduplicate: one card per (isin, event_date, event_type) — keep strongest signal
-    const seen = new Map();
+    // Group all signals for the same (isin, event_date, event_type) into one card
+    const grouped = new Map();
     for (const r of rows) {
       const key = `${r.isin}|${r.event_date}|${r.event_type}`;
-      const prev = seen.get(key);
-      const sn = s => s === 'STRONG' ? 8 : s === 'MODERATE' ? 5 : (Number(s) || 0);
-      if (!prev || sn(r.strength) > sn(prev.strength)) seen.set(key, r);
+      if (!grouped.has(key)) grouped.set(key, { ...r, signals: [] });
+      grouped.get(key).signals.push(r);
     }
-    const cards = [...seen.values()].sort((a,b) => a.days_to_event - b.days_to_event);
+    const cards = [...grouped.values()].sort((a,b) => (a.days_to_event||999) - (b.days_to_event||999));
 
     document.getElementById('catalystCount').textContent =
       cards.length ? `${cards.length} alert${cards.length > 1 ? 's' : ''}` : 'no alerts';
@@ -2228,17 +2239,23 @@ async function loadCatalystAlerts() {
 }
 
 function renderCatalystCard(r) {
+  const sn        = s => s === 'STRONG' ? 8 : s === 'MODERATE' ? 5 : (Number(s) || 0);
+  const signals   = r.signals || [r];
   const today     = new Date();
-  const sigDate   = new Date(r.trade_date);
   const evtDate   = new Date(r.event_date);
-  const daysAgo   = Math.round((today - sigDate) / 86400000);
   const daysUntil = r.days_to_event;
+  const isin      = r.isin || '';
+  const issuer    = r.issuer || '';
+  const ticker    = isinTicker(isin) || issuer.split(' ')[0] || isin.slice(-4) || '—';
+  const company   = issuer || isin || '';
+  const fmtDate   = d => new Date(d).toLocaleDateString('en-GB',{day:'numeric',month:'short'});
 
-  // Direction
-  const type_lc   = (r.signal_type || '').toLowerCase();
-  const dir       = /sell|short|bear|dump|unload|distrib/.test(type_lc) ? 'bearish'
-                  : /buy|accum|long|bull|load|sweep/.test(type_lc) ? 'bullish'
-                  : 'neutral';
+  // Direction consensus across all signals
+  const dirScore  = signals.reduce((sum, s) => {
+    const t = (s.signal_type || '').toLowerCase();
+    return sum + (/sell|distrib/.test(t) ? -1 : /accum|buy|sweep|load/.test(t) ? 1 : 0);
+  }, 0);
+  const dir       = dirScore > 0 ? 'bullish' : dirScore < 0 ? 'bearish' : 'neutral';
   const dirLabel  = dir === 'bearish' ? '↓ BEARISH' : dir === 'bullish' ? '↑ BULLISH' : '◆ WATCH';
 
   // Urgency
@@ -2247,42 +2264,47 @@ function renderCatalystCard(r) {
                   : urgency === 'soon'     ? `🟡 in ${daysUntil} days`
                   :                          `🔵 in ${daysUntil} days`;
 
-  // Strength: DB stores "STRONG"/"MODERATE" as strings — map to 0–10 numeric scale
-  const strNum    = r.strength === 'STRONG' ? 8 : r.strength === 'MODERATE' ? 5 : (Number(r.strength) || 0);
-  const strLabel  = r.strength === 'STRONG' ? 'STRONG' : r.strength === 'MODERATE' ? 'MOD' : (r.strength || '—');
+  // Strongest signal for score base
+  const strongest = signals.reduce((a, b) => sn(a.strength) >= sn(b.strength) ? a : b);
+  const strNum    = sn(strongest.strength);
+  const strColor  = dir === 'bearish' ? 'var(--red)' : dir === 'bullish' ? 'var(--green)' : 'var(--amber)';
 
-  // Suspicion score (0–100)
+  // Suspicion score — multiple independent signals boost it
+  const type_lc   = (strongest.signal_type || '').toLowerCase();
   const timePts   = urgency === 'imminent' ? 35 : urgency === 'soon' ? 22 : 10;
-  const sigPts    = /dark/.test(type_lc) ? 30 : /iceberg/.test(type_lc) ? 25
-                  : /whale/.test(type_lc) ? 18 : 12;
+  const sigPts    = /dark/.test(type_lc) ? 28 : /iceberg/.test(type_lc) ? 23 : /whale/.test(type_lc) ? 18 : 12;
   const evtPts    = ['RESULTS','EARNINGS_CALL','WARNING'].includes(r.event_type) ? 20
                   : ['AGM','EX_DATE'].includes(r.event_type) ? 14 : 8;
-  const strPts    = Math.min(15, (strNum / 10) * 15);
-  const score     = Math.min(100, Math.round(timePts + sigPts + evtPts + strPts));
+  const strPts    = Math.min(12, (strNum / 10) * 12);
+  const multiPts  = Math.min(15, (signals.length - 1) * 6);
+  const score     = Math.min(100, Math.round(timePts + sigPts + evtPts + strPts + multiPts));
   const scoreColor= score >= 70 ? 'var(--red)' : score >= 45 ? 'var(--amber)' : 'var(--ice)';
-
-  // Strength bar
-  const strPct    = Math.min(100, (strNum / 10) * 100);
-  const strColor  = dir === 'bearish' ? 'var(--red)' : dir === 'bullish' ? 'var(--green)' : 'var(--amber)';
 
   // Event type display
   const EVT_ICON  = { RESULTS:'📊', EARNINGS_CALL:'📞', AGM:'🏛️', EX_DATE:'📌',
                       WARNING:'⚠️', INSIDER:'👤', PLACEMENT:'💼', DELISTING:'🚫',
                       IPO:'🚀', PROSPECTUS:'📄', REGULATED:'📋', PRESS_RELEASE:'📰' };
-  const SIG_ICON  = /dark/.test(type_lc) ? '🌑' : /iceberg/.test(type_lc) ? '🧊'
-                  : /whale/.test(type_lc) ? '🐋' : '⚡';
 
-  // Timeline positions (%)
+  // Signal rows — all signals in this group
+  const sigRows   = signals.map(s => {
+    const t    = (s.signal_type || '').toLowerCase();
+    const icon = /dark/.test(t) ? '🌑' : /iceberg/.test(t) ? '🧊' : /whale/.test(t) ? '🐋' : '⚡';
+    const str  = sn(s.strength) >= 8 ? 'STRONG' : sn(s.strength) >= 5 ? 'MOD' : '—';
+    const dAgo = s.trade_date ? Math.round((today - new Date(s.trade_date)) / 86400000) : null;
+    const dStr = dAgo !== null ? `<em>${dAgo}d ago</em>` : '';
+    return `<div class="cat-sig-row">
+      <span>${icon} ${s.signal_type || '—'}</span>
+      <span class="badge ${sn(s.strength)>=8?'badge-purple':'badge-ice'}">${str}</span>
+      <span class="cat-date">${dStr}</span>
+    </div>`;
+  }).join('');
+
+  // Timeline — use earliest signal date
+  const earliest  = signals.reduce((a, b) => (a.trade_date||'') < (b.trade_date||'') ? a : b);
+  const sigDate   = new Date(earliest.trade_date || today);
   const totalSpan = Math.max(1, (evtDate - sigDate) / 86400000);
   const todayPct  = Math.min(99, Math.max(1, ((today - sigDate) / 86400000) / totalSpan * 100));
   const fillColor = urgency === 'imminent' ? 'var(--red)' : urgency === 'soon' ? 'var(--amber)' : 'var(--ice)';
-
-  const issuer    = r.issuer || '';
-  const ticker    = isinTicker(r.isin) || issuer.split(' ')[0] || r.isin?.slice(-4) || '—';
-  const company   = issuer || r.isin || '';
-  const isin      = r.isin || '';
-
-  const fmtDate   = d => new Date(d).toLocaleDateString('en-GB',{day:'numeric',month:'short'});
 
   return `
   <div class="cat-card ${dir}" onclick="${isin ? `drillIntoISIN('${isin}','XOSL')` : ''}">
@@ -2296,15 +2318,8 @@ function renderCatalystCard(r) {
 
     <div class="cat-panels">
       <div class="cat-panel">
-        <div class="cat-panel-label">Signal Fired</div>
-        <div class="cat-type">${SIG_ICON} ${r.signal_type || '—'}</div>
-        <div class="cat-date">${fmtDate(r.trade_date)} · <em>${daysAgo}d ago</em></div>
-        <div class="cat-strength-row">
-          <div class="cat-bar-track">
-            <div class="cat-bar-fill" style="width:${strPct}%;background:${strColor}"></div>
-          </div>
-          <span class="cat-bar-val">${strLabel}</span>
-        </div>
+        <div class="cat-panel-label">Signals Fired (${signals.length})</div>
+        ${sigRows}
       </div>
       <div class="cat-panel">
         <div class="cat-panel-label">Upcoming Event</div>
@@ -2322,7 +2337,7 @@ function renderCatalystCard(r) {
         <div class="cat-tl-dot"  style="left:100%;background:${fillColor}"></div>
       </div>
       <div class="cat-tl-labels">
-        <span>${fmtDate(r.trade_date)}</span>
+        <span>${fmtDate(earliest.trade_date)}</span>
         <span style="color:var(--amber)">TODAY</span>
         <span>${fmtDate(r.event_date)}</span>
       </div>
