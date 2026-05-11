@@ -137,6 +137,10 @@ tbody tr:last-child td { border-bottom: none; }
 .txn-row:last-child { border-bottom: none; }
 .txn-type-buy  { color: var(--green); font-family: var(--mono); font-size: 10px; font-weight: 700; }
 .txn-type-sell { color: var(--red);   font-family: var(--mono); font-size: 10px; font-weight: 700; }
+.txn-actions { display: flex; gap: 4px; margin-left: auto; flex-shrink: 0; }
+.btn-icon { background: none; border: none; cursor: pointer; font-size: 13px; color: var(--text-dim); padding: 3px 6px; border-radius: 3px; line-height: 1; }
+.btn-icon:hover { background: var(--bg3); color: var(--text-bright); }
+.btn-icon-del:hover { color: var(--red); }
 
 /* ── Modal ───────────────────────────────────────────────────────────────── */
 .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.7); z-index: 100; display: flex; align-items: center; justify-content: center; }
@@ -336,6 +340,7 @@ let marketData = {};         // isin → { latestPrice, darkBias, darkPct, signa
 let priceHistory = {};       // isin → [{ trade_date, modal_price }]
 let portfolioChart = null;
 let txnType = 'BUY';
+let editingTxnId = null;
 
 // ── ISIN lookup (subset — full map on markedsradar) ───────────────────────
 const ISIN_MAP = {'NO0010859580':{t:'ABS'},'SE0015193412':{t:'AKOBO'},'NO0003021909':{t:'ABG'},'NO0010715394':{t:'ABL'},'NO0010840515':{t:'ACR'},'NO0003078107':{t:'AFG'},'NO0003572802':{t:'AFK'},'NO0010215684':{t:'AKAST'},'NO0010886625':{t:'AKBM'},'NO0010234552':{t:'AKER'},'NO0010921232':{t:'AKH'},'NO0010345853':{t:'AKRBP'},'NO0010716582':{t:'AKSO'},'NO0003097503':{t:'AKVA'},'BMG0451H2087':{t:'ARCH'},'NO0013464750':{t:'ASA'},'NO0004822503':{t:'ATEA'},'NO0010073489':{t:'AUSS'},'BMG0670A1099':{t:'AUTO'},'NO0010633951':{t:'B2I'},'FO0000000179':{t:'BAKKA'},'NO0010890965':{t:'BEWI'},'NO0010379266':{t:'BNOR'},'NO0003110603':{t:'BONHR'},'NO0010360266':{t:'BOUV'},'NO0010657505':{t:'BRG'},'BMG0702P1086':{t:'BWE'},'SGXZ69436764':{t:'BWLPG'},'BMG1738J1247':{t:'BWO'},'NO0010923121':{t:'CAPSL'},'NO0013219535':{t:'CAVEN'},'NO0010876642':{t:'CLOUD'},'BE0003816338':{t:'CMBTO'},'SE0014731154':{t:'CONTX'},'NO0013647693':{t:'DFENS'},'NO0010161896':{t:'DNB'},'NO0003921009':{t:'DNO'},'NO0012851874':{t:'DOFG'},'NO0010263023':{t:'EIOF'},'NO0010722283':{t:'ELABS'},'NO0010816093':{t:'ELK'},'NO0010815673':{t:'ELMRA'},'NO0011002586':{t:'ELO'},'NO0010358484':{t:'EMGS'},'NO0012555459':{t:'ENDUR'},'NO0010716418':{t:'ENTRA'},'NO0010735343':{t:'EPR'},'NO0010096985':{t:'EQNR'},'NO0010708605':{t:'EQVA'},'CY0200352116':{t:'FRO'},'NO0010748866':{t:'GENT'},'NO0010582521':{t:'GJF'},'NO0010365521':{t:'GSF'},'SGXZ53070850':{t:'HAFNI'},'NO0011082075':{t:'HAUTO'},'NO0010029804':{t:'HELG'},'NO0003067902':{t:'HEX'},'NO0010904923':{t:'HPUR'},'BMG4660A1036':{t:'HSHP'},'NO0010892359':{t:'HYPRO'},'NO0013536078':{t:'IDEX'},'NO0001118':{t:'ITERA'},'BMG5137R1088':{t:'JIN'},'NO0010833262':{t:'KCC'},'NO0010743545':{t:'KID'},'NO0003079709':{t:'KIT'},'NO0003033102':{t:'KOA'},'NO0013536151':{t:'KOG'},'NO0010894231':{t:'LINK'},'NO0003096208':{t:'LSG'},'NO0010159684':{t:'MEDI'},'NO0010187032':{t:'MGN'},'NO0006390301':{t:'MING'},'NO0003054108':{t:'MOWI'},'NO0010791353':{t:'MPCC'},'NO0010734338':{t:'MULTI'},'DK0060520450':{t:'NAPA'},'NO0010205966':{t:'NAVA'},'NO0010081235':{t:'NEL'},'NO0005052605':{t:'NHY'},'NO0003049405':{t:'NKR'},'NO0003055501':{t:'NOD'},'NO0010856511':{t:'NORBT'},'NO0003399909':{t:'ODF'},'BMG671801022':{t:'ODL'},'MHY641771016':{t:'OET'},'NO0010816895':{t:'OKEA'},'NO0003733800':{t:'ORK'},'NO0010708910':{t:'ZAL'},'NO0010213936':{t:'ZAP'},'NO0012470089':{t:'TOM'},'NO0003053308':{t:'SCANA'},'NO0010715139':{t:'SCATC'},'NO0003053605':{t:'STB'},'NO0010098247':{t:'STRO'},'LU0075646355':{t:'SUBC'},'NO0003078800':{t:'TGS'},'NO0003096208':{t:'LSG'},'NO0011202772':{t:'VAR'},'NO0005806802':{t:'VEI'},'NO0010736879':{t:'VEND'},'NO0010571680':{t:'WAWI'},'NO0010208051':{t:'YAR'},'NO0010713936':{t:'ZAP'}};
@@ -766,19 +771,68 @@ function renderTransactionLog() {
       <span style="font-family:var(--mono);font-size:12px;color:var(--text-bright);min-width:48px">${tk}</span>
       <span style="color:var(--text-dim)">${fmtNum(t.quantity, t.quantity%1===0?0:4)} shares @ ${fmtNum(t.price)}</span>
       <span style="color:var(--text-dim)">= ${fmtNOK(notional)}</span>
-      <span style="margin-left:auto;color:var(--text-dim);font-size:11px">${dt}</span>
+      <span style="color:var(--text-dim);font-size:11px">${dt}</span>
       ${t.notes ? `<span style="color:var(--text-dim);font-size:11px;font-style:italic">${t.notes}</span>` : ''}
+      <div class="txn-actions">
+        <button class="btn-icon" onclick="editTransaction(${t.id})" title="Edit">✏</button>
+        <button class="btn-icon btn-icon-del" onclick="deleteTransaction(${t.id})" title="Delete">🗑</button>
+      </div>
     </div>`;
   }).join('');
   document.getElementById('txnLog').innerHTML = rows;
 }
 
-// ── Add transaction modal ─────────────────────────────────────────────────
+// ── Add / edit transaction modal ──────────────────────────────────────────
 function openAddModal() {
-  document.getElementById('addModal').style.display = 'flex';
+  editingTxnId = null;
+  document.querySelector('#addModal .modal-title').textContent = 'Add Transaction';
+  document.querySelector('#addModal .btn-primary').textContent = 'CONFIRM';
+  document.getElementById('txnIsin').value = '';
+  document.getElementById('txnQty').value = '';
+  document.getElementById('txnPrice').value = '';
+  document.getElementById('txnNotes').value = '';
+  setTxnType('BUY');
+  const now = new Date();
+  now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+  document.getElementById('txnTime').value = now.toISOString().slice(0,16);
   document.getElementById('txnError').textContent = '';
+  document.getElementById('addModal').style.display = 'flex';
 }
-function closeModal() { document.getElementById('addModal').style.display = 'none'; }
+
+function closeModal() {
+  document.getElementById('addModal').style.display = 'none';
+  editingTxnId = null;
+  document.querySelector('#addModal .modal-title').textContent = 'Add Transaction';
+  document.querySelector('#addModal .btn-primary').textContent = 'CONFIRM';
+}
+
+function editTransaction(id) {
+  const t = allTransactions.find(x => x.id === id);
+  if (!t) return;
+  editingTxnId = id;
+  setTxnType(t.transaction_type);
+  document.getElementById('txnIsin').value = ticker(t.isin) || t.isin;
+  document.getElementById('txnQty').value = t.quantity;
+  document.getElementById('txnPrice').value = t.price;
+  const dt = new Date(t.transaction_time);
+  dt.setMinutes(dt.getMinutes() - dt.getTimezoneOffset());
+  document.getElementById('txnTime').value = dt.toISOString().slice(0,16);
+  document.getElementById('txnNotes').value = t.notes || '';
+  document.querySelector('#addModal .modal-title').textContent = 'Edit Transaction';
+  document.querySelector('#addModal .btn-primary').textContent = 'SAVE CHANGES';
+  document.getElementById('txnError').textContent = '';
+  document.getElementById('addModal').style.display = 'flex';
+}
+
+async function deleteTransaction(id) {
+  if (!confirm('Delete this transaction? This cannot be undone.')) return;
+  try {
+    await DELETE('portfolio_transactions', `id=eq.${id}`);
+    await loadData();
+  } catch(e) {
+    alert('Could not delete: ' + e.message);
+  }
+}
 
 function setTxnType(type) {
   txnType = type;
@@ -801,6 +855,9 @@ async function submitTransaction() {
 
   document.getElementById('txnError').textContent = '';
   try {
+    if (editingTxnId != null) {
+      await DELETE('portfolio_transactions', `id=eq.${editingTxnId}`);
+    }
     await POST('portfolio_transactions', {
       username: currentUser,
       isin,
@@ -812,10 +869,6 @@ async function submitTransaction() {
       notes: notes || null,
     });
     closeModal();
-    document.getElementById('txnIsin').value = '';
-    document.getElementById('txnQty').value = '';
-    document.getElementById('txnPrice').value = '';
-    document.getElementById('txnNotes').value = '';
     await loadData();
   } catch(e) {
     document.getElementById('txnError').textContent = 'Error: ' + e.message;
