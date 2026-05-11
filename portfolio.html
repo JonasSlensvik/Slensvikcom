@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Syne+Mono&family=Syne:wght@400;600;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
 <style>
 :root {
   --bg:          #070b12; --bg2: #0d1420; --bg3: #111927;
@@ -162,6 +163,17 @@ tbody tr:last-child td { border-bottom: none; }
 
 .loader { font-family: var(--mono); font-size: 11px; color: var(--text-dim); padding: 24px; text-align: center; }
 .empty-state { font-family: var(--mono); font-size: 11px; color: var(--text-dim); padding: 20px; text-align: center; }
+
+/* ── Chart controls ───────────────────────────────────────────────────────── */
+.chart-controls { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 14px; }
+.period-toggle { display: flex; flex-shrink: 0; }
+.period-toggle button { padding: 5px 14px; font-family: var(--mono); font-size: 10px; letter-spacing: 1px; border: 1px solid var(--border); background: var(--bg3); color: var(--text-dim); cursor: pointer; transition: all .15s; }
+.period-toggle button:first-child { border-radius: 4px 0 0 4px; }
+.period-toggle button:last-child  { border-radius: 0 4px 4px 0; }
+.period-toggle button.p-active { background: var(--ice-dim); color: var(--ice); border-color: var(--ice); }
+.view-toggles { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+.view-btn { padding: 4px 10px; font-family: var(--mono); font-size: 10px; letter-spacing: 1px; border: 1px solid var(--border); background: var(--bg3); color: var(--text-dim); cursor: pointer; border-radius: 4px; white-space: nowrap; transition: all .15s; }
+.view-btn.v-active { background: var(--green-dim); color: var(--green); border-color: var(--green); }
 </style>
 </head>
 <body>
@@ -209,24 +221,34 @@ tbody tr:last-child td { border-bottom: none; }
     <div class="kpi-card"><div class="kpi-label">Yield on Cost</div><div class="kpi-value" id="kpiYoc">—</div><div class="kpi-sub">based on ex-dates</div></div>
   </div>
 
-  <!-- Main grid: chart + holdings -->
-  <div class="main-grid">
-    <div class="panel">
-      <div class="panel-title">Portfolio Value — Daily History</div>
-      <canvas id="portfolioChart" height="220"></canvas>
-    </div>
-    <div class="panel">
-      <div class="panel-title">Holdings</div>
-      <div class="table-wrap">
-        <table>
-          <thead><tr>
-            <th>TICKER</th><th class="r">QTY</th><th class="r">AVG COST</th>
-            <th class="r">PRICE</th><th class="r">VALUE</th><th class="r">P&L%</th>
-            <th>DARK</th><th>SIGNALS</th>
-          </tr></thead>
-          <tbody id="holdingsBody"><tr><td colspan="8" class="loader">LOADING …</td></tr></tbody>
-        </table>
+  <!-- Chart panel - full width -->
+  <div class="panel" style="margin-bottom:20px">
+    <div class="chart-controls">
+      <div>
+        <div class="panel-title" style="margin-bottom:6px">Portfolio Chart</div>
+        <div id="chartViewToggles" class="view-toggles"></div>
       </div>
+      <div class="period-toggle">
+        <button id="btn5D" onclick="setPeriod('5D')">5D</button>
+        <button id="btn4W" class="p-active" onclick="setPeriod('4W')">4W</button>
+        <button id="btn3M" onclick="setPeriod('3M')">3M</button>
+      </div>
+    </div>
+    <canvas id="portfolioChart" height="120"></canvas>
+  </div>
+
+  <!-- Holdings panel - full width -->
+  <div class="panel" style="margin-bottom:20px">
+    <div class="panel-title">Holdings</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>TICKER</th><th class="r">QTY</th><th class="r">AVG COST</th>
+          <th class="r">PRICE</th><th class="r">VALUE</th><th class="r">P&L%</th>
+          <th>DARK</th><th>SIGNALS</th>
+        </tr></thead>
+        <tbody id="holdingsBody"><tr><td colspan="8" class="loader">LOADING …</td></tr></tbody>
+      </table>
     </div>
   </div>
 
@@ -275,7 +297,7 @@ tbody tr:last-child td { border-bottom: none; }
     </div>
     <div class="form-row">
       <div class="form-label">ISIN or Ticker</div>
-      <input id="txnIsin" class="form-input" type="text" placeholder="NO0003049405 or NKR" autocomplete="off">
+      <input id="txnIsin" class="form-input" type="text" placeholder="EQNR, NKR, or ISIN" list="isinList" autocomplete="off" spellcheck="false">
     </div>
     <div class="form-grid">
       <div class="form-row">
@@ -302,6 +324,8 @@ tbody tr:last-child td { border-bottom: none; }
     </div>
   </div>
 </div>
+
+<datalist id="isinList"></datalist>
 
 <script>
 const API_URL = 'https://api.slensvik.com';
@@ -338,29 +362,53 @@ let allTransactions = [];
 let positions = new Map();   // isin → { netQty, avgCost, totalCost, venue, lots[] }
 let marketData = {};         // isin → { latestPrice, darkBias, darkPct, signals, events }
 let priceHistory = {};       // isin → [{ trade_date, modal_price }]
+let intradayData = {};       // isin → [{ dt, price }]
 let portfolioChart = null;
 let txnType = 'BUY';
 let editingTxnId = null;
+let chartPeriod = '4W';
+let chartView = 'portfolio';
+let instrumentsMap = {};     // isin → { ticker, name }
+let fullTickerToIsin = {};   // TICKER → isin (from API)
 
 // ── ISIN lookup (subset — full map on markedsradar) ───────────────────────
 const ISIN_MAP = {'NO0010859580':{t:'ABS'},'SE0015193412':{t:'AKOBO'},'NO0003021909':{t:'ABG'},'NO0010715394':{t:'ABL'},'NO0010840515':{t:'ACR'},'NO0003078107':{t:'AFG'},'NO0003572802':{t:'AFK'},'NO0010215684':{t:'AKAST'},'NO0010886625':{t:'AKBM'},'NO0010234552':{t:'AKER'},'NO0010921232':{t:'AKH'},'NO0010345853':{t:'AKRBP'},'NO0010716582':{t:'AKSO'},'NO0003097503':{t:'AKVA'},'BMG0451H2087':{t:'ARCH'},'NO0013464750':{t:'ASA'},'NO0004822503':{t:'ATEA'},'NO0010073489':{t:'AUSS'},'BMG0670A1099':{t:'AUTO'},'NO0010633951':{t:'B2I'},'FO0000000179':{t:'BAKKA'},'NO0010890965':{t:'BEWI'},'NO0010379266':{t:'BNOR'},'NO0003110603':{t:'BONHR'},'NO0010360266':{t:'BOUV'},'NO0010657505':{t:'BRG'},'BMG0702P1086':{t:'BWE'},'SGXZ69436764':{t:'BWLPG'},'BMG1738J1247':{t:'BWO'},'NO0010923121':{t:'CAPSL'},'NO0013219535':{t:'CAVEN'},'NO0010876642':{t:'CLOUD'},'BE0003816338':{t:'CMBTO'},'SE0014731154':{t:'CONTX'},'NO0013647693':{t:'DFENS'},'NO0010161896':{t:'DNB'},'NO0003921009':{t:'DNO'},'NO0012851874':{t:'DOFG'},'NO0010263023':{t:'EIOF'},'NO0010722283':{t:'ELABS'},'NO0010816093':{t:'ELK'},'NO0010815673':{t:'ELMRA'},'NO0011002586':{t:'ELO'},'NO0010358484':{t:'EMGS'},'NO0012555459':{t:'ENDUR'},'NO0010716418':{t:'ENTRA'},'NO0010735343':{t:'EPR'},'NO0010096985':{t:'EQNR'},'NO0010708605':{t:'EQVA'},'CY0200352116':{t:'FRO'},'NO0010748866':{t:'GENT'},'NO0010582521':{t:'GJF'},'NO0010365521':{t:'GSF'},'SGXZ53070850':{t:'HAFNI'},'NO0011082075':{t:'HAUTO'},'NO0010029804':{t:'HELG'},'NO0003067902':{t:'HEX'},'NO0010904923':{t:'HPUR'},'BMG4660A1036':{t:'HSHP'},'NO0010892359':{t:'HYPRO'},'NO0013536078':{t:'IDEX'},'NO0001118':{t:'ITERA'},'BMG5137R1088':{t:'JIN'},'NO0010833262':{t:'KCC'},'NO0010743545':{t:'KID'},'NO0003079709':{t:'KIT'},'NO0003033102':{t:'KOA'},'NO0013536151':{t:'KOG'},'NO0010894231':{t:'LINK'},'NO0003096208':{t:'LSG'},'NO0010159684':{t:'MEDI'},'NO0010187032':{t:'MGN'},'NO0006390301':{t:'MING'},'NO0003054108':{t:'MOWI'},'NO0010791353':{t:'MPCC'},'NO0010734338':{t:'MULTI'},'DK0060520450':{t:'NAPA'},'NO0010205966':{t:'NAVA'},'NO0010081235':{t:'NEL'},'NO0005052605':{t:'NHY'},'NO0003049405':{t:'NKR'},'NO0003055501':{t:'NOD'},'NO0010856511':{t:'NORBT'},'NO0003399909':{t:'ODF'},'BMG671801022':{t:'ODL'},'MHY641771016':{t:'OET'},'NO0010816895':{t:'OKEA'},'NO0003733800':{t:'ORK'},'NO0010708910':{t:'ZAL'},'NO0010213936':{t:'ZAP'},'NO0012470089':{t:'TOM'},'NO0003053308':{t:'SCANA'},'NO0010715139':{t:'SCATC'},'NO0003053605':{t:'STB'},'NO0010098247':{t:'STRO'},'LU0075646355':{t:'SUBC'},'NO0003078800':{t:'TGS'},'NO0003096208':{t:'LSG'},'NO0011202772':{t:'VAR'},'NO0005806802':{t:'VEI'},'NO0010736879':{t:'VEND'},'NO0010571680':{t:'WAWI'},'NO0010208051':{t:'YAR'},'NO0010713936':{t:'ZAP'}};
 const TICKER_TO_ISIN = Object.fromEntries(Object.entries(ISIN_MAP).map(([k,v])=>[v.t, k]));
 const resolveIsin = q => {
   q = q.trim().toUpperCase();
-  if (q.length > 10) return q; // looks like an ISIN
-  return TICKER_TO_ISIN[q] || q;
+  if (q.length > 10) return q;
+  return fullTickerToIsin[q] || TICKER_TO_ISIN[q] || q;
 };
-const ticker = isin => (ISIN_MAP[isin] || {}).t || isin.slice(-6);
+const ticker = isin => instrumentsMap[isin]?.ticker || (ISIN_MAP[isin] || {}).t || isin.slice(-6);
 
 const fmtNOK = v => v == null ? '—' : 'NOK ' + v.toLocaleString('nb-NO', { maximumFractionDigits: 0 });
 const fmtPct = v => v == null ? '—' : (v >= 0 ? '+' : '') + v.toFixed(2) + '%';
 const fmtNum = (v, dp=2) => v == null ? '—' : v.toLocaleString('nb-NO', { minimumFractionDigits: dp, maximumFractionDigits: dp });
 
+// ── Instruments (autocomplete + full ticker lookup) ───────────────────────
+async function loadInstruments() {
+  try {
+    const rows = await GET('instruments', 'select=isin,ticker,name&limit=2000');
+    for (const r of rows) {
+      if (!r.isin) continue;
+      const tk = r.ticker || '';
+      instrumentsMap[r.isin] = { ticker: tk, name: r.name || '' };
+      if (tk) fullTickerToIsin[tk.toUpperCase()] = r.isin;
+    }
+    const dl = document.getElementById('isinList');
+    if (dl) {
+      dl.innerHTML = rows.filter(r => r.ticker).map(r =>
+        `<option value="${r.ticker}">${r.name ? r.ticker + ' — ' + r.name : r.ticker}</option>`
+      ).join('');
+    }
+  } catch(e) { console.warn('instruments load failed', e); }
+}
+
 // ── Auth ──────────────────────────────────────────────────────────────────
 function init() {
+  loadInstruments();
   const saved = localStorage.getItem('pfUser');
   if (saved) { currentUser = saved; showDashboard(); }
-  // Pre-fill datetime-local to now
   const now = new Date();
   now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
   document.getElementById('txnTime').value = now.toISOString().slice(0,16);
@@ -425,14 +473,17 @@ async function loadData() {
 
     computePositions();
     renderTransactionLog();
+    intradayData = {}; // reset so 5D re-fetches after position changes
 
     const isins = [...positions.keys()];
-    if (!isins.isEmpty && isins.length === 0) {
+    if (isins.length === 0) {
       renderEmptyHoldings();
+      renderViewToggles();
       return;
     }
 
     await fetchMarketData(isins);
+    renderViewToggles();
     renderKPIs();
     renderHoldings();
     renderChart();
@@ -475,19 +526,19 @@ async function fetchMarketData(isins) {
   if (!isins.length) return;
   const isinStr = isins.join(',');
   const today = new Date().toISOString().slice(0,10);
-  const since30 = new Date(Date.now() - 30*864e5).toISOString().slice(0,10);
+  const since90 = new Date(Date.now() - 90*864e5).toISOString().slice(0,10);
 
   const [darkRows, signals, catalysts, events, whales, instruments] = await Promise.all([
     GET_ALL('dark_flow_summary',
-      `isin=in.(${isinStr})&trade_date=gte.${since30}&select=isin,trade_date,modal_price,dark_pct,dark_side_bias&order=isin.asc,trade_date.asc`),
+      `isin=in.(${isinStr})&trade_date=gte.${since90}&select=isin,trade_date,modal_price,dark_pct,dark_side_bias&order=isin.asc,trade_date.asc`),
     GET('smart_signals',
-      `isin=in.(${isinStr})&trade_date=gte.${since30}&order=trade_date.desc&limit=100`),
+      `isin=in.(${isinStr})&trade_date=gte.${since90}&order=trade_date.desc&limit=100`),
     GET('signal_event_proximity',
       `isin=in.(${isinStr})&order=days_to_event.asc&limit=50`).catch(()=>[]),
     GET('corporate_events',
       `isin=in.(${isinStr})&event_date=gte.${today}&order=event_date.asc&limit=60`).catch(()=>[]),
     GET('whale_alerts',
-      `isin=in.(${isinStr})&trade_date=gte.${since30}&order=trade_date.desc&limit=50`).catch(()=>[]),
+      `isin=in.(${isinStr})&trade_date=gte.${since90}&order=trade_date.desc&limit=50`).catch(()=>[]),
     GET('instruments', `isin=in.(${isinStr})`).catch(()=>[]),
   ]);
 
@@ -580,58 +631,191 @@ function renderEmptyHoldings() {
     `<tr><td colspan="8" class="empty-state">No positions yet — add your first transaction above.</td></tr>`;
 }
 
-function renderChart() {
-  // Build unified date list across all ISINs
-  const dateSet = new Set();
-  for (const rows of Object.values(priceHistory)) rows.forEach(r => dateSet.add(r.trade_date));
-  const dates = [...dateSet].sort();
-  if (!dates.length) return;
+// ── Chart period / view controls ──────────────────────────────────────────
+function renderViewToggles() {
+  const container = document.getElementById('chartViewToggles');
+  if (!container) return;
+  const isins = [...positions.keys()];
+  const btns = [
+    `<button class="view-btn v-active" data-view="portfolio" onclick="setChartView('portfolio')">PORTFOLIO</button>`,
+    ...isins.map(isin => {
+      const tk = ticker(isin);
+      return `<button class="view-btn" data-view="${isin}" onclick="setChartView('${isin}')">${tk}</button>`;
+    }),
+  ].join('');
+  container.innerHTML = btns;
+  chartView = 'portfolio';
+}
 
-  // Per-date portfolio value
-  const portfolioValues = dates.map(d => {
-    let val = 0;
-    for (const [isin, p] of positions) {
-      const hist = priceHistory[isin] || [];
-      // Find closest price on or before this date
-      const row = [...hist].reverse().find(r => r.trade_date <= d);
-      if (row?.modal_price) val += p.netQty * row.modal_price;
+function setChartView(v) {
+  chartView = v;
+  document.querySelectorAll('.view-btn').forEach(b =>
+    b.classList.toggle('v-active', b.dataset.view === v)
+  );
+  renderChart();
+}
+
+async function setPeriod(p) {
+  chartPeriod = p;
+  ['5D','4W','3M'].forEach(id =>
+    document.getElementById('btn' + id).classList.toggle('p-active', id === p)
+  );
+  if (p === '5D' && !Object.keys(intradayData).length) {
+    await fetchIntradayData([...positions.keys()]);
+  }
+  renderChart();
+}
+
+async function fetchIntradayData(isins) {
+  if (!isins.length) return;
+  const since = new Date(Date.now() - 8 * 864e5).toISOString().slice(0, 10);
+  try {
+    const rows = await GET_ALL('intraday',
+      `isin=in.(${isins.join(',')})&trade_date=gte.${since}&select=isin,trade_date,minute_bucket,vwap&order=trade_date.asc,minute_bucket.asc`,
+      2000
+    );
+    for (const isin of isins) intradayData[isin] = [];
+    for (const r of rows) {
+      if (intradayData[r.isin] !== undefined && r.vwap != null) {
+        intradayData[r.isin].push({
+          dt: r.trade_date + 'T' + r.minute_bucket.slice(0, 5),
+          price: parseFloat(r.vwap),
+        });
+      }
     }
-    return val || null;
-  });
+  } catch(e) { console.warn('intraday fetch failed', e); }
+}
 
-  // Total cost as flat reference
-  let totalCost = 0;
-  for (const p of positions.values()) totalCost += p.totalCost;
-  const costLine = dates.map(() => totalCost);
-
+function renderChart() {
   const ctx = document.getElementById('portfolioChart').getContext('2d');
   if (portfolioChart) portfolioChart.destroy();
+
+  const isinsToShow = chartView === 'portfolio' ? [...positions.keys()] : [chartView];
+  let labels = [], valueData = [], costData = [];
+
+  if (chartPeriod === '5D') {
+    const dtSet = new Set();
+    for (const isin of isinsToShow) (intradayData[isin] || []).forEach(r => dtSet.add(r.dt));
+    labels = [...dtSet].sort();
+    if (!labels.length) {
+      document.getElementById('portfolioChart').style.display = 'none';
+      return;
+    }
+    document.getElementById('portfolioChart').style.display = '';
+
+    const priceAt = {};
+    for (const isin of isinsToShow) {
+      priceAt[isin] = new Map((intradayData[isin] || []).map(r => [r.dt, r.price]));
+    }
+    const lastKnown = {};
+    valueData = labels.map(dt => {
+      let total = 0, hasAny = false;
+      for (const isin of isinsToShow) {
+        const p = priceAt[isin].get(dt);
+        if (p != null) lastKnown[isin] = p;
+        const price = lastKnown[isin];
+        if (price != null) {
+          total += chartView === 'portfolio'
+            ? (positions.get(isin)?.netQty || 0) * price
+            : price;
+          hasAny = true;
+        }
+      }
+      return hasAny ? total : null;
+    });
+
+    if (chartView === 'portfolio') {
+      let tc = 0; for (const p of positions.values()) tc += p.totalCost;
+      costData = labels.map(() => tc);
+    } else {
+      const p = positions.get(chartView);
+      costData = labels.map(() => p?.avgCost || null);
+    }
+
+  } else {
+    document.getElementById('portfolioChart').style.display = '';
+    const days = chartPeriod === '3M' ? 90 : 28;
+    const since = new Date(Date.now() - days * 864e5).toISOString().slice(0, 10);
+
+    const dateSet = new Set();
+    for (const isin of isinsToShow) {
+      (priceHistory[isin] || []).filter(r => r.trade_date >= since).forEach(r => dateSet.add(r.trade_date));
+    }
+    labels = [...dateSet].sort();
+    if (!labels.length) return;
+
+    if (chartView === 'portfolio') {
+      valueData = labels.map(d => {
+        let val = 0;
+        for (const [isin, p] of positions) {
+          const hist = priceHistory[isin] || [];
+          const row = [...hist].reverse().find(r => r.trade_date <= d && r.trade_date >= since);
+          if (row?.modal_price) val += p.netQty * row.modal_price;
+        }
+        return val || null;
+      });
+      let tc = 0; for (const p of positions.values()) tc += p.totalCost;
+      costData = labels.map(() => tc);
+    } else {
+      const isin = chartView;
+      const hist = (priceHistory[isin] || []).filter(r => r.trade_date >= since);
+      const histMap = new Map(hist.map(r => [r.trade_date, r.modal_price]));
+      valueData = labels.map(d => histMap.get(d) || null);
+      const p = positions.get(isin);
+      costData = labels.map(() => p?.avgCost || null);
+    }
+  }
+
+  // Event annotations (dividends + catalysts)
+  const annotations = {};
+  const eventsToMark = [];
+  for (const isin of isinsToShow) {
+    const md = marketData[isin] || {};
+    for (const e of (md.events || [])) {
+      eventsToMark.push({
+        date: e.event_date,
+        label: ticker(isin) + (e.event_type === 'EX_DATE' ? ' ÷div' : ' ' + e.event_type),
+        color: e.event_type === 'EX_DATE' ? '#f5a623' : '#a78bfa',
+      });
+    }
+  }
+  eventsToMark.forEach((ev, i) => {
+    const xVal = chartPeriod === '5D'
+      ? labels.find(l => l.startsWith(ev.date))
+      : (labels.includes(ev.date) ? ev.date : null);
+    if (!xVal) return;
+    annotations['ev' + i] = {
+      type: 'line', xMin: xVal, xMax: xVal,
+      borderColor: ev.color, borderWidth: 1, borderDash: [3, 3],
+      label: {
+        display: true, content: ev.label, position: 'start',
+        color: ev.color, font: { family: 'Syne Mono', size: 8 },
+        backgroundColor: 'rgba(7,11,18,0.85)', padding: { x: 3, y: 2 },
+      },
+    };
+  });
+
+  const isPortfolio = chartView === 'portfolio';
+  const dp = isPortfolio ? 0 : 2;
+  const fmtLabel = l => chartPeriod === '5D' ? l.slice(5, 16).replace('T', ' ') : l.slice(5);
 
   portfolioChart = new Chart(ctx, {
     type: 'line',
     data: {
-      labels: dates,
+      labels: labels.map(fmtLabel),
       datasets: [
         {
-          label: 'Portfolio Value (NOK)',
-          data: portfolioValues,
-          borderColor: '#4fc3f7',
-          backgroundColor: 'rgba(79,195,247,0.08)',
-          borderWidth: 2,
-          fill: true,
-          tension: 0.3,
-          pointRadius: dates.length < 10 ? 4 : 2,
-          pointBackgroundColor: '#4fc3f7',
+          label: isPortfolio ? 'Portfolio Value (NOK)' : ticker(chartView) + ' Price (NOK)',
+          data: valueData,
+          borderColor: '#4fc3f7', backgroundColor: 'rgba(79,195,247,0.08)',
+          borderWidth: 2, fill: true, tension: 0.3,
+          pointRadius: labels.length < 15 ? 3 : 0, pointBackgroundColor: '#4fc3f7',
         },
         {
-          label: 'Cost Basis (NOK)',
-          data: costLine,
-          borderColor: '#f5a623',
-          borderWidth: 1.5,
-          borderDash: [6, 4],
-          fill: false,
-          pointRadius: 0,
-          tension: 0,
+          label: isPortfolio ? 'Cost Basis (NOK)' : ticker(chartView) + ' Avg Cost',
+          data: costData,
+          borderColor: '#f5a623', borderWidth: 1.5, borderDash: [6, 4],
+          fill: false, pointRadius: 0, tension: 0,
         },
       ],
     },
@@ -641,22 +825,20 @@ function renderChart() {
       plugins: {
         legend: { labels: { color: '#5a7a96', font: { family: 'Syne Mono', size: 10 }, boxWidth: 14 } },
         tooltip: {
-          backgroundColor: '#0d1420',
-          borderColor: '#1e2d42',
-          borderWidth: 1,
-          titleColor: '#c8d8e8',
-          bodyColor: '#c8d8e8',
+          backgroundColor: '#0d1420', borderColor: '#1e2d42', borderWidth: 1,
+          titleColor: '#c8d8e8', bodyColor: '#c8d8e8',
           callbacks: {
-            label: ctx => ` ${ctx.dataset.label}: NOK ${(ctx.raw||0).toLocaleString('nb-NO', {maximumFractionDigits:0})}`,
+            label: c => ` ${c.dataset.label}: NOK ${(c.raw||0).toLocaleString('nb-NO', { minimumFractionDigits: dp, maximumFractionDigits: dp })}`,
           },
         },
+        annotation: { annotations },
       },
       scales: {
-        x: { ticks: { color: '#5a7a96', font: { family: 'Syne Mono', size: 9 } }, grid: { color: '#1e2d42' } },
+        x: { ticks: { color: '#5a7a96', font: { family: 'Syne Mono', size: 9 }, maxTicksLimit: 14 }, grid: { color: '#1e2d42' } },
         y: {
           ticks: {
             color: '#5a7a96', font: { family: 'Syne Mono', size: 9 },
-            callback: v => 'NOK ' + v.toLocaleString('nb-NO', { maximumFractionDigits: 0 }),
+            callback: v => 'NOK ' + v.toLocaleString('nb-NO', { minimumFractionDigits: dp, maximumFractionDigits: dp }),
           },
           grid: { color: '#1e2d42' },
         },
