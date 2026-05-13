@@ -534,9 +534,9 @@ async function fetchMarketData(isins) {
     GET('smart_signals',
       `isin=in.(${isinStr})&trade_date=gte.${since90}&order=trade_date.desc&limit=100`),
     GET('signal_event_proximity',
-      `isin=in.(${isinStr})&order=days_to_event.asc&limit=50`).catch(()=>[]),
+      `isin=in.(${isinStr})&event_type=in.(RESULTS,EARNINGS_CALL,WARNING)&days_to_event=gte.0&order=days_to_event.asc&limit=50`).catch(()=>[]),
     GET('corporate_events',
-      `isin=in.(${isinStr})&event_date=gte.${today}&order=event_date.asc&limit=60`).catch(()=>[]),
+      `isin=in.(${isinStr})&event_date=gte.${today}&event_type=in.(EX_DATE,RESULTS,EARNINGS_CALL,WARNING)&order=event_date.asc&limit=60`).catch(()=>[]),
     GET('whale_alerts',
       `isin=in.(${isinStr})&trade_date=gte.${since90}&order=trade_date.desc&limit=50`).catch(()=>[]),
     GET('instruments', `isin=in.(${isinStr})`).catch(()=>[]),
@@ -766,24 +766,52 @@ function renderChart() {
     }
   }
 
-  // Event annotations (dividends + catalysts)
+  // Extend chart into the future for daily views so upcoming events are visible
+  if (chartPeriod !== '5D' && labels.length) {
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const limitStr = new Date(Date.now() + 62 * 864e5).toISOString().slice(0, 10);
+    let latestEvent = null;
+    for (const isin of isinsToShow) {
+      for (const e of (marketData[isin]?.events || [])) {
+        if (e.event_date > todayStr && e.event_date <= limitStr) {
+          if (!latestEvent || e.event_date > latestEvent) latestEvent = e.event_date;
+        }
+      }
+    }
+    if (latestEvent && latestEvent > labels[labels.length - 1]) {
+      const lastCost = costData[costData.length - 1] ?? null;
+      let cur = new Date(labels[labels.length - 1] + 'T00:00:00Z');
+      cur.setUTCDate(cur.getUTCDate() + 1);
+      while (cur.toISOString().slice(0, 10) <= latestEvent) {
+        labels.push(cur.toISOString().slice(0, 10));
+        valueData.push(null);
+        costData.push(lastCost);
+        cur.setUTCDate(cur.getUTCDate() + 1);
+      }
+    }
+  }
+
+  // Event annotations — xMin/xMax must use formatted labels (MM-DD) to match chart axis
   const annotations = {};
   const eventsToMark = [];
   for (const isin of isinsToShow) {
     const md = marketData[isin] || {};
     for (const e of (md.events || [])) {
-      eventsToMark.push({
-        date: e.event_date,
-        label: ticker(isin) + (e.event_type === 'EX_DATE' ? ' ÷div' : ' ' + e.event_type),
-        color: e.event_type === 'EX_DATE' ? '#f5a623' : '#a78bfa',
-      });
+      const color = e.event_type === 'EX_DATE' ? '#f5a623'
+                  : e.event_type === 'WARNING'  ? '#f06060'
+                  : '#a78bfa';
+      const lbl   = ticker(isin) + (e.event_type === 'EX_DATE' ? ' ÷div'
+                  : e.event_type === 'EARNINGS_CALL' ? ' EARNINGS'
+                  : ' ' + e.event_type);
+      eventsToMark.push({ date: e.event_date, label: lbl, color });
     }
   }
   eventsToMark.forEach((ev, i) => {
-    const xVal = chartPeriod === '5D'
+    const rawLabel = chartPeriod === '5D'
       ? labels.find(l => l.startsWith(ev.date))
       : (labels.includes(ev.date) ? ev.date : null);
-    if (!xVal) return;
+    if (!rawLabel) return;
+    const xVal = fmtLabel(rawLabel); // must match the formatted axis tick
     annotations['ev' + i] = {
       type: 'line', xMin: xVal, xMax: xVal,
       borderColor: ev.color, borderWidth: 1, borderDash: [3, 3],

@@ -2218,7 +2218,8 @@ async function loadCatalystAlerts() {
 
     const rows = await APIall('signal_event_proximity',
       `trade_date=gte.${lookbackStr}&event_date=gte.${today}` +
-      `&proximity=in.(imminent,before,same)&order=days_to_event.asc&limit=200`);
+      `&event_type=in.(RESULTS,EARNINGS_CALL,WARNING)` +
+      `&days_to_event=gte.0&proximity=in.(imminent,before,same)&order=days_to_event.asc&limit=200`);
 
     // Group all signals for the same (isin, event_date, event_type) into one card
     const grouped = new Map();
