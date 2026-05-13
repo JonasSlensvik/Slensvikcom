@@ -689,6 +689,7 @@ async function fetchIntradayData(isins) {
 function renderChart() {
   const ctx = document.getElementById('portfolioChart').getContext('2d');
   if (portfolioChart) portfolioChart.destroy();
+  const fmtLabel = l => chartPeriod === '5D' ? l.slice(5, 16).replace('T', ' ') : l.slice(5);
 
   const isinsToShow = chartView === 'portfolio' ? [...positions.keys()] : [chartView];
   let labels = [], valueData = [], costData = [];
@@ -825,7 +826,6 @@ function renderChart() {
 
   const isPortfolio = chartView === 'portfolio';
   const dp = isPortfolio ? 0 : 2;
-  const fmtLabel = l => chartPeriod === '5D' ? l.slice(5, 16).replace('T', ' ') : l.slice(5);
 
   portfolioChart = new Chart(ctx, {
     type: 'line',
