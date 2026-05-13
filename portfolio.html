@@ -534,7 +534,7 @@ async function fetchMarketData(isins) {
     GET('smart_signals',
       `isin=in.(${isinStr})&trade_date=gte.${since90}&order=trade_date.desc&limit=100`),
     GET('signal_event_proximity',
-      `isin=in.(${isinStr})&event_type=in.(RESULTS,EARNINGS_CALL,WARNING)&days_to_event=gte.0&order=days_to_event.asc&limit=50`).catch(()=>[]),
+      `isin=in.(${isinStr})&event_type=in.(RESULTS,EARNINGS_CALL,WARNING)&event_date=gte.${today}&days_to_event=gte.0&order=days_to_event.asc&limit=50`).catch(()=>[]),
     GET('corporate_events',
       `isin=in.(${isinStr})&event_date=gte.${today}&event_type=in.(EX_DATE,RESULTS,EARNINGS_CALL,WARNING)&order=event_date.asc&limit=60`).catch(()=>[]),
     GET('whale_alerts',
