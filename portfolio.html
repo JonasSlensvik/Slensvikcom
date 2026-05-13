@@ -767,16 +767,24 @@ function renderChart() {
     }
   }
 
+  // Collect all upcoming events from both corporate_events and signal_event_proximity
+  const allUpcoming = [];
+  for (const isin of isinsToShow) {
+    const md = marketData[isin] || {};
+    for (const e of [...(md.events || []), ...(md.catalysts || [])]) {
+      const ed = (e.event_date || '').slice(0, 10);
+      if (ed) allUpcoming.push({ isin, event_date: ed, event_type: e.event_type || '' });
+    }
+  }
+
   // Extend chart into the future for daily views so upcoming events are visible
   if (chartPeriod !== '5D' && labels.length) {
     const todayStr = new Date().toISOString().slice(0, 10);
     const limitStr = new Date(Date.now() + 62 * 864e5).toISOString().slice(0, 10);
     let latestEvent = null;
-    for (const isin of isinsToShow) {
-      for (const e of (marketData[isin]?.events || [])) {
-        if (e.event_date > todayStr && e.event_date <= limitStr) {
-          if (!latestEvent || e.event_date > latestEvent) latestEvent = e.event_date;
-        }
+    for (const e of allUpcoming) {
+      if (e.event_date > todayStr && e.event_date <= limitStr) {
+        if (!latestEvent || e.event_date > latestEvent) latestEvent = e.event_date;
       }
     }
     if (latestEvent && latestEvent > labels[labels.length - 1]) {
@@ -795,17 +803,18 @@ function renderChart() {
   // Event annotations — xMin/xMax must use formatted labels (MM-DD) to match chart axis
   const annotations = {};
   const eventsToMark = [];
-  for (const isin of isinsToShow) {
-    const md = marketData[isin] || {};
-    for (const e of (md.events || [])) {
-      const color = e.event_type === 'EX_DATE' ? '#f5a623'
-                  : e.event_type === 'WARNING'  ? '#f06060'
-                  : '#a78bfa';
-      const lbl   = ticker(isin) + (e.event_type === 'EX_DATE' ? ' ÷div'
-                  : e.event_type === 'EARNINGS_CALL' ? ' EARNINGS'
-                  : ' ' + e.event_type);
-      eventsToMark.push({ date: e.event_date, label: lbl, color });
-    }
+  const seenEv = new Set();
+  for (const e of allUpcoming) {
+    const key = e.isin + '|' + e.event_date + '|' + e.event_type;
+    if (seenEv.has(key)) continue;
+    seenEv.add(key);
+    const color = e.event_type === 'EX_DATE' ? '#f5a623'
+                : e.event_type === 'WARNING'  ? '#f06060'
+                : '#a78bfa';
+    const lbl   = ticker(e.isin) + (e.event_type === 'EX_DATE' ? ' ÷div'
+                : e.event_type === 'EARNINGS_CALL' ? ' EARNINGS'
+                : ' ' + e.event_type);
+    eventsToMark.push({ date: e.event_date, label: lbl, color });
   }
   eventsToMark.forEach((ev, i) => {
     const rawLabel = chartPeriod === '5D'
