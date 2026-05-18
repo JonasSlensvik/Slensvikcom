@@ -192,6 +192,92 @@ header {
 .section.collapsed .section-chevron { transform: rotate(-90deg); }
 .section.collapsed .section-body { display: none; }
 
+/* ─── Today's Book / Conviction Shortlist ─────────────────────────────── */
+.conviction-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+}
+@media (max-width: 760px) { .conviction-grid { grid-template-columns: 1fr; } }
+.conviction-col {
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.012);
+  padding: 14px 14px 12px;
+}
+.conv-col-head {
+  display: flex; align-items: center; gap: 10px;
+  padding-bottom: 10px; margin-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em;
+  font-variant-numeric: tabular-nums;
+}
+.conv-col-arrow      { font-size: 13px; line-height: 1; }
+.conv-col-arrow.long { color: var(--green, #4ade80); }
+.conv-col-arrow.short{ color: var(--red,   #f87171); }
+.conv-col-label      { color: var(--text-bright); font-weight: 500; }
+.conv-col-count      { margin-left: auto; color: var(--text-dim); font-size: 10px; }
+.conv-list           { display: flex; flex-direction: column; gap: 8px; }
+.conv-empty {
+  color: var(--text-dim); font-family: var(--mono);
+  font-size: 10px; letter-spacing: 0.12em;
+  text-align: center; padding: 28px 8px;
+}
+.conv-card {
+  position: relative;
+  border: 1px solid var(--border);
+  background: var(--bg2, #0d1218);
+  padding: 11px 12px 10px;
+  cursor: pointer; transition: all 0.15s;
+}
+.conv-card.long  { border-left: 2px solid var(--green, #4ade80); }
+.conv-card.short { border-left: 2px solid var(--red,   #f87171); }
+.conv-card:hover { background: var(--bg3); border-color: rgba(255,255,255,0.12); }
+.conv-row1 {
+  display: flex; align-items: baseline; gap: 10px;
+}
+.conv-arrow      { font-size: 11px; line-height: 1; }
+.conv-arrow.long { color: var(--green, #4ade80); }
+.conv-arrow.short{ color: var(--red,   #f87171); }
+.conv-ticker {
+  font-family: var(--mono); font-size: 13px; font-weight: 500;
+  color: var(--text-bright); letter-spacing: 0.04em;
+}
+.conv-name {
+  font-family: var(--sans); font-size: 11px; color: var(--text-dim);
+  flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.conv-score {
+  font-family: var(--mono); font-size: 20px; font-weight: 500;
+  color: var(--amber); letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.conv-bar {
+  height: 2px; background: var(--bg3); margin: 7px 0 9px;
+  overflow: hidden;
+}
+.conv-bar-fill       { height: 100%; transition: width 0.4s; }
+.conv-bar-fill.long  { background: linear-gradient(90deg, var(--green, #4ade80), #86efac); }
+.conv-bar-fill.short { background: linear-gradient(90deg, var(--red,   #f87171), #fda4af); }
+.conv-signals { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 9px; }
+.conv-chip {
+  font-family: var(--mono); font-size: 9px; letter-spacing: 0.08em;
+  color: var(--text); background: var(--bg3);
+  border: 1px solid var(--border);
+  padding: 2px 6px;
+  display: inline-flex; align-items: center; gap: 5px;
+}
+.conv-chip .g           { color: var(--amber); font-size: 10px; }
+.conv-chip.event        { border-color: rgba(245,166,35,0.32); color: var(--amber); }
+.conv-chip.event .g     { color: var(--amber); }
+.conv-footer {
+  display: flex; gap: 14px; flex-wrap: wrap;
+  font-family: var(--mono); font-size: 10px;
+  color: var(--text-dim); letter-spacing: 0.06em;
+  border-top: 1px solid var(--border); padding-top: 8px;
+  font-variant-numeric: tabular-nums;
+}
+.conv-footer strong { color: var(--text-bright); font-weight: 500; }
+.conv-footer .up    { color: var(--green, #4ade80); }
+.conv-footer .dn    { color: var(--red,   #f87171); }
+
 /* ─── Company Deep Dive ─────────────────────────────────────────────────── */
 #companyDeepDive {
   border: 1px solid var(--border-glow);
@@ -752,6 +838,35 @@ tbody tr.selected { background: var(--ice-dim); }
     <button class="btn" onclick="searchISIN()">FIND</button>
   </div>
 
+  <!-- ── Today's Book (conviction shortlist) ──────────────────────────────── -->
+  <div class="section" id="sec-conviction">
+    <div class="section-head">
+      <div class="section-title">▣ Today's Book</div>
+      <div class="section-desc">Ranked by signal stack × direction × persistence × event proximity. Click any card to drill.</div>
+      <div class="section-count" id="convictionCount">—</div>
+    </div>
+    <div class="section-body">
+      <div class="conviction-grid">
+        <div class="conviction-col">
+          <div class="conv-col-head">
+            <span class="conv-col-arrow long">▲</span>
+            <span class="conv-col-label">LONG CONVICTION</span>
+            <span class="conv-col-count" id="longCount">—</span>
+          </div>
+          <div class="conv-list" id="longList"><div class="conv-empty">LOADING …</div></div>
+        </div>
+        <div class="conviction-col">
+          <div class="conv-col-head">
+            <span class="conv-col-arrow short">▼</span>
+            <span class="conv-col-label">SHORT CONVICTION</span>
+            <span class="conv-col-count" id="shortCount">—</span>
+          </div>
+          <div class="conv-list" id="shortList"><div class="conv-empty">LOADING …</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ── Overview KPIs ───────────────────────────────────────────────────── -->
   <div class="section" id="sec-overview">
     <div class="section-head">
@@ -1119,6 +1234,71 @@ const fmt = {
   time: v => v ? v.slice(0,5) : '—',
 };
 
+/* ─── Today's Book / Conviction Shortlist ──────────────────────────────── */
+const CONV_GLYPH = {
+  DARK_ACCUMULATION: '◍',  DARK_DISTRIBUTION: '◍',  DARK_BLOCK: '◍',
+  EOD_SWEEP:         '╳',  LARGE_NOTIONAL:    '■',
+  CEILING_BREAK:     '▲',  FLOOR_BREAK:       '▼',
+};
+const EVT_GLYPH = {
+  RESULTS:'▢', EARNINGS_CALL:'◴', AGM:'Ⅱ', EX_DATE:'◇',
+  WARNING:'△', INSIDER:'◐', PLACEMENT:'▦', DELISTING:'⊘',
+  IPO:'▴', PROSPECTUS:'▤', REGULATED:'▣', PRESS_RELEASE:'≡',
+};
+
+function renderConvictionCard(r, side) {
+  const ticker = isinTicker(r.isin) || r.isin.slice(-6);
+  const name   = isinName(r.isin) || '';
+  const arrow  = side === 'long' ? '▲' : '▼';
+  const sigChips = (r.signal_types || []).map(t =>
+    `<span class="conv-chip"><span class="g">${CONV_GLYPH[t] || '▢'}</span>${t.replace(/_/g,' ')}</span>`
+  ).join('');
+  const evChip = r.next_event_date
+    ? `<span class="conv-chip event"><span class="g">${EVT_GLYPH[r.next_event_type]||'▌'}</span>${r.next_event_type} in ${r.days_to_event}d</span>`
+    : '';
+  const move = (r.day_close != null && r.modal_price != null && Number(r.modal_price) > 0)
+    ? ((Number(r.day_close) - Number(r.modal_price)) / Number(r.modal_price) * 100)
+    : null;
+  const moveCls = move == null ? '' : move >= 0 ? 'up' : 'dn';
+  const moveStr = move == null ? '' : `<span class="${moveCls}">${move >= 0 ? '+' : ''}${move.toFixed(1)}%</span>`;
+  const wall = r.modal_price ? `<span>WALL <strong>${Number(r.modal_price).toFixed(2)}</strong></span>` : '';
+  const vw   = r.vwap        ? `<span>VWAP <strong>${Number(r.vwap).toFixed(2)}</strong></span>`         : '';
+  const darkPct = r.dark_pct != null ? `<span>DARK <strong>${Number(r.dark_pct).toFixed(0)}%</strong></span>` : '';
+  return `
+    <div class="conv-card ${side}" onclick="drillIntoISIN('${r.isin}','${r.venue}')">
+      <div class="conv-row1">
+        <span class="conv-arrow ${side}">${arrow}</span>
+        <span class="conv-ticker">${ticker}</span>
+        <span class="conv-name">${name}</span>
+        <span class="conv-score">${r.conviction}</span>
+      </div>
+      <div class="conv-bar"><div class="conv-bar-fill ${side}" style="width:${r.conviction}%"></div></div>
+      <div class="conv-signals">${sigChips}${evChip}</div>
+      <div class="conv-footer">${wall}${vw}${darkPct}${moveStr}</div>
+    </div>`;
+}
+
+async function loadConviction() {
+  try {
+    const data = await API('conviction', 'order=conviction.desc&limit=40');
+    const longs  = data.filter(r => r.side === 'LONG' ).slice(0, 10);
+    const shorts = data.filter(r => r.side === 'SHORT').slice(0, 10);
+    document.getElementById('longCount').textContent  = longs.length;
+    document.getElementById('shortCount').textContent = shorts.length;
+    document.getElementById('convictionCount').textContent = `${longs.length}L · ${shorts.length}S`;
+    document.getElementById('longList').innerHTML  = longs.length
+      ? longs.map(r => renderConvictionCard(r, 'long')).join('')
+      : '<div class="conv-empty">NO LONG CANDIDATES</div>';
+    document.getElementById('shortList').innerHTML = shorts.length
+      ? shorts.map(r => renderConvictionCard(r, 'short')).join('')
+      : '<div class="conv-empty">NO SHORT CANDIDATES</div>';
+  } catch(e) {
+    console.error('Conviction load failed:', e);
+    document.getElementById('longList').innerHTML  = '<div class="conv-empty">DATA UNAVAILABLE</div>';
+    document.getElementById('shortList').innerHTML = '<div class="conv-empty">DATA UNAVAILABLE</div>';
+  }
+}
+
 /* ─── Init: load instruments + available dates ─────────────────────────── */
 async function init() {
   restoreSectionStates();
@@ -1146,7 +1326,7 @@ async function loadDate() {
   document.getElementById('tradeDatePill').textContent = currentDate;
   closeDrill();
   await Promise.all([
-    loadKPIs(), loadWhales(), loadSignals(),
+    loadConviction(), loadKPIs(), loadWhales(), loadSignals(),
     loadSummaryTable(), loadLatency(), loadIntraday(),
     loadCatalystAlerts(), loadCorporateEvents(), loadSignalProximity(), loadTrends()
   ]);
