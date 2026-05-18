@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Markedsradar — Norwegian Equity Intelligence</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Syne+Mono&family=Syne:wght@400;600;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=Syne:wght@400;600;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 
 <style>
@@ -31,7 +31,7 @@
   --red-dim:      #3a1010;
   --purple:       #a78bfa;
   --gold:         #ffd700;
-  --mono:         'Syne Mono', monospace;
+  --mono:         'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace;
   --sans:         'Syne', sans-serif;
   --body:         'DM Sans', sans-serif;
 }
@@ -160,12 +160,17 @@ header {
 .section-head.collapsible { cursor: pointer; user-select: none; }
 .section-head.collapsible:hover .section-title { color: var(--ice); transition: color 0.15s; }
 .section-title {
-  font-family: var(--sans);
-  font-weight: 600;
-  font-size: 13px;
-  letter-spacing: 2px;
+  font-family: var(--mono);
+  font-weight: 500;
+  font-size: 12px;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--text-bright);
+  font-variant-numeric: tabular-nums;
+}
+.section-title::first-letter {
+  color: var(--amber);     /* the glyph prefix burns amber, Bloomberg-style */
+  margin-right: 8px;
 }
 .section-desc {
   font-size: 12px;
@@ -759,8 +764,8 @@ tbody tr.selected { background: var(--ice-dim); }
   <!-- ── Catalyst Alerts ───────────────────────────────────────────────────── -->
   <div class="section" id="sec-catalyst">
     <div class="section-head collapsible" onclick="toggleSection('sec-catalyst')">
-      <div class="section-title">🎯 Catalyst Alerts</div>
-      <div class="section-desc">Smart money activity detected ahead of a known corporate event. Cards turn red when a sell signal precedes results or an AGM.</div>
+      <div class="section-title">◆ Catalysts</div>
+      <div class="section-desc">Smart-money activity preceding a known corporate event. Red card when a sell signal precedes results or AGM.</div>
       <div class="section-count" id="catalystCount">—</div>
       <span class="section-chevron">▾</span>
     </div>
@@ -772,8 +777,8 @@ tbody tr.selected { background: var(--ice-dim); }
   <!-- ── Signal × Event Proximity ──────────────────────────────────────────── -->
   <div class="section" id="sec-proximity">
     <div class="section-head collapsible" onclick="toggleSection('sec-proximity')">
-      <div class="section-title">🔔 Signal × Event Proximity</div>
-      <div class="section-desc">Smart money signals within 30 days of a corporate event — the informed trading fingerprint. Red = event imminent when signal fired.</div>
+      <div class="section-title">≡ Signal × Event Proximity</div>
+      <div class="section-desc">Signals within 30 days of a corporate event — the informed-trading fingerprint. Red when event imminent at signal time.</div>
       <div class="section-count" id="proximityCount">—</div>
       <span class="section-chevron">▾</span>
     </div>
@@ -793,8 +798,8 @@ tbody tr.selected { background: var(--ice-dim); }
   <!-- ── Whale Alerts ────────────────────────────────────────────────────── -->
   <div class="section" id="sec-whales">
     <div class="section-head collapsible" onclick="toggleSection('sec-whales')">
-      <div class="section-title">🐋 Whale Alerts</div>
-      <div class="section-desc">Exceptional single trades — large notional (&gt;5M NOK), block trades, negotiated OTC deals, dark pool large prints</div>
+      <div class="section-title">■ Large Prints</div>
+      <div class="section-desc">Single trades exceeding NOK 5M, dark-pool large prints, OTC reports.</div>
       <div class="section-count" id="whaleCount">—</div>
       <span class="section-chevron">▾</span>
     </div>
@@ -806,8 +811,8 @@ tbody tr.selected { background: var(--ice-dim); }
   <!-- ── Smart Money Signals ─────────────────────────────────────────────── -->
   <div class="section" id="sec-signals">
     <div class="section-head collapsible" onclick="toggleSection('sec-signals')">
-      <div class="section-title">⚡ Smart Money Signals</div>
-      <div class="section-desc">Patterns suggesting informed or institutional activity — dark accumulation/distribution, EOD sweeps, deferred large prints</div>
+      <div class="section-title">╳ Smart Money Signals</div>
+      <div class="section-desc">Cross-sectionally ranked patterns — dark accumulation / distribution, EOD sweeps, ceiling &amp; floor breaks.</div>
       <div class="section-count" id="signalCount">—</div>
       <span class="section-chevron">▾</span>
     </div>
@@ -819,7 +824,7 @@ tbody tr.selected { background: var(--ice-dim); }
   <!-- ── Corporate Events Calendar ────────────────────────────────────────── -->
   <div class="section" id="sec-events">
     <div class="section-head collapsible" onclick="toggleSection('sec-events')">
-      <div class="section-title">📅 Corporate Events</div>
+      <div class="section-title">▌ Corporate Events</div>
       <div class="section-desc">Upcoming and recent regulatory announcements — results, dividends, profit warnings. Signals near events are highlighted.</div>
       <div class="section-count" id="eventsCount">—</div>
       <span class="section-chevron">▾</span>
@@ -827,15 +832,15 @@ tbody tr.selected { background: var(--ice-dim); }
     <div class="section-body">
       <div style="display:flex;gap:8px;padding:0 0 12px 0;flex-wrap:wrap" id="eventFilters">
         <button onclick="filterEvents('ALL')"           class="evt-btn active" data-f="ALL">ALL</button>
-        <button onclick="filterEvents('AGM')"           class="evt-btn" data-f="AGM">🏛️ AGM</button>
-        <button onclick="filterEvents('EARNINGS_CALL')" class="evt-btn" data-f="EARNINGS_CALL">📞 EARNINGS</button>
-        <button onclick="filterEvents('RESULTS')"       class="evt-btn" data-f="RESULTS">📊 RESULTS</button>
-        <button onclick="filterEvents('EX_DATE')"       class="evt-btn" data-f="EX_DATE">📌 EX DATE</button>
-        <button onclick="filterEvents('WARNING')"       class="evt-btn" data-f="WARNING">⚠️ WARNING</button>
-        <button onclick="filterEvents('INSIDER')"       class="evt-btn" data-f="INSIDER">👤 INSIDER</button>
-        <button onclick="filterEvents('PLACEMENT')"     class="evt-btn" data-f="PLACEMENT">💼 PLACEMENT</button>
-        <button onclick="filterEvents('DELISTING')"     class="evt-btn" data-f="DELISTING">🚫 DELISTING</button>
-        <button onclick="filterEvents('IPO')"           class="evt-btn" data-f="IPO">🚀 IPO</button>
+        <button onclick="filterEvents('AGM')"           class="evt-btn" data-f="AGM">Ⅱ AGM</button>
+        <button onclick="filterEvents('EARNINGS_CALL')" class="evt-btn" data-f="EARNINGS_CALL">◴ EARNINGS</button>
+        <button onclick="filterEvents('RESULTS')"       class="evt-btn" data-f="RESULTS">▢ RESULTS</button>
+        <button onclick="filterEvents('EX_DATE')"       class="evt-btn" data-f="EX_DATE">◇ EX DATE</button>
+        <button onclick="filterEvents('WARNING')"       class="evt-btn" data-f="WARNING">△ WARNING</button>
+        <button onclick="filterEvents('INSIDER')"       class="evt-btn" data-f="INSIDER">◐ INSIDER</button>
+        <button onclick="filterEvents('PLACEMENT')"     class="evt-btn" data-f="PLACEMENT">▦ PLACEMENT</button>
+        <button onclick="filterEvents('DELISTING')"     class="evt-btn" data-f="DELISTING">⊘ DELISTING</button>
+        <button onclick="filterEvents('IPO')"           class="evt-btn" data-f="IPO">▴ IPO</button>
       </div>
       <div class="table-wrap">
         <table id="eventsTable"><thead><tr>
@@ -880,7 +885,7 @@ tbody tr.selected { background: var(--ice-dim); }
     </div>
 
     <div class="chart-box full" style="margin-top:20px">
-      <div class="chart-label">🌑 Dark Flow Impact — Individual Trades vs VWAP</div>
+      <div class="chart-label">◍ Dark Flow Impact — Individual Trades vs VWAP</div>
       <div class="chart-container" style="height:380px"><canvas id="darkFlowChart"></canvas></div>
       <div class="dive-flow-legend">
         <span>⚫ Dark trade (size = notional)</span>
@@ -914,7 +919,7 @@ tbody tr.selected { background: var(--ice-dim); }
   <!-- ── Market Charts ──────────────────────────────────────────────────── -->
   <div class="section collapsed" id="sec-charts">
     <div class="section-head collapsible" onclick="toggleSection('sec-charts')">
-      <div class="section-title">📊 Market Charts</div>
+      <div class="section-title">▢ Market Charts</div>
       <div class="section-desc">Aggregate microstructure — algo vs human composition, dark pool distribution by ISIN, intraday volume profile</div>
       <span class="section-chevron">▾</span>
     </div>
@@ -939,7 +944,7 @@ tbody tr.selected { background: var(--ice-dim); }
   <!-- ── ISIN Summary table ──────────────────────────────────────────────── -->
   <div class="section collapsed" id="sec-isin">
     <div class="section-head collapsible" onclick="toggleSection('sec-isin')">
-      <div class="section-title">📋 ISIN Intelligence</div>
+      <div class="section-title">▣ ISIN Intelligence</div>
       <div class="section-desc">Per-ticker microstructure metrics — click any row to open Company Deep Dive</div>
       <div class="section-count" id="isinCount">—</div>
       <span class="section-chevron">▾</span>
@@ -960,7 +965,7 @@ tbody tr.selected { background: var(--ice-dim); }
   <!-- ── Latency Fingerprinting ──────────────────────────────────────────── -->
   <div class="section collapsed" id="sec-latency">
     <div class="section-head collapsible" onclick="toggleSection('sec-latency')">
-      <div class="section-title">⚡ Latency Fingerprinting</div>
+      <div class="section-title">∿ Latency Fingerprinting</div>
       <div class="section-desc">Publication lag from trade event to tape — sub-10ms = HFT / co-located; &gt;500ms = manual/human flow</div>
       <span class="section-chevron">▾</span>
     </div>
@@ -985,7 +990,7 @@ tbody tr.selected { background: var(--ice-dim); }
   <!-- ── Execution Chains ────────────────────────────────────────────────── -->
   <div class="section collapsed" id="sec-chains">
     <div class="section-head collapsible" onclick="toggleSection('sec-chains')">
-      <div class="section-title">🔗 Execution Chains</div>
+      <div class="section-title">▤ Execution Chains</div>
       <div class="section-desc">Multi-leg executions reconstructed from shared execution IDs — reveals institutional order slicing patterns</div>
       <div style="display:flex;align-items:center;gap:12px">
         <div class="section-count" id="chainCount">—</div>
@@ -1011,7 +1016,7 @@ tbody tr.selected { background: var(--ice-dim); }
   <!-- ── Trend Monitoring ───────────────────────────────────────────────── -->
   <div class="section collapsed" id="sec-trends">
     <div class="section-head collapsible" onclick="toggleSection('sec-trends')">
-      <div class="section-title">📈 Trend Monitoring</div>
+      <div class="section-title">∆ Trend Monitoring</div>
       <div class="section-desc">30-day sparklines for dark pool activity and volume. Z-score &gt; 2σ = statistically unusual versus the ISIN's own baseline.</div>
       <div class="section-count" id="trendCount">—</div>
       <span class="section-chevron">▾</span>
@@ -1220,8 +1225,9 @@ async function loadWhales() {
   }
 
   const SIGNAL_ICONS = {
-    LARGE_NOK: '💰', LARGE_EUR: '💶', BLOCK_TRADE: '🧱',
-    NEGOTIATED_OTC: '🤝', DARK_POOL_LARGE: '🌑', DEFERRED_PRINT: '⏳',
+    LARGE_NOK: '■', LARGE_EUR: '■', DARK_POOL_LARGE: '◍', OTC_PRINT: '⊗',
+    // legacy / now-dead alert types kept for back-compat
+    BLOCK_TRADE: '■', NEGOTIATED_OTC: '◇', DEFERRED_PRINT: '◑',
   };
 
   document.getElementById('whaleGrid').innerHTML = data.map(r => {
@@ -1260,18 +1266,24 @@ async function loadSignals() {
   document.getElementById('signalCount').textContent = `${data.length} SIGNALS`;
 
   const ICONS = {
-    DARK_ACCUMULATION: '🌑',
-    EOD_SWEEP: '🌅',
-    DEFERRED_LARGE_PRINT: '⏳',
-    ALGO_DOMINANCE: '🤖',
-    BURST_STORM: '⚡',
+    DARK_ACCUMULATION:  '◍',
+    DARK_DISTRIBUTION:  '◍',
+    DARK_BLOCK:         '◍',
+    EOD_SWEEP:          '╳',
+    LARGE_NOTIONAL:     '■',
+    CEILING_BREAK:      '▲',
+    FLOOR_BREAK:        '▼',
+    // legacy
+    DEFERRED_LARGE_PRINT: '◑',
+    ALGO_DOMINANCE:       '◴',
+    BURST_STORM:          '╳',
   };
 
   document.getElementById('signalList').innerHTML = !data.length
     ? '<div style="color:var(--text-dim);font-family:var(--mono);font-size:12px;padding:16px">No smart money signals detected for this date.</div>'
     : data.map((r, i) => `
       <div class="signal-row" style="animation-delay:${i*0.05}s" onclick="drillIntoISIN('${r.isin}','${r.venue}')">
-        <div class="signal-icon">${ICONS[r.signal_type] || '📊'}</div>
+        <div class="signal-icon">${ICONS[r.signal_type] || '▢'}</div>
         <div class="signal-body">
           <div class="signal-type">${r.signal_type}</div>
           <div class="signal-desc">${r.signal_desc || '—'}</div>
@@ -1591,7 +1603,7 @@ async function drillIntoISIN(isin, venue) {
   const summary = allSummary.find(r => r.isin === isin && r.venue === venue) || {};
   const dark    = allDark.find(r => r.isin === isin && r.venue === venue) || {};
   const bias = dark.dark_side_bias;
-  const biasStr   = bias === 'SELL' ? '🔴 Distribution' : bias === 'BUY' ? '🟢 Accumulation' : '⚪ Neutral';
+  const biasStr   = bias === 'SELL' ? '<span style="color:var(--red)">▼ Distribution</span>' : bias === 'BUY' ? '<span style="color:var(--green)">▲ Accumulation</span>' : '<span style="color:var(--text-dim)">◇ Neutral</span>';
   const biasColor = bias === 'SELL' ? 'var(--red)' : bias === 'BUY' ? 'var(--green)' : 'var(--text-dim)';
   document.getElementById('diveMetrics').innerHTML = [
     ['Dark Pool',  fmt.pct(summary.dark_pct)],
@@ -1661,7 +1673,7 @@ async function drillIntoISIN(isin, venue) {
 
   // Dark breakdown bar + side bias
   if (drillChart3) drillChart3.destroy();
-  const biasLabel = dark.dark_side_bias === 'SELL' ? '🔴 Distribution (dark below modal)' : dark.dark_side_bias === 'BUY' ? '🟢 Accumulation (dark above modal)' : '⚪ No clear bias';
+  const biasLabel = dark.dark_side_bias === 'SELL' ? '<span style="color:var(--red)">▼ Distribution — seller pinning ceiling</span>' : dark.dark_side_bias === 'BUY' ? '<span style="color:var(--green)">▲ Accumulation — buyer pinning floor</span>' : '<span style="color:var(--text-dim)">◇ No clear bias</span>';
   drillChart3 = new Chart(document.getElementById('drillDark'), {
     type: 'bar',
     data: {
@@ -1742,9 +1754,9 @@ function renderDiveEvents(isin) {
   const today  = new Date().toISOString().slice(0,10);
   const events = (allEvents || []).filter(e => e.isin === isin && e.event_date >= today)
     .sort((a,b) => a.event_date.localeCompare(b.event_date)).slice(0, 8);
-  const EVT_ICON = { RESULTS:'📊', EARNINGS_CALL:'📞', AGM:'🏛️', EX_DATE:'📌',
-                     WARNING:'⚠️', INSIDER:'👤', PLACEMENT:'💼', DELISTING:'🚫',
-                     IPO:'🚀', PROSPECTUS:'📄', REGULATED:'📋', PRESS_RELEASE:'📰' };
+  const EVT_ICON = { RESULTS:'▢', EARNINGS_CALL:'◴', AGM:'Ⅱ', EX_DATE:'◇',
+                     WARNING:'△', INSIDER:'◐', PLACEMENT:'▦', DELISTING:'⊘',
+                     IPO:'▴', PROSPECTUS:'▤', REGULATED:'▣', PRESS_RELEASE:'≡' };
   const el = document.getElementById('diveEventsList');
   if (!events.length) {
     el.innerHTML = '<div style="color:var(--text-dim);font-size:12px;padding:8px 0">No upcoming events for this ISIN</div>';
@@ -1755,7 +1767,7 @@ function renderDiveEvents(isin) {
     const uc = d <= 5 ? 'color:var(--red)' : d <= 14 ? 'color:var(--amber)' : 'color:var(--text-dim)';
     return `<div class="dive-event-row">
       <div>
-        <span>${EVT_ICON[e.event_type]||'📋'}</span>
+        <span>${EVT_ICON[e.event_type]||'▣'}</span>
         <span style="color:var(--text-bright);margin-left:4px">${e.event_type}</span>
         <div style="color:var(--text-dim);font-size:11px;margin-top:2px">${(e.title||'').slice(0,55)}</div>
       </div>
@@ -1773,7 +1785,10 @@ function renderDiveSignals(signals) {
     el.innerHTML = '<div style="color:var(--text-dim);font-size:12px;padding:8px 0">No recent signals for this ISIN</div>';
     return;
   }
-  const icon = t => /dark/.test((t||'').toLowerCase()) ? '🌑' : /sweep|eod/.test((t||'').toLowerCase()) ? '⚡' : '📊';
+  const icon = t => /dark/.test((t||'').toLowerCase()) ? '◍'
+                   : /sweep|eod/.test((t||'').toLowerCase()) ? '╳'
+                   : /break/.test((t||'').toLowerCase()) ? '▲'
+                   : /large/.test((t||'').toLowerCase()) ? '■' : '▢';
   el.innerHTML = signals.map(r => `
     <div class="dive-signal-row">
       <span>${icon(r.signal_type)}</span>
@@ -1937,7 +1952,7 @@ async function loadDarkFlowChart(isin, venue, cachedIntraday, cachedImpact, cach
   });
 
   const bias = dark.dark_side_bias;
-  const biasStr = bias === 'SELL' ? '🔴 Distribution' : bias === 'BUY' ? '🟢 Accumulation' : '⚪ Neutral';
+  const biasStr = bias === 'SELL' ? '<span style="color:var(--red)">▼ Distribution</span>' : bias === 'BUY' ? '<span style="color:var(--green)">▲ Accumulation</span>' : '<span style="color:var(--text-dim)">◇ Neutral</span>';
   document.getElementById('darkFlowStats').textContent =
     `Dark: ${(dark.dark_pct||0).toFixed(1)}% · ${biasStr} · Modal: ${modalPrice ? parseFloat(modalPrice).toFixed(2) : '—'} · ${darkTrades.length} dark trades`;
 }
@@ -1981,11 +1996,11 @@ function filterEvents(type) {
 function renderEvents(data) {
   const today = new Date().toISOString().slice(0,10);
   const TYPE_ICON = {
-    RESULTS:       '📊', EX_DATE:      '📌', WARNING:   '⚠️',
-    INSIDER:       '👤', AGM:          '🏛️', EARNINGS_CALL: '📞',
-    REGULATED:     '📋', PRESS_RELEASE:'📰', PLACEMENT: '💼',
-    DELISTING:     '🚫', IPO:          '🚀', PROSPECTUS:'📄',
-    SUSPENSION:    '🚫',
+    RESULTS:       '▢',  EX_DATE:       '◇',  WARNING:       '△',
+    INSIDER:       '◐',  AGM:           'Ⅱ',  EARNINGS_CALL: '◴',
+    REGULATED:     '▣',  PRESS_RELEASE: '≡',  PLACEMENT:     '▦',
+    DELISTING:     '⊘',  IPO:           '▴',  PROSPECTUS:    '▤',
+    SUSPENSION:    '⊘',
   };
   const TYPE_COLOR = {
     RESULTS:       'badge-ice',    EX_DATE:      'badge-purple', WARNING:   'badge-red',
@@ -2035,7 +2050,7 @@ async function checkEventProximity(events) {
       );
       const el = document.getElementById(`evt-prox-${e.id}`);
       if (el && nearby) {
-        el.innerHTML = `<span class="badge badge-purple">🌑 ${nearby.signal_type}</span>`;
+        el.innerHTML = `<span class="badge badge-purple">◍ ${nearby.signal_type}</span>`;
       } else if (el) {
         el.textContent = '—';
       }
@@ -2144,8 +2159,8 @@ function renderCatalystCard(r) {
 
   // Urgency
   const urgency   = daysUntil <= 5 ? 'imminent' : daysUntil <= 14 ? 'soon' : 'upcoming';
-  const urgLabel  = urgency === 'imminent' ? `🔴 ${daysUntil}d — IMMINENT`
-                  : urgency === 'soon'     ? `🟡 in ${daysUntil} days`
+  const urgLabel  = urgency === 'imminent' ? `<span style="color:var(--red)">▼ ${daysUntil}d — IMMINENT</span>`
+                  : urgency === 'soon'     ? `<span style="color:var(--amber)">◆ in ${daysUntil} days</span>`
                   :                          `🔵 in ${daysUntil} days`;
 
   // Strongest signal for score base
@@ -2165,14 +2180,14 @@ function renderCatalystCard(r) {
   const scoreColor= score >= 70 ? 'var(--red)' : score >= 45 ? 'var(--amber)' : 'var(--ice)';
 
   // Event type display
-  const EVT_ICON  = { RESULTS:'📊', EARNINGS_CALL:'📞', AGM:'🏛️', EX_DATE:'📌',
-                      WARNING:'⚠️', INSIDER:'👤', PLACEMENT:'💼', DELISTING:'🚫',
-                      IPO:'🚀', PROSPECTUS:'📄', REGULATED:'📋', PRESS_RELEASE:'📰' };
+  const EVT_ICON  = { RESULTS:'▢', EARNINGS_CALL:'◴', AGM:'Ⅱ', EX_DATE:'◇',
+                      WARNING:'△', INSIDER:'◐', PLACEMENT:'▦', DELISTING:'⊘',
+                      IPO:'▴', PROSPECTUS:'▤', REGULATED:'▣', PRESS_RELEASE:'≡' };
 
   // Signal rows — all signals in this group
   const sigRows   = signals.map(s => {
     const t    = (s.signal_type || '').toLowerCase();
-    const icon = /dark/.test(t) ? '🌑' : /iceberg/.test(t) ? '🧊' : /whale/.test(t) ? '🐋' : '⚡';
+    const icon = /dark/.test(t) ? '◍' : /iceberg/.test(t) ? '◌' : /large/.test(t) ? '■' : '╳';
     const str  = sn(s.strength) >= 8 ? 'STRONG' : sn(s.strength) >= 5 ? 'MOD' : '—';
     const dAgo = s.trade_date ? Math.round((today - new Date(s.trade_date)) / 86400000) : null;
     const dStr = dAgo !== null ? `<em>${dAgo}d ago</em>` : '';
@@ -2207,7 +2222,7 @@ function renderCatalystCard(r) {
       </div>
       <div class="cat-panel">
         <div class="cat-panel-label">Upcoming Event</div>
-        <div class="cat-type">${EVT_ICON[r.event_type] || '📋'} ${r.event_type}</div>
+        <div class="cat-type">${EVT_ICON[r.event_type] || '▣'} ${r.event_type}</div>
         <div class="cat-date">${fmtDate(r.event_date)}</div>
         <div class="cat-countdown ${urgency}">${urgLabel}</div>
       </div>
