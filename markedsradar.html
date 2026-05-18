@@ -719,59 +719,6 @@ tbody tr.selected { background: var(--ice-dim); }
 }
 .cat-score-fill { height: 100%; border-radius: 1px; }
 
-/* ─── AI Commentary ─────────────────────────────────────────────────────── */
-#commentaryPanel {
-  border: 1px solid var(--border-glow);
-  border-radius: 8px;
-  background: var(--bg2);
-  padding: 20px 24px;
-  margin-bottom: 32px;
-  position: relative;
-}
-#commentaryPanel.collapsed .section-body { display: none; }
-.commentary-meta {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font-family: var(--mono);
-  font-size: 10px;
-  color: var(--text-dim);
-  letter-spacing: 1px;
-  margin-top: 14px;
-}
-.commentary-meta .ai-badge {
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
-  color: #fff;
-  border-radius: 3px;
-  padding: 2px 7px;
-  font-size: 10px;
-  letter-spacing: 0.5px;
-}
-.commentary-body {
-  line-height: 1.75;
-  color: var(--text);
-  font-size: 13.5px;
-  margin-top: 10px;
-  white-space: pre-wrap;
-}
-.commentary-body p { margin-bottom: 0.75em; }
-.cmnt-section { margin-bottom: 18px; }
-.cmnt-section-title {
-  font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  color: var(--text-dim);
-  margin-bottom: 6px;
-}
-.cmnt-section-body { font-size: 13px; }
-.cmnt-row {
-  padding: 3px 0;
-  line-height: 1.6;
-  border-bottom: 1px solid var(--border);
-}
-.cmnt-row:last-child { border-bottom: none; }
-.cmnt-plain { color: var(--text); padding: 2px 0; line-height: 1.6; }
 </style>
 </head>
 <body>
@@ -798,21 +745,6 @@ tbody tr.selected { background: var(--ice-dim); }
     <label style="margin-left:16px">JUMP TO ISIN</label>
     <input type="text" id="isinSearch" placeholder="ISIN or ticker, e.g. EQNR" style="width:180px">
     <button class="btn" onclick="searchISIN()">FIND</button>
-  </div>
-
-  <!-- ── AI Commentary ───────────────────────────────────────────────────── -->
-  <div id="commentaryPanel" style="display:none">
-    <div class="section-head collapsible" onclick="toggleCommentary()" style="border-bottom:1px solid var(--border);padding-bottom:8px;margin-bottom:0">
-      <div class="section-title">🤖 AI Market Commentary</div>
-      <div class="section-desc" id="commentarySubtitle">Synthesised from today's dark-flow, signals and events</div>
-      <span class="section-chevron" id="commentaryChevron">▾</span>
-    </div>
-    <div class="section-body" id="commentaryBody">
-      <div class="commentary-body" id="commentaryText"></div>
-      <div class="commentary-meta">
-        <span id="commentaryAttrib"></span>
-      </div>
-    </div>
   </div>
 
   <!-- ── Overview KPIs ───────────────────────────────────────────────────── -->
@@ -1185,7 +1117,6 @@ const fmt = {
 /* ─── Init: load instruments + available dates ─────────────────────────── */
 async function init() {
   restoreSectionStates();
-  loadCommentary();   // non-blocking — fires and forgets
   try {
     await loadInstruments();  // Enrich ISIN map from instruments table
 
@@ -1851,62 +1782,6 @@ function renderDiveSignals(signals) {
       <span style="font-size:11px;color:var(--text-dim);flex:1">${r.signal_desc||''}</span>
       <span class="badge ${r.strength==='STRONG'?'badge-purple':'badge-ice'}">${r.strength||'—'}</span>
     </div>`).join('');
-}
-
-/* ─── AI Commentary ─────────────────────────────────────────────────────── */
-async function loadCommentary() {
-  const panel = document.getElementById('commentaryPanel');
-  try {
-    const r = await fetch('commentary.json?t=' + Date.now());
-    if (!r.ok) return;
-    const data = await r.json();
-    if (!data.sections || !data.sections.length) return;
-
-    const toneColor = data.tone === 'bullish' ? 'var(--green)'
-                    : data.tone === 'bearish' ? 'var(--red)' : 'var(--text-dim)';
-
-    const textEl = document.getElementById('commentaryText');
-    textEl.innerHTML = data.sections.map(sec => {
-      const lines = (sec.text || '').split('\n').map(line => {
-        line = line.trim();
-        if (!line) return '';
-        // indent continuation lines
-        if (line.startsWith('🟢') || line.startsWith('🔴') || line.startsWith('⚪') ||
-            line.startsWith('🌑') || line.startsWith('⚡') || line.startsWith('📊') ||
-            line.startsWith('🎯') || line.startsWith('🐋') || line.startsWith('📅') ||
-            line.startsWith('🏛') || line.startsWith('📌') || line.startsWith('⚠') ||
-            line.startsWith('💼') || line.startsWith('🚫') || line.startsWith('🚀') ||
-            line.startsWith('📞'))
-          return `<div class="cmnt-row">${line}</div>`;
-        return `<div class="cmnt-plain">${line}</div>`;
-      }).join('');
-      return `<div class="cmnt-section">
-        <div class="cmnt-section-title">${sec.icon || ''} ${sec.title}</div>
-        <div class="cmnt-section-body">${lines}</div>
-      </div>`;
-    }).join('');
-
-    const date = (data.trade_date || '').slice(0, 10);
-    const gen  = data.generated_at ? new Date(data.generated_at).toUTCString().slice(0, 22) + ' UTC' : '';
-    document.getElementById('commentarySubtitle').textContent =
-      `Trade date ${date} · generated ${gen}`;
-    document.getElementById('commentarySubtitle').style.color = toneColor;
-    document.getElementById('commentaryAttrib').textContent =
-      `Template-based · data from api.slensvik.com`;
-
-    panel.style.display = '';
-  } catch(e) {
-    // commentary.json not yet present — silently skip
-  }
-}
-
-function toggleCommentary() {
-  const panel = document.getElementById('commentaryPanel');
-  const chevron = document.getElementById('commentaryChevron');
-  const body = document.getElementById('commentaryBody');
-  const collapsed = body.style.display === 'none';
-  body.style.display = collapsed ? '' : 'none';
-  chevron.style.transform = collapsed ? '' : 'rotate(-90deg)';
 }
 
 /* ─── Collapse toggle ───────────────────────────────────────────────────── */
