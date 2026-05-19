@@ -277,6 +277,62 @@ header {
 .conv-footer strong { color: var(--text-bright); font-weight: 500; }
 .conv-footer .up    { color: var(--green, #4ade80); }
 .conv-footer .dn    { color: var(--red,   #f87171); }
+.conv-chip.si       { border-color: rgba(245,166,35,0.32); color: var(--amber); }
+.conv-chip.si.high  { background: rgba(245,166,35,0.10); }
+.conv-chip.si .g    { color: var(--amber); }
+
+/* ─── KPI strip (above Today's Book grid) ───────────────────────────────── */
+.book-kpis {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
+  margin-bottom: 14px;
+}
+@media (max-width: 760px) { .book-kpis { grid-template-columns: repeat(2, 1fr); } }
+.book-kpi {
+  border: 1px solid var(--border); padding: 10px 12px;
+  background: var(--bg2);
+}
+.book-kpi-label {
+  font-family: var(--mono); font-size: 9px; letter-spacing: 0.18em;
+  text-transform: uppercase; color: var(--text-dim);
+  margin-bottom: 5px;
+}
+.book-kpi-value {
+  font-family: var(--mono); font-size: 19px; font-weight: 500;
+  color: var(--text-bright); letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.book-kpi-sub {
+  font-family: var(--mono); font-size: 9px; color: var(--text-dim);
+  margin-top: 2px; letter-spacing: 0.06em;
+}
+
+/* ─── Track Record table ─────────────────────────────────────────────── */
+.perf-table {
+  width: 100%; border-collapse: collapse;
+  font-family: var(--mono); font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.perf-table th {
+  text-align: right; padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--text-dim); font-weight: 500;
+}
+.perf-table th:first-child { text-align: left; }
+.perf-table td {
+  text-align: right; padding: 9px 10px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+}
+.perf-table td:first-child { text-align: left; color: var(--text-bright); }
+.perf-table tr:last-child td { border-bottom: none; }
+.perf-table .pos { color: var(--green, #4ade80); }
+.perf-table .neg { color: var(--red,   #f87171); }
+.perf-empty {
+  color: var(--text-dim); font-family: var(--mono);
+  font-size: 11px; letter-spacing: 0.06em;
+  text-align: center; padding: 28px 8px;
+}
 
 /* ─── Company Deep Dive ─────────────────────────────────────────────────── */
 #companyDeepDive {
@@ -846,6 +902,7 @@ tbody tr.selected { background: var(--ice-dim); }
       <div class="section-count" id="convictionCount">—</div>
     </div>
     <div class="section-body">
+      <div class="book-kpis" id="bookKpis"></div>
       <div class="conviction-grid">
         <div class="conviction-col">
           <div class="conv-col-head">
@@ -863,6 +920,37 @@ tbody tr.selected { background: var(--ice-dim); }
           </div>
           <div class="conv-list" id="shortList"><div class="conv-empty">LOADING …</div></div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Signal Track Record ──────────────────────────────────────────────── -->
+  <div class="section collapsed" id="sec-track-record">
+    <div class="section-head collapsible" onclick="toggleSection('sec-track-record')">
+      <div class="section-title">▢ Signal Track Record</div>
+      <div class="section-desc">Per-signal-type hit rate and average return at T+1 / T+5 / T+20. Populates once outcomes accumulate (typically T+1 morning).</div>
+      <div class="section-count" id="trackRecordCount">—</div>
+      <span class="section-chevron">▾</span>
+    </div>
+    <div class="section-body">
+      <div class="table-wrap">
+        <table class="perf-table"><thead><tr>
+          <th>Signal</th>
+          <th>Fired</th>
+          <th>Strong</th>
+          <th>Mod</th>
+          <th>T+1 Obs</th>
+          <th>T+1 Hit</th>
+          <th>T+1 Avg</th>
+          <th>T+5 Obs</th>
+          <th>T+5 Hit</th>
+          <th>T+5 Avg</th>
+          <th>T+20 Obs</th>
+          <th>T+20 Hit</th>
+          <th>T+20 Avg</th>
+        </tr></thead>
+        <tbody id="trackRecordBody"><tr><td colspan="13" class="perf-empty">LOADING …</td></tr></tbody>
+        </table>
       </div>
     </div>
   </div>
@@ -1256,6 +1344,10 @@ function renderConvictionCard(r, side) {
   const evChip = r.next_event_date
     ? `<span class="conv-chip event"><span class="g">${EVT_GLYPH[r.next_event_type]||'▌'}</span>${r.next_event_type} in ${r.days_to_event}d</span>`
     : '';
+  const siPct = r.short_pct != null ? Number(r.short_pct) : null;
+  const siChip = (siPct != null && siPct >= 0.5)
+    ? `<span class="conv-chip si ${siPct >= 3 ? 'high' : ''}"><span class="g">⊖</span>SI ${siPct.toFixed(2)}%</span>`
+    : '';
   const move = (r.day_close != null && r.modal_price != null && Number(r.modal_price) > 0)
     ? ((Number(r.day_close) - Number(r.modal_price)) / Number(r.modal_price) * 100)
     : null;
@@ -1273,9 +1365,29 @@ function renderConvictionCard(r, side) {
         <span class="conv-score">${r.conviction}</span>
       </div>
       <div class="conv-bar"><div class="conv-bar-fill ${side}" style="width:${r.conviction}%"></div></div>
-      <div class="conv-signals">${sigChips}${evChip}</div>
+      <div class="conv-signals">${sigChips}${evChip}${siChip}</div>
       <div class="conv-footer">${wall}${vw}${darkPct}${moveStr}</div>
     </div>`;
+}
+
+function renderBookKpis(longs, shorts) {
+  const all = [...longs, ...shorts];
+  const avgConv = all.length ? Math.round(all.reduce((s,r) => s + (r.conviction||0), 0) / all.length) : null;
+  const sigCounts = {};
+  for (const r of all) for (const t of (r.signal_types || []))
+    sigCounts[t] = (sigCounts[t] || 0) + 1;
+  const topSig = Object.entries(sigCounts).sort((a,b) => b[1] - a[1])[0];
+  const kpi = (label, value, sub) => `
+    <div class="book-kpi">
+      <div class="book-kpi-label">${label}</div>
+      <div class="book-kpi-value">${value}</div>
+      <div class="book-kpi-sub">${sub || ''}</div>
+    </div>`;
+  document.getElementById('bookKpis').innerHTML =
+    kpi('LONG SIGNALS',  longs.length,  longs.length  ? 'top conviction ' + longs[0].conviction  : 'none today') +
+    kpi('SHORT SIGNALS', shorts.length, shorts.length ? 'top conviction ' + shorts[0].conviction : 'none today') +
+    kpi('AVG CONVICTION', avgConv != null ? avgConv : '—', `across ${all.length} names`) +
+    kpi('TOP SIGNAL', topSig ? topSig[0].replace(/_/g,' ') : '—', topSig ? `${topSig[1]}× fired` : '');
 }
 
 async function loadConviction() {
@@ -1286,6 +1398,7 @@ async function loadConviction() {
     document.getElementById('longCount').textContent  = longs.length;
     document.getElementById('shortCount').textContent = shorts.length;
     document.getElementById('convictionCount').textContent = `${longs.length}L · ${shorts.length}S`;
+    renderBookKpis(longs, shorts);
     document.getElementById('longList').innerHTML  = longs.length
       ? longs.map(r => renderConvictionCard(r, 'long')).join('')
       : '<div class="conv-empty">NO LONG CANDIDATES</div>';
@@ -1296,6 +1409,41 @@ async function loadConviction() {
     console.error('Conviction load failed:', e);
     document.getElementById('longList').innerHTML  = '<div class="conv-empty">DATA UNAVAILABLE</div>';
     document.getElementById('shortList').innerHTML = '<div class="conv-empty">DATA UNAVAILABLE</div>';
+  }
+}
+
+async function loadTrackRecord() {
+  try {
+    const data = await API('signal_performance', 'order=total_fired.desc');
+    const tbody = document.getElementById('trackRecordBody');
+    document.getElementById('trackRecordCount').textContent =
+      `${data.length} TYPES · ${data.reduce((s,r) => s + (r.total_fired||0), 0)} TOTAL`;
+    if (!data.length) {
+      tbody.innerHTML = '<tr><td colspan="13" class="perf-empty">No signals yet.</td></tr>';
+      return;
+    }
+    const cell = (v, suffix='') => v == null ? '—' :
+      `<span class="${Number(v) > 0 ? 'pos' : Number(v) < 0 ? 'neg' : ''}">${Number(v).toFixed(2)}${suffix}</span>`;
+    tbody.innerHTML = data.map(r => `
+      <tr>
+        <td>${r.signal_type.replace(/_/g,' ')}</td>
+        <td>${r.total_fired}</td>
+        <td>${r.strong_count}</td>
+        <td>${r.moderate_count}</td>
+        <td>${r.t1_observed || 0}</td>
+        <td>${r.t1_hit_rate_pct != null ? Number(r.t1_hit_rate_pct).toFixed(0)+'%' : '—'}</td>
+        <td>${cell(r.t1_avg_dir_return_pct, '%')}</td>
+        <td>${r.t5_observed || 0}</td>
+        <td>${r.t5_hit_rate_pct != null ? Number(r.t5_hit_rate_pct).toFixed(0)+'%' : '—'}</td>
+        <td>${cell(r.t5_avg_dir_return_pct, '%')}</td>
+        <td>${r.t20_observed || 0}</td>
+        <td>${r.t20_hit_rate_pct != null ? Number(r.t20_hit_rate_pct).toFixed(0)+'%' : '—'}</td>
+        <td>${cell(r.t20_avg_dir_return_pct, '%')}</td>
+      </tr>`).join('');
+  } catch(e) {
+    console.error('Track record failed:', e);
+    document.getElementById('trackRecordBody').innerHTML =
+      '<tr><td colspan="13" class="perf-empty">DATA UNAVAILABLE</td></tr>';
   }
 }
 
@@ -1326,7 +1474,8 @@ async function loadDate() {
   document.getElementById('tradeDatePill').textContent = currentDate;
   closeDrill();
   await Promise.all([
-    loadConviction(), loadKPIs(), loadWhales(), loadSignals(),
+    loadConviction(), loadTrackRecord(),
+    loadKPIs(), loadWhales(), loadSignals(),
     loadSummaryTable(), loadLatency(), loadIntraday(),
     loadCatalystAlerts(), loadCorporateEvents(), loadSignalProximity(), loadTrends()
   ]);
