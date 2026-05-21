@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=Syne:wght@400;600;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
 
 <style>
 /* ─── Variables ─────────────────────────────────────────────────────────── */
@@ -1267,14 +1268,29 @@ const isinTicker = isin => (ISIN_MAP[isin] || {}).t || isin.slice(-6);
 const isinName   = isin => (ISIN_MAP[isin] || {}).n || '';
 
 // Convert UTC timestamp from PostgreSQL to Oslo local time HH:MM
+// Pipeline ingests UTC CSV timestamps as naive into a PG TIMESTAMPTZ session
+// in Oslo TZ, so every stored time has a "+02" offset that's a lie — the
+// wall-clock value is actually UTC. To recover the real moment, strip the
+// trailing offset and reparse as UTC. JS Date then renders correctly when
+// asked for Europe/Oslo.
+const dbTimeToDate = ts => {
+  if (!ts) return null;
+  const m = ts.search(/[+-]\d{2}:?\d{2}$|Z$/);
+  return new Date((m > 0 ? ts.slice(0, m) : ts) + 'Z');
+};
+// minute_bucket is a TIME (no date / no TZ). Same "stored UTC labelled
+// Oslo" trick — combine with the day and treat as UTC.
+const bucketToDate = (bucket, dateStr) => {
+  if (!bucket || !dateStr) return null;
+  return new Date(dateStr + 'T' + bucket.slice(0,8) + 'Z');
+};
 const toOsloHHMM = ts => {
   if (!ts) return '00:00';
-  try {
-    return new Date(ts).toLocaleTimeString('no-NO', {
-      timeZone: 'Europe/Oslo',
-      hour: '2-digit', minute: '2-digit', hour12: false
-    });
-  } catch(e) { return ts.slice(11,16); }
+  const d = dbTimeToDate(ts);
+  return d ? d.toLocaleTimeString('no-NO', {
+    timeZone: 'Europe/Oslo',
+    hour: '2-digit', minute: '2-digit', hour12: false,
+  }) : ts.slice(11,16);
 };
 
 // Enrich ISIN map from instruments table (async, fills in after page load)
@@ -1791,14 +1807,17 @@ function renderIntradayAggregate() {
 function renderIntradayChart(canvasId, labels, algoData, humanData, auctionData) {
   const existing = Chart.getChart(canvasId);
   if (existing) existing.destroy();
+  // labels arrive as raw minute_bucket strings ("HH:MM:SS") — convert to
+  // proper Date objects so the x-axis can be a real time scale in Oslo TZ.
+  const dates = labels.map(l => bucketToDate(l, currentDate));
+  const toPair = (vals) => dates.map((x, i) => ({ x, y: vals[i] || 0 }));
   new Chart(document.getElementById(canvasId), {
     type: 'bar',
     data: {
-      labels,
       datasets: [
-        { label: 'Auction', data: auctionData, backgroundColor: '#4fc3f7', stack: 'v', borderWidth: 0 },
-        { label: 'Algo',    data: algoData,    backgroundColor: '#f5a623', stack: 'v', borderWidth: 0 },
-        { label: 'Human',   data: humanData,   backgroundColor: '#43e097', stack: 'v', borderWidth: 0 },
+        { label: 'Auction', data: toPair(auctionData), backgroundColor: '#4fc3f7', stack: 'v', borderWidth: 0 },
+        { label: 'Algo',    data: toPair(algoData),    backgroundColor: '#f5a623', stack: 'v', borderWidth: 0 },
+        { label: 'Human',   data: toPair(humanData),   backgroundColor: '#43e097', stack: 'v', borderWidth: 0 },
       ]
     },
     options: {
@@ -1806,15 +1825,33 @@ function renderIntradayChart(canvasId, labels, algoData, humanData, auctionData)
       animation: { duration: 400 },
       scales: {
         x: {
+          type: 'time',
           stacked: true,
-          ticks: {
-            maxTicksLimit: 20, maxRotation: 0,
-            callback: (_, i, arr) => i % Math.ceil(arr.length / 20) === 0 ? labels[i]?.slice(0,5) : ''
-          }
+          time: {
+            unit: 'minute', stepSize: 30,
+            tooltipFormat: 'HH:mm',
+            displayFormats: { minute: 'HH:mm', hour: 'HH:mm' },
+          },
+          adapters: { date: { zone: 'Europe/Oslo' } },
+          ticks: { maxRotation: 0, source: 'auto', autoSkip: true, maxTicksLimit: 24 },
+          grid: { color: 'rgba(255,255,255,0.03)' },
         },
         y: { stacked: true, ticks: { callback: v => (v/1e3).toFixed(0)+'K' } }
       },
-      plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, padding: 12 } } }
+      plugins: {
+        legend: { position: 'bottom', labels: { usePointStyle: true, padding: 12 } },
+        tooltip: {
+          callbacks: {
+            title: items => {
+              const t = items[0]?.parsed?.x;
+              return t == null ? '' : new Date(t).toLocaleTimeString('no-NO', {
+                timeZone: 'Europe/Oslo',
+                hour: '2-digit', minute: '2-digit', hour12: false,
+              });
+            },
+          },
+        },
+      },
     }
   });
 }
@@ -1981,7 +2018,7 @@ async function drillIntoISIN(isin, venue) {
 
   // Intraday volume chart
   document.getElementById('intradayLabel').textContent = (info.t || isinTicker(isin)) + ' — Intraday';
-  const ilabels = intradayRows.map(r => r.minute_bucket.slice(0,5));
+  const ilabels = intradayRows.map(r => r.minute_bucket);
   renderIntradayChart('drillIntraday', ilabels,
     intradayRows.map(r => r.algo_volume||0),
     intradayRows.map(r => r.human_volume||0),
@@ -2173,13 +2210,13 @@ async function loadDarkFlowChart(isin, venue, cachedIntraday, cachedImpact, cach
   // Price line from intraday VWAP
   const pricePoints = intradayRows
     .filter(r => r.vwap)
-    .map(r => ({ x: r.minute_bucket.slice(0,5), y: parseFloat(r.vwap) }));
+    .map(r => ({ x: bucketToDate(r.minute_bucket, currentDate), y: parseFloat(r.vwap) }));
 
   // Dark trades as bubble dataset
   const darkTrades = impactRows
     .filter(r => r.is_dark && r.price)
     .map(r => ({
-      x: toOsloHHMM(r.trading_time),
+      x: dbTimeToDate(r.trading_time),
       y: parseFloat(r.price),
       r: Math.min(Math.max(Math.sqrt((r.notional||0) / 50000), 3), 25),
       notional: r.notional,
@@ -2192,13 +2229,16 @@ async function loadDarkFlowChart(isin, venue, cachedIntraday, cachedImpact, cach
     .filter(r => !r.is_dark && r.price)
     .slice(0, 2000)  // cap for performance
     .map(r => ({
-      x: toOsloHHMM(r.trading_time),
+      x: dbTimeToDate(r.trading_time),
       y: parseFloat(r.price),
       r: 2,
     }));
 
-  // Modal price line (the "wall")
-  const modalLine = modalPrice ? pricePoints.map(p => ({ x: p.x, y: parseFloat(modalPrice) })) : [];
+  // Modal price line (the "wall") — span the whole session
+  const modalLine = modalPrice && pricePoints.length
+    ? [{x: pricePoints[0].x, y: parseFloat(modalPrice)},
+       {x: pricePoints[pricePoints.length - 1].x, y: parseFloat(modalPrice)}]
+    : [];
 
   if (darkFlowChartInst) darkFlowChartInst.destroy();
   darkFlowChartInst = new Chart(document.getElementById('darkFlowChart'), {
@@ -2252,9 +2292,16 @@ async function loadDarkFlowChart(isin, venue, cachedIntraday, cachedImpact, cach
       animation: false,
       scales: {
         x: {
-          type: 'category',
-          ticks: { maxTicksLimit: 12, maxRotation: 0 },
-          grid: { color: 'rgba(255,255,255,0.03)' }
+          type: 'time',
+          time: {
+            unit: 'minute',
+            stepSize: 30,
+            tooltipFormat: 'HH:mm',
+            displayFormats: { minute: 'HH:mm', hour: 'HH:mm' },
+          },
+          adapters: { date: { zone: 'Europe/Oslo' } },
+          ticks: { maxRotation: 0, source: 'auto', autoSkip: true, maxTicksLimit: 24 },
+          grid: { color: 'rgba(255,255,255,0.03)' },
         },
         y: {
           ticks: { callback: v => v.toFixed(2) },
@@ -2265,6 +2312,13 @@ async function loadDarkFlowChart(isin, venue, cachedIntraday, cachedImpact, cach
         legend: { position: 'bottom', labels: { usePointStyle: true, padding: 12 } },
         tooltip: {
           callbacks: {
+            title: items => {
+              const t = items[0]?.parsed?.x;
+              return t == null ? '' : new Date(t).toLocaleTimeString('no-NO', {
+                timeZone: 'Europe/Oslo',
+                hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
+              });
+            },
             label: ctx => {
               if (ctx.datasetIndex === 2) {
                 const d = ctx.raw;
