@@ -2002,7 +2002,9 @@ async function drillIntoISIN(isin, venue) {
 
   // Dark breakdown bar + side bias
   if (drillChart3) drillChart3.destroy();
-  const biasLabel = dark.dark_side_bias === 'SELL' ? '<span style="color:var(--red)">▼ Distribution — seller pinning ceiling</span>' : dark.dark_side_bias === 'BUY' ? '<span style="color:var(--green)">▲ Accumulation — buyer pinning floor</span>' : '<span style="color:var(--text-dim)">◇ No clear bias</span>';
+  const biasLabel = dark.dark_side_bias === 'SELL' ? '▼ Distribution — seller pinning ceiling'
+                  : dark.dark_side_bias === 'BUY'  ? '▲ Accumulation — buyer pinning floor'
+                  : '◇ No clear bias';
   drillChart3 = new Chart(document.getElementById('drillDark'), {
     type: 'bar',
     data: {
@@ -2281,9 +2283,10 @@ async function loadDarkFlowChart(isin, venue, cachedIntraday, cachedImpact, cach
   });
 
   const bias = dark.dark_side_bias;
-  const biasStr = bias === 'SELL' ? '<span style="color:var(--red)">▼ Distribution</span>' : bias === 'BUY' ? '<span style="color:var(--green)">▲ Accumulation</span>' : '<span style="color:var(--text-dim)">◇ Neutral</span>';
-  document.getElementById('darkFlowStats').textContent =
-    `Dark: ${(dark.dark_pct||0).toFixed(1)}% · ${biasStr} · Modal: ${modalPrice ? parseFloat(modalPrice).toFixed(2) : '—'} · ${darkTrades.length} dark trades`;
+  const biasColor = bias === 'SELL' ? 'var(--red)' : bias === 'BUY' ? 'var(--green)' : 'var(--text-dim)';
+  const biasGlyph = bias === 'SELL' ? '▼ Distribution' : bias === 'BUY' ? '▲ Accumulation' : '◇ Neutral';
+  document.getElementById('darkFlowStats').innerHTML =
+    `Dark: ${(dark.dark_pct||0).toFixed(1)}% · <span style="color:${biasColor}">${biasGlyph}</span> · Modal: ${modalPrice ? parseFloat(modalPrice).toFixed(2) : '—'} · ${darkTrades.length} dark trades`;
 }
 
 /* ─── Corporate Events Calendar ─────────────────────────────────────────── */
