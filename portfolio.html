@@ -126,7 +126,7 @@ tbody tr:last-child td { border-bottom: none; }
 .intel-signals { display: flex; flex-wrap: wrap; gap: 6px; }
 
 /* ── Adjusted cost note & auto-suggest ───────────────────────────────────── */
-.adj-note { font-family: var(--mono); font-size: 8px; color: var(--amber); margin-top: 2px; letter-spacing: .04em; }
+.adj-note { font-family: var(--mono); font-size: 8px; color: var(--green); margin-top: 2px; letter-spacing: .04em; }
 .hold-suggest {
   font-family: var(--mono); font-size: 9px; letter-spacing: .06em;
   color: var(--red); margin-top: 3px; padding: 2px 6px;
@@ -317,7 +317,7 @@ tbody tr:last-child td { border-bottom: none; }
     <div class="table-wrap">
       <table>
         <thead><tr>
-          <th>TICKER</th><th class="r">QTY</th><th class="r">ADJ COST</th>
+          <th>TICKER</th><th class="r">QTY</th><th class="r">AVG COST</th>
           <th class="r">PRICE</th><th class="r">VALUE</th><th class="r">P&L%</th>
           <th>DARK</th><th>CONVICTION</th><th>NEXT EVENT</th>
         </tr></thead>
@@ -652,8 +652,8 @@ async function fetchMarketData(isins) {
   for (const w of whales)    marketData[w.isin]?.whales.push(w);
   for (const c of conviction) marketData[c.isin] && (marketData[c.isin].conviction = c);
 
-  // ── Apply persistent dividend deduction to cost basis ──────────────────
-  applyDividendAdjustment();
+  // ── Track dividend income (Model A: cost basis untouched) ──────────────
+  applyDividendIncome();
 }
 
 /* ─── Persistent dividend-adjusted cost basis ──────────────────────────────
@@ -684,51 +684,60 @@ function sharesHeldAt(isin, asOfDate) {
   return qty;
 }
 
-function applyDividendAdjustment() {
+/* ─── Dividend income tracking (Model A: cost basis untouched) ──────────────
+   Dividends are recorded as a separate income stream per position. Cost basis
+   stays at what was actually paid for the shares — matches Norwegian tax
+   accounting and what your bank's tracker shows.
+*/
+function applyDividendIncome() {
   for (const [isin, p] of positions) {
-    p.divDeducted    = 0;
-    p.divAdjustments = [];
+    p.divIncome      = 0;
+    p.divIncomeYTD   = 0;
+    p.divHistory     = [];
+    const yearStart  = new Date().getFullYear() + '-01-01';
     const past = marketData[isin]?.pastDivs || [];
     for (const e of past) {
       const div = parseDivAmount(e.title);
       if (!div) continue;
       const sharesOnExDate = sharesHeldAt(isin, e.event_date);
       if (sharesOnExDate <= 0) continue;
-      const deduction = div * sharesOnExDate;
-      p.divDeducted += deduction;
-      p.divAdjustments.push({ date: e.event_date, divPerShare: div, shares: sharesOnExDate, amount: deduction });
+      const amount = div * sharesOnExDate;
+      p.divIncome += amount;
+      if (e.event_date >= yearStart) p.divIncomeYTD += amount;
+      p.divHistory.push({ date: e.event_date, divPerShare: div, shares: sharesOnExDate, amount });
     }
-    // Adjusted basis: raw totalCost minus collected dividends. Per-share follows.
-    p.adjTotalCost = Math.max(p.totalCost - p.divDeducted, 0);
-    p.adjAvgCost   = p.adjTotalCost / p.netQty;
   }
 }
 
 // ── Render ────────────────────────────────────────────────────────────────
 function renderKPIs() {
-  let totalValue = 0, totalCost = 0, totalDivPaid = 0;
+  let totalValue = 0, totalCost = 0, totalDivIncome = 0;
   for (const [isin, p] of positions) {
     const price = marketData[isin]?.latestPrice;
     if (price) totalValue += p.netQty * price;
-    totalCost   += (p.adjTotalCost ?? p.totalCost);
-    totalDivPaid += (p.divDeducted || 0);
+    totalCost      += p.totalCost;                 // raw, never adjusted
+    totalDivIncome += (p.divIncome || 0);
   }
-  const pl = totalValue - totalCost;
-  const plPct = totalCost ? (pl / totalCost) * 100 : null;
+  const priceOnlyPL  = totalValue - totalCost;     // P&L from price moves alone
+  const priceOnlyPct = totalCost ? (priceOnlyPL / totalCost) * 100 : null;
+  const totalReturn  = priceOnlyPL + totalDivIncome;   // includes dividends received
+  const totalRetPct  = totalCost ? (totalReturn / totalCost) * 100 : null;
 
   document.getElementById('kpiValue').textContent = fmtNOK(totalValue || null);
   document.getElementById('kpiValueSub').textContent = `${positions.size} holdings`;
   document.getElementById('kpiCost').textContent = fmtNOK(totalCost);
-  document.getElementById('kpiCostSub').textContent = totalDivPaid > 0
-    ? `div-adjusted (−NOK ${fmtNum(totalDivPaid, 0)})`
+  document.getElementById('kpiCostSub').textContent = totalDivIncome > 0
+    ? `+ NOK ${fmtNum(totalDivIncome, 0)} div income received`
     : 'avg incl. all lots';
-  document.getElementById('kpiPL').textContent = totalCost ? fmtNOK(pl) : '—';
-  document.getElementById('kpiPLSub').textContent = plPct != null ? fmtPct(plPct) : '';
+  document.getElementById('kpiPL').textContent = totalCost ? fmtNOK(priceOnlyPL) : '—';
+  document.getElementById('kpiPLSub').textContent = totalRetPct != null
+    ? `${fmtPct(priceOnlyPct)} price · ${fmtPct(totalRetPct)} total return`
+    : '';
   document.getElementById('kpiCount').textContent = positions.size;
   document.getElementById('kpiCountSub').textContent = `${allTransactions.length} transactions`;
 
   const plCard = document.getElementById('kpiPlCard');
-  plCard.className = 'kpi-card' + (pl > 0 ? ' positive' : pl < 0 ? ' negative' : '');
+  plCard.className = 'kpi-card' + (priceOnlyPL > 0 ? ' positive' : priceOnlyPL < 0 ? ' negative' : '');
 }
 
 const EVT_GLYPH_P = {
@@ -793,11 +802,10 @@ function renderHoldings() {
     const md = marketData[isin] || {};
     const price = md.latestPrice;
     const value = price ? p.netQty * price : null;
-    const adj   = p.adjAvgCost ?? p.avgCost;
-    const pl    = price ? (price - adj) / adj * 100 : null;
+    const pl    = price ? (price - p.avgCost) / p.avgCost * 100 : null;
     const plColor = pl == null ? '' : pl >= 0 ? 'color:var(--green)' : 'color:var(--red)';
-    const divNote = p.divDeducted > 0
-      ? `<div class="adj-note" title="Adjusted for NOK ${fmtNum(p.divDeducted, 0)} in dividends">−div NOK ${fmtNum(p.divDeducted,0)}</div>`
+    const divNote = p.divIncome > 0
+      ? `<div class="adj-note" title="Total dividend income received from this position">+ NOK ${fmtNum(p.divIncome, 0)} div income</div>`
       : '';
     const suggest = autoSuggestion(md, p);
 
@@ -808,7 +816,7 @@ function renderHoldings() {
         ${suggest}
       </td>
       <td class="r" style="font-family:var(--mono)">${fmtNum(p.netQty, p.netQty % 1 === 0 ? 0 : 2)}</td>
-      <td class="r" style="font-family:var(--mono)">${fmtNum(adj)}${divNote}</td>
+      <td class="r" style="font-family:var(--mono)">${fmtNum(p.avgCost)}${divNote}</td>
       <td class="r" style="font-family:var(--mono)">${price ? fmtNum(price) : '—'}</td>
       <td class="r" style="font-family:var(--mono)">${fmtNOK(value)}</td>
       <td class="r" style="font-family:var(--mono);${plColor}">${fmtPct(pl)}</td>
@@ -933,11 +941,11 @@ function renderChart() {
     });
 
     if (chartView === 'portfolio') {
-      let tc = 0; for (const p of positions.values()) tc += (p.adjTotalCost ?? p.totalCost);
+      let tc = 0; for (const p of positions.values()) tc += p.totalCost;
       costData = labels.map(() => tc);
     } else {
       const p = positions.get(chartView);
-      costData = labels.map(() => p?.adjAvgCost ?? p?.avgCost ?? null);
+      costData = labels.map(() => p?.avgCost || null);
     }
 
   } else {
@@ -962,7 +970,7 @@ function renderChart() {
         }
         return val || null;
       });
-      let tc = 0; for (const p of positions.values()) tc += (p.adjTotalCost ?? p.totalCost);
+      let tc = 0; for (const p of positions.values()) tc += p.totalCost;
       costData = labels.map(() => tc);
     } else {
       const isin = chartView;
@@ -970,7 +978,7 @@ function renderChart() {
       const histMap = new Map(hist.map(r => [r.trade_date, r.modal_price]));
       valueData = labels.map(d => histMap.get(d) || null);
       const p = positions.get(isin);
-      costData = labels.map(() => p?.adjAvgCost ?? p?.avgCost ?? null);
+      costData = labels.map(() => p?.avgCost || null);
     }
   }
 
@@ -1334,70 +1342,80 @@ function renderSectorRing() {
 }
 
 function renderDividends() {
-  // Upcoming ex-dates
+  // Upcoming ex-dates with both yield framings
+  //   - directYield = div / current price (what a new buyer gets)
+  //   - yieldOnCost = div / avg cost     (what you, with your purchase price, get)
   const upcoming = [];
   for (const [isin, md] of Object.entries(marketData)) {
     for (const e of md.events || []) {
       if (e.event_type !== 'EX_DATE') continue;
       const p = positions.get(isin);
       const divAmt = parseDivAmount(e.title);
-      const yoc      = (divAmt && p?.adjAvgCost) ? (divAmt / p.adjAvgCost * 100) : null;
-      const ycurrent = (divAmt && md.latestPrice) ? (divAmt / md.latestPrice * 100) : null;
-      upcoming.push({ isin, ticker: ticker(isin), date: e.event_date, title: e.title || '', divAmt, yoc, ycurrent });
+      const directYield = (divAmt && md.latestPrice) ? (divAmt / md.latestPrice * 100) : null;
+      const yieldOnCost = (divAmt && p?.avgCost)     ? (divAmt / p.avgCost     * 100) : null;
+      upcoming.push({
+        isin, ticker: ticker(isin), date: e.event_date, title: e.title || '',
+        divAmt, directYield, yieldOnCost,
+      });
     }
   }
   upcoming.sort((a, b) => a.date.localeCompare(b.date));
 
-  // Past (already-applied) dividend deductions
-  const paid = [];
+  // Past dividend income history (cost basis unchanged; this is RECEIVED income)
+  const income = [];
   for (const [isin, p] of positions) {
-    for (const adj of (p.divAdjustments || [])) {
-      paid.push({ ticker: ticker(isin), ...adj });
+    for (const h of (p.divHistory || [])) {
+      income.push({ ticker: ticker(isin), ...h });
     }
   }
-  paid.sort((a, b) => b.date.localeCompare(a.date));   // newest first
+  income.sort((a, b) => b.date.localeCompare(a.date));
 
-  const totalPaid = paid.reduce((s, x) => s + x.amount, 0);
-  const expectedNOK = upcoming.reduce((s, d) => {
+  const totalIncome  = income.reduce((s, x) => s + x.amount, 0);
+  const expectedNOK  = upcoming.reduce((s, d) => {
     const p = positions.get(d.isin);
     return d.divAmt && p ? s + d.divAmt * p.netQty : s;
   }, 0);
   document.getElementById('divCount').textContent =
-    `${upcoming.length} upcoming · ${paid.length} past · NOK ${fmtNum(totalPaid, 0)} collected`;
+    `${upcoming.length} upcoming · ${income.length} past · NOK ${fmtNum(totalIncome, 0)} received`;
 
   const upcomingHTML = upcoming.length
     ? upcoming.map(d => {
-        const yocStr = d.yoc      ? `YoC ${d.yoc.toFixed(2)}%`         : '';
-        const ycStr  = d.ycurrent ? ` · Yield ${d.ycurrent.toFixed(2)}%` : '';
+        const direct = d.directYield != null
+          ? `<span style="color:var(--ice)">Direct ${d.directYield.toFixed(2)}%</span>`
+          : '';
+        const yoc = d.yieldOnCost != null
+          ? `<span style="color:var(--amber)">YoC ${d.yieldOnCost.toFixed(2)}%</span>`
+          : '';
+        const sep = direct && yoc ? ' · ' : '';
         return `<div class="div-row">
           <span class="div-date">◇ ${d.date}</span>
           <span class="div-ticker">${d.ticker}</span>
           <span class="div-title">${d.title}</span>
-          <span class="div-yield">${yocStr}${ycStr}</span>
+          <span class="div-yield">${direct}${sep}${yoc}</span>
         </div>`;
       }).join('')
     : `<div class="empty-state" style="padding:14px">No upcoming ex-dates.</div>`;
 
-  const paidHTML = paid.length
+  const incomeHTML = income.length
     ? `<div style="margin-top:14px;padding-top:10px;border-top:1px solid var(--border)">
         <div style="font-family:var(--mono);font-size:10px;letter-spacing:.12em;color:var(--text-dim);margin-bottom:8px">
-          PAID — APPLIED TO COST BASIS
+          PAID — DIVIDEND INCOME RECEIVED (cost basis unchanged)
         </div>
-        ${paid.slice(0, 20).map(x =>
+        ${income.slice(0, 20).map(x =>
           `<div class="div-row" style="opacity:0.85">
             <span class="div-date" style="color:var(--text-dim)">◆ ${x.date}</span>
             <span class="div-ticker">${x.ticker}</span>
             <span class="div-title">NOK ${fmtNum(x.divPerShare)} × ${fmtNum(x.shares, 0)} shares</span>
-            <span class="div-yield" style="color:var(--green)">−NOK ${fmtNum(x.amount, 0)}</span>
+            <span class="div-yield" style="color:var(--green)">+NOK ${fmtNum(x.amount, 0)}</span>
           </div>`
         ).join('')}
       </div>`
     : '';
-  document.getElementById('divList').innerHTML = upcomingHTML + paidHTML;
+  document.getElementById('divList').innerHTML = upcomingHTML + incomeHTML;
 
-  // Yield-on-cost KPI based on UPCOMING (forward-looking)
+  // YoC KPI = expected next-12-months dividend cash / cost basis (price-independent)
   let totalCost = 0;
-  for (const p of positions.values()) totalCost += (p.adjTotalCost ?? p.totalCost);
+  for (const p of positions.values()) totalCost += p.totalCost;
   if (expectedNOK && totalCost) {
     document.getElementById('kpiYoc').textContent = (expectedNOK / totalCost * 100).toFixed(2) + '%';
   }
