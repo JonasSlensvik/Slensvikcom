@@ -125,6 +125,58 @@ tbody tr:last-child td { border-bottom: none; }
 .intel-ticker { font-family: var(--mono); font-size: 14px; font-weight: 600; color: var(--text-bright); }
 .intel-signals { display: flex; flex-wrap: wrap; gap: 6px; }
 
+/* ── Adjusted cost note & auto-suggest ───────────────────────────────────── */
+.adj-note { font-family: var(--mono); font-size: 8px; color: var(--amber); margin-top: 2px; letter-spacing: .04em; }
+.hold-suggest {
+  font-family: var(--mono); font-size: 9px; letter-spacing: .06em;
+  color: var(--red); margin-top: 3px; padding: 2px 6px;
+  border-left: 2px solid var(--red); background: rgba(240,96,96,0.06);
+}
+.hold-suggest-pos { color: var(--green); border-left-color: var(--green); background: rgba(67,224,151,0.06); }
+
+/* ── Event timeline strip (above chart) ──────────────────────────────────── */
+.evt-timeline {
+  position: relative; height: 38px; margin: 4px 0 14px;
+  border: 1px solid var(--border); border-radius: 4px;
+  background: var(--bg3);
+  font-family: var(--mono); font-size: 9px; color: var(--text-dim);
+}
+.evt-tl-axis {
+  position: absolute; top: 0; bottom: 0; left: 0; right: 0;
+  background: linear-gradient(to right,
+    var(--bg3) 0%, var(--bg3) 50%, rgba(245,166,35,0.08) 50%, var(--bg3) 100%);
+}
+.evt-tl-today {
+  position: absolute; top: -2px; bottom: -2px; width: 1px;
+  background: var(--amber);
+}
+.evt-tl-marker {
+  position: absolute; top: 4px;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  transform: translateX(-50%); cursor: default;
+}
+.evt-tl-glyph { font-size: 13px; line-height: 1; }
+.evt-tl-text  { font-size: 8px; white-space: nowrap; letter-spacing: .06em; }
+.evt-tl-ex     { color: var(--amber); }
+.evt-tl-earn   { color: var(--ice); }
+.evt-tl-warn   { color: var(--red); }
+.evt-tl-res    { color: var(--purple); }
+.evt-tl-agm    { color: var(--text-bright); }
+.evt-tl-axis-ticks {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  display: flex; justify-content: space-between;
+  padding: 0 8px; font-size: 8px; color: var(--text-dim);
+}
+
+/* ── Sector concentration ring ───────────────────────────────────────────── */
+.sector-row { display: flex; align-items: center; gap: 18px; }
+.sector-chart-wrap { position: relative; width: 160px; height: 160px; flex-shrink: 0; }
+.sector-legend { flex: 1; display: grid; grid-template-columns: repeat(auto-fill, minmax(140px,1fr)); gap: 6px; }
+.sector-row-li { display: flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 11px; }
+.sector-swatch { width: 9px; height: 9px; border-radius: 2px; flex-shrink: 0; }
+.sector-name { color: var(--text); flex: 1; }
+.sector-pct  { color: var(--text-dim); }
+
 /* ── Dividend calendar ───────────────────────────────────────────────────── */
 .div-list { display: flex; flex-direction: column; gap: 8px; }
 .div-row { display: flex; align-items: center; gap: 14px; background: var(--bg3); border: 1px solid var(--border); border-radius: 6px; padding: 12px 16px; }
@@ -171,6 +223,7 @@ tbody tr:last-child td { border-bottom: none; }
 .period-toggle button:first-child { border-radius: 4px 0 0 4px; }
 .period-toggle button:last-child  { border-radius: 0 4px 4px 0; }
 .period-toggle button.p-active { background: var(--ice-dim); color: var(--ice); border-color: var(--ice); }
+.period-toggle button.m-active { background: var(--amber-dim); color: var(--amber); border-color: var(--amber); }
 .view-toggles { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
 .view-btn { padding: 4px 10px; font-family: var(--mono); font-size: 10px; letter-spacing: 1px; border: 1px solid var(--border); background: var(--bg3); color: var(--text-dim); cursor: pointer; border-radius: 4px; white-space: nowrap; transition: all .15s; }
 .view-btn.v-active { background: var(--green-dim); color: var(--green); border-color: var(--green); }
@@ -228,13 +281,34 @@ tbody tr:last-child td { border-bottom: none; }
         <div class="panel-title" style="margin-bottom:6px">Portfolio Chart</div>
         <div id="chartViewToggles" class="view-toggles"></div>
       </div>
-      <div class="period-toggle">
+      <div class="period-toggle" style="display:flex;gap:6px;align-items:center">
+        <button id="btnMode_value"   class="m-active" onclick="setChartMode('value')">VALUE</button>
+        <button id="btnMode_stacked"               onclick="setChartMode('stacked')">STACKED</button>
+        <span style="color:var(--text-dim);font-size:9px;letter-spacing:.06em">·</span>
         <button id="btn5D" onclick="setPeriod('5D')">5D</button>
         <button id="btn4W" class="p-active" onclick="setPeriod('4W')">4W</button>
         <button id="btn3M" onclick="setPeriod('3M')">3M</button>
+        <span style="color:var(--text-dim);font-size:9px;letter-spacing:.06em">·</span>
+        <button id="btnCostBasis" onclick="toggleCostBasis()" style="opacity:0.6">COST</button>
       </div>
     </div>
+    <div class="evt-timeline" id="evtTimeline"></div>
     <canvas id="portfolioChart" height="120"></canvas>
+  </div>
+
+  <!-- Sector concentration ring -->
+  <div class="section" id="sectorSection">
+    <div class="section-head">
+      <div class="section-title">⬢ Sector Concentration</div>
+      <div class="section-desc">Portfolio weight by sector — quick risk-awareness view</div>
+      <div class="section-count" id="sectorCount">—</div>
+    </div>
+    <div class="panel" style="padding:18px 20px">
+      <div class="sector-row">
+        <div class="sector-chart-wrap"><canvas id="sectorRing"></canvas></div>
+        <div class="sector-legend" id="sectorLegend"></div>
+      </div>
+    </div>
   </div>
 
   <!-- Holdings panel - full width -->
@@ -243,11 +317,11 @@ tbody tr:last-child td { border-bottom: none; }
     <div class="table-wrap">
       <table>
         <thead><tr>
-          <th>TICKER</th><th class="r">QTY</th><th class="r">AVG COST</th>
+          <th>TICKER</th><th class="r">QTY</th><th class="r">ADJ COST</th>
           <th class="r">PRICE</th><th class="r">VALUE</th><th class="r">P&L%</th>
-          <th>DARK</th><th>SIGNALS</th>
+          <th>DARK</th><th>CONVICTION</th><th>NEXT EVENT</th>
         </tr></thead>
-        <tbody id="holdingsBody"><tr><td colspan="8" class="loader">LOADING …</td></tr></tbody>
+        <tbody id="holdingsBody"><tr><td colspan="9" class="loader">LOADING …</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -255,7 +329,7 @@ tbody tr:last-child td { border-bottom: none; }
   <!-- Market intelligence -->
   <div class="section" id="intelligenceSection">
     <div class="section-head">
-      <div class="section-title">🧠 Market Intelligence</div>
+      <div class="section-title">╳ Market Intelligence</div>
       <div class="section-desc">Dark flow, signals and catalyst alerts for your holdings</div>
       <div class="section-count" id="intelCount">—</div>
     </div>
@@ -265,7 +339,7 @@ tbody tr:last-child td { border-bottom: none; }
   <!-- Dividend calendar -->
   <div class="section" id="dividendSection">
     <div class="section-head">
-      <div class="section-title">📌 Dividend Calendar</div>
+      <div class="section-title">◇ Dividend Calendar</div>
       <div class="section-desc">Upcoming ex-dates for your holdings</div>
       <div class="section-count" id="divCount">—</div>
     </div>
@@ -275,7 +349,7 @@ tbody tr:last-child td { border-bottom: none; }
   <!-- Transaction log -->
   <div class="section">
     <div class="section-head">
-      <div class="section-title">📋 Transaction Log</div>
+      <div class="section-title">▣ Transaction Log</div>
       <div class="section-count" id="txnCount">—</div>
     </div>
     <div id="txnLog"><div class="loader">Loading …</div></div>
@@ -368,6 +442,8 @@ let txnType = 'BUY';
 let editingTxnId = null;
 let chartPeriod = '4W';
 let chartView = 'portfolio';
+let chartMode = 'value';        // 'value' | 'stacked'
+let showCostBasis = false;      // off by default — see request
 let instrumentsMap = {};     // isin → { ticker, name }
 let fullTickerToIsin = {};   // TICKER → isin (from API)
 
@@ -489,6 +565,7 @@ async function loadData() {
     renderChart();
     renderIntelligence();
     renderDividends();
+    renderSectorRing();
   } catch(e) {
     console.error(e);
     document.getElementById('holdingsBody').innerHTML =
@@ -525,56 +602,116 @@ function computePositions() {
 async function fetchMarketData(isins) {
   if (!isins.length) return;
   const isinStr = isins.join(',');
-  const today = new Date().toISOString().slice(0,10);
-  const since90 = new Date(Date.now() - 90*864e5).toISOString().slice(0,10);
+  const today    = new Date().toISOString().slice(0,10);
+  const since90  = new Date(Date.now() - 90 *864e5).toISOString().slice(0,10);
+  const since3y  = new Date(Date.now() - 1095*864e5).toISOString().slice(0,10);  // past ex-dates for div basis
 
-  const [darkRows, signals, catalysts, events, whales, instruments] = await Promise.all([
+  const [darkRows, signals, catalysts, upcoming, pastDivs, whales, instruments, conviction] = await Promise.all([
     GET_ALL('dark_flow_summary',
       `isin=in.(${isinStr})&trade_date=gte.${since90}&select=isin,trade_date,modal_price,dark_pct,dark_side_bias&order=isin.asc,trade_date.asc`),
     GET('smart_signals',
-      `isin=in.(${isinStr})&trade_date=gte.${since90}&order=trade_date.desc&limit=100`),
+      `isin=in.(${isinStr})&trade_date=gte.${since90}&order=trade_date.desc&limit=200`),
     GET('signal_event_proximity',
-      `isin=in.(${isinStr})&event_type=in.(RESULTS,EARNINGS_CALL,WARNING)&event_date=gte.${today}&days_to_event=gte.0&order=days_to_event.asc&limit=50`).catch(()=>[]),
+      `isin=in.(${isinStr})&event_type=in.(RESULTS,EARNINGS_CALL,WARNING)&event_date=gte.${today}&days_to_event=gte.0&order=days_to_event.asc&limit=60`).catch(()=>[]),
     GET('corporate_events',
-      `isin=in.(${isinStr})&event_date=gte.${today}&event_type=in.(EX_DATE,RESULTS,EARNINGS_CALL,WARNING)&order=event_date.asc&limit=60`).catch(()=>[]),
+      `isin=in.(${isinStr})&event_date=gte.${today}&event_type=in.(EX_DATE,RESULTS,EARNINGS_CALL,WARNING,AGM)&order=event_date.asc&limit=80`).catch(()=>[]),
+    // PAST ex-dates — used for dividend-adjusted cost basis (persists forever)
+    GET('corporate_events',
+      `isin=in.(${isinStr})&event_type=eq.EX_DATE&event_date=gte.${since3y}&event_date=lt.${today}&order=event_date.asc&limit=400`).catch(()=>[]),
     GET('whale_alerts',
-      `isin=in.(${isinStr})&trade_date=gte.${since90}&order=trade_date.desc&limit=50`).catch(()=>[]),
+      `isin=in.(${isinStr})&trade_date=gte.${since90}&order=trade_date.desc&limit=80`).catch(()=>[]),
     GET('instruments', `isin=in.(${isinStr})`).catch(()=>[]),
+    GET('conviction',  `isin=in.(${isinStr})`).catch(()=>[]),
   ]);
 
-  // Enrich name map from instruments
   for (const r of instruments) {
     if (positions.has(r.isin)) positions.get(r.isin).name = r.name || '';
   }
 
-  // Build per-ISIN history and latest price
   priceHistory = {};
   marketData = {};
   for (const isin of isins) {
     priceHistory[isin] = [];
-    marketData[isin] = { latestPrice: null, darkBias: null, darkPct: null, signals: [], catalysts: [], events: [], whales: [] };
+    marketData[isin] = {
+      latestPrice: null, darkBias: null, darkPct: null,
+      signals: [], catalysts: [], events: [], pastDivs: [], whales: [],
+      conviction: null,
+    };
   }
   for (const r of darkRows) {
     if (!priceHistory[r.isin]) continue;
     priceHistory[r.isin].push(r);
-    // Latest = last entry (sorted asc so last = latest)
     marketData[r.isin].latestPrice = r.modal_price;
     marketData[r.isin].darkBias    = r.dark_side_bias;
     marketData[r.isin].darkPct     = r.dark_pct;
   }
   for (const s of signals)   marketData[s.isin]?.signals.push(s);
   for (const c of catalysts) marketData[c.isin]?.catalysts.push(c);
-  for (const e of events)    marketData[e.isin]?.events.push(e);
+  for (const e of upcoming)  marketData[e.isin]?.events.push(e);
+  for (const e of pastDivs)  marketData[e.isin]?.pastDivs.push(e);
   for (const w of whales)    marketData[w.isin]?.whales.push(w);
+  for (const c of conviction) marketData[c.isin] && (marketData[c.isin].conviction = c);
+
+  // ── Apply persistent dividend deduction to cost basis ──────────────────
+  applyDividendAdjustment();
+}
+
+/* ─── Persistent dividend-adjusted cost basis ──────────────────────────────
+   For every past EX_DATE on a held ISIN, parse the NOK amount from the title
+   and subtract (dividend × shares held at that time) from totalCost.
+
+   This is computed deterministically from the events archive so it persists
+   across page reloads forever — no extra DB writes needed. Shares-on-ex-date
+   is reconstructed by walking transactions up to the ex-date.
+*/
+function parseDivAmount(title) {
+  if (!title) return null;
+  const m = title.match(/NOK\s+([\d.,]+)/i) || title.match(/([\d.,]+)\s+NOK/i);
+  if (!m) return null;
+  const v = parseFloat(m[1].replace(/\s/g,'').replace(',', '.'));
+  return isFinite(v) && v > 0 && v < 10000 ? v : null;
+}
+
+function sharesHeldAt(isin, asOfDate) {
+  let qty = 0;
+  for (const t of allTransactions) {
+    if (t.isin !== isin) continue;
+    const ts = (t.transaction_time || '').slice(0,10);
+    if (ts && ts < asOfDate) {
+      qty += (t.transaction_type === 'BUY' ? 1 : -1) * parseFloat(t.quantity);
+    }
+  }
+  return qty;
+}
+
+function applyDividendAdjustment() {
+  for (const [isin, p] of positions) {
+    p.divDeducted    = 0;
+    p.divAdjustments = [];
+    const past = marketData[isin]?.pastDivs || [];
+    for (const e of past) {
+      const div = parseDivAmount(e.title);
+      if (!div) continue;
+      const sharesOnExDate = sharesHeldAt(isin, e.event_date);
+      if (sharesOnExDate <= 0) continue;
+      const deduction = div * sharesOnExDate;
+      p.divDeducted += deduction;
+      p.divAdjustments.push({ date: e.event_date, divPerShare: div, shares: sharesOnExDate, amount: deduction });
+    }
+    // Adjusted basis: raw totalCost minus collected dividends. Per-share follows.
+    p.adjTotalCost = Math.max(p.totalCost - p.divDeducted, 0);
+    p.adjAvgCost   = p.adjTotalCost / p.netQty;
+  }
 }
 
 // ── Render ────────────────────────────────────────────────────────────────
 function renderKPIs() {
-  let totalValue = 0, totalCost = 0;
+  let totalValue = 0, totalCost = 0, totalDivPaid = 0;
   for (const [isin, p] of positions) {
     const price = marketData[isin]?.latestPrice;
     if (price) totalValue += p.netQty * price;
-    totalCost += p.totalCost;
+    totalCost   += (p.adjTotalCost ?? p.totalCost);
+    totalDivPaid += (p.divDeducted || 0);
   }
   const pl = totalValue - totalCost;
   const plPct = totalCost ? (pl / totalCost) * 100 : null;
@@ -582,7 +719,9 @@ function renderKPIs() {
   document.getElementById('kpiValue').textContent = fmtNOK(totalValue || null);
   document.getElementById('kpiValueSub').textContent = `${positions.size} holdings`;
   document.getElementById('kpiCost').textContent = fmtNOK(totalCost);
-  document.getElementById('kpiCostSub').textContent = `avg incl. all lots`;
+  document.getElementById('kpiCostSub').textContent = totalDivPaid > 0
+    ? `div-adjusted (−NOK ${fmtNum(totalDivPaid, 0)})`
+    : 'avg incl. all lots';
   document.getElementById('kpiPL').textContent = totalCost ? fmtNOK(pl) : '—';
   document.getElementById('kpiPLSub').textContent = plPct != null ? fmtPct(plPct) : '';
   document.getElementById('kpiCount').textContent = positions.size;
@@ -592,35 +731,90 @@ function renderKPIs() {
   plCard.className = 'kpi-card' + (pl > 0 ? ' positive' : pl < 0 ? ' negative' : '');
 }
 
+const EVT_GLYPH_P = {
+  RESULTS:'▢', EARNINGS_CALL:'◴', AGM:'Ⅱ', EX_DATE:'◇',
+  WARNING:'△', INSIDER:'◐', PLACEMENT:'▦', DELISTING:'⊘',
+  IPO:'▴', PROSPECTUS:'▤', REGULATED:'▣', PRESS_RELEASE:'≡',
+};
+
+function nextEventChip(md) {
+  const today = new Date().toISOString().slice(0,10);
+  const all = [...(md.events || [])]
+    .map(e => ({ ...e, d: (e.event_date||'').slice(0,10) }))
+    .filter(e => e.d >= today)
+    .sort((a,b) => a.d.localeCompare(b.d));
+  if (!all.length) return '—';
+  const e = all[0];
+  const days = Math.max(0, Math.round((new Date(e.d) - new Date(today)) / 86400000));
+  const glyph = EVT_GLYPH_P[e.event_type] || '▣';
+  const color = days <= 5 ? 'var(--red)' : days <= 14 ? 'var(--amber)' : 'var(--text-dim)';
+  return `<span class="badge" style="color:${color};border-color:${color}">${glyph} ${e.event_type} ${days}d</span>`;
+}
+
+function biasChip(md) {
+  if (md.darkBias === 'BUY')  return '<span class="badge badge-green">▲ BUY</span>';
+  if (md.darkBias === 'SELL') return '<span class="badge badge-red">▼ SELL</span>';
+  if (md.darkBias)            return '<span class="badge badge-dim">◇ NEUT</span>';
+  return '—';
+}
+
+function convictionCell(md, isLong) {
+  const c = md.conviction;
+  if (!c) return '<span class="badge badge-dim">◇</span>';
+  const aligned = (c.side === 'LONG' && isLong) || (c.side === 'SHORT' && !isLong);
+  const sign = c.side === 'LONG' ? '+' : '−';
+  const cls  = aligned ? 'badge-green' : 'badge-red';
+  const glyph = c.side === 'LONG' ? '▲' : '▼';
+  const tag = aligned ? 'CONFIRM' : 'WARNING';
+  return `<span class="badge ${cls}" title="${(c.signal_types || []).join(', ')}">${glyph} ${sign}${c.conviction} ${tag}</span>`;
+}
+
+function autoSuggestion(md, p) {
+  const c = md.conviction;
+  if (!c) return '';
+  const isLong = p.netQty > 0;
+  const aligned = (c.side === 'LONG' && isLong) || (c.side === 'SHORT' && !isLong);
+  const closeCatalyst = (md.catalysts || []).find(x => (x.days_to_event ?? 99) <= 5);
+  if (!aligned && c.conviction >= 50 && closeCatalyst) {
+    return `<div class="hold-suggest">△ Review — STRONG ${c.side} signal ${closeCatalyst.days_to_event}d before ${closeCatalyst.event_type}</div>`;
+  }
+  if (!aligned && c.conviction >= 60) {
+    return `<div class="hold-suggest">△ Review — STRONG ${c.side} conviction against position</div>`;
+  }
+  if (aligned && c.conviction >= 60 && closeCatalyst) {
+    return `<div class="hold-suggest hold-suggest-pos">▲ Confirmed — ${c.side} signal aligns, ${closeCatalyst.event_type} in ${closeCatalyst.days_to_event}d</div>`;
+  }
+  return '';
+}
+
 function renderHoldings() {
   if (!positions.size) { renderEmptyHoldings(); return; }
   const rows = [...positions.entries()].map(([isin, p]) => {
     const md = marketData[isin] || {};
     const price = md.latestPrice;
     const value = price ? p.netQty * price : null;
-    const pl = price ? (price - p.avgCost) / p.avgCost * 100 : null;
-    const biasIcon = md.darkBias === 'BUY' ? '<span class="badge badge-green">🟢 BUY</span>'
-                   : md.darkBias === 'SELL' ? '<span class="badge badge-red">🔴 SELL</span>'
-                   : md.darkBias ? '<span class="badge badge-dim">⚪ NEUT</span>' : '—';
-    const strongSigs = (md.signals || []).filter(s => s.strength === 'STRONG');
-    const hasCatalyst = (md.catalysts || []).length > 0;
-    const hasWhale = (md.whales || []).length > 0;
-    const sigBadges = [
-      strongSigs.length ? `<span class="badge badge-purple">⚡ ${strongSigs.length}</span>` : '',
-      hasCatalyst ? `<span class="badge badge-amber">🎯</span>` : '',
-      hasWhale ? `<span class="badge badge-ice">🐋</span>` : '',
-    ].filter(Boolean).join(' ') || '—';
+    const adj   = p.adjAvgCost ?? p.avgCost;
+    const pl    = price ? (price - adj) / adj * 100 : null;
     const plColor = pl == null ? '' : pl >= 0 ? 'color:var(--green)' : 'color:var(--red)';
+    const divNote = p.divDeducted > 0
+      ? `<div class="adj-note" title="Adjusted for NOK ${fmtNum(p.divDeducted, 0)} in dividends">−div NOK ${fmtNum(p.divDeducted,0)}</div>`
+      : '';
+    const suggest = autoSuggestion(md, p);
 
     return `<tr onclick="window.open('markedsradar.html','_blank')">
-      <td><div class="ticker-badge">${ticker(isin)}</div><div class="name-small">${p.name || isin.slice(-6)}</div></td>
+      <td>
+        <div class="ticker-badge">${ticker(isin)}</div>
+        <div class="name-small">${p.name || isin.slice(-6)}</div>
+        ${suggest}
+      </td>
       <td class="r" style="font-family:var(--mono)">${fmtNum(p.netQty, p.netQty % 1 === 0 ? 0 : 2)}</td>
-      <td class="r" style="font-family:var(--mono)">${fmtNum(p.avgCost)}</td>
+      <td class="r" style="font-family:var(--mono)">${fmtNum(adj)}${divNote}</td>
       <td class="r" style="font-family:var(--mono)">${price ? fmtNum(price) : '—'}</td>
       <td class="r" style="font-family:var(--mono)">${fmtNOK(value)}</td>
       <td class="r" style="font-family:var(--mono);${plColor}">${fmtPct(pl)}</td>
-      <td>${biasIcon}</td>
-      <td>${sigBadges}</td>
+      <td>${biasChip(md)}</td>
+      <td>${convictionCell(md, p.netQty > 0)}</td>
+      <td>${nextEventChip(md)}</td>
     </tr>`;
   }).join('');
   document.getElementById('holdingsBody').innerHTML = rows;
@@ -628,7 +822,7 @@ function renderHoldings() {
 
 function renderEmptyHoldings() {
   document.getElementById('holdingsBody').innerHTML =
-    `<tr><td colspan="8" class="empty-state">No positions yet — add your first transaction above.</td></tr>`;
+    `<tr><td colspan="9" class="empty-state">No positions yet — add your first transaction above.</td></tr>`;
 }
 
 // ── Chart period / view controls ──────────────────────────────────────────
@@ -663,6 +857,19 @@ async function setPeriod(p) {
   if (p === '5D' && !Object.keys(intradayData).length) {
     await fetchIntradayData([...positions.keys()]);
   }
+  renderChart();
+}
+
+function setChartMode(m) {
+  chartMode = m;
+  document.getElementById('btnMode_value')  .classList.toggle('m-active', m === 'value');
+  document.getElementById('btnMode_stacked').classList.toggle('m-active', m === 'stacked');
+  renderChart();
+}
+
+function toggleCostBasis() {
+  showCostBasis = !showCostBasis;
+  document.getElementById('btnCostBasis').style.opacity = showCostBasis ? '1' : '0.6';
   renderChart();
 }
 
@@ -726,11 +933,11 @@ function renderChart() {
     });
 
     if (chartView === 'portfolio') {
-      let tc = 0; for (const p of positions.values()) tc += p.totalCost;
+      let tc = 0; for (const p of positions.values()) tc += (p.adjTotalCost ?? p.totalCost);
       costData = labels.map(() => tc);
     } else {
       const p = positions.get(chartView);
-      costData = labels.map(() => p?.avgCost || null);
+      costData = labels.map(() => p?.adjAvgCost ?? p?.avgCost ?? null);
     }
 
   } else {
@@ -755,7 +962,7 @@ function renderChart() {
         }
         return val || null;
       });
-      let tc = 0; for (const p of positions.values()) tc += p.totalCost;
+      let tc = 0; for (const p of positions.values()) tc += (p.adjTotalCost ?? p.totalCost);
       costData = labels.map(() => tc);
     } else {
       const isin = chartView;
@@ -763,7 +970,7 @@ function renderChart() {
       const histMap = new Map(hist.map(r => [r.trade_date, r.modal_price]));
       valueData = labels.map(d => histMap.get(d) || null);
       const p = positions.get(isin);
-      costData = labels.map(() => p?.avgCost || null);
+      costData = labels.map(() => p?.adjAvgCost ?? p?.avgCost ?? null);
     }
   }
 
@@ -800,67 +1007,117 @@ function renderChart() {
     }
   }
 
-  // Event annotations — xMin/xMax must use formatted labels (MM-DD) to match chart axis
+  // Event annotations — colored zones, not hairline ticks, with glyph labels.
   const annotations = {};
-  const eventsToMark = [];
-  const seenEv = new Set();
+  const evColor = t =>
+      t === 'EX_DATE'       ? '#f5a623'
+    : t === 'WARNING'       ? '#f06060'
+    : t === 'EARNINGS_CALL' ? '#4fc3f7'
+    : t === 'RESULTS'       ? '#a78bfa'
+    : t === 'AGM'           ? '#c8d8e8'
+                            : '#a78bfa';
+  const evGlyph = t => EVT_GLYPH_P[t] || '▣';
+  const evDedup = new Map();
   for (const e of allUpcoming) {
-    const key = e.isin + '|' + e.event_date + '|' + e.event_type;
-    if (seenEv.has(key)) continue;
-    seenEv.add(key);
-    const color = e.event_type === 'EX_DATE' ? '#f5a623'
-                : e.event_type === 'WARNING'  ? '#f06060'
-                : '#a78bfa';
-    const lbl   = ticker(e.isin) + (e.event_type === 'EX_DATE' ? ' ÷div'
-                : e.event_type === 'EARNINGS_CALL' ? ' EARNINGS'
-                : ' ' + e.event_type);
-    eventsToMark.push({ date: e.event_date, label: lbl, color });
+    const key = e.event_date + '|' + e.event_type;
+    if (!evDedup.has(key)) evDedup.set(key, []);
+    evDedup.get(key).push(ticker(e.isin));
   }
-  eventsToMark.forEach((ev, i) => {
+  let evIdx = 0;
+  for (const [key, tks] of evDedup) {
+    const [date, type] = key.split('|');
     const rawLabel = chartPeriod === '5D'
-      ? labels.find(l => l.startsWith(ev.date))
-      : (labels.includes(ev.date) ? ev.date : null);
-    if (!rawLabel) return;
-    const xVal = fmtLabel(rawLabel); // must match the formatted axis tick
-    annotations['ev' + i] = {
+      ? labels.find(l => l.startsWith(date))
+      : (labels.includes(date) ? date : null);
+    if (!rawLabel) continue;
+    const xVal = fmtLabel(rawLabel);
+    const color = evColor(type);
+    const tkList = tks.slice(0, 3).join('·') + (tks.length > 3 ? '+' : '');
+    annotations['ev' + evIdx++] = {
       type: 'line', xMin: xVal, xMax: xVal,
-      borderColor: ev.color, borderWidth: 1, borderDash: [3, 3],
+      borderColor: color, borderWidth: 2, borderDash: [],
       label: {
-        display: true, content: ev.label, position: 'start',
-        color: ev.color, font: { family: 'Syne Mono', size: 8 },
-        backgroundColor: 'rgba(7,11,18,0.85)', padding: { x: 3, y: 2 },
+        display: true, position: 'start',
+        content: evGlyph(type) + ' ' + tkList,
+        color: color,
+        font: { family: 'IBM Plex Mono, monospace', size: 10, weight: '500' },
+        backgroundColor: 'rgba(13,20,32,0.92)',
+        borderColor: color, borderWidth: 1, borderRadius: 2,
+        padding: { x: 5, y: 3 },
+        yAdjust: -4,
       },
     };
-  });
+  }
 
   const isPortfolio = chartView === 'portfolio';
   const dp = isPortfolio ? 0 : 2;
 
+  // ─── Dataset construction ────────────────────────────────────────────
+  const PALETTE = ['#4fc3f7','#f5a623','#43e097','#a78bfa','#f06060','#ffcd6b',
+                   '#7fdfff','#c39fff','#ff97a0','#bfeb83','#ffb37a','#9affd9'];
+  const datasets = [];
+
+  if (isPortfolio && chartMode === 'stacked') {
+    // Per-holding contribution (NOK value, stacked-fill area)
+    const isinList = isinsToShow.filter(i => positions.has(i));
+    isinList.forEach((isin, idx) => {
+      const p = positions.get(isin);
+      const tk = ticker(isin);
+      const color = PALETTE[idx % PALETTE.length];
+      let series;
+      if (chartPeriod === '5D') {
+        const priceAt = new Map((intradayData[isin] || []).map(r => [r.dt, r.price]));
+        let lastP = null;
+        series = labels.map(dt => {
+          const px = priceAt.get(dt);
+          if (px != null) lastP = px;
+          return lastP != null ? lastP * p.netQty : null;
+        });
+      } else {
+        const hist = priceHistory[isin] || [];
+        series = labels.map(d => {
+          const row = [...hist].reverse().find(r => r.trade_date <= d);
+          return row?.modal_price ? row.modal_price * p.netQty : null;
+        });
+      }
+      datasets.push({
+        label: tk,
+        data: series,
+        borderColor: color,
+        backgroundColor: color + '40',  // hex+alpha
+        borderWidth: 1.4, tension: 0.25,
+        pointRadius: 0, fill: true,
+        stack: 'pv',
+      });
+    });
+  } else {
+    // Single value line
+    datasets.push({
+      label: isPortfolio ? 'Portfolio Value (NOK)' : ticker(chartView) + ' Price (NOK)',
+      data: valueData,
+      borderColor: '#4fc3f7', backgroundColor: 'rgba(79,195,247,0.08)',
+      borderWidth: 2, fill: true, tension: 0.3,
+      pointRadius: labels.length < 15 ? 3 : 0, pointBackgroundColor: '#4fc3f7',
+    });
+  }
+  if (showCostBasis) {
+    datasets.push({
+      label: isPortfolio ? 'Cost Basis (NOK)' : ticker(chartView) + ' Avg Cost',
+      data: costData,
+      borderColor: '#f5a623', borderWidth: 1.5, borderDash: [6, 4],
+      fill: false, pointRadius: 0, tension: 0,
+      stack: null,
+    });
+  }
+
   portfolioChart = new Chart(ctx, {
     type: 'line',
-    data: {
-      labels: labels.map(fmtLabel),
-      datasets: [
-        {
-          label: isPortfolio ? 'Portfolio Value (NOK)' : ticker(chartView) + ' Price (NOK)',
-          data: valueData,
-          borderColor: '#4fc3f7', backgroundColor: 'rgba(79,195,247,0.08)',
-          borderWidth: 2, fill: true, tension: 0.3,
-          pointRadius: labels.length < 15 ? 3 : 0, pointBackgroundColor: '#4fc3f7',
-        },
-        {
-          label: isPortfolio ? 'Cost Basis (NOK)' : ticker(chartView) + ' Avg Cost',
-          data: costData,
-          borderColor: '#f5a623', borderWidth: 1.5, borderDash: [6, 4],
-          fill: false, pointRadius: 0, tension: 0,
-        },
-      ],
-    },
+    data: { labels: labels.map(fmtLabel), datasets },
     options: {
       responsive: true,
       interaction: { mode: 'index', intersect: false },
       plugins: {
-        legend: { labels: { color: '#5a7a96', font: { family: 'Syne Mono', size: 10 }, boxWidth: 14 } },
+        legend: { labels: { color: '#5a7a96', font: { family: 'IBM Plex Mono, monospace', size: 10 }, boxWidth: 12 } },
         tooltip: {
           backgroundColor: '#0d1420', borderColor: '#1e2d42', borderWidth: 1,
           titleColor: '#c8d8e8', bodyColor: '#c8d8e8',
@@ -871,10 +1128,15 @@ function renderChart() {
         annotation: { annotations },
       },
       scales: {
-        x: { ticks: { color: '#5a7a96', font: { family: 'Syne Mono', size: 9 }, maxTicksLimit: 14 }, grid: { color: '#1e2d42' } },
+        x: {
+          stacked: chartMode === 'stacked' && isPortfolio,
+          ticks: { color: '#5a7a96', font: { family: 'IBM Plex Mono, monospace', size: 9 }, maxTicksLimit: 14 },
+          grid: { color: '#1e2d42' },
+        },
         y: {
+          stacked: chartMode === 'stacked' && isPortfolio,
           ticks: {
-            color: '#5a7a96', font: { family: 'Syne Mono', size: 9 },
+            color: '#5a7a96', font: { family: 'IBM Plex Mono, monospace', size: 9 },
             callback: v => 'NOK ' + v.toLocaleString('nb-NO', { minimumFractionDigits: dp, maximumFractionDigits: dp }),
           },
           grid: { color: '#1e2d42' },
@@ -882,7 +1144,67 @@ function renderChart() {
       },
     },
   });
+
+  // Pair the event timeline strip above the chart
+  renderEventTimeline(allUpcoming);
 }
+
+/* ─── Forward event timeline (compact strip above the chart) ─────────────── */
+function renderEventTimeline(events) {
+  const el = document.getElementById('evtTimeline');
+  if (!el) return;
+  const today = new Date();
+  const horizon = 30; // days
+  const future = (events || [])
+    .filter(e => {
+      const d = new Date(e.event_date);
+      const days = (d - today) / 86400000;
+      return days >= 0 && days <= horizon;
+    });
+  const grouped = new Map();
+  for (const e of future) {
+    const key = e.event_date + '|' + e.event_type;
+    if (!grouped.has(key)) grouped.set(key, { date: e.event_date, type: e.event_type, tickers: [] });
+    grouped.get(key).tickers.push(ticker(e.isin));
+  }
+  if (!grouped.size) {
+    el.innerHTML = `<div class="evt-tl-axis"></div>
+      <div class="evt-tl-today" style="left:0%"></div>
+      <div class="evt-tl-axis-ticks">
+        <span>today</span><span>+7d</span><span>+14d</span><span>+21d</span><span>+${horizon}d</span>
+      </div>
+      <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--text-dim);font-size:10px;letter-spacing:.1em">no events within ${horizon} days</div>`;
+    return;
+  }
+  const colorCls = type =>
+      type === 'EX_DATE'       ? 'evt-tl-ex'
+    : type === 'EARNINGS_CALL' ? 'evt-tl-earn'
+    : type === 'WARNING'       ? 'evt-tl-warn'
+    : type === 'RESULTS'       ? 'evt-tl-res'
+    : type === 'AGM'           ? 'evt-tl-agm'
+                               : 'evt-tl-res';
+  const markers = [...grouped.values()].map(g => {
+    const days = Math.max(0, (new Date(g.date) - today) / 86400000);
+    const pct = (days / horizon) * 100;
+    const tkLbl = g.tickers.slice(0, 3).join('·') + (g.tickers.length > 3 ? '+' : '');
+    return `<div class="evt-tl-marker" style="left:${pct}%" title="${g.tickers.join(', ')} — ${g.type} on ${g.date}">
+      <span class="evt-tl-glyph ${colorCls(g.type)}">${EVT_GLYPH_P[g.type] || '▣'}</span>
+      <span class="evt-tl-text ${colorCls(g.type)}">${tkLbl}</span>
+    </div>`;
+  }).join('');
+  el.innerHTML = `<div class="evt-tl-axis"></div>
+    <div class="evt-tl-today" style="left:0%"></div>
+    ${markers}
+    <div class="evt-tl-axis-ticks">
+      <span>today</span><span>+7d</span><span>+14d</span><span>+21d</span><span>+${horizon}d</span>
+    </div>`;
+}
+
+const SIG_GLYPH_P = {
+  DARK_ACCUMULATION:'◍', DARK_DISTRIBUTION:'◍', DARK_BLOCK:'◍',
+  EOD_SWEEP:'╳', LARGE_NOTIONAL:'■',
+  CEILING_BREAK:'▲', FLOOR_BREAK:'▼',
+};
 
 function renderIntelligence() {
   let count = 0;
@@ -897,20 +1219,22 @@ function renderIntelligence() {
 
     const sigHTML = recentSignals.map(s => {
       const str = s.strength === 'STRONG' ? 'badge-purple' : 'badge-ice';
-      const icon = /dark/i.test(s.signal_type||'') ? '🌑' : '⚡';
-      return `<span class="badge ${str}">${icon} ${s.signal_type}</span>`;
+      const g = SIG_GLYPH_P[s.signal_type] || '▢';
+      return `<span class="badge ${str}">${g} ${s.signal_type.replace(/_/g,' ')}</span>`;
     }).join('');
 
     const catHTML = recentCat.map(c =>
-      `<span class="badge badge-amber">🎯 ${c.event_type} in ${c.days_to_event}d</span>`
+      `<span class="badge badge-amber">${EVT_GLYPH_P[c.event_type] || '▣'} ${c.event_type} ${c.days_to_event}d</span>`
     ).join('');
 
-    const whaleHTML = recentWhale.map(w =>
-      `<span class="badge badge-ice">🐋 ${w.alert_type || 'WHALE'}</span>`
-    ).join('');
+    const whaleHTML = recentWhale.map(w => {
+      const a = w.size_alert || w.dark_alert || w.otc_alert || 'BLOCK';
+      return `<span class="badge badge-ice">■ ${a}</span>`;
+    }).join('');
 
     const biasColor = md.darkBias === 'BUY' ? 'var(--green)' : md.darkBias === 'SELL' ? 'var(--red)' : 'var(--text-dim)';
-    const biasText = md.darkBias ? `${md.darkBias} ${md.darkPct ? `(${md.darkPct.toFixed(0)}% dark)` : ''}` : '';
+    const biasGlyph = md.darkBias === 'BUY' ? '▲' : md.darkBias === 'SELL' ? '▼' : '◇';
+    const biasText = md.darkBias ? `${biasGlyph} ${md.darkBias} ${md.darkPct ? `(${md.darkPct.toFixed(0)}% dark)` : ''}` : '';
 
     return `<div class="intel-card">
       <div class="intel-card-header">
@@ -926,50 +1250,156 @@ function renderIntelligence() {
     `<div class="empty-state">No recent signals for your holdings.</div>`;
 }
 
-function renderDividends() {
-  const exDates = [];
-  for (const [isin, md] of Object.entries(marketData)) {
-    for (const e of md.events || []) {
-      if (e.event_type === 'EX_DATE') {
-        const p = positions.get(isin);
-        // Try to parse dividend amount from title: "Ex-dividend NOK 3.0 today"
-        const m = (e.title || '').match(/NOK\s+([\d.,]+)/i);
-        const divAmt = m ? parseFloat(m[1].replace(',', '.')) : null;
-        const yoc = (divAmt && p?.avgCost) ? (divAmt / p.avgCost * 100) : null;
-        const ycurrent = (divAmt && marketData[isin]?.latestPrice)
-          ? (divAmt / marketData[isin].latestPrice * 100) : null;
-        exDates.push({ isin, ticker: ticker(isin), date: e.event_date, title: e.title || '', divAmt, yoc, ycurrent });
-      }
-    }
-  }
-  exDates.sort((a, b) => a.date.localeCompare(b.date));
-  document.getElementById('divCount').textContent = exDates.length ? `${exDates.length} upcoming` : 'none upcoming';
+/* ─── Sector concentration ring ───────────────────────────────────────────
+   Static ticker → sector map covering the major OSE names; falls back to
+   "Other". Good enough for a risk-awareness donut; can later be promoted
+   to a DB-backed `api.sectors` table.
+*/
+const SECTOR_MAP = {
+  // Energy
+  EQNR:'Energy', AKERBP:'Energy', VAR:'Energy', PGS:'Energy', BWE:'Energy',
+  TGS:'Energy', BWLPG:'Energy', DNO:'Energy', SUBC:'Energy', SDRL:'Energy',
+  FRO:'Energy', BWO:'Energy', VARENERGI:'Energy', NORAM:'Energy',
+  // Seafood
+  MOWI:'Seafood', LSG:'Seafood', SALM:'Seafood', BAKKA:'Seafood', GSF:'Seafood',
+  AUSS:'Seafood', NRS:'Seafood',
+  // Banking & Insurance
+  DNB:'Financials', NDA:'Financials', GJF:'Financials', STB:'Financials',
+  SVEG:'Financials', SBANK:'Financials', SRBANK:'Financials',
+  // Telecom & Media
+  TEL:'Telecom', SCHA:'Media', SCHB:'Media',
+  // Renewables / Industrial
+  NEL:'Renewables', REC:'Renewables', SCATC:'Renewables', AKER:'Industrial',
+  KOG:'Industrial', NHY:'Materials', YAR:'Materials', ELK:'Materials',
+  // Tech / Shipping / Other
+  KIT:'Software', AUTO:'Software', CRAYON:'Software',
+  GOGL:'Shipping', BELCO:'Shipping', FLNG:'Shipping', HAUTO:'Shipping',
+  EPR:'Industrial', AKSO:'Industrial', ORK:'Consumer', MULTI:'Industrial',
+  GENO:'Healthcare', ELMRA:'Industrial',
+};
 
-  if (!exDates.length) {
-    document.getElementById('divList').innerHTML = `<div class="empty-state">No upcoming ex-dates for your holdings.</div>`;
-    return;
+let sectorRingChart = null;
+function renderSectorRing() {
+  const sectorTotals = {};
+  let total = 0;
+  for (const [isin, p] of positions) {
+    const price = marketData[isin]?.latestPrice;
+    if (!price) continue;
+    const val = p.netQty * price;
+    const sec = SECTOR_MAP[ticker(isin)] || 'Other';
+    sectorTotals[sec] = (sectorTotals[sec] || 0) + val;
+    total += val;
   }
+  const entries = Object.entries(sectorTotals).sort((a,b) => b[1] - a[1]);
+  document.getElementById('sectorCount').textContent = entries.length ? `${entries.length} sectors` : 'no data';
 
-  document.getElementById('divList').innerHTML = exDates.map(d => {
-    const yocStr = d.yoc ? `YoC ${d.yoc.toFixed(2)}%` : '';
-    const ycStr = d.ycurrent ? ` · Yield ${d.ycurrent.toFixed(2)}%` : '';
-    return `<div class="div-row">
-      <span class="div-date">📌 ${d.date}</span>
-      <span class="div-ticker">${d.ticker}</span>
-      <span class="div-title">${d.title}</span>
-      <span class="div-yield">${yocStr}${ycStr}</span>
+  const PAL = ['#4fc3f7','#f5a623','#43e097','#a78bfa','#f06060','#ffcd6b','#7fdfff','#c39fff','#ff97a0','#bfeb83','#5a7a96'];
+  const legend = entries.map(([s, v], i) => {
+    const pct = total ? (v / total * 100) : 0;
+    return `<div class="sector-row-li">
+      <span class="sector-swatch" style="background:${PAL[i % PAL.length]}"></span>
+      <span class="sector-name">${s}</span>
+      <span class="sector-pct">${pct.toFixed(1)}%</span>
     </div>`;
   }).join('');
+  document.getElementById('sectorLegend').innerHTML = legend ||
+    '<span style="color:var(--text-dim);font-family:var(--mono);font-size:11px">No market value data — wait for next pipeline run.</span>';
 
-  // Yield on cost KPI: total annual div / total cost (approximate)
-  const totalYocNOK = exDates.reduce((sum, d) => {
+  const ctx = document.getElementById('sectorRing');
+  if (!ctx) return;
+  if (sectorRingChart) sectorRingChart.destroy();
+  if (!entries.length) return;
+  sectorRingChart = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: entries.map(([s]) => s),
+      datasets: [{
+        data: entries.map(([_, v]) => v),
+        backgroundColor: entries.map((_, i) => PAL[i % PAL.length]),
+        borderColor: '#0d1420', borderWidth: 2,
+      }],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '64%',
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: c => ` ${c.label}: NOK ${(c.raw||0).toLocaleString('nb-NO', { maximumFractionDigits: 0 })} (${total ? (c.raw/total*100).toFixed(1) : 0}%)`,
+          },
+        },
+      },
+    },
+  });
+}
+
+function renderDividends() {
+  // Upcoming ex-dates
+  const upcoming = [];
+  for (const [isin, md] of Object.entries(marketData)) {
+    for (const e of md.events || []) {
+      if (e.event_type !== 'EX_DATE') continue;
+      const p = positions.get(isin);
+      const divAmt = parseDivAmount(e.title);
+      const yoc      = (divAmt && p?.adjAvgCost) ? (divAmt / p.adjAvgCost * 100) : null;
+      const ycurrent = (divAmt && md.latestPrice) ? (divAmt / md.latestPrice * 100) : null;
+      upcoming.push({ isin, ticker: ticker(isin), date: e.event_date, title: e.title || '', divAmt, yoc, ycurrent });
+    }
+  }
+  upcoming.sort((a, b) => a.date.localeCompare(b.date));
+
+  // Past (already-applied) dividend deductions
+  const paid = [];
+  for (const [isin, p] of positions) {
+    for (const adj of (p.divAdjustments || [])) {
+      paid.push({ ticker: ticker(isin), ...adj });
+    }
+  }
+  paid.sort((a, b) => b.date.localeCompare(a.date));   // newest first
+
+  const totalPaid = paid.reduce((s, x) => s + x.amount, 0);
+  const expectedNOK = upcoming.reduce((s, d) => {
     const p = positions.get(d.isin);
-    return d.divAmt && p ? sum + d.divAmt * p.netQty : sum;
+    return d.divAmt && p ? s + d.divAmt * p.netQty : s;
   }, 0);
+  document.getElementById('divCount').textContent =
+    `${upcoming.length} upcoming · ${paid.length} past · NOK ${fmtNum(totalPaid, 0)} collected`;
+
+  const upcomingHTML = upcoming.length
+    ? upcoming.map(d => {
+        const yocStr = d.yoc      ? `YoC ${d.yoc.toFixed(2)}%`         : '';
+        const ycStr  = d.ycurrent ? ` · Yield ${d.ycurrent.toFixed(2)}%` : '';
+        return `<div class="div-row">
+          <span class="div-date">◇ ${d.date}</span>
+          <span class="div-ticker">${d.ticker}</span>
+          <span class="div-title">${d.title}</span>
+          <span class="div-yield">${yocStr}${ycStr}</span>
+        </div>`;
+      }).join('')
+    : `<div class="empty-state" style="padding:14px">No upcoming ex-dates.</div>`;
+
+  const paidHTML = paid.length
+    ? `<div style="margin-top:14px;padding-top:10px;border-top:1px solid var(--border)">
+        <div style="font-family:var(--mono);font-size:10px;letter-spacing:.12em;color:var(--text-dim);margin-bottom:8px">
+          PAID — APPLIED TO COST BASIS
+        </div>
+        ${paid.slice(0, 20).map(x =>
+          `<div class="div-row" style="opacity:0.85">
+            <span class="div-date" style="color:var(--text-dim)">◆ ${x.date}</span>
+            <span class="div-ticker">${x.ticker}</span>
+            <span class="div-title">NOK ${fmtNum(x.divPerShare)} × ${fmtNum(x.shares, 0)} shares</span>
+            <span class="div-yield" style="color:var(--green)">−NOK ${fmtNum(x.amount, 0)}</span>
+          </div>`
+        ).join('')}
+      </div>`
+    : '';
+  document.getElementById('divList').innerHTML = upcomingHTML + paidHTML;
+
+  // Yield-on-cost KPI based on UPCOMING (forward-looking)
   let totalCost = 0;
-  for (const p of positions.values()) totalCost += p.totalCost;
-  if (totalYocNOK && totalCost) {
-    document.getElementById('kpiYoc').textContent = (totalYocNOK / totalCost * 100).toFixed(2) + '%';
+  for (const p of positions.values()) totalCost += (p.adjTotalCost ?? p.totalCost);
+  if (expectedNOK && totalCost) {
+    document.getElementById('kpiYoc').textContent = (expectedNOK / totalCost * 100).toFixed(2) + '%';
   }
 }
 
