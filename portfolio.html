@@ -689,13 +689,30 @@ function sharesHeldAt(isin, asOfDate) {
    stays at what was actually paid for the shares — matches Norwegian tax
    accounting and what your bank's tracker shows.
 */
+// Oslo Børs sometimes publishes the same ex-date twice (Norwegian + English).
+// Dedupe by (event_date, parsed NOK/share) — true duplicates produce the
+// same amount; a legitimately revised dividend changes the amount and stays.
+function dedupeExDates(events) {
+  const out = [];
+  const seen = new Set();
+  for (const e of events) {
+    if (e.event_type && e.event_type !== 'EX_DATE') { out.push(e); continue; }
+    const div = parseDivAmount(e.title);
+    const key = e.event_date + '|' + (div != null ? div.toFixed(4) : 'na');
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(e);
+  }
+  return out;
+}
+
 function applyDividendIncome() {
   for (const [isin, p] of positions) {
     p.divIncome      = 0;
     p.divIncomeYTD   = 0;
     p.divHistory     = [];
     const yearStart  = new Date().getFullYear() + '-01-01';
-    const past = marketData[isin]?.pastDivs || [];
+    const past = dedupeExDates(marketData[isin]?.pastDivs || []);
     for (const e of past) {
       const div = parseDivAmount(e.title);
       if (!div) continue;
@@ -1347,8 +1364,8 @@ function renderDividends() {
   //   - yieldOnCost = div / avg cost     (what you, with your purchase price, get)
   const upcoming = [];
   for (const [isin, md] of Object.entries(marketData)) {
-    for (const e of md.events || []) {
-      if (e.event_type !== 'EX_DATE') continue;
+    const seenIsinDate = new Set();   // (date, amount) — dedupe bilingual dups
+    for (const e of dedupeExDates((md.events || []).filter(x => x.event_type === 'EX_DATE'))) {
       const p = positions.get(isin);
       const divAmt = parseDivAmount(e.title);
       const directYield = (divAmt && md.latestPrice) ? (divAmt / md.latestPrice * 100) : null;
