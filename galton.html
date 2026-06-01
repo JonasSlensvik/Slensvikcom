@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Galton Strategy · Slensvik</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=Syne:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg0: #050810; --bg1: #0b0f17; --bg2: #11161f; --bg3: #1a212d;
+    --border: rgba(255,255,255,0.06); --border2: rgba(255,255,255,0.12);
+    --text1: #e8eef7; --text2: #a4adbf; --text3: #5a6377; --text4: #3a4252;
+    --amber: #f5a623; --ice: #4fc3f7; --green: #43e097; --red: #f06060;
+    --mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace;
+    --sans: 'Syne', sans-serif;
+  }
+  body {
+    background: var(--bg0); color: var(--text1);
+    font-family: var(--mono); min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+  .topbar {
+    display: flex; align-items: center; gap: 14px;
+    padding: 22px 36px; border-bottom: 1px solid var(--border);
+  }
+  .topbar a.back {
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.16em;
+    text-transform: uppercase; color: var(--text2); text-decoration: none;
+    padding: 4px 12px; border: 1px solid var(--border2);
+  }
+  .topbar a.back:hover { color: var(--amber); border-color: var(--amber); }
+  .topbar .crumb {
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.18em;
+    text-transform: uppercase; color: var(--text2);
+  }
+  .topbar .crumb .glyph { color: var(--amber); margin-right: 8px; }
+  main {
+    max-width: 880px; margin: 0 auto; padding: 64px 36px;
+  }
+  h1 {
+    font-family: var(--sans); font-weight: 700;
+    font-size: clamp(28px, 4vw, 44px);
+    line-height: 1.06; letter-spacing: -0.02em;
+    margin-bottom: 18px;
+  }
+  .lead {
+    font-size: 13px; color: var(--text2); line-height: 1.7;
+    margin-bottom: 32px;
+  }
+  .panel {
+    border: 1px solid var(--border2);
+    background: var(--bg1);
+    padding: 26px 28px; margin-bottom: 22px;
+  }
+  .panel-h {
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.18em;
+    text-transform: uppercase; color: var(--text2);
+    margin-bottom: 14px;
+    padding-bottom: 8px; border-bottom: 1px solid var(--border);
+  }
+  .panel-h .glyph { color: var(--amber); margin-right: 8px; }
+  .progress-strip {
+    height: 6px; background: var(--bg3); position: relative; overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  .progress-fill {
+    position: absolute; top: 0; left: 0; bottom: 0;
+    background: linear-gradient(90deg, var(--ice), var(--amber));
+    transition: width 0.8s;
+  }
+  .progress-meta {
+    display: flex; justify-content: space-between;
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--text3);
+    margin-top: 8px;
+  }
+  .progress-meta strong { color: var(--text1); font-variant-numeric: tabular-nums; }
+  .kpi-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px;
+  }
+  @media (max-width: 600px) { .kpi-grid { grid-template-columns: 1fr; } }
+  .kpi {
+    border: 1px solid var(--border); padding: 16px 18px;
+  }
+  .kpi-lbl {
+    font-family: var(--mono); font-size: 9px; letter-spacing: 0.18em;
+    text-transform: uppercase; color: var(--text3);
+    margin-bottom: 8px;
+  }
+  .kpi-val {
+    font-family: var(--mono); font-size: 22px; font-weight: 500;
+    color: var(--text1); letter-spacing: -0.01em;
+    font-variant-numeric: tabular-nums;
+  }
+  .kpi-sub {
+    font-family: var(--mono); font-size: 10px; color: var(--text3);
+    margin-top: 4px; letter-spacing: 0.06em;
+  }
+  ul.methodology {
+    list-style: none; padding: 0;
+    font-family: var(--mono); font-size: 12px; line-height: 1.8; color: var(--text2);
+  }
+  ul.methodology li::before {
+    content: '◦'; margin-right: 12px; color: var(--amber);
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <a class="back" href="/">← BACK</a>
+  <span class="crumb"><span class="glyph">◆</span>GALTON STRATEGY</span>
+</header>
+
+<main>
+
+  <h1>Long-short equity on Oslo Børs, weighted by regularised covariance.</h1>
+  <p class="lead">
+    Weekly rebalanced cross-sectional strategy on the full NOK-denominated
+    OSE universe. Weights derived from a structured covariance estimator
+    over 52 weeks of close-to-close returns. The strategy goes live once
+    the data accumulator clears the 52-week threshold.
+  </p>
+
+  <div class="panel">
+    <div class="panel-h"><span class="glyph">▰</span>DATA ACCUMULATOR</div>
+    <div class="progress-strip"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+    <div class="progress-meta">
+      <span>STARTED <strong id="progressStart">—</strong></span>
+      <span><strong id="progressCount">—</strong> / 52 WEEKS</span>
+      <span>LIVE <strong id="progressEta">—</strong></span>
+    </div>
+  </div>
+
+  <div class="kpi-grid">
+    <div class="kpi">
+      <div class="kpi-lbl">UNIVERSE</div>
+      <div class="kpi-val" id="kpiUniverse">—</div>
+      <div class="kpi-sub">NOK-denominated OSE names</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-lbl">DAILY ROWS</div>
+      <div class="kpi-val" id="kpiRows">—</div>
+      <div class="kpi-sub">close prices captured</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-lbl">LATEST CLOSE</div>
+      <div class="kpi-val" id="kpiLatest">—</div>
+      <div class="kpi-sub" id="kpiLatestSub">DN feed · 15-min delayed</div>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-top:22px">
+    <div class="panel-h"><span class="glyph">▢</span>METHODOLOGY · sketch</div>
+    <ul class="methodology">
+      <li>Daily snapshot from DN Investor — OHLCV plus market cap, no auth</li>
+      <li>Friday close anchors the weekly return series</li>
+      <li>Eligibility filter: market-cap floor, minimum trading days in window</li>
+      <li>Covariance estimator with regularisation toward a structured target</li>
+      <li>Cross-sectional rank → long/short tilt → weekly rebalance Monday open</li>
+      <li>Live weights stored in <code>api.galton_weights</code>; backtest archive separate</li>
+    </ul>
+  </div>
+
+</main>
+
+<script>
+(async () => {
+  const API = 'https://api.slensvik.com';
+  const safeGet = async (p) => {
+    try {
+      const r = await fetch(`${API}/${p}`, { headers: { Accept: 'application/json' }});
+      if (!r.ok) return null;
+      return await r.json();
+    } catch (e) { return null; }
+  };
+
+  const all = await safeGet('daily_close?select=isin,trade_date,close,name,ticker&order=trade_date.desc&limit=2000');
+  if (!all || !all.length) return;
+
+  const isins = new Set(all.map(r => r.isin));
+  const dates = [...new Set(all.map(r => r.trade_date))].sort();
+  const weeks = Math.floor(dates.length / 5);
+  const startDate = dates[0];
+  const latestDate = dates[dates.length - 1];
+
+  document.getElementById('kpiUniverse').textContent = isins.size;
+  document.getElementById('kpiRows').textContent = all.length.toLocaleString('en-US');
+
+  const latestRow = all.find(r => r.trade_date === latestDate);
+  if (latestRow) {
+    document.getElementById('kpiLatest').textContent = `NOK ${Number(latestRow.close).toFixed(2)}`;
+    document.getElementById('kpiLatestSub').textContent = `${latestRow.ticker || latestRow.isin} · ${latestDate}`;
+  }
+
+  document.getElementById('progressStart').textContent = startDate;
+  document.getElementById('progressCount').textContent = weeks;
+  document.getElementById('progressFill').style.width = Math.min(100, weeks/52*100).toFixed(1) + '%';
+
+  if (weeks >= 52) {
+    document.getElementById('progressEta').textContent = 'NOW';
+  } else {
+    const wkRemaining = 52 - weeks;
+    const eta = new Date(Date.now() + wkRemaining * 7 * 86400000);
+    document.getElementById('progressEta').textContent = eta.toISOString().slice(0,10);
+  }
+})();
+</script>
+
+</body>
+</html>

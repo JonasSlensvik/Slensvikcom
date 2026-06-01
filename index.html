@@ -3,467 +3,495 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Slensvik.com — Galton Investment Strategy</title>
+<title>Slensvik · Norwegian Equity Intelligence</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=Syne:wght@500;700;800&display=swap" rel="stylesheet">
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
-    --bg0: #080b11; --bg1: #0e1218; --bg2: #141820; --bg3: #1c2230; --bg4: #222a3a;
-    --border: rgba(255,255,255,0.06); --border2: rgba(255,255,255,0.11); --border3: rgba(255,255,255,0.18);
-    --text1: #e6eaf4; --text2: #7f8799; --text3: #434b5e;
-    --green: #00e5a0; --green-bg: rgba(0,229,160,0.08); --green-border: rgba(0,229,160,0.18);
-    --red: #ff4060; --red-bg: rgba(255,64,96,0.08); --red-border: rgba(255,64,96,0.18);
-    --blue: #4d8fff; --blue-bg: rgba(77,143,255,0.08);
-    --amber: #ffb020; --amber-bg: rgba(255,176,32,0.08);
-    --accent: #4d8fff;
+    --bg0:    #050810;
+    --bg1:    #0b0f17;
+    --bg2:    #11161f;
+    --bg3:    #1a212d;
+    --border: rgba(255,255,255,0.06);
+    --border2: rgba(255,255,255,0.12);
+    --border3: rgba(255,255,255,0.22);
+    --text1:  #e8eef7;
+    --text2:  #a4adbf;
+    --text3:  #5a6377;
+    --text4:  #3a4252;
+    --amber:  #f5a623;
+    --amber-dim: rgba(245,166,35,0.16);
+    --ice:    #4fc3f7;
+    --ice-dim:rgba(79,195,247,0.13);
+    --green:  #43e097;
+    --red:    #f06060;
+    --mono:   'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace;
+    --sans:   'Syne', sans-serif;
   }
   html { scroll-behavior: smooth; }
-  body { background: var(--bg0); color: var(--text1); font-family: 'Syne', sans-serif; min-height: 100vh; overflow-x: hidden; }
-
-  .topbar {
-    position: sticky; top: 0; z-index: 100;
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 0 36px; height: 56px;
-    background: rgba(8,11,17,0.94); backdrop-filter: blur(12px);
-    border-bottom: 1px solid var(--border);
+  body {
+    background: var(--bg0); color: var(--text1);
+    font-family: var(--mono); min-height: 100vh;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
   }
-  .logo-wrap { display: flex; align-items: baseline; gap: 10px; }
-  .logo { font-size: 15px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text1); }
-  .logo-dot { color: var(--accent); }
-  .logo-sub { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--text3); letter-spacing: 0.08em; }
-  .topbar-right { display: flex; align-items: center; gap: 16px; }
-  .status-dot { display: flex; align-items: center; gap: 6px; font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--green); letter-spacing: 0.06em; }
-  .status-dot::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--green); box-shadow: 0 0 6px var(--green); animation: pulse 2s ease-in-out infinite; }
-  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
-  .status-dot-closed { display: flex; align-items: center; gap: 6px; font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--text3); letter-spacing: 0.06em; }
-  .status-dot-closed::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--text3); }
-  #last-updated { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--text3); }
 
-  .hero { padding: 64px 36px 48px; border-bottom: 1px solid var(--border); position: relative; overflow: hidden; }
-  .hero::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: radial-gradient(ellipse 60% 50% at 10% 50%, rgba(77,143,255,0.05) 0%, transparent 70%), radial-gradient(ellipse 40% 60% at 90% 30%, rgba(123,95,255,0.04) 0%, transparent 70%); pointer-events: none; }
-  .hero-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; max-width: 1200px; }
-  .hero-left { padding-right: 48px; border-right: 1px solid var(--border); }
-  .hero-eyebrow { font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.2em; color: var(--accent); text-transform: uppercase; margin-bottom: 16px; }
-  .hero-title { font-size: clamp(32px, 4vw, 52px); font-weight: 800; line-height: 1.05; letter-spacing: -0.02em; color: var(--text1); margin-bottom: 16px; }
-  .hero-title span { color: var(--accent); }
-  .hero-desc { font-size: 14px; line-height: 1.7; color: var(--text2); max-width: 440px; }
-  .hero-right { padding-left: 48px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-content: center; }
+  /* ─── Animated matrix background ─────────────────────────────────────── */
+  #matrix-bg {
+    position: fixed; inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0.62;
+  }
+  /* Top + bottom vignette so cards remain readable */
+  .vignette {
+    position: fixed; inset: 0; z-index: 1; pointer-events: none;
+    background:
+      radial-gradient(ellipse 80% 60% at 50% 50%, transparent 0%, rgba(5,8,16,0.55) 100%),
+      linear-gradient(180deg, rgba(5,8,16,0.45) 0%, transparent 18%, transparent 82%, rgba(5,8,16,0.6) 100%);
+  }
 
-  .kpi { padding: 20px; background: var(--bg1); border: 1px solid var(--border); border-radius: 6px; position: relative; overflow: hidden; transition: border-color 0.2s; }
-  .kpi:hover { border-color: var(--border2); }
-  .kpi-accent-line { position: absolute; top: 0; left: 0; right: 0; height: 1px; }
-  .kpi .label { font-family: 'IBM Plex Mono', monospace; font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text3); margin-bottom: 10px; }
-  .kpi .value { font-size: 28px; font-weight: 700; letter-spacing: -0.03em; line-height: 1; }
-  .kpi .sub { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--text3); margin-top: 6px; }
-  .kpi.green .value { color: var(--green); } .kpi.green .kpi-accent-line { background: var(--green); opacity: 0.5; }
-  .kpi.blue .value { color: var(--blue); } .kpi.blue .kpi-accent-line { background: var(--blue); opacity: 0.5; }
-  .kpi.amber .value { color: var(--amber); } .kpi.amber .kpi-accent-line { background: var(--amber); opacity: 0.5; }
-  .kpi.red .value { color: var(--red); } .kpi.red .kpi-accent-line { background: var(--red); opacity: 0.5; }
+  /* ─── Foreground container ───────────────────────────────────────────── */
+  .page {
+    position: relative; z-index: 2;
+    min-height: 100vh;
+    display: flex; flex-direction: column;
+  }
 
-  .main { padding: 32px 36px; display: flex; flex-direction: column; gap: 24px; max-width: 1200px; }
-  .card { background: var(--bg1); border: 1px solid var(--border); border-radius: 6px; padding: 22px 24px; }
-  .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
-  .card-title { font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--text2); }
-  .card-meta { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--text3); }
+  /* ─── Top bar ────────────────────────────────────────────────────────── */
+  .topbar {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 22px 36px; border-bottom: 1px solid var(--border);
+    backdrop-filter: blur(6px); background: rgba(5,8,16,0.4);
+  }
+  .brand {
+    display: flex; align-items: baseline; gap: 10px;
+  }
+  .brand .mark {
+    font-family: var(--mono); font-size: 13px; font-weight: 500;
+    letter-spacing: 0.22em; color: var(--text1); text-transform: uppercase;
+  }
+  .brand .dot { color: var(--amber); }
+  .brand .sub {
+    font-family: var(--mono); font-size: 10px;
+    letter-spacing: 0.18em; color: var(--text3); text-transform: uppercase;
+  }
+  .market-status {
+    display: flex; align-items: center; gap: 8px;
+    font-family: var(--mono); font-size: 10px;
+    letter-spacing: 0.18em; text-transform: uppercase; color: var(--text2);
+  }
+  .market-status .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--text3); box-shadow: 0 0 6px var(--text3);
+  }
+  .market-status.open .dot {
+    background: var(--green); box-shadow: 0 0 8px var(--green);
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100% { opacity: 1 } 50% { opacity: 0.4 } }
 
-  .mid-row { display: grid; grid-template-columns: 1fr 300px; gap: 20px; }
-  .chart-outer { position: relative; width: 100%; height: 300px; }
-  .chart-outer canvas { position: absolute; top: 0; left: 0; width: 100% !important; height: 100% !important; }
-  .chart-legend { display: flex; gap: 20px; }
-  .leg { display: flex; align-items: center; gap: 7px; font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--text3); }
-  .leg-line { width: 18px; height: 2px; border-radius: 1px; }
+  /* ─── Hero / hub ─────────────────────────────────────────────────────── */
+  .hub {
+    flex: 1;
+    display: flex; flex-direction: column;
+    justify-content: center; align-items: center;
+    padding: 64px 36px 90px;
+  }
+  .eyebrow {
+    font-family: var(--mono); font-size: 10px;
+    letter-spacing: 0.32em; text-transform: uppercase;
+    color: var(--amber); margin-bottom: 18px;
+  }
+  .eyebrow .glyph { margin-right: 8px; }
+  h1.title {
+    font-family: var(--sans); font-weight: 700;
+    font-size: clamp(34px, 5vw, 56px);
+    line-height: 1.04; letter-spacing: -0.025em;
+    color: var(--text1); text-align: center; max-width: 880px;
+    margin-bottom: 18px;
+  }
+  h1.title em {
+    font-style: normal; color: var(--amber);
+    font-weight: 700;
+  }
+  .subtitle {
+    font-family: var(--mono); font-size: 13px;
+    color: var(--text2); max-width: 580px; text-align: center;
+    line-height: 1.6; letter-spacing: 0.02em;
+    margin-bottom: 56px;
+  }
 
-  .weights-list { display: flex; flex-direction: column; gap: 10px; }
-  .weight-row { display: grid; grid-template-columns: 70px 1fr 46px; align-items: center; gap: 8px; }
-  .w-ticker { font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 500; color: var(--text1); }
-  .w-bar-bg { height: 3px; background: var(--bg3); border-radius: 2px; }
-  .w-bar { height: 3px; background: var(--accent); border-radius: 2px; }
-  .w-pct { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--text2); text-align: right; }
+  /* ─── Gateway cards ──────────────────────────────────────────────────── */
+  .gateways {
+    display: grid; grid-template-columns: repeat(3, minmax(280px, 1fr));
+    gap: 18px; width: 100%; max-width: 1120px;
+  }
+  @media (max-width: 920px)  { .gateways { grid-template-columns: 1fr; max-width: 480px; } }
 
-  .holdings-wrap { overflow-x: auto; }
-  table { width: 100%; border-collapse: collapse; font-size: 12px; }
-  thead th { font-family: 'IBM Plex Mono', monospace; font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text3); padding: 0 12px 10px; border-bottom: 1px solid var(--border); text-align: right; white-space: nowrap; }
-  thead th:first-child { text-align: left; }
-  tbody tr { border-bottom: 1px solid var(--border); transition: background 0.15s; }
-  tbody tr:last-child { border-bottom: none; }
-  tbody tr:hover { background: var(--bg2); }
-  tbody td { padding: 11px 12px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--text2); text-align: right; white-space: nowrap; }
-  tbody td:first-child { text-align: left; }
-  .td-ticker { display: flex; align-items: center; gap: 10px; }
-  .ticker-badge { width: 30px; height: 30px; border-radius: 5px; background: var(--bg3); border: 1px solid var(--border2); display: flex; align-items: center; justify-content: center; font-size: 8px; font-weight: 700; color: var(--text2); letter-spacing: 0.05em; flex-shrink: 0; }
-  .ticker-name-cell { font-size: 11px; color: var(--text1); font-weight: 500; }
-  .pos { color: var(--green); } .neg { color: var(--red); } .neutral { color: var(--text2); }
-  .sig { display: inline-block; padding: 3px 9px; border-radius: 3px; font-size: 9px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; }
-  .sig-in { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
-  .sig-out { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-border); }
-  .tbl-bar-wrap { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
-  .tbl-bar-bg { width: 50px; height: 3px; background: var(--bg3); border-radius: 2px; }
-  .tbl-bar { height: 3px; background: var(--accent); border-radius: 2px; }
+  .gw {
+    position: relative;
+    border: 1px solid var(--border2);
+    background: rgba(11,15,23,0.78);
+    backdrop-filter: blur(8px);
+    padding: 26px 26px 22px;
+    text-decoration: none; color: var(--text1);
+    transition: border-color .25s, background .25s, transform .25s;
+    overflow: hidden;
+    display: flex; flex-direction: column; gap: 14px;
+    min-height: 230px;
+  }
+  .gw::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 1px;
+    background: var(--border2);
+    transition: background .25s;
+  }
+  .gw:hover {
+    border-color: var(--border3);
+    background: rgba(17,22,31,0.85);
+    transform: translateY(-1px);
+  }
+  .gw:hover::before { background: var(--amber); }
 
-  .loading { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 60vh; gap: 16px; }
-  .spinner { width: 36px; height: 36px; border-radius: 50%; border: 2px solid var(--border2); border-top-color: var(--accent); animation: spin 0.8s linear infinite; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .loading-text { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--text3); letter-spacing: 0.1em; }
-  .error-box { background: var(--red-bg); border: 1px solid var(--red-border); border-radius: 6px; padding: 20px 24px; max-width: 520px; }
-  .error-title { color: var(--red); font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 500; margin-bottom: 8px; }
-  .error-detail { color: var(--text2); font-family: 'IBM Plex Mono', monospace; font-size: 10px; line-height: 1.7; }
+  .gw-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+  .gw-glyph {
+    font-family: var(--mono); font-size: 22px; line-height: 1;
+    color: var(--amber);
+  }
+  .gw-status {
+    font-family: var(--mono); font-size: 9px; letter-spacing: 0.18em;
+    text-transform: uppercase; color: var(--text3);
+    padding: 2px 7px; border: 1px solid var(--border2); border-radius: 0;
+  }
+  .gw-status.live { color: var(--green); border-color: rgba(67,224,151,0.32); background: rgba(67,224,151,0.06); }
+  .gw-status.beta { color: var(--ice);   border-color: rgba(79,195,247,0.32); background: rgba(79,195,247,0.06); }
+  .gw-status.acc  { color: var(--amber); border-color: rgba(245,166,35,0.32); background: rgba(245,166,35,0.06); }
 
-  .footer { margin-top: 48px; padding: 24px 36px; border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
-  .footer-text { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--text3); line-height: 1.6; }
+  .gw-name {
+    font-family: var(--mono); font-size: 16px; font-weight: 500;
+    letter-spacing: 0.16em; text-transform: uppercase; color: var(--text1);
+  }
+  .gw-desc {
+    font-family: var(--mono); font-size: 11.5px; line-height: 1.66;
+    color: var(--text2); letter-spacing: 0.01em;
+    flex: 1;
+  }
 
-  .fade-in { animation: fadeIn 0.5s ease forwards; }
-  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  .gw-meta {
+    display: flex; flex-wrap: wrap; gap: 14px;
+    border-top: 1px solid var(--border);
+    padding-top: 10px;
+    font-family: var(--mono); font-size: 10px;
+    letter-spacing: 0.08em; color: var(--text3);
+  }
+  .gw-meta strong {
+    color: var(--text1); font-weight: 500;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .gw-enter {
+    display: flex; align-items: center; justify-content: space-between;
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.22em;
+    text-transform: uppercase; color: var(--text2);
+    padding-top: 6px;
+  }
+  .gw:hover .gw-enter { color: var(--amber); }
+  .gw-arrow {
+    font-size: 14px; transition: transform .25s;
+  }
+  .gw:hover .gw-arrow { transform: translateX(4px); }
+
+  /* ─── Footer ──────────────────────────────────────────────────────────── */
+  .foot {
+    padding: 18px 36px 22px;
+    display: flex; justify-content: space-between; align-items: center;
+    border-top: 1px solid var(--border);
+    font-family: var(--mono); font-size: 9.5px;
+    letter-spacing: 0.18em; text-transform: uppercase; color: var(--text3);
+  }
+  .foot a { color: var(--text3); text-decoration: none; }
+  .foot a:hover { color: var(--amber); }
 </style>
 </head>
 <body>
-<div id="app">
-  <div class="loading">
-    <div class="spinner"></div>
-    <div class="loading-text">Fetching live data...</div>
-  </div>
+
+<canvas id="matrix-bg"></canvas>
+<div class="vignette"></div>
+
+<div class="page">
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="mark">SLENSVIK<span class="dot">·</span>COM</span>
+      <span class="sub">Norwegian Equity Intelligence</span>
+    </div>
+    <div class="market-status" id="marketStatus">
+      <span class="dot"></span><span class="label">CHECKING …</span>
+    </div>
+  </header>
+
+  <main class="hub">
+
+    <div class="eyebrow"><span class="glyph">◆</span>v3 · 2026</div>
+    <h1 class="title">Microstructure intelligence and <em>quantitative equity</em> tooling for Oslo Børs.</h1>
+    <p class="subtitle">
+      Three instruments sharing one data spine — MiFID II trade fidelity,
+      delayed snapshot fundamentals, and conviction tracking — sourced and
+      assembled to support a single human running real money.
+    </p>
+
+    <nav class="gateways">
+
+      <a class="gw" href="markedsradar.html">
+        <div class="gw-head">
+          <span class="gw-glyph">▣</span>
+          <span class="gw-status live">LIVE</span>
+        </div>
+        <div class="gw-name">Markedsradar</div>
+        <p class="gw-desc">
+          Every Norwegian trade printed by Euronext, run through wall-bias,
+          ceiling/floor break and cross-sectional dark-flow logic. Today's
+          Book ranks long and short candidates by conviction.
+        </p>
+        <div class="gw-meta">
+          <span>Universe <strong id="kpiMrUniverse">—</strong></span>
+          <span>Signals/d <strong id="kpiMrSignals">—</strong></span>
+        </div>
+        <div class="gw-enter"><span>ENTER</span><span class="gw-arrow">→</span></div>
+      </a>
+
+      <a class="gw" href="galton.html">
+        <div class="gw-head">
+          <span class="gw-glyph">◆</span>
+          <span class="gw-status acc" id="galtonStatus">ACCUMULATING</span>
+        </div>
+        <div class="gw-name">Galton Strategy</div>
+        <p class="gw-desc">
+          Long-short equity rebalance on the full OSE universe. Weekly
+          weights from a regularised covariance estimator on 52 weeks of
+          close prices. Goes live once data accumulates.
+        </p>
+        <div class="gw-meta">
+          <span>Universe <strong id="kpiGalUniverse">—</strong></span>
+          <span>Weeks <strong id="kpiGalWeeks">—/52</strong></span>
+        </div>
+        <div class="gw-enter"><span>ENTER</span><span class="gw-arrow">→</span></div>
+      </a>
+
+      <a class="gw" href="portfolio.html">
+        <div class="gw-head">
+          <span class="gw-glyph">▤</span>
+          <span class="gw-status beta">PERSONAL</span>
+        </div>
+        <div class="gw-name">Portfolio Tracker</div>
+        <p class="gw-desc">
+          Your transactions, conviction overlay, dividend income tracking,
+          forward-event timeline and sector concentration. Cross-references
+          every holding against today's Markedsradar signal stack.
+        </p>
+        <div class="gw-meta">
+          <span>Source <strong>Local</strong></span>
+          <span>Sync <strong>PostgREST</strong></span>
+        </div>
+        <div class="gw-enter"><span>ENTER</span><span class="gw-arrow">→</span></div>
+      </a>
+
+    </nav>
+  </main>
+
+  <footer class="foot">
+    <span>SLENSVIK<span style="color:var(--amber)">·</span>COM · 2026</span>
+    <span><a href="fastrente.html">FASTRENTE →</a></span>
+  </footer>
 </div>
 
 <script>
-// ── CONFIG ──
-// Sheet ID (the short ID from the normal Google Sheets URL)
-const SHEET_ID = '18ZCDtj1DEEYpdfqP_el3HbQQfCHzyLesOxiy7pZD5-M';
+/* ─── Animated covariance-matrix background ────────────────────────────────
+   A grid of cells, each holding a value in [-1, 1] that drifts on its own
+   slow stochastic process. Diagonal cells stay strong; off-diagonals settle
+   toward a structured target with periodic re-randomisation.
 
-// GIDs for each tab (from File > Share > Publish to web URLs)
-const GIDS = {
-  summary:         '1991473757',
-  relWeights:      '1196691058',
-  portReturn:      '1911670326',
-  eligibleTickers: '228386853'
-};
+   This is a generic "estimator → structured target" visual; the strategy's
+   exact regularisation kernel can shape it more specifically later.
+*/
+(() => {
+  const canvas = document.getElementById('matrix-bg');
+  const ctx    = canvas.getContext('2d');
+  const dpr    = Math.min(window.devicePixelRatio || 1, 2);
 
-// ── FETCH VIA GOOGLE VISUALIZATION QUERY API ──
-// gviz/tq is Google's own CORS-enabled endpoint — works with the short sheet ID.
-// Must use the short ID (not the long PACX- published ID).
-async function fetchSheet(key) {
-  const url = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID +
-              '/gviz/tq?tqx=out:csv&gid=' + GIDS[key];
-  const res = await fetch(url, { cache: 'no-cache' });
-  if (!res.ok) throw new Error('HTTP ' + res.status + ' fetching ' + key);
-  const text = await res.text();
-  if (!text || text.trim().length < 5) throw new Error('Empty response for ' + key);
-  return parseCSV(text);
-}
-
-// ── CSV PARSER ──
-function parseCSV(raw) {
-  function splitLine(line) {
-    const result = [];
-    let cur = '', inQ = false;
-    for (let i = 0; i < line.length; i++) {
-      const c = line[i];
-      if (c === '"') { inQ = !inQ; continue; }
-      if (c === ',' && !inQ) { result.push(cur.trim()); cur = ''; continue; }
-      cur += c;
+  // Universe-like dimensions: 24x24 cells (~ a covariance matrix on a
+  // mid-sized OSE subset). Big enough to feel like data, small enough to
+  // animate cheaply.
+  const N = 24;
+  const cells = [];
+  for (let i = 0; i < N; i++) {
+    for (let j = 0; j < N; j++) {
+      cells.push({
+        i, j,
+        v: 0, target: 0,
+        speed: 0.0024 + Math.random() * 0.004,
+      });
     }
-    result.push(cur.trim());
-    return result;
   }
-  const lines = raw.trim().split('\n').filter(l => l.trim());
-  if (lines.length < 2) return [];
-  const headers = splitLine(lines[0]);
-  return lines.slice(1).map(line => {
-    const vals = splitLine(line);
-    const obj = {};
-    headers.forEach((h, i) => obj[h] = (vals[i] || '').trim());
-    return obj;
-  });
-}
+  const cellAt = (i, j) => cells[i * N + j];
 
-function num(v) { const n = parseFloat(v); return isNaN(n) ? null : n; }
-function tickerShort(t) { return (t || '').replace(/\.OL$|\.OS$/i, '').substring(0, 8); }
-function tickerInitials(t) { return tickerShort(t).substring(0, 2).toUpperCase(); }
+  function reshuffleTargets() {
+    // Block-structured target: simulates sector clustering with shrinkage
+    // pulling everything toward block means.
+    const nBlocks = 4 + Math.floor(Math.random() * 2);
+    const blockSize = Math.ceil(N / nBlocks);
+    const blockMean = [];
+    for (let b = 0; b < nBlocks; b++) blockMean.push(Math.random() * 1.6 - 0.8);
 
-// ── COMPUTE KPIs ──
-function computeKPIs(summary) {
-  const live = summary.filter(r => num(r.IndexedReturn) > 0);
-  if (!live.length) return null;
-  let latest = live[live.length - 1];
-  for (let i = live.length - 1; i >= 0; i--) {
-    if (live[i].Period && num(live[i].PortReturn) !== null) { latest = live[i]; break; }
-  }
-  const idxRet = num(latest.IndexedReturn);
-  const totalReturn = ((idxRet / 100) - 1) * 100;
-  const weeks = live.length;
-  const years = weeks / 52;
-  const annReturn = years > 0 ? (Math.pow(idxRet / 100, 1 / years) - 1) * 100 : 0;
-  const weeklyRets = live.map(r => num(r.PortReturn)).filter(v => v !== null);
-  const mean = weeklyRets.reduce((a, b) => a + b, 0) / weeklyRets.length;
-  const variance = weeklyRets.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / weeklyRets.length;
-  const weeklyVol = Math.sqrt(variance);
-  const rfWeekly = 0.0425 / 52;
-  const sharpe = weeklyVol > 0 ? (mean - rfWeekly) / weeklyVol * Math.sqrt(52) : 0;
-  let peak = -Infinity, maxDD = 0;
-  live.forEach(r => {
-    const idx = num(r.IndexedReturn);
-    if (!idx) return;
-    if (idx > peak) peak = idx;
-    const dd = (idx - peak) / peak * 100;
-    if (dd < maxDD) maxDD = dd;
-  });
-  return {
-    totalReturn: totalReturn.toFixed(1),
-    annReturn: annReturn.toFixed(1),
-    sharpe: sharpe.toFixed(2),
-    maxDD: maxDD.toFixed(1),
-    latestDate: latest.Period,
-    weeks
-  };
-}
-
-// ── RENDER ──
-function render(summary, relWeights, portReturn, eligibleTickers) {
-  const kpis = computeKPIs(summary);
-  const liveSummary = summary.filter(r => num(r.IndexedReturn) > 0);
-
-  // Latest weights row — skip date column, treat rest as ticker: weight
-  const liveW = relWeights.filter(row => Object.values(row).some(v => num(v) > 0.0001));
-  const latestWRow = liveW[liveW.length - 1] || {};
-  const allCols = Object.keys(latestWRow);
-  const tickerCols = allCols.filter(k => k && !k.match(/^\d{4}-/) && k.toLowerCase() !== 'date' && k.trim() !== '');
-  const weightEntries = tickerCols
-    .map(ticker => ({ ticker, weight: num(latestWRow[ticker]) }))
-    .filter(e => e.weight !== null && Math.abs(e.weight) > 0.0001)
-    .sort((a, b) => Math.abs(b.weight) - Math.abs(a.weight));
-
-  // Eligible tickers set
-  const eligSet = new Set();
-  if (eligibleTickers && eligibleTickers.length) {
-    const liveE = eligibleTickers.filter(r => Object.values(r).some(v => v && v.includes('.')));
-    const lastE = liveE[liveE.length - 1] || {};
-    Object.values(lastE).forEach(v => { if (v && v.includes('.')) eligSet.add(v.trim()); });
-  }
-
-  const maxW = weightEntries.length ? Math.max(...weightEntries.map(e => Math.abs(e.weight))) : 1;
-  const perfLabels = liveSummary.map(r => r.Period);
-  const perfData = liveSummary.map(r => {
-    const v = num(r.IndexedReturn);
-    return v !== null ? parseFloat(((v / 100 - 1) * 100).toFixed(2)) : null;
-  });
-
-  function getLatestReturn(ticker) {
-    const rows = portReturn.filter(r => r[ticker] && num(r[ticker]) !== null);
-    if (!rows.length) return null;
-    return num(rows[rows.length - 1][ticker]);
-  }
-
-  document.getElementById('app').innerHTML = `
-    <div class="topbar fade-in">
-      <div class="logo-wrap">
-        <div class="logo">Slensvik<span class="logo-dot">.</span>com</div>
-        <div class="logo-sub">Galton Algorithm · Oslo Børs</div>
-      </div>
-      <div class="topbar-right">
-        <a href="fastrente.html" style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text2);text-decoration:none;padding:6px 14px;border:1px solid var(--border2);border-radius:4px;transition:all 0.2s" onmouseover="this.style.color='var(--text1)';this.style.borderColor='var(--border3)'" onmouseout="this.style.color='var(--text2)';this.style.borderColor='var(--border2)'">Fastrente →</a>
-        <div id="market-status"></div>
-        <span id="last-updated">${kpis ? 'Updated: ' + kpis.latestDate : ''}</span>
-      </div>
-    </div>
-
-    <div class="hero fade-in">
-      <div class="hero-grid">
-        <div class="hero-left">
-          <div class="hero-eyebrow">Quantitative Equity Strategy</div>
-          <h1 class="hero-title">The Galton<br><span>Investment</span><br>Algorithm</h1>
-          <p class="hero-desc">A systematic, weekly-rebalanced long/short equity strategy applied to the Oslo Stock Exchange. Built on market cap eligibility screening, momentum, and cross-sectional ranking.</p>
-        </div>
-        <div class="hero-right">
-          <div class="kpi green">
-            <div class="kpi-accent-line"></div>
-            <div class="label">Total Return</div>
-            <div class="value">${kpis ? (parseFloat(kpis.totalReturn) >= 0 ? '+' : '') + kpis.totalReturn + '%' : '—'}</div>
-            <div class="sub">Since inception</div>
-          </div>
-          <div class="kpi green">
-            <div class="kpi-accent-line"></div>
-            <div class="label">Ann. Return</div>
-            <div class="value">${kpis ? (parseFloat(kpis.annReturn) >= 0 ? '+' : '') + kpis.annReturn + '%' : '—'}</div>
-            <div class="sub">${kpis ? kpis.weeks + ' weeks' : ''}</div>
-          </div>
-          <div class="kpi blue">
-            <div class="kpi-accent-line"></div>
-            <div class="label">Sharpe Ratio</div>
-            <div class="value">${kpis ? kpis.sharpe : '—'}</div>
-            <div class="sub">rf = 4.25% p.a.</div>
-          </div>
-          <div class="kpi ${kpis && parseFloat(kpis.maxDD) < -15 ? 'red' : 'amber'}">
-            <div class="kpi-accent-line"></div>
-            <div class="label">Max Drawdown</div>
-            <div class="value">${kpis ? kpis.maxDD + '%' : '—'}</div>
-            <div class="sub">Peak-to-trough</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="main fade-in">
-      <div class="mid-row">
-        <div class="card">
-          <div class="card-header">
-            <span class="card-title">Cumulative Performance</span>
-            <div class="chart-legend">
-              <div class="leg"><div class="leg-line" style="background:#4d8fff"></div>Galton Strategy</div>
-            </div>
-          </div>
-          <div class="chart-outer"><canvas id="perfChart"></canvas></div>
-        </div>
-        <div class="card">
-          <div class="card-header">
-            <span class="card-title">Current Weights</span>
-            <span class="card-meta">${weightEntries.length} positions</span>
-          </div>
-          <div class="weights-list">
-            ${weightEntries.map(e => {
-              const isShort = e.weight < 0;
-              const pct = (Math.abs(e.weight)/maxW*100).toFixed(1);
-              const col = isShort ? 'var(--red)' : 'var(--accent)';
-              return '<div class="weight-row">' +
-                '<div class="w-ticker" style="color:' + (isShort ? 'var(--red)' : 'var(--text1)') + '">' + tickerShort(e.ticker) + '</div>' +
-                '<div class="w-bar-bg"><div class="w-bar" style="width:' + pct + '%;background:' + col + '"></div></div>' +
-                '<div class="w-pct" style="color:' + (isShort ? 'var(--red)' : 'var(--text2)') + '">' + (isShort ? '' : '+') + (e.weight*100).toFixed(1) + '%</div>' +
-                '</div>';
-            }).join('') || '<div class="loading-text">No weight data</div>'}
-          </div>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-header">
-          <span class="card-title">Portfolio Holdings · Weekly Signals</span>
-          <span class="card-meta">Week of ${kpis ? kpis.latestDate : ''}</span>
-        </div>
-        <div class="holdings-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Ticker</th>
-                <th>Weight</th>
-                <th>Latest Weekly Ret.</th>
-                <th>Eligible</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${weightEntries.map(e => {
-                const wPct = (e.weight * 100).toFixed(2);
-                const barW = (e.weight / maxW * 100).toFixed(1);
-                const ret = getLatestReturn(e.ticker);
-                const retStr = ret !== null
-                  ? '<span class="' + (ret >= 0 ? 'pos' : 'neg') + '">' + (ret >= 0 ? '+' : '') + (ret*100).toFixed(2) + '%</span>'
-                  : '<span class="neutral">—</span>';
-                const inElig = eligSet.size === 0 || eligSet.has(e.ticker);
-                const sig = eligSet.size
-                  ? (inElig ? '<span class="sig sig-in">IN</span>' : '<span class="sig sig-out">OUT</span>')
-                  : '<span class="sig sig-in">LONG</span>';
-                const isShort = e.weight < 0;
-                const barCol = isShort ? 'var(--red)' : 'var(--accent)';
-                const wLabel = (isShort ? '' : '+') + wPct + '%';
-                return '<tr>' +
-                  '<td><div class="td-ticker"><div class="ticker-badge" style="' + (isShort ? 'border-color:var(--red-border);color:var(--red)' : '') + '">' + tickerInitials(e.ticker) + '</div><div class="ticker-name-cell">' + tickerShort(e.ticker) + (isShort ? ' <span style="font-size:9px;color:var(--red);margin-left:4px">SHORT</span>' : '') + '</div></div></td>' +
-                  '<td><div class="tbl-bar-wrap"><div class="tbl-bar-bg"><div class="tbl-bar" style="width:' + barW + '%;background:' + barCol + '"></div></div><span style="color:' + (isShort ? 'var(--red)' : 'var(--text2)') + '">' + wLabel + '</span></div></td>' +
-                  '<td>' + retStr + '</td>' +
-                  '<td>' + sig + '</td>' +
-                  '</tr>';
-              }).join('')}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <div class="footer">
-      <div class="footer-text">Slensvik.com · Galton Investment Algorithm<br>For informational purposes only. Not financial advice.</div>
-      <div class="footer-text" style="text-align:right">Data: Oslo Børs via Google Finance<br>Rebalances every Monday</div>
-    </div>
-  `;
-
-  new Chart(document.getElementById('perfChart').getContext('2d'), {
-    type: 'line',
-    data: {
-      labels: perfLabels,
-      datasets: [{
-        data: perfData,
-        borderColor: '#4d8fff',
-        backgroundColor: ctx => {
-          const {chartArea, ctx: c} = ctx.chart;
-          if (!chartArea) return 'transparent';
-          const g = c.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
-          g.addColorStop(0, 'rgba(77,143,255,0.16)');
-          g.addColorStop(1, 'rgba(77,143,255,0.01)');
-          return g;
-        },
-        borderWidth: 2, pointRadius: 0, pointHoverRadius: 5,
-        pointHoverBackgroundColor: '#4d8fff', pointHoverBorderColor: '#0e1218', pointHoverBorderWidth: 2,
-        tension: 0.35, fill: true
-      }]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      interaction: { mode: 'index', intersect: false },
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          backgroundColor: '#141820', borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1,
-          titleColor: '#7f8799', bodyColor: '#e6eaf4',
-          titleFont: { family: 'IBM Plex Mono', size: 10 },
-          bodyFont: { family: 'IBM Plex Mono', size: 11 },
-          padding: 12,
-          callbacks: { label: c => ' ' + (c.parsed.y >= 0 ? '+' : '') + c.parsed.y.toFixed(2) + '%' }
-        }
-      },
-      scales: {
-        x: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#434b5e', font: { size: 9, family: 'IBM Plex Mono' }, maxTicksLimit: 10, maxRotation: 0 } },
-        y: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#434b5e', font: { size: 9, family: 'IBM Plex Mono' }, callback: v => (v >= 0 ? '+' : '') + v.toFixed(0) + '%' } }
+    for (const c of cells) {
+      if (c.i === c.j) {
+        c.target = 0.95;  // diagonal = strong, always
+        continue;
+      }
+      const bi = Math.floor(c.i / blockSize);
+      const bj = Math.floor(c.j / blockSize);
+      const sameBlock = (bi === bj);
+      const base = sameBlock ? blockMean[bi] : 0;
+      // Symmetric: ensure (i,j) and (j,i) match for visual coherence
+      if (c.i > c.j) {
+        c.target = cellAt(c.j, c.i).target;
+      } else {
+        c.target = base + (Math.random() - 0.5) * (sameBlock ? 0.4 : 0.5);
+        // Clip
+        if (c.target > 0.95) c.target = 0.95;
+        if (c.target < -0.95) c.target = -0.95;
       }
     }
-  });
-}
+  }
 
-// ── MARKET STATUS ──
-function updateMarketStatus() {
-  const el = document.getElementById('market-status');
-  if (!el) return;
-  // Oslo Børs: Mon-Fri 09:00-16:30 CET (UTC+1) / CEST (UTC+2 in summer)
-  const now = new Date();
-  const oslo = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Oslo' }));
-  const day = oslo.getDay(); // 0=Sun, 6=Sat
-  const h = oslo.getHours(), m = oslo.getMinutes();
-  const mins = h * 60 + m;
-  const isWeekday = day >= 1 && day <= 5;
-  const isMarketHours = mins >= 9*60 && mins < 16*60+30;
-  // Norwegian public holidays (fixed dates — extend as needed)
-  const holidays = ['01-01','05-01','05-17','12-25','12-26'];
-  const mmdd = String(oslo.getMonth()+1).padStart(2,'0') + '-' + String(oslo.getDate()).padStart(2,'0');
-  const isHoliday = holidays.includes(mmdd);
-  const isOpen = isWeekday && isMarketHours && !isHoliday;
-  el.className = isOpen ? 'status-dot' : 'status-dot-closed';
-  el.textContent = isOpen ? 'Market Open' : 'Market Closed';
-}
+  function resize() {
+    canvas.width  = window.innerWidth  * dpr;
+    canvas.height = window.innerHeight * dpr;
+    canvas.style.width  = window.innerWidth + 'px';
+    canvas.style.height = window.innerHeight + 'px';
+  }
+  resize();
+  window.addEventListener('resize', resize);
 
-// ── INIT ──
+  reshuffleTargets();
+  let lastShuffle = 0;
+  // Color sampler: blue (+) ↔ black (0) ↔ red (−). Saturated near edges.
+  function colorFor(v) {
+    const a = Math.min(1, Math.abs(v));
+    if (v >= 0) {
+      // amber/blue mix going positive
+      const r = Math.round(  8 + (245 -  8) * a * 0.55);
+      const g = Math.round( 14 + (166 - 14) * a * 0.55);
+      const b = Math.round( 22 + ( 35 - 22) * a * 0.25);
+      return `rgba(${r},${g},${b},${0.42 + a*0.5})`;
+    } else {
+      // ice/blue going negative
+      const r = Math.round(  8 + ( 50 -  8) * a * 0.55);
+      const g = Math.round( 14 + (140 - 14) * a * 0.55);
+      const b = Math.round( 22 + (200 - 22) * a * 0.55);
+      return `rgba(${r},${g},${b},${0.42 + a*0.55})`;
+    }
+  }
+
+  function frame(t) {
+    if (!lastShuffle) lastShuffle = t;
+    if (t - lastShuffle > 12000) {       // re-randomise structure every 12s
+      reshuffleTargets();
+      lastShuffle = t;
+    }
+
+    // Layout: a centered square that fills ~min(width, height)*0.95
+    const W = canvas.width, H = canvas.height;
+    const side = Math.min(W, H) * 0.94;
+    const cell = side / N;
+    const ox = (W - side) / 2;
+    const oy = (H - side) / 2;
+
+    ctx.clearRect(0, 0, W, H);
+
+    // Gentle vignette so cells fade at edges
+    const grad = ctx.createRadialGradient(W/2, H/2, side*0.15, W/2, H/2, side*0.75);
+    grad.addColorStop(0,   'rgba(5,8,16,0)');
+    grad.addColorStop(1,   'rgba(5,8,16,0.18)');
+
+    for (const c of cells) {
+      // Slow drift toward target
+      c.v += (c.target - c.v) * c.speed;
+
+      const x = ox + c.j * cell;
+      const y = oy + c.i * cell;
+      const s = cell - 2;   // 2px gutter
+
+      ctx.fillStyle = colorFor(c.v);
+      ctx.fillRect(x, y, s, s);
+    }
+
+    // Soft vignette overlay
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, H);
+
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+
+/* ─── Market status indicator (Oslo Børs hours) ───────────────────────────── */
+(function updateMarket() {
+  const el = document.getElementById('marketStatus');
+  function tick() {
+    const now = new Date();
+    const oslo = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Oslo' }));
+    const day  = oslo.getDay();
+    const mins = oslo.getHours() * 60 + oslo.getMinutes();
+    const isWeekday = day >= 1 && day <= 5;
+    const isOpen = isWeekday && mins >= 9*60 && mins < 16*60+30;
+    el.classList.toggle('open', isOpen);
+    el.querySelector('.label').textContent = isOpen ? 'OSE OPEN' : 'OSE CLOSED';
+  }
+  tick();
+  setInterval(tick, 30000);
+})();
+
+/* ─── Quick KPIs pulled from PostgREST ────────────────────────────────────── */
 (async () => {
-  try {
-    const [summary, relWeights, portReturn, eligibleTickers] = await Promise.all([
-      fetchSheet('summary'),
-      fetchSheet('relWeights'),
-      fetchSheet('portReturn'),
-      fetchSheet('eligibleTickers').catch(e => { console.warn('eligibleTickers:', e); return []; })
-    ]);
-    render(summary, relWeights, portReturn, eligibleTickers);
-    updateMarketStatus();
-    setInterval(updateMarketStatus, 60000); // refresh every minute
-  } catch(err) {
-    document.getElementById('app').innerHTML =
-      '<div class="loading"><div class="error-box"><div class="error-title">Failed to load data</div><div class="error-detail">' +
-      err.message + '<br><br>Check browser console for details.</div></div></div>';
-    console.error(err);
+  const API = 'https://api.slensvik.com';
+  const safeGet = async (p) => {
+    try {
+      const r = await fetch(`${API}/${p}`, { headers: { Accept: 'application/json' }});
+      if (!r.ok) return null;
+      return await r.json();
+    } catch (e) { return null; }
+  };
+
+  // Markedsradar universe + signal count
+  const univ = await safeGet('daily_summary?select=isin&limit=10000');
+  if (univ) document.getElementById('kpiMrUniverse').textContent = new Set(univ.map(r => r.isin)).size || '—';
+
+  const latest = await safeGet('smart_signals?select=trade_date&order=trade_date.desc&limit=1');
+  if (latest && latest.length) {
+    const d = latest[0].trade_date;
+    const sigs = await safeGet(`smart_signals?trade_date=eq.${d}&select=id`);
+    if (sigs) document.getElementById('kpiMrSignals').textContent = sigs.length;
+  }
+
+  // Galton: universe size + weeks of data accumulated
+  const dc = await safeGet('daily_close?select=isin,trade_date&order=trade_date.asc');
+  if (dc && dc.length) {
+    const isins = new Set(dc.map(r => r.isin));
+    const dates = [...new Set(dc.map(r => r.trade_date))].sort();
+    document.getElementById('kpiGalUniverse').textContent = isins.size;
+    const weeks = Math.floor(dates.length / 5);  // ~5 trading days per week
+    document.getElementById('kpiGalWeeks').textContent = `${weeks}/52`;
+    if (weeks >= 52) {
+      const st = document.getElementById('galtonStatus');
+      st.className = 'gw-status live';
+      st.textContent = 'LIVE';
+    }
   }
 })();
 </script>
+
 </body>
 </html>
