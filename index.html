@@ -338,30 +338,29 @@
   const cellAt = (i, j) => cells[i * N + j];
 
   function reshuffleTargets() {
-    // Block-structured target: simulates sector clustering with shrinkage
-    // pulling everything toward block means.
-    const nBlocks = 4 + Math.floor(Math.random() * 2);
+    // Each cell drifts toward the Galton-shrunken correlation it would have
+    // under the actual ρ shrinkage from the dissertation's Table 1:
+    //   ρ_G_ij = 0.068 + 0.259 · ρ̂_ij   (off-diagonal)
+    // Diagonal stays at 1. The "sample" ρ̂ underneath is itself slowly
+    // drifting block-structured noise — what an estimator would see.
+    const G0 = 0.0680, G1 = 0.2592;
+    const nBlocks   = 4 + Math.floor(Math.random() * 2);
     const blockSize = Math.ceil(N / nBlocks);
     const blockMean = [];
     for (let b = 0; b < nBlocks; b++) blockMean.push(Math.random() * 1.6 - 0.8);
 
     for (const c of cells) {
-      if (c.i === c.j) {
-        c.target = 0.95;  // diagonal = strong, always
-        continue;
-      }
+      if (c.i === c.j) { c.target = 0.95; continue; }
       const bi = Math.floor(c.i / blockSize);
       const bj = Math.floor(c.j / blockSize);
       const sameBlock = (bi === bj);
-      const base = sameBlock ? blockMean[bi] : 0;
-      // Symmetric: ensure (i,j) and (j,i) match for visual coherence
+      const base      = sameBlock ? blockMean[bi] : 0;
       if (c.i > c.j) {
         c.target = cellAt(c.j, c.i).target;
       } else {
-        c.target = base + (Math.random() - 0.5) * (sameBlock ? 0.4 : 0.5);
-        // Clip
-        if (c.target > 0.95) c.target = 0.95;
-        if (c.target < -0.95) c.target = -0.95;
+        const rhoHat  = base + (Math.random() - 0.5) * (sameBlock ? 0.4 : 0.5);
+        const rhoG    = G0 + G1 * rhoHat;
+        c.target = Math.max(-0.95, Math.min(0.95, rhoG));
       }
     }
   }

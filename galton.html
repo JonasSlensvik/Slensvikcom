@@ -58,7 +58,7 @@
 
   /* ─── Weights bars ──────────────────────────────────────── */
   .w-list { display:flex; flex-direction:column; gap:4px; }
-  .w-row { display:grid; grid-template-columns:18px 60px 1fr 56px 38px; align-items:center; gap:8px; font-family:var(--mono); font-size:10.5px; padding:3px 0; border-bottom:1px dashed var(--border); }
+  .w-row { display:grid; grid-template-columns:18px 60px 1fr 58px 36px 50px; align-items:center; gap:8px; font-family:var(--mono); font-size:10.5px; padding:3px 0; border-bottom:1px dashed var(--border); }
   .w-row:last-child { border-bottom:none; }
   .w-rank { color:var(--text3); text-align:right; font-size:9px; }
   .w-ticker { color:var(--text1); font-weight:500; letter-spacing:.04em; display:flex; align-items:center; gap:4px; }
@@ -70,23 +70,37 @@
   .w-pct { text-align:right; font-variant-numeric:tabular-nums; color:var(--text2); font-size:10.5px; }
   .w-pct.long { color:var(--green); } .w-pct.short { color:var(--red); }
   .w-rc { text-align:right; font-variant-numeric:tabular-nums; color:var(--text3); font-size:9px; }
+  .w-mr {
+    text-align:center; font-size:8.5px; letter-spacing:.06em;
+    padding:1px 4px; border:1px solid var(--border);
+  }
+  .w-mr.long  { color:var(--green); border-color:rgba(67,224,151,0.4); background:rgba(67,224,151,0.06); }
+  .w-mr.short { color:var(--red);   border-color:rgba(240,96,96,0.4);  background:rgba(240,96,96,0.06); }
+  .w-mr.none  { color:var(--text4); }
 
-  /* ─── Vector strips ─────────────────────────────────────── */
-  .vec-block { font-family:var(--mono); font-size:10.5px; }
-  .vec-pair { display:grid; grid-template-columns:auto auto; gap:8px 12px; margin-bottom:14px; }
-  .vec-label { font-size:10px; letter-spacing:.14em; color:var(--text2); text-transform:uppercase; min-width:120px; }
+  /* ─── Vector strips — FIXED ALIGNMENT ─────────────────── */
+  .vec-pair {
+    display: grid;
+    grid-template-columns: 240px 1fr;    /* fixed label column */
+    gap: 8px 14px;
+    align-items: center;
+    margin-bottom: 4px;
+  }
+  .vec-label { font-family:var(--mono); font-size:10px; letter-spacing:.14em; color:var(--text2); text-transform:uppercase; }
   .vec-label em { color:var(--amber); font-style:normal; }
+  .vec-label .sub { color:var(--text3); font-size:9px; letter-spacing:.06em; text-transform:none; display:block; margin-top:2px; }
   .vec-cells { display:flex; gap:1px; }
   .vec-cell { width:9px; height:18px; }
+  .vec-axis { display:grid; grid-template-columns:240px 1fr; gap:8px 14px; margin-top:6px; }
+  .vec-axis .ticker-strip { display:flex; gap:1px; font-family:var(--mono); font-size:7px; color:var(--text3); }
+  .vec-axis .ticker-strip span { width:9px; text-align:center; transform:rotate(-90deg); transform-origin:left top; margin-top:32px; }
 
   /* ─── Heatmaps ───────────────────────────────────────────── */
   .hm-wrap { display:flex; flex-direction:column; gap:6px; align-items:center; padding:8px 4px; }
   .hm-title { font-family:var(--mono); font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:var(--text2); }
   .hm-canvas { border:1px solid var(--border); }
-  .hm-axis { display:flex; gap:0; font-family:var(--mono); font-size:7px; color:var(--text3); }
-  .hm-axis span { transform:rotate(-90deg); transform-origin:left top; }
 
-  /* ─── Var fan / dist ────────────────────────────────────── */
+  /* ─── VaR fan ────────────────────────────────────────────── */
   .var-bar { position:relative; height:64px; border:1px solid var(--border); background:var(--bg2); }
   .var-bar canvas { display:block; width:100%; height:100%; }
   .var-meta { font-family:var(--mono); font-size:10px; letter-spacing:.1em; color:var(--text3); margin-top:8px; display:flex; gap:18px; }
@@ -96,14 +110,74 @@
   .diff-row { display:flex; gap:6px; flex-wrap:wrap; }
   .diff-pill { font-family:var(--mono); font-size:10px; letter-spacing:.06em; padding:3px 7px; border:1px solid var(--border2); }
   .diff-add { color:var(--green); border-color:rgba(67,224,151,0.32); background:rgba(67,224,151,0.06); }
-  .diff-rem { color:var(--red); border-color:rgba(240,96,96,0.32); background:rgba(240,96,96,0.06); }
+  .diff-rem { color:var(--red);   border-color:rgba(240,96,96,0.32);  background:rgba(240,96,96,0.06); }
 
-  /* ─── Shrinkage coefficients ───────────────────────────── */
-  .shr-row { display:grid; grid-template-columns:1fr 70px 70px; gap:8px; padding:8px 0; font-family:var(--mono); font-size:11px; border-bottom:1px dashed var(--border); }
-  .shr-row:last-child { border-bottom:none; }
-  .shr-row .lbl { color:var(--text1); }
-  .shr-row .lbl em { color:var(--amber); font-style:normal; }
-  .shr-row .val { text-align:right; color:var(--ice); font-variant-numeric:tabular-nums; }
+  /* ─── Coefficient sliders ───────────────────────────────── */
+  .sl-row {
+    display: grid;
+    grid-template-columns: 240px 1fr 80px;
+    gap: 14px; align-items: center;
+    padding: 10px 0; border-bottom: 1px dashed var(--border);
+  }
+  .sl-row:last-child { border-bottom: none; }
+  .sl-row .lbl { font-family:var(--mono); font-size:11px; color:var(--text1); }
+  .sl-row .lbl em { color:var(--amber); font-style:normal; }
+  .sl-row input[type="range"] {
+    width:100%; appearance:none; -webkit-appearance:none;
+    background:transparent; height:4px;
+  }
+  .sl-row input[type="range"]::-webkit-slider-runnable-track { background:var(--bg3); height:2px; }
+  .sl-row input[type="range"]::-moz-range-track { background:var(--bg3); height:2px; }
+  .sl-row input[type="range"]::-webkit-slider-thumb {
+    appearance:none; -webkit-appearance:none;
+    width:12px; height:12px; border-radius:0;
+    background:var(--amber); border:1px solid var(--text1);
+    margin-top:-5px; cursor:pointer;
+  }
+  .sl-row input[type="range"]::-moz-range-thumb {
+    width:12px; height:12px; border-radius:0;
+    background:var(--amber); border:1px solid var(--text1); cursor:pointer;
+  }
+  .sl-row .val {
+    font-family:var(--mono); font-size:12px; text-align:right;
+    color:var(--ice); font-variant-numeric:tabular-nums;
+  }
+  .slider-actions { display:flex; gap:10px; margin-top:12px; }
+  .slider-actions button {
+    font-family:var(--mono); font-size:10px; letter-spacing:.14em; text-transform:uppercase;
+    padding:6px 12px; background:transparent; color:var(--text2);
+    border:1px solid var(--border2); cursor:pointer;
+  }
+  .slider-actions button:hover { color:var(--amber); border-color:var(--amber); }
+  .slider-actions button.active { color:var(--amber); border-color:var(--amber); }
+
+  /* ─── Eigen + sector panels ─────────────────────────────── */
+  .eig-row {
+    display: grid; grid-template-columns: 50px 80px 80px 1fr; gap: 10px;
+    align-items: center; padding: 8px 0;
+    font-family: var(--mono); font-size: 11px;
+    border-bottom: 1px dashed var(--border);
+  }
+  .eig-row:last-child { border-bottom: none; }
+  .eig-row .pc { color: var(--amber); letter-spacing:.1em; }
+  .eig-row .val { color: var(--text2); font-variant-numeric:tabular-nums; }
+  .eig-row .pct { color: var(--ice); font-variant-numeric:tabular-nums; }
+  .eig-strip { display:flex; gap:1px; }
+  .eig-cell { width:6px; height:14px; }
+
+  .sector-row { display:flex; align-items:center; gap:10px; padding:5px 0; font-family:var(--mono); font-size:11px; }
+  .sector-name { color:var(--text1); min-width:96px; }
+  .sector-bar-wrap { flex:1; height:8px; background:var(--bg3); }
+  .sector-bar { height:100%; background:var(--ice); }
+  .sector-pct { color:var(--text2); min-width:54px; text-align:right; font-variant-numeric:tabular-nums; }
+
+  /* ─── Performance placeholders ──────────────────────────── */
+  .ph {
+    font-family:var(--mono); font-size:11px; letter-spacing:.1em;
+    color:var(--text3); text-align:center; padding:32px 8px;
+    border:1px dashed var(--border); background:var(--bg2);
+  }
+  .ph strong { color:var(--amber); }
 </style>
 </head>
 <body>
@@ -121,7 +195,7 @@
     Weekly rebalance. Top 30 by current market cap (DN snapshot, locked annually).
     60-week return panel with linear Fama-MacBeth shrinkage applied separately to μ̂, σ̂, ρ̂.
     Σ_G rebuilt as diag(σ_G)·ρ_G·diag(σ_G) for invertibility. Solved via the Markowitz tangency
-    formula with absolute-value normalisation (Slensvik 2021, eq. 16).
+    formula (Slensvik 2021, eq. 16; standard sum-to-1 normalisation).
   </p>
 
   <!-- HERO KPIS -->
@@ -130,46 +204,79 @@
     <div class="kpi"><div class="kpi-lbl">NET</div><div class="kpi-val" id="kNet">—</div><div class="kpi-sub" id="kNetSub">dollar net long</div></div>
     <div class="kpi"><div class="kpi-lbl">GROSS L/S</div><div class="kpi-val" id="kGross">—</div><div class="kpi-sub">long &nbsp;/ short</div></div>
     <div class="kpi"><div class="kpi-lbl">FCST WEEKLY VOL</div><div class="kpi-val" id="kVol">—</div><div class="kpi-sub" id="kVolAnn">annualised —</div></div>
-    <div class="kpi"><div class="kpi-lbl">VaR<sub>95</sub> / VaR<sub>99</sub></div><div class="kpi-val" id="kVaR">—</div><div class="kpi-sub" id="kVaRSub">parametric one-week</div></div>
+    <div class="kpi"><div class="kpi-lbl">VaR₉₅ / VaR₉₉</div><div class="kpi-val" id="kVaR">—</div><div class="kpi-sub" id="kVaRSub">parametric one-week</div></div>
   </div>
 
-  <!-- WEIGHTS + RISK -->
+  <!-- WEIGHTS + VaR + COEFFICIENTS -->
   <div class="sec">
     <div class="grid-2">
 
       <div class="panel">
-        <div class="sec-head"><span class="glyph">▰</span>CURRENT WEIGHTS<span class="desc">Centred axis · longs (green) grow right · shorts (red) grow left · NEW marks fresh universe entries</span><span class="meta" id="wCount">—</span></div>
+        <div class="sec-head"><span class="glyph">▰</span>CURRENT WEIGHTS · MARKEDSRADAR OVERLAY<span class="desc">Each row also shows today's smart-money signal from Markedsradar</span><span class="meta" id="wCount">—</span></div>
         <div class="w-list" id="wList"><div style="color:var(--text3);text-align:center;padding:24px 8px;font-size:11px;letter-spacing:.1em">LOADING …</div></div>
       </div>
 
       <div>
         <div class="panel">
-          <div class="sec-head"><span class="glyph">△</span>VALUE AT RISK<span class="desc">Forecast loss distribution assuming Gaussian returns</span></div>
+          <div class="sec-head"><span class="glyph">△</span>VALUE AT RISK<span class="desc">Forecast Gaussian return distribution</span></div>
           <div class="var-bar"><canvas id="varCanvas"></canvas></div>
           <div class="var-meta">
             <span>μ<sub>port</sub> <strong id="vmMu">—</strong></span>
             <span>σ<sub>port</sub> <strong id="vmSig">—</strong></span>
-            <span>VaR<sub>95</sub> <strong id="vmV95">—</strong></span>
-            <span>VaR<sub>99</sub> <strong id="vmV99">—</strong></span>
+            <span>VaR₉₅ <strong id="vmV95">—</strong></span>
+            <span>VaR₉₉ <strong id="vmV99">—</strong></span>
           </div>
         </div>
 
         <div class="panel" style="margin-top:14px">
-          <div class="sec-head"><span class="glyph">≡</span>SHRINKAGE COEFFICIENTS</div>
-          <div class="shr-row"><div class="lbl">Correlation <em>ρ_G</em> = g₀ + g₁ · ρ̂</div><div class="val">+0.0680</div><div class="val">×0.2592</div></div>
-          <div class="shr-row"><div class="lbl">Volatility <em>σ_G</em> = g₀ + g₁ · σ̂</div><div class="val">+0.0222</div><div class="val">×0.6385</div></div>
-          <div class="shr-row"><div class="lbl">Mean return <em>μ_G</em> = g₀ + g₁ · μ̂</div><div class="val">+0.0033</div><div class="val">×0.1291</div></div>
+          <div class="sec-head"><span class="glyph">≡</span>SHRINKAGE COEFFICIENTS · LIVE</div>
+          <div class="sl-row">
+            <div class="lbl">Correlation <em>ρ_G</em> = g₀ + g₁ · ρ̂</div>
+            <div></div>
+            <div class="val" id="cRho">+0.0680 · ×0.2592</div>
+          </div>
+          <div class="sl-row">
+            <div class="lbl">Volatility <em>σ_G</em> = g₀ + g₁ · σ̂</div>
+            <div></div>
+            <div class="val" id="cSig">+0.0222 · ×0.6385</div>
+          </div>
+          <div class="sl-row">
+            <div class="lbl">Mean return <em>μ_G</em> = g₀ + g₁ · μ̂</div>
+            <div></div>
+            <div class="val" id="cMu">+0.0033 · ×0.1291</div>
+          </div>
         </div>
       </div>
 
     </div>
   </div>
 
+  <!-- COEFFICIENT SENSITIVITY SLIDERS -->
+  <div class="sec">
+    <div class="panel">
+      <div class="sec-head"><span class="glyph">◴</span>COEFFICIENT SENSITIVITY · INTERACTIVE<span class="desc">Slide a coefficient to see how the weights, σ_port and VaR move in real time</span><span class="meta" id="slStatus">paused</span></div>
+      <div id="sliders">
+        <div class="sl-row"><div class="lbl">g₀,ρ <span style="color:var(--text3)">intercept (correlation)</span></div><input type="range" id="sl_g0r" min="-0.3" max="0.3" step="0.001" value="0.0680"><div class="val" id="v_g0r">+0.068</div></div>
+        <div class="sl-row"><div class="lbl">g₁,ρ <span style="color:var(--text3)">slope (correlation)</span></div><input type="range" id="sl_g1r" min="-0.5" max="1.5" step="0.001" value="0.2592"><div class="val" id="v_g1r">+0.259</div></div>
+        <div class="sl-row"><div class="lbl">g₀,σ <span style="color:var(--text3)">intercept (volatility)</span></div><input type="range" id="sl_g0v" min="-0.1" max="0.2" step="0.0005" value="0.0222"><div class="val" id="v_g0v">+0.022</div></div>
+        <div class="sl-row"><div class="lbl">g₁,σ <span style="color:var(--text3)">slope (volatility)</span></div><input type="range" id="sl_g1v" min="-0.5" max="2.0" step="0.001" value="0.6385"><div class="val" id="v_g1v">+0.638</div></div>
+        <div class="sl-row"><div class="lbl">g₀,μ <span style="color:var(--text3)">intercept (mean return)</span></div><input type="range" id="sl_g0m" min="-0.05" max="0.05" step="0.0001" value="0.0033"><div class="val" id="v_g0m">+0.003</div></div>
+        <div class="sl-row"><div class="lbl">g₁,μ <span style="color:var(--text3)">slope (mean return)</span></div><input type="range" id="sl_g1m" min="-1.0" max="1.0" step="0.001" value="0.1291"><div class="val" id="v_g1m">+0.129</div></div>
+      </div>
+      <div class="slider-actions">
+        <button id="slReset">RESET TO LIVE</button>
+        <button id="slTable1">TABLE 1 (dissertation)</button>
+        <button id="slGMV">SET g₁_μ = 0 (≈ GMV)</button>
+        <button id="slLive">SHOW LIVE WEIGHTS</button>
+      </div>
+    </div>
+  </div>
+
   <!-- VECTORS BEFORE/AFTER -->
   <div class="sec">
     <div class="panel">
-      <div class="sec-head"><span class="glyph">∿</span>SHRINKAGE: BEFORE vs AFTER<span class="desc">Cross-section of inputs — each cell is one of the 30 stocks, coloured by value</span></div>
-      <div id="vecBlocks" class="vec-block" style="display:flex; flex-direction:column; gap:18px">LOADING …</div>
+      <div class="sec-head"><span class="glyph">∿</span>SHRINKAGE INPUTS · BEFORE vs AFTER<span class="desc">Each cell is one of the 30 stocks; colour encodes the value</span></div>
+      <div id="vecBlocks" style="display:flex; flex-direction:column; gap:8px">LOADING …</div>
     </div>
   </div>
 
@@ -179,6 +286,23 @@
       <div class="panel"><div class="hm-wrap"><div class="hm-title">SAMPLE ρ̂</div><canvas id="hmRhoHat"></canvas></div></div>
       <div class="panel"><div class="hm-wrap"><div class="hm-title">GALTON ρ_G</div><canvas id="hmRhoG"></canvas></div></div>
       <div class="panel"><div class="hm-wrap"><div class="hm-title">Σ_G (RECONSTRUCTED)</div><canvas id="hmSigmaG"></canvas></div></div>
+    </div>
+  </div>
+
+  <!-- EIGENSTRUCTURE + SECTOR -->
+  <div class="sec">
+    <div class="grid-2">
+
+      <div class="panel">
+        <div class="sec-head"><span class="glyph">⌬</span>Σ_G EIGENSTRUCTURE<span class="desc">Top-5 risk axes · variance explained · loading on each stock</span></div>
+        <div id="eigList"><div style="color:var(--text3);font-size:11px;padding:12px 0">LOADING …</div></div>
+      </div>
+
+      <div class="panel">
+        <div class="sec-head"><span class="glyph">⬢</span>SECTOR CONCENTRATION<span class="desc">Net weight by sector — risk awareness</span></div>
+        <div id="sectorList"><div style="color:var(--text3);font-size:11px;padding:12px 0">LOADING …</div></div>
+      </div>
+
     </div>
   </div>
 
@@ -193,8 +317,26 @@
   <!-- EXPOSURE OVER TIME -->
   <div class="sec">
     <div class="panel">
-      <div class="sec-head"><span class="glyph">∆</span>GROSS LONG / SHORT OVER TIME<span class="desc">Per-week gross exposure series</span></div>
+      <div class="sec-head"><span class="glyph">∆</span>EXPOSURE OVER TIME<span class="desc">Per-week gross long / gross short / net</span></div>
       <div style="height:200px"><canvas id="expCanvas"></canvas></div>
+    </div>
+  </div>
+
+  <!-- PERFORMANCE — accumulators -->
+  <div class="sec">
+    <div class="grid-3">
+      <div class="panel">
+        <div class="sec-head"><span class="glyph">↗</span>CUMULATIVE RETURN</div>
+        <div id="perfEquity" class="ph">Accumulates from the first realised week. <strong id="perfEquityMsg">0 weeks so far</strong></div>
+      </div>
+      <div class="panel">
+        <div class="sec-head"><span class="glyph">▢</span>VaR₉₅ BACKTEST<span class="desc">Kupiec-style breach counter</span></div>
+        <div id="perfVaR" class="ph">Breach counter starts populating next Monday. <strong id="perfVaRMsg">0 / 0 weeks</strong></div>
+      </div>
+      <div class="panel">
+        <div class="sec-head"><span class="glyph">▽</span>MAX DRAWDOWN</div>
+        <div id="perfDD" class="ph">Drawdown tracker requires equity curve. <strong id="perfDDMsg">—</strong></div>
+      </div>
     </div>
   </div>
 
@@ -208,35 +350,41 @@ const fmt = {
   num: (v, d=2) => v == null ? '—' : Number(v).toFixed(d),
 };
 
-// Color scale for heatmaps:  red (-) → black (0) → ice/blue (+)
+// ─── Sector map (reuse-friendly) ───────────────────────────────────────
+const SECTOR_MAP = {
+  EQNR:'Energy', AKERBP:'Energy', AKRBP:'Energy', VAR:'Energy', PGS:'Energy',
+  TGS:'Energy', BWLPG:'Energy', DNO:'Energy', SUBC:'Energy', SDRL:'Energy',
+  FRO:'Energy', BWO:'Energy', AKSO:'Energy',
+  MOWI:'Seafood', LSG:'Seafood', SALM:'Seafood', BAKKA:'Seafood', GSF:'Seafood',
+  AUSS:'Seafood', NRS:'Seafood',
+  DNB:'Financials', NDA:'Financials', GJF:'Financials', STB:'Financials',
+  SVEG:'Financials', SBANK:'Financials', SRBANK:'Financials',
+  SB1NO:'Financials', SBNOR:'Financials', MING:'Financials', SPOL:'Financials',
+  TEL:'Telecom', SCHA:'Media', SCHB:'Media',
+  NEL:'Renewables', REC:'Renewables', SCATC:'Renewables',
+  AKER:'Industrial', KOG:'Industrial', NHY:'Materials', YAR:'Materials', ELK:'Materials',
+  KIT:'Software', AUTO:'Software', CRAYON:'Software', NOD:'Software', VEND:'Software',
+  GOGL:'Shipping', BELCO:'Shipping', FLNG:'Shipping', HAUTO:'Shipping', WWI:'Shipping',
+  WAWI:'Shipping', DOFG:'Energy',
+  EPR:'Industrial', ORK:'Consumer', MULTI:'Industrial', PROT:'Industrial',
+  TOM:'Industrial', VEI:'Industrial',
+  GENO:'Healthcare',
+};
+
+// ─── Color helpers ────────────────────────────────────────────────────
 function corrColor(v) {
   const a = Math.min(1, Math.abs(v));
   if (v >= 0) {
-    const r = Math.round(11 + (79 - 11) * a);
-    const g = Math.round(17 + (195 - 17) * a);
-    const b = Math.round(28 + (247 - 28) * a);
-    return `rgb(${r},${g},${b})`;
-  } else {
-    const r = Math.round(11 + (240 - 11) * a);
-    const g = Math.round(17 + (96 - 17) * a);
-    const b = Math.round(28 + (96 - 28) * a);
-    return `rgb(${r},${g},${b})`;
+    return `rgb(${Math.round(11+(79-11)*a)},${Math.round(17+(195-17)*a)},${Math.round(28+(247-28)*a)})`;
   }
+  return `rgb(${Math.round(11+(240-11)*a)},${Math.round(17+(96-17)*a)},${Math.round(28+(96-28)*a)})`;
 }
-// Color for μ vector cells (positive only — orange amber tint)
 function valColor(v, vMax) {
   const a = Math.min(1, Math.abs(v) / (vMax || 1));
   if (v >= 0) {
-    const r = Math.round(20 + (245 - 20) * a);
-    const g = Math.round(30 + (166 - 30) * a);
-    const b = Math.round(40 + (35  - 40) * a);
-    return `rgb(${r},${g},${b})`;
-  } else {
-    const r = Math.round(20 + (240 - 20) * a);
-    const g = Math.round(30 + (96  - 30) * a);
-    const b = Math.round(40 + (96  - 40) * a);
-    return `rgb(${r},${g},${b})`;
+    return `rgb(${Math.round(20+(245-20)*a)},${Math.round(30+(166-30)*a)},${Math.round(40+(35-40)*a)})`;
   }
+  return `rgb(${Math.round(20+(240-20)*a)},${Math.round(30+(96-30)*a)},${Math.round(40+(96-40)*a)})`;
 }
 
 function drawHeatmap(canvas, M, size=300) {
@@ -244,11 +392,9 @@ function drawHeatmap(canvas, M, size=300) {
   const cell = Math.floor(size / N);
   canvas.width = canvas.height = cell * N;
   const ctx = canvas.getContext('2d');
-  for (let i = 0; i < N; i++) {
-    for (let j = 0; j < N; j++) {
-      ctx.fillStyle = corrColor(M[i][j]);
-      ctx.fillRect(j * cell, i * cell, cell, cell);
-    }
+  for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) {
+    ctx.fillStyle = corrColor(M[i][j]);
+    ctx.fillRect(j*cell, i*cell, cell, cell);
   }
 }
 
@@ -256,175 +402,365 @@ function drawVarBar(canvas, mu, sigma, v95, v99) {
   const w = canvas.clientWidth, h = canvas.clientHeight;
   canvas.width = w; canvas.height = h;
   const ctx = canvas.getContext('2d');
-  // Gaussian PDF for portfolio return
   const range = 4 * sigma;
   const xMin = mu - range, xMax = mu + range;
-  const pdf = x => Math.exp(-0.5 * ((x - mu) / sigma) ** 2) / (sigma * Math.sqrt(2 * Math.PI));
-  const xs = [], ys = [];
-  const steps = w;
-  for (let i = 0; i < steps; i++) {
-    const x = xMin + (xMax - xMin) * (i / (steps - 1));
-    xs.push(x); ys.push(pdf(x));
-  }
+  const pdf = x => Math.exp(-0.5 * ((x - mu) / sigma) ** 2);
+  const steps = w; const ys = [];
+  for (let i = 0; i < steps; i++) ys.push(pdf(xMin + (xMax - xMin) * (i / (steps - 1))));
   const yMax = Math.max(...ys);
-  // Background fill (full distribution)
-  ctx.beginPath();
-  ctx.moveTo(0, h);
+  const xToPx = x => (x - xMin) / (xMax - xMin) * w;
+  // Outer
+  ctx.beginPath(); ctx.moveTo(0, h);
   for (let i = 0; i < steps; i++) ctx.lineTo(i, h - (ys[i] / yMax) * (h - 6));
   ctx.lineTo(w, h); ctx.closePath();
-  ctx.fillStyle = 'rgba(79,195,247,0.08)'; ctx.fill();
-  // VaR95 shaded region (left tail beyond -v95)
-  const xToPx = x => (x - xMin) / (xMax - xMin) * w;
-  ctx.beginPath();
+  ctx.fillStyle = 'rgba(79,195,247,0.10)'; ctx.fill();
+  // VaR95 tail
+  ctx.beginPath(); ctx.moveTo(0, h);
   const x95 = xToPx(-v95);
-  ctx.moveTo(0, h);
   for (let i = 0; i < x95; i++) ctx.lineTo(i, h - (ys[i] / yMax) * (h - 6));
   ctx.lineTo(x95, h); ctx.closePath();
   ctx.fillStyle = 'rgba(245,166,35,0.45)'; ctx.fill();
-  // VaR99 shaded region (left tail beyond -v99)
-  ctx.beginPath();
+  // VaR99 tail
+  ctx.beginPath(); ctx.moveTo(0, h);
   const x99 = xToPx(-v99);
-  ctx.moveTo(0, h);
   for (let i = 0; i < x99; i++) ctx.lineTo(i, h - (ys[i] / yMax) * (h - 6));
   ctx.lineTo(x99, h); ctx.closePath();
   ctx.fillStyle = 'rgba(240,96,96,0.55)'; ctx.fill();
-  // VaR lines
-  ctx.strokeStyle = 'rgba(245,166,35,0.85)'; ctx.lineWidth = 1;
+  // Lines
+  ctx.strokeStyle = 'rgba(245,166,35,0.85)';
   ctx.beginPath(); ctx.moveTo(x95, 4); ctx.lineTo(x95, h); ctx.stroke();
   ctx.strokeStyle = 'rgba(240,96,96,0.95)';
   ctx.beginPath(); ctx.moveTo(x99, 4); ctx.lineTo(x99, h); ctx.stroke();
-  // Center (mean) line
   const xc = xToPx(mu);
   ctx.strokeStyle = 'rgba(255,255,255,0.25)';
   ctx.beginPath(); ctx.moveTo(xc, 0); ctx.lineTo(xc, h); ctx.stroke();
 }
 
-(async () => {
-  // ─── Fetch everything in parallel
-  const get = async p => { try { const r = await fetch(`${API}/${p}`); return r.ok ? await r.json() : null; } catch(e) { return null; }};
-  const [metrics, latestMat, latestW, allMetrics] = await Promise.all([
-    get('galton_metrics?order=rebalance_date.desc&limit=1'),
-    get('galton_matrices?order=rebalance_date.desc&limit=1'),
-    get('galton_weights?order=rebalance_date.desc,weight.desc&limit=200'),
-    get('galton_metrics?order=rebalance_date.asc'),
-  ]);
-  if (!metrics || !metrics.length) {
-    document.getElementById('wList').innerHTML = '<div style="text-align:center;padding:24px;color:var(--text3)">NO DATA YET</div>';
-    return;
+// ─── Tiny linear algebra (Gauss-Jordan, 30×30 fine) ───────────────────
+function matInv(M) {
+  const n = M.length;
+  const A = M.map((row, i) => row.concat(Array.from({length:n}, (_, j) => i === j ? 1 : 0)));
+  for (let i = 0; i < n; i++) {
+    let p = i;
+    for (let k = i+1; k < n; k++) if (Math.abs(A[k][i]) > Math.abs(A[p][i])) p = k;
+    [A[i], A[p]] = [A[p], A[i]];
+    const piv = A[i][i];
+    if (Math.abs(piv) < 1e-14) throw new Error('singular');
+    for (let j = 0; j < 2*n; j++) A[i][j] /= piv;
+    for (let k = 0; k < n; k++) {
+      if (k === i) continue;
+      const f = A[k][i];
+      for (let j = 0; j < 2*n; j++) A[k][j] -= f * A[i][j];
+    }
   }
-  const m   = metrics[0];
-  const mat = latestMat && latestMat[0];
-  const weights = (latestW || []).filter(w => w.rebalance_date === m.rebalance_date)
-                                  .sort((a,b) => Number(b.weight) - Number(a.weight));
+  return A.map(row => row.slice(n));
+}
+function matVec(M, v) {
+  return M.map(row => row.reduce((s, x, j) => s + x * v[j], 0));
+}
+function vecDot(a, b) { return a.reduce((s, x, i) => s + x * b[i], 0); }
+function matMul(A, B) {
+  const n = A.length, p = B[0].length;
+  return A.map(rowA => Array.from({length:p}, (_, j) => rowA.reduce((s, x, k) => s + x * B[k][j], 0)));
+}
 
-  // ─── KPIs
-  document.getElementById('rebDate').textContent = m.rebalance_date;
-  document.getElementById('kN').textContent       = m.n_universe;
-  document.getElementById('kEffN').textContent    = `Effective N ${Number(m.effective_n).toFixed(1)}`;
-  document.getElementById('kNet').textContent     = fmt.pct(m.net, 1);
-  document.getElementById('kNetSub').textContent  = `HHI ${Number(m.hhi).toFixed(3)}`;
-  document.getElementById('kGross').textContent   = `${fmt.pct(m.gross_long,1)} / ${fmt.pct(m.gross_short,1)}`;
-  document.getElementById('kVol').textContent     = fmt.pct(m.forecast_weekly_vol, 2);
-  document.getElementById('kVolAnn').textContent  = `annualised ${fmt.pct(m.forecast_weekly_vol * Math.sqrt(52), 1)}`;
-  document.getElementById('kVaR').textContent     = `${fmt.pct(m.forecast_var95,2)} / ${fmt.pct(m.forecast_var99,2)}`;
+// ─── Recompute weights from sample matrices + slider coefficients ─────
+function recompute(rhoHat, sigmaHat, muHat, g) {
+  const N = muHat.length;
+  const sigG = sigmaHat.map(s => g.g0v + g.g1v * s);
+  const muG  = muHat   .map(m => g.g0m + g.g1m * m);
+  const rhoG = rhoHat.map((row, i) => row.map((r, j) => i === j ? 1 : (g.g0c + g.g1c * r)));
+  // Σ_G = diag(σ_G) ρ_G diag(σ_G)
+  const SigmaG = Array.from({length:N}, (_, i) => Array.from({length:N}, (_, j) => sigG[i] * rhoG[i][j] * sigG[j]));
+  let invS, w; let sigmaPort = NaN;
+  try {
+    invS = matInv(SigmaG);
+    const num = matVec(invS, muG);
+    const denom = vecDot(Array(N).fill(1), num);
+    w = num.map(x => x / denom);
+    const Sw = matVec(SigmaG, w);
+    const pv = vecDot(w, Sw);
+    sigmaPort = Math.sqrt(Math.max(pv, 0));
+  } catch(e) {
+    w = Array(N).fill(0);
+  }
+  return { w, sigmaPort, sigG, muG, rhoG, SigmaG };
+}
 
-  // ─── Weights bars
-  const maxAbs = Math.max(...weights.map(r => Math.abs(Number(r.weight))));
-  document.getElementById('wCount').textContent = `${weights.length} POSITIONS`;
-  document.getElementById('wList').innerHTML = weights.map(r => {
-    const w = Number(r.weight);
-    const cls = w >= 0 ? 'long' : 'short';
+// ─── Page state ───────────────────────────────────────────────────────
+let liveW = null;     // weights as stored in DB (server-computed)
+let sampleMat = null; // { tickers, rho_hat, sigma_hat, mu_hat }
+let convictionByIsin = {};
+
+function updateWeightsRender(weights, rcMap, sigmaPort, isLive) {
+  const N = weights.length;
+  const maxAbs = Math.max(...weights.map(Math.abs)) || 1;
+  const rows = sampleMat.tickers.map((t, i) => ({ ticker: t, weight: weights[i], rank: 0, rc: rcMap[i] }));
+  rows.sort((a, b) => b.weight - a.weight).forEach((r, k) => r.rank = k + 1);
+  const gl = weights.reduce((s, x) => x > 0 ? s + x : s, 0);
+  const gs = weights.reduce((s, x) => x < 0 ? s + x : s, 0);
+  const net = gl + gs;
+
+  document.getElementById('kNet').textContent     = fmt.pct(net, 1);
+  document.getElementById('kGross').textContent   = `${fmt.pct(gl,1)} / ${fmt.pct(gs,1)}`;
+  document.getElementById('kVol').textContent     = fmt.pct(sigmaPort, 2);
+  document.getElementById('kVolAnn').textContent  = `annualised ${fmt.pct(sigmaPort * Math.sqrt(52), 1)}`;
+  const v95 = 1.6449 * sigmaPort, v99 = 2.3263 * sigmaPort;
+  document.getElementById('kVaR').textContent     = `${fmt.pct(v95, 2)} / ${fmt.pct(v99, 2)}`;
+  document.getElementById('vmSig').textContent    = (sigmaPort*100).toFixed(3) + '%';
+  document.getElementById('vmV95').textContent    = '−' + (v95*100).toFixed(2) + '%';
+  document.getElementById('vmV99').textContent    = '−' + (v99*100).toFixed(2) + '%';
+  drawVarBar(document.getElementById('varCanvas'), 0, sigmaPort, v95, v99);
+
+  document.getElementById('wCount').textContent = `${rows.length} POSITIONS · ${isLive ? 'SERVER' : 'INTERACTIVE'}`;
+  document.getElementById('slStatus').textContent = isLive ? 'live (Table 1)' : 'editing — preview only';
+  document.getElementById('wList').innerHTML = rows.map(r => {
+    const w = r.weight; const cls = w >= 0 ? 'long' : 'short';
     const barW = (Math.abs(w) / maxAbs * 50).toFixed(2) + '%';
-    const newBadge = r.is_new_this_week ? '<span class="w-new">NEW</span>' : '';
-    const rc = r.risk_contribution != null ? (Number(r.risk_contribution) * 100).toFixed(1) + '%' : '—';
+    const rc = r.rc != null ? (r.rc * 100).toFixed(1) + '%' : '—';
+    const liveRow = isLive ? liveW.find(x => x.ticker === r.ticker) : null;
+    const newBadge = liveRow && liveRow.is_new_this_week ? '<span class="w-new">NEW</span>' : '';
+    // Markedsradar overlay
+    let mrCell = '<span class="w-mr none">—</span>';
+    const conv = convictionByIsin[liveRow ? liveRow.isin : null];
+    if (conv) {
+      const c = conv;
+      const side = c.side === 'LONG' ? 'long' : (c.side === 'SHORT' ? 'short' : '');
+      const glyph = c.side === 'LONG' ? '▲' : (c.side === 'SHORT' ? '▼' : '◇');
+      mrCell = `<span class="w-mr ${side}" title="${(c.signal_types||[]).join(', ')}">${glyph} ${c.conviction}</span>`;
+    }
     return `<div class="w-row">
       <div class="w-rank">${r.rank}</div>
       <div class="w-ticker">${r.ticker}${newBadge}</div>
       <div class="w-bar-wrap"><div class="w-bar ${cls}" style="width:${barW}"></div></div>
       <div class="w-pct ${cls}">${w >= 0 ? '+' : ''}${(w*100).toFixed(2)}%</div>
-      <div class="w-rc" title="Risk contribution">${rc}</div>
+      <div class="w-rc">${rc}</div>
+      ${mrCell}
     </div>`;
   }).join('');
+}
 
-  // ─── VaR fan
-  const mu = Number(m.mu_g_mean);                           // approx portfolio mean
-  const sigma = Number(m.forecast_weekly_vol);
-  const v95 = Number(m.forecast_var95), v99 = Number(m.forecast_var99);
-  document.getElementById('vmMu').textContent  = (mu*100).toFixed(3) + '%';
-  document.getElementById('vmSig').textContent = (sigma*100).toFixed(3) + '%';
-  document.getElementById('vmV95').textContent = '−' + (v95*100).toFixed(2) + '%';
-  document.getElementById('vmV99').textContent = '−' + (v99*100).toFixed(2) + '%';
-  requestAnimationFrame(() => drawVarBar(document.getElementById('varCanvas'), mu, sigma, v95, v99));
-  window.addEventListener('resize', () => drawVarBar(document.getElementById('varCanvas'), mu, sigma, v95, v99));
+function applySliders() {
+  const g = {
+    g0c: +document.getElementById('sl_g0r').value, g1c: +document.getElementById('sl_g1r').value,
+    g0v: +document.getElementById('sl_g0v').value, g1v: +document.getElementById('sl_g1v').value,
+    g0m: +document.getElementById('sl_g0m').value, g1m: +document.getElementById('sl_g1m').value,
+  };
+  const sgn = v => (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(3);
+  document.getElementById('v_g0r').textContent = sgn(g.g0c);
+  document.getElementById('v_g1r').textContent = sgn(g.g1c);
+  document.getElementById('v_g0v').textContent = sgn(g.g0v);
+  document.getElementById('v_g1v').textContent = sgn(g.g1v);
+  document.getElementById('v_g0m').textContent = sgn(g.g0m);
+  document.getElementById('v_g1m').textContent = sgn(g.g1m);
 
-  // ─── Vectors before/after
-  if (mat) {
-    const N = mat.tickers.length;
-    const muHat = mat.mu_hat, muG = mat.mu_g, sigHat = mat.sigma_hat, sigG = mat.sigma_g;
-    const muMax  = Math.max(...muHat.map(Math.abs), ...muG.map(Math.abs));
-    const sigMax = Math.max(...sigHat,      ...sigG);
+  if (!sampleMat) return;
+  const r = recompute(sampleMat.rho_hat, sampleMat.sigma_hat, sampleMat.mu_hat, g);
+  // Risk contributions (approx)
+  const N = r.w.length;
+  const Sw = matVec(r.SigmaG, r.w);
+  const pv = vecDot(r.w, Sw);
+  const rc = r.w.map((x, i) => pv > 0 ? (x * Sw[i] / pv) : 0);
+  updateWeightsRender(r.w, rc, r.sigmaPort, false);
+}
 
-    const stripHTML = (vec, max, lbl) => {
-      const cells = vec.map((v, i) => `<div class="vec-cell" style="background:${valColor(v, max)}" title="${mat.tickers[i]} ${(v*100).toFixed(3)}%"></div>`).join('');
-      return `<div class="vec-pair">
-        <div class="vec-label">${lbl}</div>
-        <div class="vec-cells">${cells}</div>
-      </div>`;
-    };
-    const stripPair = (raw, shrunken, max, rawLbl, gLbl) => stripHTML(raw, max, rawLbl) + stripHTML(shrunken, max, gLbl);
-    document.getElementById('vecBlocks').innerHTML =
-      stripPair(muHat,  muG,  muMax,  'Mean return <em>μ̂</em> (sample)',  'Mean return <em>μ_G</em> (shrunken)') +
-      stripPair(sigHat, sigG, sigMax, 'Volatility <em>σ̂</em> (sample)',   'Volatility <em>σ_G</em> (shrunken)');
-
-    // Tickers axis under the strips
-    const tickerRow = `<div class="vec-pair"><div class="vec-label" style="color:var(--text3)">tickers (left→right)</div><div class="vec-cells" style="font-size:7px;letter-spacing:0;display:flex;gap:1px;color:var(--text3)">${mat.tickers.map(t => `<span style="display:inline-block;width:9px;text-align:center;transform:rotate(-90deg);transform-origin:left top;margin-top:36px">${t}</span>`).join('')}</div></div>`;
-    document.getElementById('vecBlocks').insertAdjacentHTML('beforeend', tickerRow);
-
-    // ─── Heatmaps
-    drawHeatmap(document.getElementById('hmRhoHat'),  mat.rho_hat);
-    drawHeatmap(document.getElementById('hmRhoG'),    mat.rho_g);
-    // Σ_G uses different scale — re-scale to [-1,1] via dividing by max abs
-    const flatS = mat.sigma_matrix.flat();
-    const sMax  = Math.max(...flatS.map(Math.abs)) || 1;
-    const Sn = mat.sigma_matrix.map(row => row.map(v => v / sMax));
-    drawHeatmap(document.getElementById('hmSigmaG'),  Sn);
+// ─── Eigenstructure render ────────────────────────────────────────────
+function renderEigen(eig, tickers) {
+  if (!eig || !eig.length) {
+    document.getElementById('eigList').innerHTML = '<div style="color:var(--text3);font-size:11px;padding:12px 0">—</div>';
+    return;
   }
+  const list = eig.slice(0, 5).map((e, k) => {
+    const maxAbs = Math.max(...e.vector.map(Math.abs)) || 1;
+    const strip = e.vector.map((v, i) => `<div class="eig-cell" style="background:${corrColor(v / maxAbs)}" title="${tickers[i]}: ${v.toFixed(3)}"></div>`).join('');
+    return `<div class="eig-row">
+      <div class="pc">PC${k+1}</div>
+      <div class="val">λ ${e.eigenvalue.toExponential(2)}</div>
+      <div class="pct">${(e.var_explained*100).toFixed(1)}%</div>
+      <div class="eig-strip">${strip}</div>
+    </div>`;
+  }).join('');
+  const totalVar = eig.slice(0, 5).reduce((s, e) => s + e.var_explained, 0);
+  document.getElementById('eigList').innerHTML = list +
+    `<div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border);font-family:var(--mono);font-size:10px;letter-spacing:.1em;color:var(--text3)">TOP 5 EXPLAIN <strong style="color:var(--amber)">${(totalVar*100).toFixed(1)}%</strong> OF FORECAST VARIANCE</div>`;
+}
 
-  // ─── Universe diffs
-  const added   = m.universe_added   || [];
-  const removed = m.universe_removed || [];
+// ─── Sector concentration render ─────────────────────────────────────
+function renderSectors(weights) {
+  const totals = {};
+  let absTotal = 0;
+  for (const w of weights) {
+    const sec = SECTOR_MAP[w.ticker] || 'Other';
+    totals[sec] = (totals[sec] || 0) + Number(w.weight);
+    absTotal   += Math.abs(Number(w.weight));
+  }
+  const entries = Object.entries(totals).sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]));
+  if (!entries.length) {
+    document.getElementById('sectorList').innerHTML = '<div style="color:var(--text3);font-size:11px;padding:12px 0">—</div>';
+    return;
+  }
+  const maxAbs = Math.max(...entries.map(([, v]) => Math.abs(v)));
+  document.getElementById('sectorList').innerHTML = entries.map(([s, v]) => {
+    const w = (Math.abs(v) / maxAbs * 100).toFixed(1);
+    const col = v >= 0 ? 'var(--green)' : 'var(--red)';
+    return `<div class="sector-row">
+      <div class="sector-name">${s}</div>
+      <div class="sector-bar-wrap"><div class="sector-bar" style="width:${w}%;background:${col}"></div></div>
+      <div class="sector-pct" style="color:${col}">${v >= 0 ? '+' : ''}${(v*100).toFixed(1)}%</div>
+    </div>`;
+  }).join('');
+}
+
+// ─── MAIN ─────────────────────────────────────────────────────────────
+(async () => {
+  const get = async p => { try { const r = await fetch(`${API}/${p}`); return r.ok ? await r.json() : null; } catch(e) { return null; } };
+  const [metrics, mats, weights, allMetrics, conv] = await Promise.all([
+    get('galton_metrics?order=rebalance_date.desc&limit=1'),
+    get('galton_matrices?order=rebalance_date.desc&limit=1'),
+    get('galton_weights?order=rebalance_date.desc,weight.desc&limit=200'),
+    get('galton_metrics?order=rebalance_date.asc'),
+    get('conviction?limit=200'),
+  ]);
+  if (!metrics || !metrics.length || !mats || !mats.length) {
+    document.getElementById('wList').innerHTML = '<div class="ph">NO DATA YET</div>';
+    return;
+  }
+  const m = metrics[0], mat = mats[0];
+  liveW = (weights || []).filter(w => w.rebalance_date === m.rebalance_date)
+                         .sort((a, b) => Number(b.weight) - Number(a.weight));
+  sampleMat = mat;
+  convictionByIsin = Object.fromEntries((conv || []).map(c => [c.isin, c]));
+
+  // Header
+  document.getElementById('rebDate').textContent = m.rebalance_date;
+  document.getElementById('kN').textContent      = m.n_universe;
+  document.getElementById('kEffN').textContent   = `Effective N ${Number(m.effective_n).toFixed(1)}`;
+  document.getElementById('kNetSub').textContent = `HHI ${Number(m.hhi).toFixed(3)}`;
+
+  // VaR meta (μ_port ≈ 0 under Table 1 since g₀_μ = 0)
+  const muPort = 0; // approximation; could be refined later
+  document.getElementById('vmMu').textContent = (muPort*100).toFixed(3) + '%';
+
+  // Initial render — live numbers
+  const wArr = liveW.map(r => Number(r.weight));
+  // Reorder to match sampleMat.tickers order
+  const ix = name => sampleMat.tickers.indexOf(name);
+  const w_aligned = new Array(sampleMat.tickers.length).fill(0);
+  const rc_aligned = new Array(sampleMat.tickers.length).fill(0);
+  for (const r of liveW) {
+    const i = ix(r.ticker);
+    if (i >= 0) {
+      w_aligned[i] = Number(r.weight);
+      rc_aligned[i] = Number(r.risk_contribution || 0);
+    }
+  }
+  updateWeightsRender(w_aligned, rc_aligned, Number(m.forecast_weekly_vol), true);
+
+  // Vectors before/after
+  const muHat = mat.mu_hat, muG = mat.mu_g, sigHat = mat.sigma_hat, sigG = mat.sigma_g;
+  const muMax  = Math.max(...muHat.map(Math.abs), ...muG.map(Math.abs));
+  const sigMax = Math.max(...sigHat, ...sigG);
+  const strip = (vec, max, lbl) => {
+    const cells = vec.map((v, i) => `<div class="vec-cell" style="background:${valColor(v, max)}" title="${mat.tickers[i]} ${(v*100).toFixed(3)}%"></div>`).join('');
+    return `<div class="vec-pair"><div class="vec-label">${lbl}</div><div class="vec-cells">${cells}</div></div>`;
+  };
+  document.getElementById('vecBlocks').innerHTML =
+    strip(muHat,  muMax,  'Mean return <em>μ̂</em><span class="sub">sample</span>') +
+    strip(muG,    muMax,  'Mean return <em>μ_G</em><span class="sub">shrunken</span>') +
+    `<div style="height:8px"></div>` +
+    strip(sigHat, sigMax, 'Volatility <em>σ̂</em><span class="sub">sample</span>') +
+    strip(sigG,   sigMax, 'Volatility <em>σ_G</em><span class="sub">shrunken</span>') +
+    `<div class="vec-axis"><div class="vec-label" style="color:var(--text3)">tickers (left→right)</div><div class="ticker-strip">${mat.tickers.map(t => `<span>${t}</span>`).join('')}</div></div>`;
+
+  // Heatmaps
+  drawHeatmap(document.getElementById('hmRhoHat'),  mat.rho_hat);
+  drawHeatmap(document.getElementById('hmRhoG'),    mat.rho_g);
+  const sFlat = mat.sigma_matrix.flat();
+  const sMax = Math.max(...sFlat.map(Math.abs)) || 1;
+  drawHeatmap(document.getElementById('hmSigmaG'),  mat.sigma_matrix.map(row => row.map(v => v / sMax)));
+
+  // Eigenstructure
+  renderEigen(mat.eigen_top || [], mat.tickers);
+
+  // Sector concentration (uses live weights)
+  renderSectors(liveW);
+
+  // Universe diffs
+  const added = m.universe_added || [], removed = m.universe_removed || [];
   document.getElementById('addCount').textContent = added.length;
   document.getElementById('remCount').textContent = removed.length;
-  document.getElementById('addList').innerHTML = added.length
-    ? added.map(t => `<span class="diff-pill diff-add">▴ ${t}</span>`).join(' ')
-    : '<span style="color:var(--text3);font-size:11px">none</span>';
-  document.getElementById('remList').innerHTML = removed.length
-    ? removed.map(t => `<span class="diff-pill diff-rem">▾ ${t}</span>`).join(' ')
-    : '<span style="color:var(--text3);font-size:11px">none</span>';
+  document.getElementById('addList').innerHTML = added.length ? added.map(t => `<span class="diff-pill diff-add">▴ ${t}</span>`).join(' ') : '<span style="color:var(--text3);font-size:11px">none</span>';
+  document.getElementById('remList').innerHTML = removed.length ? removed.map(t => `<span class="diff-pill diff-rem">▾ ${t}</span>`).join(' ') : '<span style="color:var(--text3);font-size:11px">none</span>';
 
-  // ─── Exposure over time (just 1 point today, grows weekly)
+  // Exposure over time
   if (allMetrics && allMetrics.length) {
-    const labels = allMetrics.map(r => r.rebalance_date);
     new Chart(document.getElementById('expCanvas'), {
       type:'line',
       data:{
-        labels,
+        labels: allMetrics.map(r => r.rebalance_date),
         datasets:[
-          { label:'Gross long',  data: allMetrics.map(r => Number(r.gross_long)*100),  borderColor:'#43e097', backgroundColor:'rgba(67,224,151,0.08)', borderWidth:1.5, fill:true, tension:.2, pointRadius: allMetrics.length < 6 ? 3 : 0 },
-          { label:'Gross short', data: allMetrics.map(r => Number(r.gross_short)*100), borderColor:'#f06060', backgroundColor:'rgba(240,96,96,0.08)',  borderWidth:1.5, fill:true, tension:.2, pointRadius: allMetrics.length < 6 ? 3 : 0 },
-          { label:'Net',         data: allMetrics.map(r => Number(r.net)*100),         borderColor:'#f5a623', borderDash:[4,4], borderWidth:1, fill:false, pointRadius:0 },
+          { label:'Gross long',  data:allMetrics.map(r => Number(r.gross_long)*100),  borderColor:'#43e097', backgroundColor:'rgba(67,224,151,0.08)', borderWidth:1.5, fill:true, tension:.2, pointRadius:allMetrics.length<6?3:0 },
+          { label:'Gross short', data:allMetrics.map(r => Number(r.gross_short)*100), borderColor:'#f06060', backgroundColor:'rgba(240,96,96,0.08)', borderWidth:1.5, fill:true, tension:.2, pointRadius:allMetrics.length<6?3:0 },
+          { label:'Net',         data:allMetrics.map(r => Number(r.net)*100),         borderColor:'#f5a623', borderDash:[4,4], borderWidth:1, fill:false, pointRadius:0 },
         ],
       },
-      options:{
-        responsive:true, maintainAspectRatio:false,
+      options:{ responsive:true, maintainAspectRatio:false,
         plugins:{ legend:{ labels:{ color:'#a4adbf', font:{ family:'IBM Plex Mono', size:10 }, boxWidth:12 } } },
-        scales:{
-          x:{ ticks:{ color:'#5a6377', font:{ family:'IBM Plex Mono', size:9 }, maxTicksLimit:10 }, grid:{ color:'rgba(255,255,255,0.04)' } },
-          y:{ ticks:{ color:'#5a6377', font:{ family:'IBM Plex Mono', size:9 }, callback:v=>v.toFixed(0)+'%' }, grid:{ color:'rgba(255,255,255,0.04)' } },
-        },
-      },
+        scales:{ x:{ ticks:{ color:'#5a6377', font:{ family:'IBM Plex Mono', size:9 }, maxTicksLimit:10 }, grid:{ color:'rgba(255,255,255,0.04)' } }, y:{ ticks:{ color:'#5a6377', font:{ family:'IBM Plex Mono', size:9 }, callback:v=>v.toFixed(0)+'%' }, grid:{ color:'rgba(255,255,255,0.04)' } } } },
     });
   }
+
+  // Performance placeholders
+  const realized = (allMetrics || []).filter(r => r.realized_return != null);
+  if (realized.length) {
+    document.getElementById('perfEquityMsg').textContent = `${realized.length} weeks tracked`;
+    // Compute cumulative
+    let eq = 100; const series = [{x: '', y: 100}];
+    for (const r of realized) { eq *= (1 + Number(r.realized_return)); series.push({x: r.rebalance_date, y: eq}); }
+    document.getElementById('perfEquity').innerHTML = `Indexed 100 → <strong>${eq.toFixed(2)}</strong> · ${realized.length} weeks`;
+    // VaR breaches
+    const breaches = realized.filter(r => Number(r.realized_return) < -Number(r.forecast_var95));
+    document.getElementById('perfVaRMsg').textContent = `${breaches.length} / ${realized.length} weeks`;
+    document.getElementById('perfVaR').innerHTML = `<strong>${breaches.length}</strong> breaches in ${realized.length} weeks · expected 5% / week = ${(realized.length*0.05).toFixed(1)}`;
+    // Drawdown
+    let peak = 100, maxDD = 0; let cum = 100;
+    for (const r of realized) { cum *= (1 + Number(r.realized_return)); if (cum > peak) peak = cum; const dd = (cum/peak - 1); if (dd < maxDD) maxDD = dd; }
+    document.getElementById('perfDDMsg').textContent = `${(maxDD*100).toFixed(2)}%`;
+    document.getElementById('perfDD').innerHTML = `Max drawdown <strong>${(maxDD*100).toFixed(2)}%</strong> over ${realized.length} weeks`;
+  }
+
+  // Slider wiring
+  document.querySelectorAll('#sliders input[type=range]').forEach(el => el.addEventListener('input', applySliders));
+  document.getElementById('slReset').addEventListener('click', () => {
+    document.getElementById('sl_g0r').value = 0.0680;
+    document.getElementById('sl_g1r').value = 0.2592;
+    document.getElementById('sl_g0v').value = 0.0222;
+    document.getElementById('sl_g1v').value = 0.6385;
+    document.getElementById('sl_g0m').value = 0.0033;
+    document.getElementById('sl_g1m').value = 0.1291;
+    applySliders();
+  });
+  document.getElementById('slTable1').addEventListener('click', () => {
+    document.getElementById('sl_g0r').value =  0.05;
+    document.getElementById('sl_g1r').value =  0.55;
+    document.getElementById('sl_g0v').value =  0.02;
+    document.getElementById('sl_g1v').value =  0.67;
+    document.getElementById('sl_g0m').value =  0.00;
+    document.getElementById('sl_g1m').value = -0.07;
+    applySliders();
+  });
+  document.getElementById('slGMV').addEventListener('click', () => {
+    document.getElementById('sl_g1m').value = 0;
+    applySliders();
+  });
+  document.getElementById('slLive').addEventListener('click', () => {
+    updateWeightsRender(w_aligned, rc_aligned, Number(m.forecast_weekly_vol), true);
+  });
+
+  // Initial slider value sync
+  applySliders();
+  // But render the LIVE numbers first
+  updateWeightsRender(w_aligned, rc_aligned, Number(m.forecast_weekly_vol), true);
 })();
 </script>
 
