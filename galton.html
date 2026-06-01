@@ -6,145 +6,104 @@
 <title>Galton Strategy · Slensvik</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=Syne:wght@500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
-    --bg0: #050810; --bg1: #0b0f17; --bg2: #11161f; --bg3: #1a212d;
-    --border: rgba(255,255,255,0.06); --border2: rgba(255,255,255,0.12);
-    --text1: #e8eef7; --text2: #a4adbf; --text3: #5a6377; --text4: #3a4252;
-    --amber: #f5a623; --amber-dim: rgba(245,166,35,0.16);
-    --ice: #4fc3f7;   --ice-dim:   rgba(79,195,247,0.13);
-    --green: #43e097; --red: #f06060;
-    --mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace;
-    --sans: 'Syne', sans-serif;
+    --bg0:#050810; --bg1:#0b0f17; --bg2:#11161f; --bg3:#1a212d;
+    --border:rgba(255,255,255,0.06); --border2:rgba(255,255,255,0.12);
+    --text1:#e8eef7; --text2:#a4adbf; --text3:#5a6377; --text4:#3a4252;
+    --amber:#f5a623; --amber-dim:rgba(245,166,35,0.16);
+    --ice:#4fc3f7;   --ice-dim:rgba(79,195,247,0.13);
+    --green:#43e097; --green-dim:rgba(67,224,151,0.16);
+    --red:#f06060;   --red-dim:rgba(240,96,96,0.16);
+    --purple:#a78bfa;
+    --mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,monospace;
+    --sans:'Syne',sans-serif;
   }
-  body {
-    background: var(--bg0); color: var(--text1);
-    font-family: var(--mono); min-height: 100vh;
-    -webkit-font-smoothing: antialiased;
-  }
-  .topbar {
-    display: flex; align-items: center; gap: 14px;
-    padding: 22px 36px; border-bottom: 1px solid var(--border);
-  }
-  .topbar a.back {
-    font-family: var(--mono); font-size: 11px; letter-spacing: 0.16em;
-    text-transform: uppercase; color: var(--text2); text-decoration: none;
-    padding: 4px 12px; border: 1px solid var(--border2);
-  }
-  .topbar a.back:hover { color: var(--amber); border-color: var(--amber); }
-  .crumb {
-    font-family: var(--mono); font-size: 11px; letter-spacing: 0.18em;
-    text-transform: uppercase; color: var(--text2);
-  }
-  .crumb .glyph { color: var(--amber); margin-right: 8px; }
-  main { max-width: 1080px; margin: 0 auto; padding: 48px 36px 72px; }
-  h1 {
-    font-family: var(--sans); font-weight: 700;
-    font-size: clamp(28px, 4vw, 42px);
-    line-height: 1.05; letter-spacing: -0.02em;
-    margin-bottom: 14px;
-  }
-  .lead {
-    font-size: 13px; color: var(--text2); line-height: 1.7;
-    margin-bottom: 28px; max-width: 720px;
-  }
+  body { background:var(--bg0); color:var(--text1); font-family:var(--mono); min-height:100vh; -webkit-font-smoothing:antialiased; }
+  .topbar { display:flex; align-items:center; gap:14px; padding:22px 36px; border-bottom:1px solid var(--border); }
+  .topbar a.back { font-family:var(--mono); font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--text2); text-decoration:none; padding:4px 12px; border:1px solid var(--border2); }
+  .topbar a.back:hover { color:var(--amber); border-color:var(--amber); }
+  .crumb { font-family:var(--mono); font-size:11px; letter-spacing:.18em; text-transform:uppercase; color:var(--text2); }
+  .crumb .glyph { color:var(--amber); margin-right:8px; }
 
-  /* ─── KPI strip ────────────────────────────────────────────────────── */
-  .kpis {
-    display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
-    margin-bottom: 22px;
-  }
-  @media (max-width: 720px) { .kpis { grid-template-columns: repeat(2, 1fr); } }
-  .kpi {
-    border: 1px solid var(--border); padding: 14px 16px;
-    background: var(--bg1);
-  }
-  .kpi-lbl {
-    font-family: var(--mono); font-size: 9px; letter-spacing: 0.18em;
-    text-transform: uppercase; color: var(--text3); margin-bottom: 6px;
-  }
-  .kpi-val {
-    font-family: var(--mono); font-size: 21px; font-weight: 500;
-    color: var(--text1); letter-spacing: -0.01em;
-    font-variant-numeric: tabular-nums;
-  }
-  .kpi-sub {
-    font-family: var(--mono); font-size: 9.5px; color: var(--text3);
-    margin-top: 4px; letter-spacing: 0.06em;
-  }
+  main { max-width:1280px; margin:0 auto; padding:36px 28px 80px; }
+  h1 { font-family:var(--sans); font-weight:700; font-size:clamp(26px,3.5vw,38px); line-height:1.05; letter-spacing:-0.02em; margin-bottom:14px; }
+  .lead { font-size:12.5px; color:var(--text2); line-height:1.7; margin-bottom:28px; max-width:840px; }
 
-  /* ─── Two-column layout ────────────────────────────────────────────── */
-  .grid {
-    display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px;
+  .sec { margin-top:22px; }
+  .sec-head {
+    font-family:var(--mono); font-size:10px; letter-spacing:.2em; text-transform:uppercase;
+    color:var(--text2); margin-bottom:12px; display:flex; align-items:baseline; gap:14px;
+    padding-bottom:8px; border-bottom:1px solid var(--border);
   }
-  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
-  .panel {
-    border: 1px solid var(--border2);
-    background: var(--bg1);
-    padding: 22px 24px 18px;
-  }
-  .panel-h {
-    font-family: var(--mono); font-size: 10px; letter-spacing: 0.18em;
-    text-transform: uppercase; color: var(--text2);
-    margin-bottom: 14px;
-    padding-bottom: 8px; border-bottom: 1px solid var(--border);
-    display: flex; justify-content: space-between;
-  }
-  .panel-h .glyph { color: var(--amber); margin-right: 8px; }
-  .panel-h .meta { color: var(--text3); font-weight: 400; }
+  .sec-head .glyph { color:var(--amber); font-size:13px; }
+  .sec-head .desc { color:var(--text3); font-weight:400; letter-spacing:.06em; text-transform:none; flex:1; font-size:11px; }
+  .sec-head .meta { color:var(--text3); font-weight:400; }
 
-  /* ─── Weights bar list ─────────────────────────────────────────────── */
-  .w-list { display: flex; flex-direction: column; gap: 5px; }
-  .w-row {
-    display: grid;
-    grid-template-columns: 22px 50px 1fr 60px;
-    align-items: center; gap: 10px;
-    font-family: var(--mono); font-size: 11px;
-    padding: 4px 0; border-bottom: 1px dashed var(--border);
-  }
-  .w-row:last-child { border-bottom: none; }
-  .w-rank { color: var(--text3); text-align: right; font-size: 9.5px; }
-  .w-ticker { color: var(--text1); font-weight: 500; letter-spacing: 0.04em; }
-  .w-bar-wrap {
-    position: relative; height: 12px; background: transparent;
-    border-left: 1px solid var(--border3, rgba(255,255,255,0.16));
-  }
-  .w-bar {
-    position: absolute; height: 100%; transition: width 0.4s;
-  }
-  .w-bar.long  { background: linear-gradient(90deg, rgba(67,224,151,0.85), rgba(67,224,151,0.55)); left: 0; }
-  .w-bar.short { background: linear-gradient(90deg, rgba(240,96,96,0.55), rgba(240,96,96,0.85)); right: 100%; }
-  .w-pct {
-    text-align: right; font-variant-numeric: tabular-nums;
-    color: var(--text2); font-size: 11px;
-  }
-  .w-pct.long  { color: var(--green); }
-  .w-pct.short { color: var(--red); }
+  /* ─── KPI strip ─────────────────────────────────────────── */
+  .kpis { display:grid; grid-template-columns:repeat(5, 1fr); gap:10px; }
+  @media (max-width:1000px){ .kpis{ grid-template-columns:repeat(2,1fr); } }
+  .kpi { border:1px solid var(--border2); padding:12px 14px; background:var(--bg1); }
+  .kpi-lbl { font-family:var(--mono); font-size:9px; letter-spacing:.18em; text-transform:uppercase; color:var(--text3); margin-bottom:6px; }
+  .kpi-val { font-family:var(--mono); font-size:19px; font-weight:500; color:var(--text1); font-variant-numeric:tabular-nums; letter-spacing:-0.01em; }
+  .kpi-sub { font-family:var(--mono); font-size:9px; color:var(--text3); margin-top:3px; letter-spacing:.06em; }
 
-  /* ─── Shrinkage panel ──────────────────────────────────────────────── */
-  .shrink-row {
-    display: grid; grid-template-columns: 1fr 90px 90px;
-    gap: 8px; padding: 8px 0;
-    font-family: var(--mono); font-size: 11px;
-    border-bottom: 1px dashed var(--border);
-  }
-  .shrink-row:last-child { border-bottom: none; }
-  .shrink-row .lbl { color: var(--text1); }
-  .shrink-row .lbl em { color: var(--amber); font-style: normal; }
-  .shrink-row .val {
-    text-align: right; color: var(--text2);
-    font-variant-numeric: tabular-nums;
-  }
-  .shrink-row .val.pos { color: var(--ice); }
+  /* ─── Panel & grid ─────────────────────────────────────── */
+  .panel { border:1px solid var(--border2); background:var(--bg1); padding:18px 20px 16px; }
+  .grid-2 { display:grid; grid-template-columns:1.4fr 1fr; gap:14px; }
+  .grid-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; }
+  @media (max-width:1100px){ .grid-2,.grid-3{ grid-template-columns:1fr; } }
 
-  .meta-bar {
-    display: flex; gap: 14px; margin-top: 12px;
-    font-family: var(--mono); font-size: 10px;
-    color: var(--text3); letter-spacing: 0.06em;
-    padding-top: 10px; border-top: 1px solid var(--border);
-  }
-  .meta-bar strong { color: var(--text1); font-weight: 500; }
+  /* ─── Weights bars ──────────────────────────────────────── */
+  .w-list { display:flex; flex-direction:column; gap:4px; }
+  .w-row { display:grid; grid-template-columns:18px 60px 1fr 56px 38px; align-items:center; gap:8px; font-family:var(--mono); font-size:10.5px; padding:3px 0; border-bottom:1px dashed var(--border); }
+  .w-row:last-child { border-bottom:none; }
+  .w-rank { color:var(--text3); text-align:right; font-size:9px; }
+  .w-ticker { color:var(--text1); font-weight:500; letter-spacing:.04em; display:flex; align-items:center; gap:4px; }
+  .w-new { background:var(--amber-dim); color:var(--amber); font-size:7.5px; letter-spacing:.08em; padding:1px 4px; }
+  .w-bar-wrap { position:relative; height:11px; border-left:1px solid rgba(255,255,255,0.18); }
+  .w-bar { position:absolute; height:100%; transition:width .4s; }
+  .w-bar.long { background:linear-gradient(90deg,rgba(67,224,151,0.9),rgba(67,224,151,0.6)); left:0; }
+  .w-bar.short { background:linear-gradient(90deg,rgba(240,96,96,0.6),rgba(240,96,96,0.9)); right:100%; }
+  .w-pct { text-align:right; font-variant-numeric:tabular-nums; color:var(--text2); font-size:10.5px; }
+  .w-pct.long { color:var(--green); } .w-pct.short { color:var(--red); }
+  .w-rc { text-align:right; font-variant-numeric:tabular-nums; color:var(--text3); font-size:9px; }
+
+  /* ─── Vector strips ─────────────────────────────────────── */
+  .vec-block { font-family:var(--mono); font-size:10.5px; }
+  .vec-pair { display:grid; grid-template-columns:auto auto; gap:8px 12px; margin-bottom:14px; }
+  .vec-label { font-size:10px; letter-spacing:.14em; color:var(--text2); text-transform:uppercase; min-width:120px; }
+  .vec-label em { color:var(--amber); font-style:normal; }
+  .vec-cells { display:flex; gap:1px; }
+  .vec-cell { width:9px; height:18px; }
+
+  /* ─── Heatmaps ───────────────────────────────────────────── */
+  .hm-wrap { display:flex; flex-direction:column; gap:6px; align-items:center; padding:8px 4px; }
+  .hm-title { font-family:var(--mono); font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:var(--text2); }
+  .hm-canvas { border:1px solid var(--border); }
+  .hm-axis { display:flex; gap:0; font-family:var(--mono); font-size:7px; color:var(--text3); }
+  .hm-axis span { transform:rotate(-90deg); transform-origin:left top; }
+
+  /* ─── Var fan / dist ────────────────────────────────────── */
+  .var-bar { position:relative; height:64px; border:1px solid var(--border); background:var(--bg2); }
+  .var-bar canvas { display:block; width:100%; height:100%; }
+  .var-meta { font-family:var(--mono); font-size:10px; letter-spacing:.1em; color:var(--text3); margin-top:8px; display:flex; gap:18px; }
+  .var-meta strong { color:var(--text1); font-variant-numeric:tabular-nums; }
+
+  /* ─── Diff lists ────────────────────────────────────────── */
+  .diff-row { display:flex; gap:6px; flex-wrap:wrap; }
+  .diff-pill { font-family:var(--mono); font-size:10px; letter-spacing:.06em; padding:3px 7px; border:1px solid var(--border2); }
+  .diff-add { color:var(--green); border-color:rgba(67,224,151,0.32); background:rgba(67,224,151,0.06); }
+  .diff-rem { color:var(--red); border-color:rgba(240,96,96,0.32); background:rgba(240,96,96,0.06); }
+
+  /* ─── Shrinkage coefficients ───────────────────────────── */
+  .shr-row { display:grid; grid-template-columns:1fr 70px 70px; gap:8px; padding:8px 0; font-family:var(--mono); font-size:11px; border-bottom:1px dashed var(--border); }
+  .shr-row:last-child { border-bottom:none; }
+  .shr-row .lbl { color:var(--text1); }
+  .shr-row .lbl em { color:var(--amber); font-style:normal; }
+  .shr-row .val { text-align:right; color:var(--ice); font-variant-numeric:tabular-nums; }
 </style>
 </head>
 <body>
@@ -152,7 +111,7 @@
 <header class="topbar">
   <a class="back" href="/">← BACK</a>
   <span class="crumb"><span class="glyph">◆</span>GALTON STRATEGY · MV30</span>
-  <span style="margin-left:auto;font-family:var(--mono);font-size:10px;letter-spacing:0.14em;color:var(--text3)">REBALANCE <strong id="rebDate" style="color:var(--text1)">—</strong></span>
+  <span style="margin-left:auto;font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--text3)">REBALANCE <strong id="rebDate" style="color:var(--text1)">—</strong></span>
 </header>
 
 <main>
@@ -160,144 +119,313 @@
   <h1>Mean-Variance long-short on top 30 Norwegian names, Galton-shrunken.</h1>
   <p class="lead">
     Weekly rebalance. Top 30 by current market cap (DN snapshot, locked annually).
-    60-week return panel with linear Fama-MacBeth shrinkage on μ̂, σ̂, and ρ̂ separately.
-    Σ_G rebuilt as diag(σ_G)·ρ_G·diag(σ_G) for invertibility. Solved via the
-    Markowitz tangency formula with absolute-value normalisation (Slensvik 2021, eq. 16).
+    60-week return panel with linear Fama-MacBeth shrinkage applied separately to μ̂, σ̂, ρ̂.
+    Σ_G rebuilt as diag(σ_G)·ρ_G·diag(σ_G) for invertibility. Solved via the Markowitz tangency
+    formula with absolute-value normalisation (Slensvik 2021, eq. 16).
   </p>
 
+  <!-- HERO KPIS -->
   <div class="kpis">
-    <div class="kpi">
-      <div class="kpi-lbl">GROSS LONG</div>
-      <div class="kpi-val" id="kpiLong">—</div>
-      <div class="kpi-sub" id="kpiLongCount">— positions</div>
-    </div>
-    <div class="kpi">
-      <div class="kpi-lbl">GROSS SHORT</div>
-      <div class="kpi-val" id="kpiShort">—</div>
-      <div class="kpi-sub" id="kpiShortCount">— positions</div>
-    </div>
-    <div class="kpi">
-      <div class="kpi-lbl">NET</div>
-      <div class="kpi-val" id="kpiNet">—</div>
-      <div class="kpi-sub">dollar-net long target</div>
-    </div>
-    <div class="kpi">
-      <div class="kpi-lbl">FCST WEEKLY VOL</div>
-      <div class="kpi-val" id="kpiVol">—</div>
-      <div class="kpi-sub" id="kpiVolAnn">— annualised</div>
+    <div class="kpi"><div class="kpi-lbl">UNIVERSE</div><div class="kpi-val" id="kN">—</div><div class="kpi-sub" id="kEffN">Effective N —</div></div>
+    <div class="kpi"><div class="kpi-lbl">NET</div><div class="kpi-val" id="kNet">—</div><div class="kpi-sub" id="kNetSub">dollar net long</div></div>
+    <div class="kpi"><div class="kpi-lbl">GROSS L/S</div><div class="kpi-val" id="kGross">—</div><div class="kpi-sub">long &nbsp;/ short</div></div>
+    <div class="kpi"><div class="kpi-lbl">FCST WEEKLY VOL</div><div class="kpi-val" id="kVol">—</div><div class="kpi-sub" id="kVolAnn">annualised —</div></div>
+    <div class="kpi"><div class="kpi-lbl">VaR<sub>95</sub> / VaR<sub>99</sub></div><div class="kpi-val" id="kVaR">—</div><div class="kpi-sub" id="kVaRSub">parametric one-week</div></div>
+  </div>
+
+  <!-- WEIGHTS + RISK -->
+  <div class="sec">
+    <div class="grid-2">
+
+      <div class="panel">
+        <div class="sec-head"><span class="glyph">▰</span>CURRENT WEIGHTS<span class="desc">Centred axis · longs (green) grow right · shorts (red) grow left · NEW marks fresh universe entries</span><span class="meta" id="wCount">—</span></div>
+        <div class="w-list" id="wList"><div style="color:var(--text3);text-align:center;padding:24px 8px;font-size:11px;letter-spacing:.1em">LOADING …</div></div>
+      </div>
+
+      <div>
+        <div class="panel">
+          <div class="sec-head"><span class="glyph">△</span>VALUE AT RISK<span class="desc">Forecast loss distribution assuming Gaussian returns</span></div>
+          <div class="var-bar"><canvas id="varCanvas"></canvas></div>
+          <div class="var-meta">
+            <span>μ<sub>port</sub> <strong id="vmMu">—</strong></span>
+            <span>σ<sub>port</sub> <strong id="vmSig">—</strong></span>
+            <span>VaR<sub>95</sub> <strong id="vmV95">—</strong></span>
+            <span>VaR<sub>99</sub> <strong id="vmV99">—</strong></span>
+          </div>
+        </div>
+
+        <div class="panel" style="margin-top:14px">
+          <div class="sec-head"><span class="glyph">≡</span>SHRINKAGE COEFFICIENTS</div>
+          <div class="shr-row"><div class="lbl">Correlation <em>ρ_G</em> = g₀ + g₁ · ρ̂</div><div class="val">+0.0680</div><div class="val">×0.2592</div></div>
+          <div class="shr-row"><div class="lbl">Volatility <em>σ_G</em> = g₀ + g₁ · σ̂</div><div class="val">+0.0222</div><div class="val">×0.6385</div></div>
+          <div class="shr-row"><div class="lbl">Mean return <em>μ_G</em> = g₀ + g₁ · μ̂</div><div class="val">+0.0033</div><div class="val">×0.1291</div></div>
+        </div>
+      </div>
+
     </div>
   </div>
 
-  <div class="grid">
-
+  <!-- VECTORS BEFORE/AFTER -->
+  <div class="sec">
     <div class="panel">
-      <div class="panel-h">
-        <span><span class="glyph">▰</span>CURRENT WEIGHTS</span>
-        <span class="meta" id="weightsCount">—</span>
-      </div>
-      <div class="w-list" id="wList">
-        <div style="color:var(--text-dim);padding:24px 8px;text-align:center;font-size:11px;letter-spacing:.1em">LOADING …</div>
-      </div>
+      <div class="sec-head"><span class="glyph">∿</span>SHRINKAGE: BEFORE vs AFTER<span class="desc">Cross-section of inputs — each cell is one of the 30 stocks, coloured by value</span></div>
+      <div id="vecBlocks" class="vec-block" style="display:flex; flex-direction:column; gap:18px">LOADING …</div>
     </div>
-
-    <div class="panel">
-      <div class="panel-h"><span><span class="glyph">▢</span>SHRINKAGE COEFFICIENTS</span></div>
-      <div class="shrink-row">
-        <div class="lbl">Correlation <em>ρ_G</em> = g₀ + g₁ · ρ̂</div>
-        <div class="val pos">+0.0680</div>
-        <div class="val pos">×0.2592</div>
-      </div>
-      <div class="shrink-row">
-        <div class="lbl">Volatility <em>σ_G</em> = g₀ + g₁ · σ̂</div>
-        <div class="val pos">+0.0222</div>
-        <div class="val pos">×0.6385</div>
-      </div>
-      <div class="shrink-row">
-        <div class="lbl">Mean return <em>μ_G</em> = g₀ + g₁ · μ̂</div>
-        <div class="val pos">+0.0033</div>
-        <div class="val pos">×0.1291</div>
-      </div>
-      <div class="meta-bar">
-        <span>UNIVERSE <strong>top 30</strong></span>
-        <span>LOOKBACK <strong>60w</strong></span>
-        <span>VARIANT <strong>MV</strong></span>
-      </div>
-    </div>
-
   </div>
+
+  <!-- HEATMAPS ρ + Σ -->
+  <div class="sec">
+    <div class="grid-3">
+      <div class="panel"><div class="hm-wrap"><div class="hm-title">SAMPLE ρ̂</div><canvas id="hmRhoHat"></canvas></div></div>
+      <div class="panel"><div class="hm-wrap"><div class="hm-title">GALTON ρ_G</div><canvas id="hmRhoG"></canvas></div></div>
+      <div class="panel"><div class="hm-wrap"><div class="hm-title">Σ_G (RECONSTRUCTED)</div><canvas id="hmSigmaG"></canvas></div></div>
+    </div>
+  </div>
+
+  <!-- UNIVERSE DIFFS -->
+  <div class="sec">
+    <div class="grid-2">
+      <div class="panel"><div class="sec-head"><span class="glyph">▴</span>UNIVERSE ADDED THIS WEEK<span class="meta" id="addCount">—</span></div><div class="diff-row" id="addList">—</div></div>
+      <div class="panel"><div class="sec-head"><span class="glyph">▾</span>UNIVERSE REMOVED THIS WEEK<span class="meta" id="remCount">—</span></div><div class="diff-row" id="remList">—</div></div>
+    </div>
+  </div>
+
+  <!-- EXPOSURE OVER TIME -->
+  <div class="sec">
+    <div class="panel">
+      <div class="sec-head"><span class="glyph">∆</span>GROSS LONG / SHORT OVER TIME<span class="desc">Per-week gross exposure series</span></div>
+      <div style="height:200px"><canvas id="expCanvas"></canvas></div>
+    </div>
+  </div>
+
 </main>
 
 <script>
 const API = 'https://api.slensvik.com';
 
-async function load() {
-  let weights = [];
-  try {
-    const r = await fetch(`${API}/galton_weights?order=rebalance_date.desc,weight.desc&limit=60`);
-    if (r.ok) weights = await r.json();
-  } catch(e) { console.error(e); }
+const fmt = {
+  pct: (v, d=2) => v == null ? '—' : (Number(v) * 100).toFixed(d) + '%',
+  num: (v, d=2) => v == null ? '—' : Number(v).toFixed(d),
+};
 
-  if (!weights.length) {
-    document.getElementById('wList').innerHTML =
-      '<div style="color:var(--text-dim);padding:24px 8px;text-align:center;font-size:11px;letter-spacing:.1em">NO WEIGHTS YET — RUN THE WORKFLOW</div>';
+// Color scale for heatmaps:  red (-) → black (0) → ice/blue (+)
+function corrColor(v) {
+  const a = Math.min(1, Math.abs(v));
+  if (v >= 0) {
+    const r = Math.round(11 + (79 - 11) * a);
+    const g = Math.round(17 + (195 - 17) * a);
+    const b = Math.round(28 + (247 - 28) * a);
+    return `rgb(${r},${g},${b})`;
+  } else {
+    const r = Math.round(11 + (240 - 11) * a);
+    const g = Math.round(17 + (96 - 17) * a);
+    const b = Math.round(28 + (96 - 28) * a);
+    return `rgb(${r},${g},${b})`;
+  }
+}
+// Color for μ vector cells (positive only — orange amber tint)
+function valColor(v, vMax) {
+  const a = Math.min(1, Math.abs(v) / (vMax || 1));
+  if (v >= 0) {
+    const r = Math.round(20 + (245 - 20) * a);
+    const g = Math.round(30 + (166 - 30) * a);
+    const b = Math.round(40 + (35  - 40) * a);
+    return `rgb(${r},${g},${b})`;
+  } else {
+    const r = Math.round(20 + (240 - 20) * a);
+    const g = Math.round(30 + (96  - 30) * a);
+    const b = Math.round(40 + (96  - 40) * a);
+    return `rgb(${r},${g},${b})`;
+  }
+}
+
+function drawHeatmap(canvas, M, size=300) {
+  const N = M.length;
+  const cell = Math.floor(size / N);
+  canvas.width = canvas.height = cell * N;
+  const ctx = canvas.getContext('2d');
+  for (let i = 0; i < N; i++) {
+    for (let j = 0; j < N; j++) {
+      ctx.fillStyle = corrColor(M[i][j]);
+      ctx.fillRect(j * cell, i * cell, cell, cell);
+    }
+  }
+}
+
+function drawVarBar(canvas, mu, sigma, v95, v99) {
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  // Gaussian PDF for portfolio return
+  const range = 4 * sigma;
+  const xMin = mu - range, xMax = mu + range;
+  const pdf = x => Math.exp(-0.5 * ((x - mu) / sigma) ** 2) / (sigma * Math.sqrt(2 * Math.PI));
+  const xs = [], ys = [];
+  const steps = w;
+  for (let i = 0; i < steps; i++) {
+    const x = xMin + (xMax - xMin) * (i / (steps - 1));
+    xs.push(x); ys.push(pdf(x));
+  }
+  const yMax = Math.max(...ys);
+  // Background fill (full distribution)
+  ctx.beginPath();
+  ctx.moveTo(0, h);
+  for (let i = 0; i < steps; i++) ctx.lineTo(i, h - (ys[i] / yMax) * (h - 6));
+  ctx.lineTo(w, h); ctx.closePath();
+  ctx.fillStyle = 'rgba(79,195,247,0.08)'; ctx.fill();
+  // VaR95 shaded region (left tail beyond -v95)
+  const xToPx = x => (x - xMin) / (xMax - xMin) * w;
+  ctx.beginPath();
+  const x95 = xToPx(-v95);
+  ctx.moveTo(0, h);
+  for (let i = 0; i < x95; i++) ctx.lineTo(i, h - (ys[i] / yMax) * (h - 6));
+  ctx.lineTo(x95, h); ctx.closePath();
+  ctx.fillStyle = 'rgba(245,166,35,0.45)'; ctx.fill();
+  // VaR99 shaded region (left tail beyond -v99)
+  ctx.beginPath();
+  const x99 = xToPx(-v99);
+  ctx.moveTo(0, h);
+  for (let i = 0; i < x99; i++) ctx.lineTo(i, h - (ys[i] / yMax) * (h - 6));
+  ctx.lineTo(x99, h); ctx.closePath();
+  ctx.fillStyle = 'rgba(240,96,96,0.55)'; ctx.fill();
+  // VaR lines
+  ctx.strokeStyle = 'rgba(245,166,35,0.85)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(x95, 4); ctx.lineTo(x95, h); ctx.stroke();
+  ctx.strokeStyle = 'rgba(240,96,96,0.95)';
+  ctx.beginPath(); ctx.moveTo(x99, 4); ctx.lineTo(x99, h); ctx.stroke();
+  // Center (mean) line
+  const xc = xToPx(mu);
+  ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+  ctx.beginPath(); ctx.moveTo(xc, 0); ctx.lineTo(xc, h); ctx.stroke();
+}
+
+(async () => {
+  // ─── Fetch everything in parallel
+  const get = async p => { try { const r = await fetch(`${API}/${p}`); return r.ok ? await r.json() : null; } catch(e) { return null; }};
+  const [metrics, latestMat, latestW, allMetrics] = await Promise.all([
+    get('galton_metrics?order=rebalance_date.desc&limit=1'),
+    get('galton_matrices?order=rebalance_date.desc&limit=1'),
+    get('galton_weights?order=rebalance_date.desc,weight.desc&limit=200'),
+    get('galton_metrics?order=rebalance_date.asc'),
+  ]);
+  if (!metrics || !metrics.length) {
+    document.getElementById('wList').innerHTML = '<div style="text-align:center;padding:24px;color:var(--text3)">NO DATA YET</div>';
     return;
   }
+  const m   = metrics[0];
+  const mat = latestMat && latestMat[0];
+  const weights = (latestW || []).filter(w => w.rebalance_date === m.rebalance_date)
+                                  .sort((a,b) => Number(b.weight) - Number(a.weight));
 
-  // Pick the most recent rebalance date
-  const latestDate = weights[0].rebalance_date;
-  const rows = weights.filter(w => w.rebalance_date === latestDate)
-                      .sort((a, b) => Number(b.weight) - Number(a.weight));
+  // ─── KPIs
+  document.getElementById('rebDate').textContent = m.rebalance_date;
+  document.getElementById('kN').textContent       = m.n_universe;
+  document.getElementById('kEffN').textContent    = `Effective N ${Number(m.effective_n).toFixed(1)}`;
+  document.getElementById('kNet').textContent     = fmt.pct(m.net, 1);
+  document.getElementById('kNetSub').textContent  = `HHI ${Number(m.hhi).toFixed(3)}`;
+  document.getElementById('kGross').textContent   = `${fmt.pct(m.gross_long,1)} / ${fmt.pct(m.gross_short,1)}`;
+  document.getElementById('kVol').textContent     = fmt.pct(m.forecast_weekly_vol, 2);
+  document.getElementById('kVolAnn').textContent  = `annualised ${fmt.pct(m.forecast_weekly_vol * Math.sqrt(52), 1)}`;
+  document.getElementById('kVaR').textContent     = `${fmt.pct(m.forecast_var95,2)} / ${fmt.pct(m.forecast_var99,2)}`;
 
-  document.getElementById('rebDate').textContent = latestDate;
-  document.getElementById('weightsCount').textContent = `${rows.length} POSITIONS`;
+  // ─── Weights bars
+  const maxAbs = Math.max(...weights.map(r => Math.abs(Number(r.weight))));
+  document.getElementById('wCount').textContent = `${weights.length} POSITIONS`;
+  document.getElementById('wList').innerHTML = weights.map(r => {
+    const w = Number(r.weight);
+    const cls = w >= 0 ? 'long' : 'short';
+    const barW = (Math.abs(w) / maxAbs * 50).toFixed(2) + '%';
+    const newBadge = r.is_new_this_week ? '<span class="w-new">NEW</span>' : '';
+    const rc = r.risk_contribution != null ? (Number(r.risk_contribution) * 100).toFixed(1) + '%' : '—';
+    return `<div class="w-row">
+      <div class="w-rank">${r.rank}</div>
+      <div class="w-ticker">${r.ticker}${newBadge}</div>
+      <div class="w-bar-wrap"><div class="w-bar ${cls}" style="width:${barW}"></div></div>
+      <div class="w-pct ${cls}">${w >= 0 ? '+' : ''}${(w*100).toFixed(2)}%</div>
+      <div class="w-rc" title="Risk contribution">${rc}</div>
+    </div>`;
+  }).join('');
 
-  const longs  = rows.filter(r => Number(r.weight) > 0);
-  const shorts = rows.filter(r => Number(r.weight) < 0);
-  const grossL = longs.reduce ((s, r) => s + Number(r.weight), 0);
-  const grossS = shorts.reduce((s, r) => s + Number(r.weight), 0);
-  const net    = grossL + grossS;
+  // ─── VaR fan
+  const mu = Number(m.mu_g_mean);                           // approx portfolio mean
+  const sigma = Number(m.forecast_weekly_vol);
+  const v95 = Number(m.forecast_var95), v99 = Number(m.forecast_var99);
+  document.getElementById('vmMu').textContent  = (mu*100).toFixed(3) + '%';
+  document.getElementById('vmSig').textContent = (sigma*100).toFixed(3) + '%';
+  document.getElementById('vmV95').textContent = '−' + (v95*100).toFixed(2) + '%';
+  document.getElementById('vmV99').textContent = '−' + (v99*100).toFixed(2) + '%';
+  requestAnimationFrame(() => drawVarBar(document.getElementById('varCanvas'), mu, sigma, v95, v99));
+  window.addEventListener('resize', () => drawVarBar(document.getElementById('varCanvas'), mu, sigma, v95, v99));
 
-  document.getElementById('kpiLong').textContent      = (grossL * 100).toFixed(1) + '%';
-  document.getElementById('kpiLongCount').textContent = `${longs.length} positions`;
-  document.getElementById('kpiShort').textContent      = (grossS * 100).toFixed(1) + '%';
-  document.getElementById('kpiShortCount').textContent = `${shorts.length} positions`;
-  document.getElementById('kpiNet').textContent        = (net * 100).toFixed(1) + '%';
+  // ─── Vectors before/after
+  if (mat) {
+    const N = mat.tickers.length;
+    const muHat = mat.mu_hat, muG = mat.mu_g, sigHat = mat.sigma_hat, sigG = mat.sigma_g;
+    const muMax  = Math.max(...muHat.map(Math.abs), ...muG.map(Math.abs));
+    const sigMax = Math.max(...sigHat,      ...sigG);
 
-  // Vol estimate — pull from notes if we can parse σ_G, otherwise leave blank
-  const sigs = rows.map(r => {
-    const m = (r.note || '').match(/σ_G=([\d.]+)/);
-    return m ? Number(m[1]) : null;
-  }).filter(x => x != null);
-  if (sigs.length) {
-    // Use a rough portfolio vol = sqrt(w' Σ w); without ρ we approximate by sum of (w·σ)²
-    const ws = rows.map(r => Number(r.weight));
-    let pvar = 0;
-    for (let i = 0; i < ws.length; i++) pvar += (ws[i] * sigs[i]) ** 2;
-    const wkVol = Math.sqrt(pvar);
-    document.getElementById('kpiVol').textContent     = (wkVol * 100).toFixed(2) + '%';
-    document.getElementById('kpiVolAnn').textContent  = `${(wkVol * Math.sqrt(52) * 100).toFixed(1)}% annualised (rough)`;
+    const stripHTML = (vec, max, lbl) => {
+      const cells = vec.map((v, i) => `<div class="vec-cell" style="background:${valColor(v, max)}" title="${mat.tickers[i]} ${(v*100).toFixed(3)}%"></div>`).join('');
+      return `<div class="vec-pair">
+        <div class="vec-label">${lbl}</div>
+        <div class="vec-cells">${cells}</div>
+      </div>`;
+    };
+    const stripPair = (raw, shrunken, max, rawLbl, gLbl) => stripHTML(raw, max, rawLbl) + stripHTML(shrunken, max, gLbl);
+    document.getElementById('vecBlocks').innerHTML =
+      stripPair(muHat,  muG,  muMax,  'Mean return <em>μ̂</em> (sample)',  'Mean return <em>μ_G</em> (shrunken)') +
+      stripPair(sigHat, sigG, sigMax, 'Volatility <em>σ̂</em> (sample)',   'Volatility <em>σ_G</em> (shrunken)');
+
+    // Tickers axis under the strips
+    const tickerRow = `<div class="vec-pair"><div class="vec-label" style="color:var(--text3)">tickers (left→right)</div><div class="vec-cells" style="font-size:7px;letter-spacing:0;display:flex;gap:1px;color:var(--text3)">${mat.tickers.map(t => `<span style="display:inline-block;width:9px;text-align:center;transform:rotate(-90deg);transform-origin:left top;margin-top:36px">${t}</span>`).join('')}</div></div>`;
+    document.getElementById('vecBlocks').insertAdjacentHTML('beforeend', tickerRow);
+
+    // ─── Heatmaps
+    drawHeatmap(document.getElementById('hmRhoHat'),  mat.rho_hat);
+    drawHeatmap(document.getElementById('hmRhoG'),    mat.rho_g);
+    // Σ_G uses different scale — re-scale to [-1,1] via dividing by max abs
+    const flatS = mat.sigma_matrix.flat();
+    const sMax  = Math.max(...flatS.map(Math.abs)) || 1;
+    const Sn = mat.sigma_matrix.map(row => row.map(v => v / sMax));
+    drawHeatmap(document.getElementById('hmSigmaG'),  Sn);
   }
 
-  // Render weight bars — center axis, longs to the right, shorts to the left
-  const maxAbs = Math.max(...rows.map(r => Math.abs(Number(r.weight))));
-  const html = rows.map(r => {
-    const w  = Number(r.weight);
-    const pct = (w * 100).toFixed(2);
-    const cls = w >= 0 ? 'long' : 'short';
-    const barW = (Math.abs(w) / maxAbs * 50).toFixed(2) + '%';   // 50% = half the bar lane
-    return `
-      <div class="w-row">
-        <div class="w-rank">${r.rank}</div>
-        <div class="w-ticker">${r.ticker}</div>
-        <div class="w-bar-wrap">
-          <div class="w-bar ${cls}" style="width:${barW}"></div>
-        </div>
-        <div class="w-pct ${cls}">${w >= 0 ? '+' : ''}${pct}%</div>
-      </div>`;
-  }).join('');
-  document.getElementById('wList').innerHTML = html;
-}
-load();
+  // ─── Universe diffs
+  const added   = m.universe_added   || [];
+  const removed = m.universe_removed || [];
+  document.getElementById('addCount').textContent = added.length;
+  document.getElementById('remCount').textContent = removed.length;
+  document.getElementById('addList').innerHTML = added.length
+    ? added.map(t => `<span class="diff-pill diff-add">▴ ${t}</span>`).join(' ')
+    : '<span style="color:var(--text3);font-size:11px">none</span>';
+  document.getElementById('remList').innerHTML = removed.length
+    ? removed.map(t => `<span class="diff-pill diff-rem">▾ ${t}</span>`).join(' ')
+    : '<span style="color:var(--text3);font-size:11px">none</span>';
+
+  // ─── Exposure over time (just 1 point today, grows weekly)
+  if (allMetrics && allMetrics.length) {
+    const labels = allMetrics.map(r => r.rebalance_date);
+    new Chart(document.getElementById('expCanvas'), {
+      type:'line',
+      data:{
+        labels,
+        datasets:[
+          { label:'Gross long',  data: allMetrics.map(r => Number(r.gross_long)*100),  borderColor:'#43e097', backgroundColor:'rgba(67,224,151,0.08)', borderWidth:1.5, fill:true, tension:.2, pointRadius: allMetrics.length < 6 ? 3 : 0 },
+          { label:'Gross short', data: allMetrics.map(r => Number(r.gross_short)*100), borderColor:'#f06060', backgroundColor:'rgba(240,96,96,0.08)',  borderWidth:1.5, fill:true, tension:.2, pointRadius: allMetrics.length < 6 ? 3 : 0 },
+          { label:'Net',         data: allMetrics.map(r => Number(r.net)*100),         borderColor:'#f5a623', borderDash:[4,4], borderWidth:1, fill:false, pointRadius:0 },
+        ],
+      },
+      options:{
+        responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{ labels:{ color:'#a4adbf', font:{ family:'IBM Plex Mono', size:10 }, boxWidth:12 } } },
+        scales:{
+          x:{ ticks:{ color:'#5a6377', font:{ family:'IBM Plex Mono', size:9 }, maxTicksLimit:10 }, grid:{ color:'rgba(255,255,255,0.04)' } },
+          y:{ ticks:{ color:'#5a6377', font:{ family:'IBM Plex Mono', size:9 }, callback:v=>v.toFixed(0)+'%' }, grid:{ color:'rgba(255,255,255,0.04)' } },
+        },
+      },
+    });
+  }
+})();
 </script>
 
 </body>
