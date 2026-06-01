@@ -63,10 +63,15 @@
   .w-rank { color:var(--text3); text-align:right; font-size:9px; }
   .w-ticker { color:var(--text1); font-weight:500; letter-spacing:.04em; display:flex; align-items:center; gap:4px; }
   .w-new { background:var(--amber-dim); color:var(--amber); font-size:7.5px; letter-spacing:.08em; padding:1px 4px; }
-  .w-bar-wrap { position:relative; height:11px; border-left:1px solid rgba(255,255,255,0.18); }
+  .w-bar-wrap { position:relative; height:11px; overflow:hidden; }
+  .w-bar-wrap::before {
+    /* center axis line */
+    content:''; position:absolute; left:50%; top:0; bottom:0;
+    width:1px; margin-left:-0.5px; background:rgba(255,255,255,0.20);
+  }
   .w-bar { position:absolute; height:100%; transition:width .4s; }
-  .w-bar.long { background:linear-gradient(90deg,rgba(67,224,151,0.9),rgba(67,224,151,0.6)); left:0; }
-  .w-bar.short { background:linear-gradient(90deg,rgba(240,96,96,0.6),rgba(240,96,96,0.9)); right:100%; }
+  .w-bar.long  { left:50%; background:linear-gradient(90deg,rgba(67,224,151,0.9),rgba(67,224,151,0.6)); }
+  .w-bar.short { right:50%; background:linear-gradient(90deg,rgba(240,96,96,0.6),rgba(240,96,96,0.9)); }
   .w-pct { text-align:right; font-variant-numeric:tabular-nums; color:var(--text2); font-size:10.5px; }
   .w-pct.long { color:var(--green); } .w-pct.short { color:var(--red); }
   .w-rc { text-align:right; font-variant-numeric:tabular-nums; color:var(--text3); font-size:9px; }
@@ -115,10 +120,23 @@
   /* ─── Coefficient sliders ───────────────────────────────── */
   .sl-row {
     display: grid;
-    grid-template-columns: 240px 1fr 80px;
+    grid-template-columns: 240px 1fr 80px 28px;
     gap: 14px; align-items: center;
     padding: 10px 0; border-bottom: 1px dashed var(--border);
   }
+  .sl-reset {
+    background: transparent;
+    border: 1px solid var(--border2);
+    color: var(--text3);
+    width: 22px; height: 22px;
+    cursor: pointer;
+    font-size: 13px; line-height: 1;
+    font-family: var(--mono);
+    padding: 0;
+    transition: color .15s, border-color .15s;
+  }
+  .sl-reset:hover { color: var(--amber); border-color: var(--amber); }
+  .sl-reset:active { background: rgba(245,166,35,0.12); }
   .sl-row:last-child { border-bottom: none; }
   .sl-row .lbl { font-family:var(--mono); font-size:11px; color:var(--text1); }
   .sl-row .lbl em { color:var(--amber); font-style:normal; }
@@ -256,12 +274,12 @@
     <div class="panel">
       <div class="sec-head"><span class="glyph">◴</span>COEFFICIENT SENSITIVITY · INTERACTIVE<span class="desc">Slide a coefficient to see how the weights, σ_port and VaR move in real time</span><span class="meta" id="slStatus">paused</span></div>
       <div id="sliders">
-        <div class="sl-row"><div class="lbl">g₀,ρ <span style="color:var(--text3)">intercept (correlation)</span></div><input type="range" id="sl_g0r" min="-0.3" max="0.3" step="0.001" value="0.0680"><div class="val" id="v_g0r">+0.068</div></div>
-        <div class="sl-row"><div class="lbl">g₁,ρ <span style="color:var(--text3)">slope (correlation)</span></div><input type="range" id="sl_g1r" min="-0.5" max="1.5" step="0.001" value="0.2592"><div class="val" id="v_g1r">+0.259</div></div>
-        <div class="sl-row"><div class="lbl">g₀,σ <span style="color:var(--text3)">intercept (volatility)</span></div><input type="range" id="sl_g0v" min="-0.1" max="0.2" step="0.0005" value="0.0222"><div class="val" id="v_g0v">+0.022</div></div>
-        <div class="sl-row"><div class="lbl">g₁,σ <span style="color:var(--text3)">slope (volatility)</span></div><input type="range" id="sl_g1v" min="-0.5" max="2.0" step="0.001" value="0.6385"><div class="val" id="v_g1v">+0.638</div></div>
-        <div class="sl-row"><div class="lbl">g₀,μ <span style="color:var(--text3)">intercept (mean return)</span></div><input type="range" id="sl_g0m" min="-0.05" max="0.05" step="0.0001" value="0.0033"><div class="val" id="v_g0m">+0.003</div></div>
-        <div class="sl-row"><div class="lbl">g₁,μ <span style="color:var(--text3)">slope (mean return)</span></div><input type="range" id="sl_g1m" min="-1.0" max="1.0" step="0.001" value="0.1291"><div class="val" id="v_g1m">+0.129</div></div>
+        <div class="sl-row"><div class="lbl">g₀,ρ <span style="color:var(--text3)">intercept (correlation)</span></div><input type="range" id="sl_g0r" min="-0.3" max="0.3" step="0.001" value="0.0680"><div class="val" id="v_g0r">+0.068</div><button class="sl-reset" data-target="sl_g0r" data-default="0.0680" title="Reset to live">↺</button></div>
+        <div class="sl-row"><div class="lbl">g₁,ρ <span style="color:var(--text3)">slope (correlation)</span></div><input type="range" id="sl_g1r" min="-0.5" max="1.5" step="0.001" value="0.2592"><div class="val" id="v_g1r">+0.259</div><button class="sl-reset" data-target="sl_g1r" data-default="0.2592" title="Reset to live">↺</button></div>
+        <div class="sl-row"><div class="lbl">g₀,σ <span style="color:var(--text3)">intercept (volatility)</span></div><input type="range" id="sl_g0v" min="-0.1" max="0.2" step="0.0005" value="0.0222"><div class="val" id="v_g0v">+0.022</div><button class="sl-reset" data-target="sl_g0v" data-default="0.0222" title="Reset to live">↺</button></div>
+        <div class="sl-row"><div class="lbl">g₁,σ <span style="color:var(--text3)">slope (volatility)</span></div><input type="range" id="sl_g1v" min="-0.5" max="2.0" step="0.001" value="0.6385"><div class="val" id="v_g1v">+0.638</div><button class="sl-reset" data-target="sl_g1v" data-default="0.6385" title="Reset to live">↺</button></div>
+        <div class="sl-row"><div class="lbl">g₀,μ <span style="color:var(--text3)">intercept (mean return)</span></div><input type="range" id="sl_g0m" min="-0.05" max="0.05" step="0.0001" value="0.0033"><div class="val" id="v_g0m">+0.003</div><button class="sl-reset" data-target="sl_g0m" data-default="0.0033" title="Reset to live">↺</button></div>
+        <div class="sl-row"><div class="lbl">g₁,μ <span style="color:var(--text3)">slope (mean return)</span></div><input type="range" id="sl_g1m" min="-1.0" max="1.0" step="0.001" value="0.1291"><div class="val" id="v_g1m">+0.129</div><button class="sl-reset" data-target="sl_g1m" data-default="0.1291" title="Reset to live">↺</button></div>
       </div>
       <div class="slider-actions">
         <button id="slReset">RESET TO LIVE</button>
@@ -731,6 +749,11 @@ function renderSectors(weights) {
 
   // Slider wiring
   document.querySelectorAll('#sliders input[type=range]').forEach(el => el.addEventListener('input', applySliders));
+  document.querySelectorAll('#sliders .sl-reset').forEach(btn => btn.addEventListener('click', () => {
+    const target = document.getElementById(btn.dataset.target);
+    target.value = btn.dataset.default;
+    applySliders();
+  }));
   document.getElementById('slReset').addEventListener('click', () => {
     document.getElementById('sl_g0r').value = 0.0680;
     document.getElementById('sl_g1r').value = 0.2592;
