@@ -12,7 +12,9 @@
     --bg0: #050810; --bg1: #0b0f17; --bg2: #11161f; --bg3: #1a212d;
     --border: rgba(255,255,255,0.06); --border2: rgba(255,255,255,0.12);
     --text1: #e8eef7; --text2: #a4adbf; --text3: #5a6377; --text4: #3a4252;
-    --amber: #f5a623; --ice: #4fc3f7; --green: #43e097; --red: #f06060;
+    --amber: #f5a623; --amber-dim: rgba(245,166,35,0.16);
+    --ice: #4fc3f7;   --ice-dim:   rgba(79,195,247,0.13);
+    --green: #43e097; --red: #f06060;
     --mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace;
     --sans: 'Syne', sans-serif;
   }
@@ -31,182 +33,271 @@
     padding: 4px 12px; border: 1px solid var(--border2);
   }
   .topbar a.back:hover { color: var(--amber); border-color: var(--amber); }
-  .topbar .crumb {
+  .crumb {
     font-family: var(--mono); font-size: 11px; letter-spacing: 0.18em;
     text-transform: uppercase; color: var(--text2);
   }
-  .topbar .crumb .glyph { color: var(--amber); margin-right: 8px; }
-  main {
-    max-width: 880px; margin: 0 auto; padding: 64px 36px;
-  }
+  .crumb .glyph { color: var(--amber); margin-right: 8px; }
+  main { max-width: 1080px; margin: 0 auto; padding: 48px 36px 72px; }
   h1 {
     font-family: var(--sans); font-weight: 700;
-    font-size: clamp(28px, 4vw, 44px);
-    line-height: 1.06; letter-spacing: -0.02em;
-    margin-bottom: 18px;
+    font-size: clamp(28px, 4vw, 42px);
+    line-height: 1.05; letter-spacing: -0.02em;
+    margin-bottom: 14px;
   }
   .lead {
     font-size: 13px; color: var(--text2); line-height: 1.7;
-    margin-bottom: 32px;
+    margin-bottom: 28px; max-width: 720px;
   }
-  .panel {
-    border: 1px solid var(--border2);
-    background: var(--bg1);
-    padding: 26px 28px; margin-bottom: 22px;
+
+  /* ─── KPI strip ────────────────────────────────────────────────────── */
+  .kpis {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
+    margin-bottom: 22px;
   }
-  .panel-h {
-    font-family: var(--mono); font-size: 11px; letter-spacing: 0.18em;
-    text-transform: uppercase; color: var(--text2);
-    margin-bottom: 14px;
-    padding-bottom: 8px; border-bottom: 1px solid var(--border);
-  }
-  .panel-h .glyph { color: var(--amber); margin-right: 8px; }
-  .progress-strip {
-    height: 6px; background: var(--bg3); position: relative; overflow: hidden;
-    border: 1px solid var(--border);
-  }
-  .progress-fill {
-    position: absolute; top: 0; left: 0; bottom: 0;
-    background: linear-gradient(90deg, var(--ice), var(--amber));
-    transition: width 0.8s;
-  }
-  .progress-meta {
-    display: flex; justify-content: space-between;
-    font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em;
-    text-transform: uppercase; color: var(--text3);
-    margin-top: 8px;
-  }
-  .progress-meta strong { color: var(--text1); font-variant-numeric: tabular-nums; }
-  .kpi-grid {
-    display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px;
-  }
-  @media (max-width: 600px) { .kpi-grid { grid-template-columns: 1fr; } }
+  @media (max-width: 720px) { .kpis { grid-template-columns: repeat(2, 1fr); } }
   .kpi {
-    border: 1px solid var(--border); padding: 16px 18px;
+    border: 1px solid var(--border); padding: 14px 16px;
+    background: var(--bg1);
   }
   .kpi-lbl {
     font-family: var(--mono); font-size: 9px; letter-spacing: 0.18em;
-    text-transform: uppercase; color: var(--text3);
-    margin-bottom: 8px;
+    text-transform: uppercase; color: var(--text3); margin-bottom: 6px;
   }
   .kpi-val {
-    font-family: var(--mono); font-size: 22px; font-weight: 500;
+    font-family: var(--mono); font-size: 21px; font-weight: 500;
     color: var(--text1); letter-spacing: -0.01em;
     font-variant-numeric: tabular-nums;
   }
   .kpi-sub {
-    font-family: var(--mono); font-size: 10px; color: var(--text3);
+    font-family: var(--mono); font-size: 9.5px; color: var(--text3);
     margin-top: 4px; letter-spacing: 0.06em;
   }
-  ul.methodology {
-    list-style: none; padding: 0;
-    font-family: var(--mono); font-size: 12px; line-height: 1.8; color: var(--text2);
+
+  /* ─── Two-column layout ────────────────────────────────────────────── */
+  .grid {
+    display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px;
   }
-  ul.methodology li::before {
-    content: '◦'; margin-right: 12px; color: var(--amber);
+  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+  .panel {
+    border: 1px solid var(--border2);
+    background: var(--bg1);
+    padding: 22px 24px 18px;
   }
+  .panel-h {
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.18em;
+    text-transform: uppercase; color: var(--text2);
+    margin-bottom: 14px;
+    padding-bottom: 8px; border-bottom: 1px solid var(--border);
+    display: flex; justify-content: space-between;
+  }
+  .panel-h .glyph { color: var(--amber); margin-right: 8px; }
+  .panel-h .meta { color: var(--text3); font-weight: 400; }
+
+  /* ─── Weights bar list ─────────────────────────────────────────────── */
+  .w-list { display: flex; flex-direction: column; gap: 5px; }
+  .w-row {
+    display: grid;
+    grid-template-columns: 22px 50px 1fr 60px;
+    align-items: center; gap: 10px;
+    font-family: var(--mono); font-size: 11px;
+    padding: 4px 0; border-bottom: 1px dashed var(--border);
+  }
+  .w-row:last-child { border-bottom: none; }
+  .w-rank { color: var(--text3); text-align: right; font-size: 9.5px; }
+  .w-ticker { color: var(--text1); font-weight: 500; letter-spacing: 0.04em; }
+  .w-bar-wrap {
+    position: relative; height: 12px; background: transparent;
+    border-left: 1px solid var(--border3, rgba(255,255,255,0.16));
+  }
+  .w-bar {
+    position: absolute; height: 100%; transition: width 0.4s;
+  }
+  .w-bar.long  { background: linear-gradient(90deg, rgba(67,224,151,0.85), rgba(67,224,151,0.55)); left: 0; }
+  .w-bar.short { background: linear-gradient(90deg, rgba(240,96,96,0.55), rgba(240,96,96,0.85)); right: 100%; }
+  .w-pct {
+    text-align: right; font-variant-numeric: tabular-nums;
+    color: var(--text2); font-size: 11px;
+  }
+  .w-pct.long  { color: var(--green); }
+  .w-pct.short { color: var(--red); }
+
+  /* ─── Shrinkage panel ──────────────────────────────────────────────── */
+  .shrink-row {
+    display: grid; grid-template-columns: 1fr 90px 90px;
+    gap: 8px; padding: 8px 0;
+    font-family: var(--mono); font-size: 11px;
+    border-bottom: 1px dashed var(--border);
+  }
+  .shrink-row:last-child { border-bottom: none; }
+  .shrink-row .lbl { color: var(--text1); }
+  .shrink-row .lbl em { color: var(--amber); font-style: normal; }
+  .shrink-row .val {
+    text-align: right; color: var(--text2);
+    font-variant-numeric: tabular-nums;
+  }
+  .shrink-row .val.pos { color: var(--ice); }
+
+  .meta-bar {
+    display: flex; gap: 14px; margin-top: 12px;
+    font-family: var(--mono); font-size: 10px;
+    color: var(--text3); letter-spacing: 0.06em;
+    padding-top: 10px; border-top: 1px solid var(--border);
+  }
+  .meta-bar strong { color: var(--text1); font-weight: 500; }
 </style>
 </head>
 <body>
 
 <header class="topbar">
   <a class="back" href="/">← BACK</a>
-  <span class="crumb"><span class="glyph">◆</span>GALTON STRATEGY</span>
+  <span class="crumb"><span class="glyph">◆</span>GALTON STRATEGY · MV30</span>
+  <span style="margin-left:auto;font-family:var(--mono);font-size:10px;letter-spacing:0.14em;color:var(--text3)">REBALANCE <strong id="rebDate" style="color:var(--text1)">—</strong></span>
 </header>
 
 <main>
 
-  <h1>Long-short equity on Oslo Børs, weighted by regularised covariance.</h1>
+  <h1>Mean-Variance long-short on top 30 Norwegian names, Galton-shrunken.</h1>
   <p class="lead">
-    Weekly rebalanced cross-sectional strategy on the full NOK-denominated
-    OSE universe. Weights derived from a structured covariance estimator
-    over 52 weeks of close-to-close returns. The strategy goes live once
-    the data accumulator clears the 52-week threshold.
+    Weekly rebalance. Top 30 by current market cap (DN snapshot, locked annually).
+    60-week return panel with linear Fama-MacBeth shrinkage on μ̂, σ̂, and ρ̂ separately.
+    Σ_G rebuilt as diag(σ_G)·ρ_G·diag(σ_G) for invertibility. Solved via the
+    Markowitz tangency formula with absolute-value normalisation (Slensvik 2021, eq. 16).
   </p>
 
-  <div class="panel">
-    <div class="panel-h"><span class="glyph">▰</span>DATA ACCUMULATOR</div>
-    <div class="progress-strip"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
-    <div class="progress-meta">
-      <span>STARTED <strong id="progressStart">—</strong></span>
-      <span><strong id="progressCount">—</strong> / 52 WEEKS</span>
-      <span>LIVE <strong id="progressEta">—</strong></span>
+  <div class="kpis">
+    <div class="kpi">
+      <div class="kpi-lbl">GROSS LONG</div>
+      <div class="kpi-val" id="kpiLong">—</div>
+      <div class="kpi-sub" id="kpiLongCount">— positions</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-lbl">GROSS SHORT</div>
+      <div class="kpi-val" id="kpiShort">—</div>
+      <div class="kpi-sub" id="kpiShortCount">— positions</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-lbl">NET</div>
+      <div class="kpi-val" id="kpiNet">—</div>
+      <div class="kpi-sub">dollar-net long target</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-lbl">FCST WEEKLY VOL</div>
+      <div class="kpi-val" id="kpiVol">—</div>
+      <div class="kpi-sub" id="kpiVolAnn">— annualised</div>
     </div>
   </div>
 
-  <div class="kpi-grid">
-    <div class="kpi">
-      <div class="kpi-lbl">UNIVERSE</div>
-      <div class="kpi-val" id="kpiUniverse">—</div>
-      <div class="kpi-sub">NOK-denominated OSE names</div>
-    </div>
-    <div class="kpi">
-      <div class="kpi-lbl">DAILY ROWS</div>
-      <div class="kpi-val" id="kpiRows">—</div>
-      <div class="kpi-sub">close prices captured</div>
-    </div>
-    <div class="kpi">
-      <div class="kpi-lbl">LATEST CLOSE</div>
-      <div class="kpi-val" id="kpiLatest">—</div>
-      <div class="kpi-sub" id="kpiLatestSub">DN feed · 15-min delayed</div>
-    </div>
-  </div>
+  <div class="grid">
 
-  <div class="panel" style="margin-top:22px">
-    <div class="panel-h"><span class="glyph">▢</span>METHODOLOGY · sketch</div>
-    <ul class="methodology">
-      <li>Daily snapshot from DN Investor — OHLCV plus market cap, no auth</li>
-      <li>Friday close anchors the weekly return series</li>
-      <li>Eligibility filter: market-cap floor, minimum trading days in window</li>
-      <li>Covariance estimator with regularisation toward a structured target</li>
-      <li>Cross-sectional rank → long/short tilt → weekly rebalance Monday open</li>
-      <li>Live weights stored in <code>api.galton_weights</code>; backtest archive separate</li>
-    </ul>
-  </div>
+    <div class="panel">
+      <div class="panel-h">
+        <span><span class="glyph">▰</span>CURRENT WEIGHTS</span>
+        <span class="meta" id="weightsCount">—</span>
+      </div>
+      <div class="w-list" id="wList">
+        <div style="color:var(--text-dim);padding:24px 8px;text-align:center;font-size:11px;letter-spacing:.1em">LOADING …</div>
+      </div>
+    </div>
 
+    <div class="panel">
+      <div class="panel-h"><span><span class="glyph">▢</span>SHRINKAGE COEFFICIENTS</span></div>
+      <div class="shrink-row">
+        <div class="lbl">Correlation <em>ρ_G</em> = g₀ + g₁ · ρ̂</div>
+        <div class="val pos">+0.0680</div>
+        <div class="val pos">×0.2592</div>
+      </div>
+      <div class="shrink-row">
+        <div class="lbl">Volatility <em>σ_G</em> = g₀ + g₁ · σ̂</div>
+        <div class="val pos">+0.0222</div>
+        <div class="val pos">×0.6385</div>
+      </div>
+      <div class="shrink-row">
+        <div class="lbl">Mean return <em>μ_G</em> = g₀ + g₁ · μ̂</div>
+        <div class="val pos">+0.0033</div>
+        <div class="val pos">×0.1291</div>
+      </div>
+      <div class="meta-bar">
+        <span>UNIVERSE <strong>top 30</strong></span>
+        <span>LOOKBACK <strong>60w</strong></span>
+        <span>VARIANT <strong>MV</strong></span>
+      </div>
+    </div>
+
+  </div>
 </main>
 
 <script>
-(async () => {
-  const API = 'https://api.slensvik.com';
-  const safeGet = async (p) => {
-    try {
-      const r = await fetch(`${API}/${p}`, { headers: { Accept: 'application/json' }});
-      if (!r.ok) return null;
-      return await r.json();
-    } catch (e) { return null; }
-  };
+const API = 'https://api.slensvik.com';
 
-  const all = await safeGet('daily_close?select=isin,trade_date,close,name,ticker&order=trade_date.desc&limit=2000');
-  if (!all || !all.length) return;
+async function load() {
+  let weights = [];
+  try {
+    const r = await fetch(`${API}/galton_weights?order=rebalance_date.desc,weight.desc&limit=60`);
+    if (r.ok) weights = await r.json();
+  } catch(e) { console.error(e); }
 
-  const isins = new Set(all.map(r => r.isin));
-  const dates = [...new Set(all.map(r => r.trade_date))].sort();
-  const weeks = Math.floor(dates.length / 5);
-  const startDate = dates[0];
-  const latestDate = dates[dates.length - 1];
-
-  document.getElementById('kpiUniverse').textContent = isins.size;
-  document.getElementById('kpiRows').textContent = all.length.toLocaleString('en-US');
-
-  const latestRow = all.find(r => r.trade_date === latestDate);
-  if (latestRow) {
-    document.getElementById('kpiLatest').textContent = `NOK ${Number(latestRow.close).toFixed(2)}`;
-    document.getElementById('kpiLatestSub').textContent = `${latestRow.ticker || latestRow.isin} · ${latestDate}`;
+  if (!weights.length) {
+    document.getElementById('wList').innerHTML =
+      '<div style="color:var(--text-dim);padding:24px 8px;text-align:center;font-size:11px;letter-spacing:.1em">NO WEIGHTS YET — RUN THE WORKFLOW</div>';
+    return;
   }
 
-  document.getElementById('progressStart').textContent = startDate;
-  document.getElementById('progressCount').textContent = weeks;
-  document.getElementById('progressFill').style.width = Math.min(100, weeks/52*100).toFixed(1) + '%';
+  // Pick the most recent rebalance date
+  const latestDate = weights[0].rebalance_date;
+  const rows = weights.filter(w => w.rebalance_date === latestDate)
+                      .sort((a, b) => Number(b.weight) - Number(a.weight));
 
-  if (weeks >= 52) {
-    document.getElementById('progressEta').textContent = 'NOW';
-  } else {
-    const wkRemaining = 52 - weeks;
-    const eta = new Date(Date.now() + wkRemaining * 7 * 86400000);
-    document.getElementById('progressEta').textContent = eta.toISOString().slice(0,10);
+  document.getElementById('rebDate').textContent = latestDate;
+  document.getElementById('weightsCount').textContent = `${rows.length} POSITIONS`;
+
+  const longs  = rows.filter(r => Number(r.weight) > 0);
+  const shorts = rows.filter(r => Number(r.weight) < 0);
+  const grossL = longs.reduce ((s, r) => s + Number(r.weight), 0);
+  const grossS = shorts.reduce((s, r) => s + Number(r.weight), 0);
+  const net    = grossL + grossS;
+
+  document.getElementById('kpiLong').textContent      = (grossL * 100).toFixed(1) + '%';
+  document.getElementById('kpiLongCount').textContent = `${longs.length} positions`;
+  document.getElementById('kpiShort').textContent      = (grossS * 100).toFixed(1) + '%';
+  document.getElementById('kpiShortCount').textContent = `${shorts.length} positions`;
+  document.getElementById('kpiNet').textContent        = (net * 100).toFixed(1) + '%';
+
+  // Vol estimate — pull from notes if we can parse σ_G, otherwise leave blank
+  const sigs = rows.map(r => {
+    const m = (r.note || '').match(/σ_G=([\d.]+)/);
+    return m ? Number(m[1]) : null;
+  }).filter(x => x != null);
+  if (sigs.length) {
+    // Use a rough portfolio vol = sqrt(w' Σ w); without ρ we approximate by sum of (w·σ)²
+    const ws = rows.map(r => Number(r.weight));
+    let pvar = 0;
+    for (let i = 0; i < ws.length; i++) pvar += (ws[i] * sigs[i]) ** 2;
+    const wkVol = Math.sqrt(pvar);
+    document.getElementById('kpiVol').textContent     = (wkVol * 100).toFixed(2) + '%';
+    document.getElementById('kpiVolAnn').textContent  = `${(wkVol * Math.sqrt(52) * 100).toFixed(1)}% annualised (rough)`;
   }
-})();
+
+  // Render weight bars — center axis, longs to the right, shorts to the left
+  const maxAbs = Math.max(...rows.map(r => Math.abs(Number(r.weight))));
+  const html = rows.map(r => {
+    const w  = Number(r.weight);
+    const pct = (w * 100).toFixed(2);
+    const cls = w >= 0 ? 'long' : 'short';
+    const barW = (Math.abs(w) / maxAbs * 50).toFixed(2) + '%';   // 50% = half the bar lane
+    return `
+      <div class="w-row">
+        <div class="w-rank">${r.rank}</div>
+        <div class="w-ticker">${r.ticker}</div>
+        <div class="w-bar-wrap">
+          <div class="w-bar ${cls}" style="width:${barW}"></div>
+        </div>
+        <div class="w-pct ${cls}">${w >= 0 ? '+' : ''}${pct}%</div>
+      </div>`;
+  }).join('');
+  document.getElementById('wList').innerHTML = html;
+}
+load();
 </script>
 
 </body>
