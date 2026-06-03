@@ -281,6 +281,10 @@ header {
 .conv-chip.si       { border-color: rgba(245,166,35,0.32); color: var(--amber); }
 .conv-chip.si.high  { background: rgba(245,166,35,0.10); }
 .conv-chip.si .g    { color: var(--amber); }
+.conv-chip.dark.up        { border-color: rgba(74,222,128,0.40); color: var(--green, #4ade80); }
+.conv-chip.dark.dn        { border-color: rgba(248,113,113,0.40); color: var(--red, #f87171); }
+.conv-chip.dark .g        { color: inherit; }
+.conv-chip.dark.confirmed { background: rgba(245,166,35,0.10); border-color: var(--amber); }
 
 /* ─── KPI strip (above Today's Book grid) ───────────────────────────────── */
 .book-kpis {
@@ -1364,6 +1368,13 @@ function renderConvictionCard(r, side) {
   const siChip = (siPct != null && siPct >= 0.5)
     ? `<span class="conv-chip si ${siPct >= 3 ? 'high' : ''}"><span class="g">⊖</span>SI ${siPct.toFixed(2)}%</span>`
     : '';
+  // Impact-confirmed dark flow: net buyer/seller-initiated dark volume over the
+  // window that *predicted* subsequent price drift (informed-money marker).
+  const ndir = Number(r.net_dark_dir || 0);
+  const darkDir = ndir > 0 ? 'BUY' : ndir < 0 ? 'SELL' : null;
+  const darkChip = (Number(r.confirmed_days || 0) > 0 && darkDir)
+    ? `<span class="conv-chip dark ${darkDir === 'BUY' ? 'up' : 'dn'} confirmed" title="Impact-confirmed dark flow on ${r.confirmed_days} day(s)"><span class="g">◧</span>DARK ${darkDir} ✓${r.confirmed_days}d</span>`
+    : '';
   const move = (r.day_close != null && r.modal_price != null && Number(r.modal_price) > 0)
     ? ((Number(r.day_close) - Number(r.modal_price)) / Number(r.modal_price) * 100)
     : null;
@@ -1381,7 +1392,7 @@ function renderConvictionCard(r, side) {
         <span class="conv-score">${r.conviction}</span>
       </div>
       <div class="conv-bar"><div class="conv-bar-fill ${side}" style="width:${r.conviction}%"></div></div>
-      <div class="conv-signals">${sigChips}${evChip}${siChip}</div>
+      <div class="conv-signals">${sigChips}${evChip}${siChip}${darkChip}</div>
       <div class="conv-footer">${wall}${vw}${darkPct}${moveStr}</div>
     </div>`;
 }
@@ -1969,8 +1980,14 @@ async function drillIntoISIN(isin, venue) {
   const summary = allSummary.find(r => r.isin === isin && r.venue === venue) || {};
   const dark    = allDark.find(r => r.isin === isin && r.venue === venue) || {};
   const bias = dark.dark_side_bias;
-  const biasStr   = bias === 'SELL' ? '<span style="color:var(--red)">▼ Distribution</span>' : bias === 'BUY' ? '<span style="color:var(--green)">▲ Accumulation</span>' : '<span style="color:var(--text-dim)">◇ Neutral</span>';
+  const nCls = Number(dark.dark_trades_classified || 0);
+  const confirmed = dark.bias_confirmed === true;
+  const insufficient = (bias === 'NEUTRAL' || !bias) && nCls < 5;
+  const biasWord = bias === 'SELL' ? '▼ Net selling' : bias === 'BUY' ? '▲ Net buying'
+                 : insufficient ? '◇ Insufficient flow' : '◇ Balanced';
   const biasColor = bias === 'SELL' ? 'var(--red)' : bias === 'BUY' ? 'var(--green)' : 'var(--text-dim)';
+  const biasStr   = `<span style="color:${biasColor}">${biasWord}${confirmed ? ' ✓' : ''}</span>`
+                  + ` <span style="color:var(--text-dim);font-size:9px">${nCls} cls</span>`;
   document.getElementById('diveMetrics').innerHTML = [
     ['Dark Pool',  fmt.pct(summary.dark_pct)],
     ['Gini',       fmt.dec(summary.gini)],
@@ -1978,8 +1995,8 @@ async function drillIntoISIN(isin, venue) {
     ['Pub Lag',    fmt.ms(summary.avg_pub_lag_ms)],
     ['Trades',     fmt.num(summary.total_trades)],
     ['Est. ADV',   fmt.nok(summary.adv_estimate)],
-    ['Modal',      dark.modal_price ? parseFloat(dark.modal_price).toFixed(2) : '—'],
-    ['Bias',       `<span style="color:${biasColor}">${biasStr}</span>`],
+    ['Vol. wall',  dark.modal_price ? parseFloat(dark.modal_price).toFixed(2) : '—'],
+    ['Dark bias',  biasStr],
   ].map(([l, v]) => `
     <div class="dive-metric">
       <div class="dive-metric-label">${l}</div>
@@ -2039,13 +2056,15 @@ async function drillIntoISIN(isin, venue) {
 
   // Dark breakdown bar + side bias
   if (drillChart3) drillChart3.destroy();
-  const biasLabel = dark.dark_side_bias === 'SELL' ? '▼ Distribution — seller pinning ceiling'
-                  : dark.dark_side_bias === 'BUY'  ? '▲ Accumulation — buyer pinning floor'
-                  : '◇ No clear bias';
+  const impactBps = dark.dark_impact_bps != null ? Number(dark.dark_impact_bps) : null;
+  const biasLabel = insufficient ? `◇ Insufficient dark flow (${nCls} classified)`
+                  : bias === 'SELL' ? `▼ Net seller-initiated${confirmed ? ' (confirmed)' : ''}`
+                  : bias === 'BUY'  ? `▲ Net buyer-initiated${confirmed ? ' (confirmed)' : ''}`
+                  : '◇ Balanced dark flow';
   drillChart3 = new Chart(document.getElementById('drillDark'), {
     type: 'bar',
     data: {
-      labels: ['Lit (CLOB)', 'Dark MTF', 'Large-in-Scale', 'Dark ≥ modal (ask side)', 'Dark < modal (bid side)'],
+      labels: ['Lit (CLOB)', 'Dark MTF', 'Large-in-Scale', 'Dark buyer-initiated', 'Dark seller-initiated'],
       datasets: [{
         label: 'Volume (shares)',
         data: [dark.lit_volume||0, dark.dark_volume||0, dark.lis_volume||0, dark.dark_volume_at_ask||0, dark.dark_volume_at_bid||0],
@@ -2057,7 +2076,8 @@ async function drillIntoISIN(isin, venue) {
       responsive: true, maintainAspectRatio: false, indexAxis: 'y',
       plugins: {
         legend: { display: false },
-        title: { display: true, text: `Dark: ${(dark.dark_pct||0).toFixed(1)}% — ${biasLabel} — Modal: ${dark.modal_price||'—'}`,
+        title: { display: true, text: `Dark: ${(dark.dark_pct||0).toFixed(1)}% — ${biasLabel}`
+            + (impactBps != null ? ` — 5m impact ${impactBps >= 0 ? '+' : ''}${impactBps.toFixed(1)}bps` : ''),
           color: '#e8f4ff', font: { size: 12 } }
       },
       scales: { x: { ticks: { callback: v => (v/1e3).toFixed(0)+'K' } } }
