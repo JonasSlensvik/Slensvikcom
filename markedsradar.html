@@ -896,7 +896,8 @@ tbody tr.selected { background: var(--ice-dim); }
   inset: 0;
   z-index: 1;
   background:
-    radial-gradient(120% 130% at 15% 0%, rgba(10,16,25,0.30), rgba(10,16,25,0.85) 75%);
+    radial-gradient(120% 80% at 15% 0%, rgba(10,16,25,0.22), rgba(10,16,25,0.55) 60%),
+    linear-gradient(180deg, rgba(10,16,25,0.10) 0%, rgba(10,16,25,0.45) 100%);
   pointer-events: none;
 }
 .hero-inner { position: relative; z-index: 2; padding: 26px 28px 24px; }
@@ -928,6 +929,14 @@ tbody tr.selected { background: var(--ice-dim); }
 
 /* hero KPI ticks */
 .hero-ticks { display: flex; flex-wrap: wrap; gap: 26px; margin-bottom: 22px; }
+.hero-sub {
+  display: flex; align-items: center; gap: 10px;
+  font-family: var(--mono); font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--text-bright); margin: 30px 0 14px;
+  padding-top: 18px; border-top: 1px solid var(--border);
+}
+.hero-sub-glyph { color: var(--amber); }
+.hero-sub-meta { margin-left: auto; font-size: 10px; letter-spacing: 0.1em; color: var(--text-dim); }
 .hero-tick { display: flex; flex-direction: column; gap: 2px; }
 .hero-tick-label { font-family: var(--mono); font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--text-dim); }
 .hero-tick-value { font-family: var(--mono); font-size: 20px; font-weight: 600; color: var(--text-bright); font-variant-numeric: tabular-nums; }
@@ -975,13 +984,15 @@ tbody tr.selected { background: var(--ice-dim); }
 @media (max-width: 1080px) { .dash-grid { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 720px)  { .dash-grid { grid-template-columns: 1fr; } }
 .panel {
-  background: var(--bg2);
+  background: rgba(11,18,30,0.74);
   border: 1px solid var(--border);
   border-radius: 6px;
   padding: 14px 16px 16px;
+  backdrop-filter: blur(3px);
 }
 .panel-span2 { grid-column: span 2; }
-@media (max-width: 720px) { .panel-span2 { grid-column: span 1; } }
+.panel-span3 { grid-column: 1 / -1; }
+@media (max-width: 720px) { .panel-span2, .panel-span3 { grid-column: span 1; } }
 .panel-title {
   font-family: var(--mono); font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase;
   color: var(--text-bright); margin-bottom: 12px; display: flex; align-items: center; gap: 8px;
@@ -1102,6 +1113,51 @@ tbody tr.selected { background: var(--ice-dim); }
       <div class="hero-lede" id="heroLede">Reading the tape…</div>
       <div class="hero-ticks" id="heroTicks"></div>
       <div class="story-grid" id="storyGrid"></div>
+
+      <div class="hero-sub" id="dashGrid">
+        <span class="hero-sub-glyph">◷</span> Whole-Market Dashboard
+        <span class="hero-sub-meta" id="marketTodayCount">—</span>
+      </div>
+      <div class="dash-grid">
+
+        <div class="panel panel-span2">
+          <div class="panel-title"><span class="g">⊞</span> Breadth &amp; Flow</div>
+          <div class="breadth-wrap" id="breadthWrap"></div>
+          <div id="dashStats"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-title"><span class="g">⊟</span> Tape Microstructure <span class="meta">market-wide</span></div>
+          <div id="kpiGrid"><div class="conv-empty">LOADING …</div></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-title"><span class="g">◐</span> Insider Activity <span class="meta" id="insiderMeta">—</span></div>
+          <div class="feed" id="insiderFeed"><div class="conv-empty">LOADING …</div></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-title"><span class="g">▲</span> Top Movers <span class="meta">vs prior close</span></div>
+          <div class="mlist" id="moversList"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-title"><span class="g">■</span> Most Active <span class="meta">turnover</span></div>
+          <div class="mlist" id="activeList"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-title"><span class="g">◍</span> Dark-Flow Leaders <span class="meta">% of volume</span></div>
+          <div class="mlist" id="darkLeadersList"></div>
+        </div>
+
+        <div class="panel panel-span3">
+          <div class="panel-title"><span class="g">∿</span> Intraday Activity <span class="meta">notional / minute · Oslo</span></div>
+          <div class="act-spark" id="actSpark"></div>
+          <div class="act-axis"><span>07:00</span><span id="actPeakLabel">—</span><span>16:30</span></div>
+        </div>
+
+      </div>
     </div>
   </section>
 
@@ -1211,52 +1267,6 @@ tbody tr.selected { background: var(--ice-dim); }
     </div>
   </div>
 
-  <!-- ── Market Today (whole-market dashboard) ─────────────────────────────── -->
-  <div class="section" id="sec-market-today">
-    <div class="section-head">
-      <div class="section-title">◷ Market Today</div>
-      <div class="section-desc">The whole tape at a glance — breadth, where the money went, unusual dark flow, insider activity, and when the day was busiest.</div>
-      <div class="section-count" id="marketTodayCount">—</div>
-    </div>
-    <div class="section-body">
-      <div class="dash-grid">
-
-        <div class="panel panel-span2">
-          <div class="panel-title"><span class="g">⊞</span> Breadth &amp; Flow</div>
-          <div class="breadth-wrap" id="breadthWrap"></div>
-          <div id="dashStats"></div>
-        </div>
-
-        <div class="panel">
-          <div class="panel-title"><span class="g">◐</span> Insider Activity <span class="meta" id="insiderMeta">—</span></div>
-          <div class="feed" id="insiderFeed"><div class="conv-empty">LOADING …</div></div>
-        </div>
-
-        <div class="panel">
-          <div class="panel-title"><span class="g">▲</span> Top Movers <span class="meta">vs prior close</span></div>
-          <div class="mlist" id="moversList"></div>
-        </div>
-
-        <div class="panel">
-          <div class="panel-title"><span class="g">■</span> Most Active <span class="meta">turnover</span></div>
-          <div class="mlist" id="activeList"></div>
-        </div>
-
-        <div class="panel">
-          <div class="panel-title"><span class="g">◍</span> Dark-Flow Leaders <span class="meta">% of volume</span></div>
-          <div class="mlist" id="darkLeadersList"></div>
-        </div>
-
-        <div class="panel panel-span2">
-          <div class="panel-title"><span class="g">∿</span> Intraday Activity <span class="meta">notional / minute · Oslo</span></div>
-          <div class="act-spark" id="actSpark"></div>
-          <div class="act-axis"><span>07:00</span><span id="actPeakLabel">—</span><span>16:30</span></div>
-        </div>
-
-      </div>
-    </div>
-  </div>
-
   <!-- ── Signal Track Record ──────────────────────────────────────────────── -->
   <div class="section collapsed" id="sec-track-record">
     <div class="section-head collapsible" onclick="toggleSection('sec-track-record')">
@@ -1293,15 +1303,6 @@ tbody tr.selected { background: var(--ice-dim); }
     <span class="adv-divider-line"></span>
     <span class="adv-divider-label">⊞ ADVANCED · MICROSTRUCTURE &amp; EXPERT TOOLS</span>
     <span class="adv-divider-line"></span>
-  </div>
-
-  <!-- ── Overview KPIs ───────────────────────────────────────────────────── -->
-  <div class="section" id="sec-overview">
-    <div class="section-head">
-      <div class="section-title">Market Overview</div>
-      <div class="section-desc">Aggregated statistics across all Norwegian-listed equities for the selected trading day</div>
-    </div>
-    <div class="stat-grid" id="kpiGrid"><div class="loader">LOADING …</div></div>
   </div>
 
   <!-- ── Catalyst Alerts ───────────────────────────────────────────────────── -->
@@ -1887,14 +1888,14 @@ function renderStories(p, movers) {
   // A market-level card to close out the row.
   if (p.dark_unusual) {
     cards.push(`
-      <div class="story-card dark" onclick="document.getElementById('sec-market-today').scrollIntoView({behavior:'smooth'})">
+      <div class="story-card dark" onclick="document.getElementById('dashGrid').scrollIntoView({behavior:'smooth'})">
         <div class="story-head"><span class="story-glyph">◍</span><span class="story-kicker">MARKET-WIDE</span></div>
         <div class="story-title">Dark volume surged</div>
         <div class="story-body"><span class="num warn">${p.market_dark_pct}%</span> of all shares crossed in the dark today, against a <span class="num">${p.market_dark_pct_avg}%</span> norm — a handful of large blocks moving size off-screen.</div>
       </div>`);
   } else {
     cards.push(`
-      <div class="story-card" onclick="document.getElementById('sec-market-today').scrollIntoView({behavior:'smooth'})">
+      <div class="story-card" onclick="document.getElementById('dashGrid').scrollIntoView({behavior:'smooth'})">
         <div class="story-head"><span class="story-glyph">⊞</span><span class="story-kicker">MARKET-WIDE</span></div>
         <div class="story-title">${p.pct_advancers >= 50 ? 'Broad participation' : 'Breadth was thin'}</div>
         <div class="story-body"><span class="num ${p.pct_advancers >= 50 ? 'up' : 'dn'}">${p.pct_advancers}%</span> of ${p.total_names} names advanced. Busiest at ${toOsloHHMM(marketPulse.trade_date + 'T' + (marketPulse.busiest_minute || '07:00:00'))}; ${p.signals_today} smart-money signals fired.</div>
@@ -2150,9 +2151,18 @@ async function loadDate() {
 
 /* ─── KPIs ──────────────────────────────────────────────────────────────── */
 async function loadKPIs() {
+  const el = document.getElementById('kpiGrid');
+  // Anchor to the same complete-session day as the hero/dashboard. market_pulse
+  // is loaded in parallel; fall back to the latest daily_summary date so the
+  // panel is never blank just because daily_close ran a day ahead of the tape.
+  let d = marketPulse && marketPulse.trade_date;
+  if (!d) {
+    const latest = await API('daily_summary', 'select=trade_date&order=trade_date.desc&limit=1');
+    d = latest.length ? latest[0].trade_date : currentDate;
+  }
   const data = await API('daily_summary',
-    `trade_date=eq.${currentDate}&select=total_trades,adv_estimate,algo_ratio_pct,dark_pct,gini,avg_pub_lag_ms`);
-  if (!data.length) return;
+    `trade_date=eq.${d}&select=total_trades,adv_estimate,algo_ratio_pct,dark_pct,gini,avg_pub_lag_ms`);
+  if (!data.length) { if (el) el.innerHTML = `<div class="conv-empty">No microstructure for ${d}</div>`; return; }
 
   const totTrades = data.reduce((s,r) => s + (r.total_trades||0), 0);
   const totADV    = data.reduce((s,r) => s + (r.adv_estimate||0), 0);
@@ -2164,43 +2174,19 @@ async function loadKPIs() {
   document.getElementById('totalTradesPill').textContent =
     `${(totTrades/1000).toFixed(0)}K TRADES`;
 
-  document.getElementById('kpiGrid').innerHTML = `
-    <div class="stat-card ice">
-      <div class="stat-label">Total Trades</div>
-      <div class="stat-value">${(totTrades/1000).toFixed(1)}<span style="font-size:14px">K</span></div>
-      <div class="stat-sub">XOSL + MERK combined</div>
-    </div>
-    <div class="stat-card ice">
-      <div class="stat-label">Est. Daily Value</div>
-      <div class="stat-value sm">${(totADV/1e9).toFixed(2)}<span style="font-size:14px">B NOK</span></div>
-      <div class="stat-sub">price × quantity proxy</div>
-    </div>
-    <div class="stat-card amber">
-      <div class="stat-label">Avg Algo Ratio</div>
-      <div class="stat-value">${avgAlgo}<span style="font-size:14px">%</span></div>
-      <div class="stat-sub">flagged + burst-detected</div>
-    </div>
-    <div class="stat-card purple">
-      <div class="stat-label">Avg Dark Pool %</div>
-      <div class="stat-value">${avgDark}<span style="font-size:14px">%</span></div>
-      <div class="stat-sub">mech. 3 & 4 of total vol.</div>
-    </div>
-    <div class="stat-card green">
-      <div class="stat-label">ISINs Active</div>
-      <div class="stat-value">${data.length}</div>
-      <div class="stat-sub">on XOSL / MERK</div>
-    </div>
-    <div class="stat-card ice">
-      <div class="stat-label">Avg Trade Size Gini</div>
-      <div class="stat-value">${avgGini}</div>
-      <div class="stat-sub">0=equal, 1=one giant</div>
-    </div>
-    <div class="stat-card amber">
-      <div class="stat-label">Avg Pub Lag</div>
-      <div class="stat-value sm">${avgLag}<span style="font-size:14px">ms</span></div>
-      <div class="stat-sub">event → tape latency</div>
-    </div>
-  `;
+  const row = (label, val, cls) => `
+    <div class="dash-stat-row">
+      <span class="dash-stat-label">${label}</span>
+      <span class="dash-stat-val ${cls || ''}">${val}</span>
+    </div>`;
+  if (el) el.innerHTML =
+    row('Total trades', `${(totTrades/1000).toFixed(1)}K`) +
+    row('Est. day value', `NOK ${(totADV/1e9).toFixed(2)}B`) +
+    row('Avg algo ratio', `${avgAlgo}%`, 'warn') +
+    row('Avg dark pool', `${avgDark}%`) +
+    row('ISINs active', `${data.length}`) +
+    row('Trade-size Gini', avgGini) +
+    row('Avg publish lag', `${avgLag} ms`);
 }
 
 /* ─── Whales ────────────────────────────────────────────────────────────── */
