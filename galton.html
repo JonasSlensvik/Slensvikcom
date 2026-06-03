@@ -619,7 +619,15 @@ function applySliders() {
   const pv = vecDot(r.w, Sw);
   const rc = r.w.map((x, i) => pv > 0 ? (x * Sw[i] / pv) : 0);
   updateWeightsRender(r.w, rc, r.sigmaPort, false);
+
+  // Drive the paper-portfolio overlay from the slider weights (what-if curve).
+  if (ppCache && isinByTicker) {
+    const book = sampleMat.tickers.map((t, i) => ({ isin: isinByTicker[t], ticker: t, weight: r.w[i] }))
+                                  .filter(x => x.isin);
+    paintTracker(book, { isLive: false, band: r.sigmaPort });
+  }
 }
+let isinByTicker = null;
 
 // ─── Eigenstructure render ────────────────────────────────────────────
 function renderEigen(eig, tickers) {
@@ -673,7 +681,7 @@ const NOTIONAL = 100000;
 const nok0 = v => Math.round(v).toLocaleString('nb-NO');
 const sNok = v => (v >= 0 ? '+' : '−') + nok0(Math.abs(v));
 const sPct = (v, d=2) => (v >= 0 ? '+' : '−') + (Math.abs(v) * 100).toFixed(d) + '%';
-let ppChart = null, ppState = null;
+let ppChart = null, ppState = null, ppCache = null, ppBaseline = null, ppCurMode = 'value';
 
 // UTC "HH:MM:SS" → Oslo CEST (+2h) "HH:MM"
 function osloHHMM(bucket) {
@@ -730,117 +738,156 @@ async function buildTracker(book, m, convByIsin) {
   const entryPx = {};
   for (const isin of isins) for (const ts of timeline) { const p = priceByName[isin][ts]; if (p != null) { entryPx[isin] = p; break; } }
 
-  // minute-by-minute equity curve, forward-filling each name's last print
-  const ffill = {}; for (const isin of isins) ffill[isin] = entryPx[isin] ?? null;
-  const labels = [], valueSeries = [];
-  for (const ts of timeline) {
-    let ret = 0;
-    for (const r of book) {
-      const p = priceByName[r.isin][ts];
-      if (p != null) ffill[r.isin] = p;
-      const cur = ffill[r.isin], entry = entryPx[r.isin];
-      if (cur == null || entry == null) continue;
-      ret += Number(r.weight) * (cur / entry - 1);
-    }
-    labels.push(tsMeta[ts].label);
-    valueSeries.push(NOTIONAL * (1 + ret));
-  }
-
-  // per-name contribution at the latest mark
+  // weight-independent price data cached so coefficient sliders can re-derive
+  // the week's equity curve instantly without refetching.
   const lastPx = {};
   for (const isin of isins) { let p = entryPx[isin]; for (const ts of timeline) if (priceByName[isin][ts] != null) p = priceByName[isin][ts]; lastPx[isin] = p; }
-  const dates = [...new Set(timeline.map(ts => ts.slice(0, 10)))];
-  const lastTs = timeline[timeline.length - 1];
-  const granular = intradayDays.size > 0;
-  const contrib = book.map(r => {
-    const w = Number(r.weight);
-    const entry = entryPx[r.isin], px = lastPx[r.isin];
-    const ret = (entry && px) ? (px / entry - 1) : 0;
-    const c = convByIsin[r.isin];
-    const side = w >= 0 ? 'LONG' : 'SHORT';
-    return { ticker: r.ticker, isin: r.isin, w, ret, pnl: w * NOTIONAL * ret, side, agree: c && c.side === side };
-  });
+  const labels = timeline.map(ts => tsMeta[ts].label);
+  const dates  = [...new Set(timeline.map(ts => ts.slice(0, 10)))];
+  const tickerByIsin = Object.fromEntries(book.map(r => [r.isin, r.ticker]));
+  ppCache = { isins, priceByName, timeline, entryPx, lastPx, labels, dates,
+              granular: intradayDays.size > 0, lastLabel: tsMeta[timeline[timeline.length - 1]].label, tickerByIsin };
 
+  ppBaseline = computeBook(book);                  // live coefficients — the reference curve
+  ppBaseline.band = Number(m.forecast_weekly_vol) || 0;
+  paintTracker(book, { isLive: true, band: ppBaseline.band });
+}
+
+// Pure compute — derive the week's curve + per-name P&L for any weight book, from cached prices.
+function computeBook(book) {
+  const { isins, priceByName, timeline, entryPx, lastPx, tickerByIsin } = ppCache;
+  const w = {}; for (const r of book) w[r.isin] = Number(r.weight);
+  const ffill = {}; for (const isin of isins) ffill[isin] = entryPx[isin] ?? null;
+  const valueSeries = [];
+  for (const ts of timeline) {
+    let ret = 0;
+    for (const isin of isins) {
+      const p = priceByName[isin][ts];
+      if (p != null) ffill[isin] = p;
+      const cur = ffill[isin], entry = entryPx[isin];
+      if (cur == null || entry == null) continue;
+      ret += (w[isin] || 0) * (cur / entry - 1);
+    }
+    valueSeries.push(NOTIONAL * (1 + ret));
+  }
+  const contrib = isins.map(isin => {
+    const wi = w[isin] || 0, entry = entryPx[isin], px = lastPx[isin];
+    const ret = (entry && px) ? (px / entry - 1) : 0;
+    const c = convictionByIsin[isin], side = wi >= 0 ? 'LONG' : 'SHORT';
+    return { ticker: tickerByIsin[isin], isin, w: wi, ret, pnl: wi * NOTIONAL * ret, side, agree: c && c.side === side };
+  });
   const longPnl  = contrib.filter(c => c.w >= 0).reduce((a, c) => a + c.pnl, 0);
   const shortPnl = contrib.filter(c => c.w <  0).reduce((a, c) => a + c.pnl, 0);
-  const totalPnl = longPnl + shortPnl;
-  const curVal   = valueSeries[valueSeries.length - 1];
-  const totRet   = totalPnl / NOTIONAL;
   const grossLong  = contrib.filter(c => c.w >= 0).reduce((a, c) => a + c.w, 0);
   const grossShort = contrib.filter(c => c.w <  0).reduce((a, c) => a + Math.abs(c.w), 0);
+  return { valueSeries, contrib, longPnl, shortPnl, totalPnl: longPnl + shortPnl,
+           curVal: valueSeries[valueSeries.length - 1], grossLong, grossShort };
+}
 
-  // KPI tiles
-  document.getElementById('ppVal').textContent = nok0(curVal) + '';
-  document.getElementById('ppAsOf').innerHTML = `MARK <strong style="color:var(--text1)">${tsMeta[lastTs].label}</strong> · DAY ${dates.length} · ${granular ? labels.length + ' min marks' : dates.length + ' closes'}`;
-  const pnlEl = document.getElementById('ppPnl'); pnlEl.textContent = sNok(totalPnl);
-  pnlEl.className = 'kpi-val ' + (totalPnl >= 0 ? 'pp-pos' : 'pp-neg');
-  document.getElementById('ppPnlSub').textContent = sPct(totRet) + ' on capital';
-  const lEl = document.getElementById('ppLong'); lEl.textContent = sNok(longPnl); lEl.className = 'kpi-val ' + (longPnl>=0?'pp-pos':'pp-neg');
-  document.getElementById('ppLongSub').textContent = `${(grossLong*100).toFixed(0)}% gross · ${contrib.filter(c=>c.w>=0).length} names`;
-  const shEl = document.getElementById('ppShort'); shEl.textContent = sNok(shortPnl); shEl.className = 'kpi-val ' + (shortPnl>=0?'pp-pos':'pp-neg');
-  document.getElementById('ppShortSub').textContent = `${(grossShort*100).toFixed(0)}% gross · ${contrib.filter(c=>c.w<0).length} names`;
-  const band = Number(m.forecast_weekly_vol) || 0;
+// Paint KPIs + chart. When previewing slider coefficients the baseline stays drawn and the
+// recomputed book overlays on top; KPIs reflect the active (what-if) book vs the live baseline.
+function paintTracker(book, opts) {
+  if (!ppCache) return;
+  const { labels, dates, granular, lastLabel } = ppCache;
+  const isLive = !!opts.isLive, band = opts.band || 0;
+  const a = computeBook(book);
+  const totRet = a.totalPnl / NOTIONAL;
+  const baseRet = ppBaseline ? (ppBaseline.totalPnl / NOTIONAL) : totRet;
+
+  document.getElementById('ppVal').textContent = nok0(a.curVal) + '';
+  const tag = isLive ? `<span style="color:var(--ice)">LIVE</span>` : `<span style="color:var(--amber)">WHAT-IF</span>`;
+  document.getElementById('ppAsOf').innerHTML = `MARK <strong style="color:var(--text1)">${lastLabel}</strong> · DAY ${dates.length} · ${granular ? labels.length + ' min marks' : dates.length + ' closes'} · ${tag}`;
+  const pnlEl = document.getElementById('ppPnl'); pnlEl.textContent = sNok(a.totalPnl);
+  pnlEl.className = 'kpi-val ' + (a.totalPnl >= 0 ? 'pp-pos' : 'pp-neg');
+  document.getElementById('ppPnlSub').innerHTML = isLive
+    ? sPct(totRet) + ' on capital'
+    : sPct(totRet) + ` · <span style="color:var(--amber)">Δ ${sPct(totRet - baseRet)}</span> vs live`;
+  const lEl = document.getElementById('ppLong'); lEl.textContent = sNok(a.longPnl); lEl.className = 'kpi-val ' + (a.longPnl>=0?'pp-pos':'pp-neg');
+  document.getElementById('ppLongSub').textContent = `${(a.grossLong*100).toFixed(0)}% gross · ${a.contrib.filter(c=>c.w>=0).length} names`;
+  const shEl = document.getElementById('ppShort'); shEl.textContent = sNok(a.shortPnl); shEl.className = 'kpi-val ' + (a.shortPnl>=0?'pp-pos':'pp-neg');
+  document.getElementById('ppShortSub').textContent = `${(a.grossShort*100).toFixed(0)}% gross · ${a.contrib.filter(c=>c.w<0).length} names`;
   const sig = band ? (totRet / band) : 0;
   document.getElementById('ppFcst').textContent = sPct(totRet) + ' / ±' + (band*100).toFixed(2) + '%';
-  document.getElementById('ppFcstSub').textContent = band ? `${sig>=0?'+':'−'}${Math.abs(sig).toFixed(2)}σ of forecast` : 'one-week forecast';
+  document.getElementById('ppFcstSub').textContent = band ? `${sig>=0?'+':'−'}${Math.abs(sig).toFixed(2)}σ of ${isLive ? 'forecast' : 'preview σ'}` : 'one-week forecast';
 
-  // synergy note — best/worst contributor + Markedsradar agreement
-  const sorted = [...contrib].sort((a, b) => b.pnl - a.pnl);
+  const sorted = [...a.contrib].sort((x, y) => y.pnl - x.pnl);
   const best = sorted[0], worst = sorted[sorted.length - 1];
-  const agreeN = contrib.filter(c => c.agree).length;
-  noteEl.innerHTML =
+  const agreeN = a.contrib.filter(c => c.agree).length;
+  document.getElementById('ppNote').innerHTML =
     `Top <span class="pp-pos">${best.ticker} ${sNok(best.pnl)}</span> · ` +
     `Worst <span class="pp-neg">${worst.ticker} ${sNok(worst.pnl)}</span> · ` +
-    `Markedsradar agrees on <strong style="color:var(--text2)">${agreeN}/${contrib.length}</strong>` +
+    `Markedsradar agrees on <strong style="color:var(--text2)">${agreeN}/${a.contrib.length}</strong>` +
     (granular ? ` · <span style="color:var(--ice)">minute-level</span>` : ``);
 
-  ppState = { labels, valueSeries, contrib, granular };
-  renderPP('value');
+  ppState = { labels, granular, isLive,
+              active: a.valueSeries, baseline: ppBaseline ? ppBaseline.valueSeries : a.valueSeries,
+              contribActive: a.contrib, contribBase: ppBaseline ? ppBaseline.contrib : a.contrib };
+  renderPP(ppCurMode);
 }
+
+const PP_AXIS = { ticks:{ color:'#5a6377', font:{ family:'IBM Plex Mono', size:9 } }, grid:{ color:'rgba(255,255,255,0.04)' } };
+const GREEN = '#43e097', RED = '#f06060', ICE = '#4fc3f7', AMBER = '#f5a623';
 
 function renderPP(mode) {
   if (!ppState) return;
+  ppCurMode = mode;
   document.querySelectorAll('#ppMode button').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
-  if (ppChart) { ppChart.destroy(); ppChart = null; }
-  const ctx = document.getElementById('ppCanvas');
-  const axis = { ticks:{ color:'#5a6377', font:{ family:'IBM Plex Mono', size:9 } }, grid:{ color:'rgba(255,255,255,0.04)' } };
+  const baseUp = ppState.baseline[ppState.baseline.length - 1] >= NOTIONAL;
+  const baseColor = ppState.isLive ? (baseUp ? GREEN : RED) : 'rgba(160,173,191,0.55)';
+  const baseFill  = ppState.isLive ? (baseUp ? 'rgba(67,224,151,0.08)' : 'rgba(240,96,96,0.08)') : 'transparent';
+  const shape = mode + ':' + ppState.isLive;     // dataset structure changes between live/what-if
 
   if (mode === 'value') {
-    const last = ppState.valueSeries[ppState.valueSeries.length - 1];
-    const up = last >= NOTIONAL;
-    ppChart = new Chart(ctx, {
-      type:'line',
-      data:{ labels: ppState.labels, datasets:[
-        { label:'Portfolio value', data: ppState.valueSeries,
-          borderColor: up ? '#43e097' : '#f06060',
-          backgroundColor: up ? 'rgba(67,224,151,0.08)' : 'rgba(240,96,96,0.08)',
-          borderWidth: ppState.granular ? 1.5 : 2, fill:true, tension: ppState.granular ? 0 : .15,
-          pointRadius: ppState.labels.length < 8 ? 3 : 0, pointHoverRadius:4, pointBackgroundColor: up?'#43e097':'#f06060' },
-        { label:'Starting capital', data: ppState.labels.map(() => NOTIONAL),
-          borderColor:'rgba(245,166,35,0.6)', borderDash:[4,4], borderWidth:1, fill:false, pointRadius:0 },
-      ]},
+    // in-place update only the what-if overlay → smooth coefficient dragging
+    if (ppChart && ppChart._ppShape === shape) {
+      ppChart.data.datasets[0].data = ppState.baseline;
+      ppChart.data.datasets[0].borderColor = baseColor; ppChart.data.datasets[0].backgroundColor = baseFill;
+      if (!ppState.isLive) ppChart.data.datasets[1].data = ppState.active;
+      ppChart.update('none'); return;
+    }
+    if (ppChart) { ppChart.destroy(); ppChart = null; }
+    const ds = [
+      { label: ppState.isLive ? 'Portfolio value' : 'Live coeffs (baseline)', data: ppState.baseline,
+        borderColor: baseColor, backgroundColor: baseFill,
+        borderWidth: ppState.isLive ? (ppState.granular ? 1.5 : 2) : 1.2, fill:true, tension: ppState.granular ? 0 : .15,
+        pointRadius: ppState.labels.length < 8 ? 3 : 0, pointHoverRadius:4, pointBackgroundColor: baseColor },
+    ];
+    if (!ppState.isLive) ds.push(
+      { label:'What-if coeffs', data: ppState.active, borderColor: AMBER, backgroundColor:'rgba(245,166,35,0.10)',
+        borderWidth:1.8, fill:true, tension: ppState.granular ? 0 : .15, pointRadius:0, pointHoverRadius:4, pointBackgroundColor: AMBER });
+    ds.push({ label:'Starting capital', data: ppState.labels.map(() => NOTIONAL),
+        borderColor:'rgba(245,166,35,0.45)', borderDash:[4,4], borderWidth:1, fill:false, pointRadius:0 });
+    ppChart = new Chart(document.getElementById('ppCanvas'), {
+      type:'line', data:{ labels: ppState.labels, datasets: ds },
       options:{ responsive:true, maintainAspectRatio:false, animation:false,
         interaction:{ intersect:false, mode:'index' },
         plugins:{ legend:{ labels:{ color:'#a4adbf', font:{ family:'IBM Plex Mono', size:10 }, boxWidth:12 } },
           tooltip:{ callbacks:{ title: items => items[0].label, label: c => c.dataset.label + ': ' + nok0(c.parsed.y) + ' NOK' } } },
-        scales:{ x:{ ...axis, ticks:{ ...axis.ticks, autoSkip:true, maxTicksLimit:9, maxRotation:0 } },
-                 y:{ ...axis, ticks:{ ...axis.ticks, callback:v => (v/1000).toFixed(1) + 'k' } } } },
+        scales:{ x:{ ...PP_AXIS, ticks:{ ...PP_AXIS.ticks, autoSkip:true, maxTicksLimit:9, maxRotation:0 } },
+                 y:{ ...PP_AXIS, ticks:{ ...PP_AXIS.ticks, callback:v => (v/1000).toFixed(1) + 'k' } } } },
     });
   } else {
-    const data = [...ppState.contrib].sort((a, b) => b.pnl - a.pnl);
-    ppChart = new Chart(ctx, {
-      type:'bar',
-      data:{ labels: data.map(c => c.ticker), datasets:[
-        { label:'P&L contribution (NOK)', data: data.map(c => c.pnl),
-          backgroundColor: data.map(c => c.w >= 0 ? 'rgba(67,224,151,0.65)' : 'rgba(240,96,96,0.65)'),
-          borderColor: data.map(c => c.w >= 0 ? '#43e097' : '#f06060'), borderWidth:1 },
-      ]},
+    // contribution — ranked by active book; baseline shown as a faint paired bar when previewing
+    const order = [...ppState.contribActive].sort((x, y) => y.pnl - x.pnl);
+    const baseByIsin = Object.fromEntries(ppState.contribBase.map(c => [c.isin, c.pnl]));
+    if (ppChart) { ppChart.destroy(); ppChart = null; }
+    const ds = [
+      { label: ppState.isLive ? 'P&L contribution' : 'What-if', data: order.map(c => c.pnl),
+        backgroundColor: order.map(c => c.w >= 0 ? 'rgba(67,224,151,0.65)' : 'rgba(240,96,96,0.65)'),
+        borderColor: order.map(c => c.w >= 0 ? GREEN : RED), borderWidth:1 },
+    ];
+    if (!ppState.isLive) ds.unshift(
+      { label:'Live coeffs', data: order.map(c => baseByIsin[c.isin] ?? 0),
+        backgroundColor:'rgba(160,173,191,0.30)', borderColor:'rgba(160,173,191,0.5)', borderWidth:1 });
+    ppChart = new Chart(document.getElementById('ppCanvas'), {
+      type:'bar', data:{ labels: order.map(c => c.ticker), datasets: ds },
       options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, animation:false,
-        plugins:{ legend:{ display:false },
-          tooltip:{ callbacks:{ label: c => { const d = data[c.dataIndex]; return `${d.side} ${(d.w*100).toFixed(2)}% · ${sNok(d.pnl)} NOK (${sPct(d.ret)})`; } } } },
-        scales:{ x:{ ...axis, ticks:{ ...axis.ticks, callback:v => sNok(v) } }, y:{ ...axis, ticks:{ ...axis.ticks, font:{ family:'IBM Plex Mono', size:8 } } } } },
+        plugins:{ legend:{ display: !ppState.isLive, labels:{ color:'#a4adbf', font:{ family:'IBM Plex Mono', size:10 }, boxWidth:12 } },
+          tooltip:{ callbacks:{ label: c => { const d = order[c.dataIndex]; return `${c.dataset.label}: ${sNok(c.parsed.x)} NOK · ${d.side} ${(d.w*100).toFixed(2)}%`; } } } },
+        scales:{ x:{ ...PP_AXIS, ticks:{ ...PP_AXIS.ticks, callback:v => sNok(v) } }, y:{ ...PP_AXIS, ticks:{ ...PP_AXIS.ticks, font:{ family:'IBM Plex Mono', size:8 } } } } },
     });
   }
+  ppChart._ppShape = shape;
 }
 
 // ─── MAIN ─────────────────────────────────────────────────────────────
@@ -862,6 +909,7 @@ function renderPP(mode) {
                          .sort((a, b) => Number(b.weight) - Number(a.weight));
   sampleMat = mat;
   convictionByIsin = Object.fromEntries((conv || []).map(c => [c.isin, c]));
+  isinByTicker = Object.fromEntries(liveW.map(w => [w.ticker, w.isin]));
 
   // Header
   document.getElementById('rebDate').textContent = m.rebalance_date;
@@ -998,6 +1046,7 @@ function renderPP(mode) {
   });
   document.getElementById('slLive').addEventListener('click', () => {
     updateWeightsRender(w_aligned, rc_aligned, Number(m.forecast_weekly_vol), true);
+    if (ppCache) paintTracker(liveW, { isLive: true, band: (ppBaseline && ppBaseline.band) || Number(m.forecast_weekly_vol) || 0 });
   });
 
   // Initial slider value sync
