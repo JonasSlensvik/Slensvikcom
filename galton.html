@@ -169,6 +169,23 @@
   .slider-actions button:hover { color:var(--amber); border-color:var(--amber); }
   .slider-actions button.active { color:var(--amber); border-color:var(--amber); }
 
+  /* ─── Paper portfolio tracker ───────────────────────────── */
+  .pp-kpis { display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin-bottom:14px; }
+  @media (max-width:1000px){ .pp-kpis{ grid-template-columns:repeat(2,1fr); } }
+  .pp-toggles { display:flex; gap:12px; align-items:center; margin-bottom:12px; }
+  .pp-seg { display:flex; border:1px solid var(--border2); width:max-content; }
+  .pp-seg button {
+    font-family:var(--mono); font-size:10px; letter-spacing:.14em; text-transform:uppercase;
+    padding:6px 14px; background:transparent; color:var(--text2); border:none;
+    border-right:1px solid var(--border2); cursor:pointer;
+  }
+  .pp-seg button:last-child { border-right:none; }
+  .pp-seg button:hover { color:var(--amber); }
+  .pp-seg button.active { color:var(--amber); background:var(--amber-dim); }
+  .pp-note { font-family:var(--mono); font-size:10px; color:var(--text3); letter-spacing:.05em; margin-left:auto; text-align:right; }
+  .pp-pos { color:var(--green); }
+  .pp-neg { color:var(--red); }
+
   /* ─── Eigen + sector panels ─────────────────────────────── */
   .eig-row {
     display: grid; grid-template-columns: 50px 80px 80px 1fr; gap: 10px;
@@ -223,6 +240,28 @@
     <div class="kpi"><div class="kpi-lbl">GROSS L/S</div><div class="kpi-val" id="kGross">—</div><div class="kpi-sub">long &nbsp;/ short</div></div>
     <div class="kpi"><div class="kpi-lbl">FCST WEEKLY VOL</div><div class="kpi-val" id="kVol">—</div><div class="kpi-sub" id="kVolAnn">annualised —</div></div>
     <div class="kpi"><div class="kpi-lbl">VaR₉₅ / VaR₉₉</div><div class="kpi-val" id="kVaR">—</div><div class="kpi-sub" id="kVaRSub">parametric one-week</div></div>
+  </div>
+
+  <!-- PAPER PORTFOLIO TRACKER -->
+  <div class="sec">
+    <div class="panel">
+      <div class="sec-head"><span class="glyph">◫</span>PAPER PORTFOLIO · THIS WEEK<span class="desc">100,000&nbsp;NOK deployed at Monday's open on the live Galton book, marked minute-by-minute. Shorts profit as price falls.</span><span class="meta" id="ppAsOf">—</span></div>
+      <div class="pp-kpis">
+        <div class="kpi"><div class="kpi-lbl">Portfolio value</div><div class="kpi-val" id="ppVal">—</div><div class="kpi-sub" id="ppValSub">from 100&nbsp;000 NOK</div></div>
+        <div class="kpi"><div class="kpi-lbl">Week P&amp;L</div><div class="kpi-val" id="ppPnl">—</div><div class="kpi-sub" id="ppPnlSub">—</div></div>
+        <div class="kpi"><div class="kpi-lbl">Long leg</div><div class="kpi-val" id="ppLong">—</div><div class="kpi-sub" id="ppLongSub">—</div></div>
+        <div class="kpi"><div class="kpi-lbl">Short leg</div><div class="kpi-val" id="ppShort">—</div><div class="kpi-sub" id="ppShortSub">—</div></div>
+        <div class="kpi"><div class="kpi-lbl">Realised vs σ band</div><div class="kpi-val" id="ppFcst">—</div><div class="kpi-sub" id="ppFcstSub">one-week forecast</div></div>
+      </div>
+      <div class="pp-toggles">
+        <div class="pp-seg" id="ppMode">
+          <button data-mode="value" class="active">Value</button>
+          <button data-mode="contrib">Contribution</button>
+        </div>
+        <span class="pp-note" id="ppNote">—</span>
+      </div>
+      <div style="height:280px"><canvas id="ppCanvas"></canvas></div>
+    </div>
   </div>
 
   <!-- WEIGHTS + VaR + COEFFICIENTS -->
@@ -629,6 +668,181 @@ function renderSectors(weights) {
   }).join('');
 }
 
+// ─── Paper portfolio tracker ──────────────────────────────────────────
+const NOTIONAL = 100000;
+const nok0 = v => Math.round(v).toLocaleString('nb-NO');
+const sNok = v => (v >= 0 ? '+' : '−') + nok0(Math.abs(v));
+const sPct = (v, d=2) => (v >= 0 ? '+' : '−') + (Math.abs(v) * 100).toFixed(d) + '%';
+let ppChart = null, ppState = null;
+
+// UTC "HH:MM:SS" → Oslo CEST (+2h) "HH:MM"
+function osloHHMM(bucket) {
+  const [h, mi] = bucket.split(':').map(Number);
+  let mins = (((h * 60 + mi + 120) % 1440) + 1440) % 1440;
+  return String(Math.floor(mins / 60)).padStart(2, '0') + ':' + String(mins % 60).padStart(2, '0');
+}
+
+async function buildTracker(book, m, convByIsin) {
+  const reb = m.rebalance_date;
+  const isins = book.map(r => r.isin);
+  const inList = '(' + isins.map(s => `"${s}"`).join(',') + ')';
+  const noteEl = document.getElementById('ppNote');
+
+  // Minute-level VWAP where we have it, daily close for days we don't (auto-upgrades as markedsradar backfills).
+  const [intra, daily] = await Promise.all([
+    fetch(`${API}/intraday?isin=in.${inList}&trade_date=gte.${reb}&select=isin,trade_date,minute_bucket,vwap,volume&order=trade_date.asc,minute_bucket.asc&limit=200000`).then(r => r.ok ? r.json() : []).catch(() => []),
+    fetch(`${API}/daily_close?isin=in.${inList}&trade_date=gte.${reb}&select=isin,trade_date,close&order=trade_date.asc`).then(r => r.ok ? r.json() : []).catch(() => []),
+  ]);
+  if ((!intra || !intra.length) && (!daily || !daily.length)) { noteEl.textContent = 'awaiting first close'; return; }
+
+  const intradayDays = new Set(intra.map(r => r.trade_date));
+
+  // volume-weight intraday across venues → one price per (isin, date, bucket)
+  const agg = {};
+  for (const r of intra) {
+    if (r.vwap == null) continue;
+    const k = r.isin + '|' + r.trade_date + '|' + r.minute_bucket;
+    const a = agg[k] || (agg[k] = { pv: 0, v: 0, last: 0 });
+    const vol = Number(r.volume) || 0, px = Number(r.vwap);
+    a.pv += px * vol; a.v += vol; a.last = px;
+  }
+
+  const priceByName = {};            // isin → { ts → price }
+  for (const isin of isins) priceByName[isin] = {};
+  const tsSet = new Set(), tsMeta = {};   // ts → { date, label }
+  for (const k in agg) {
+    const [isin, date, bucket] = k.split('|');
+    const ts = date + 'T' + bucket, a = agg[k];
+    priceByName[isin][ts] = a.v > 0 ? a.pv / a.v : a.last;
+    tsSet.add(ts); tsMeta[ts] = { date, label: date.slice(5) + ' ' + osloHHMM(bucket) };
+  }
+  for (const r of daily) {                 // fill only days that lack minute data
+    if (intradayDays.has(r.trade_date)) continue;
+    const ts = r.trade_date + 'T16:25:00';
+    priceByName[r.isin][ts] = Number(r.close);
+    tsSet.add(ts); tsMeta[ts] = { date: r.trade_date, label: r.trade_date.slice(5) + ' close' };
+  }
+
+  const timeline = [...tsSet].sort();
+  if (!timeline.length) { noteEl.textContent = 'awaiting first close'; return; }
+
+  // entry = first available price along the week (Monday's open VWAP)
+  const entryPx = {};
+  for (const isin of isins) for (const ts of timeline) { const p = priceByName[isin][ts]; if (p != null) { entryPx[isin] = p; break; } }
+
+  // minute-by-minute equity curve, forward-filling each name's last print
+  const ffill = {}; for (const isin of isins) ffill[isin] = entryPx[isin] ?? null;
+  const labels = [], valueSeries = [];
+  for (const ts of timeline) {
+    let ret = 0;
+    for (const r of book) {
+      const p = priceByName[r.isin][ts];
+      if (p != null) ffill[r.isin] = p;
+      const cur = ffill[r.isin], entry = entryPx[r.isin];
+      if (cur == null || entry == null) continue;
+      ret += Number(r.weight) * (cur / entry - 1);
+    }
+    labels.push(tsMeta[ts].label);
+    valueSeries.push(NOTIONAL * (1 + ret));
+  }
+
+  // per-name contribution at the latest mark
+  const lastPx = {};
+  for (const isin of isins) { let p = entryPx[isin]; for (const ts of timeline) if (priceByName[isin][ts] != null) p = priceByName[isin][ts]; lastPx[isin] = p; }
+  const dates = [...new Set(timeline.map(ts => ts.slice(0, 10)))];
+  const lastTs = timeline[timeline.length - 1];
+  const granular = intradayDays.size > 0;
+  const contrib = book.map(r => {
+    const w = Number(r.weight);
+    const entry = entryPx[r.isin], px = lastPx[r.isin];
+    const ret = (entry && px) ? (px / entry - 1) : 0;
+    const c = convByIsin[r.isin];
+    const side = w >= 0 ? 'LONG' : 'SHORT';
+    return { ticker: r.ticker, isin: r.isin, w, ret, pnl: w * NOTIONAL * ret, side, agree: c && c.side === side };
+  });
+
+  const longPnl  = contrib.filter(c => c.w >= 0).reduce((a, c) => a + c.pnl, 0);
+  const shortPnl = contrib.filter(c => c.w <  0).reduce((a, c) => a + c.pnl, 0);
+  const totalPnl = longPnl + shortPnl;
+  const curVal   = valueSeries[valueSeries.length - 1];
+  const totRet   = totalPnl / NOTIONAL;
+  const grossLong  = contrib.filter(c => c.w >= 0).reduce((a, c) => a + c.w, 0);
+  const grossShort = contrib.filter(c => c.w <  0).reduce((a, c) => a + Math.abs(c.w), 0);
+
+  // KPI tiles
+  document.getElementById('ppVal').textContent = nok0(curVal) + '';
+  document.getElementById('ppAsOf').innerHTML = `MARK <strong style="color:var(--text1)">${tsMeta[lastTs].label}</strong> · DAY ${dates.length} · ${granular ? labels.length + ' min marks' : dates.length + ' closes'}`;
+  const pnlEl = document.getElementById('ppPnl'); pnlEl.textContent = sNok(totalPnl);
+  pnlEl.className = 'kpi-val ' + (totalPnl >= 0 ? 'pp-pos' : 'pp-neg');
+  document.getElementById('ppPnlSub').textContent = sPct(totRet) + ' on capital';
+  const lEl = document.getElementById('ppLong'); lEl.textContent = sNok(longPnl); lEl.className = 'kpi-val ' + (longPnl>=0?'pp-pos':'pp-neg');
+  document.getElementById('ppLongSub').textContent = `${(grossLong*100).toFixed(0)}% gross · ${contrib.filter(c=>c.w>=0).length} names`;
+  const shEl = document.getElementById('ppShort'); shEl.textContent = sNok(shortPnl); shEl.className = 'kpi-val ' + (shortPnl>=0?'pp-pos':'pp-neg');
+  document.getElementById('ppShortSub').textContent = `${(grossShort*100).toFixed(0)}% gross · ${contrib.filter(c=>c.w<0).length} names`;
+  const band = Number(m.forecast_weekly_vol) || 0;
+  const sig = band ? (totRet / band) : 0;
+  document.getElementById('ppFcst').textContent = sPct(totRet) + ' / ±' + (band*100).toFixed(2) + '%';
+  document.getElementById('ppFcstSub').textContent = band ? `${sig>=0?'+':'−'}${Math.abs(sig).toFixed(2)}σ of forecast` : 'one-week forecast';
+
+  // synergy note — best/worst contributor + Markedsradar agreement
+  const sorted = [...contrib].sort((a, b) => b.pnl - a.pnl);
+  const best = sorted[0], worst = sorted[sorted.length - 1];
+  const agreeN = contrib.filter(c => c.agree).length;
+  noteEl.innerHTML =
+    `Top <span class="pp-pos">${best.ticker} ${sNok(best.pnl)}</span> · ` +
+    `Worst <span class="pp-neg">${worst.ticker} ${sNok(worst.pnl)}</span> · ` +
+    `Markedsradar agrees on <strong style="color:var(--text2)">${agreeN}/${contrib.length}</strong>` +
+    (granular ? ` · <span style="color:var(--ice)">minute-level</span>` : ``);
+
+  ppState = { labels, valueSeries, contrib, granular };
+  renderPP('value');
+}
+
+function renderPP(mode) {
+  if (!ppState) return;
+  document.querySelectorAll('#ppMode button').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+  if (ppChart) { ppChart.destroy(); ppChart = null; }
+  const ctx = document.getElementById('ppCanvas');
+  const axis = { ticks:{ color:'#5a6377', font:{ family:'IBM Plex Mono', size:9 } }, grid:{ color:'rgba(255,255,255,0.04)' } };
+
+  if (mode === 'value') {
+    const last = ppState.valueSeries[ppState.valueSeries.length - 1];
+    const up = last >= NOTIONAL;
+    ppChart = new Chart(ctx, {
+      type:'line',
+      data:{ labels: ppState.labels, datasets:[
+        { label:'Portfolio value', data: ppState.valueSeries,
+          borderColor: up ? '#43e097' : '#f06060',
+          backgroundColor: up ? 'rgba(67,224,151,0.08)' : 'rgba(240,96,96,0.08)',
+          borderWidth: ppState.granular ? 1.5 : 2, fill:true, tension: ppState.granular ? 0 : .15,
+          pointRadius: ppState.labels.length < 8 ? 3 : 0, pointHoverRadius:4, pointBackgroundColor: up?'#43e097':'#f06060' },
+        { label:'Starting capital', data: ppState.labels.map(() => NOTIONAL),
+          borderColor:'rgba(245,166,35,0.6)', borderDash:[4,4], borderWidth:1, fill:false, pointRadius:0 },
+      ]},
+      options:{ responsive:true, maintainAspectRatio:false, animation:false,
+        interaction:{ intersect:false, mode:'index' },
+        plugins:{ legend:{ labels:{ color:'#a4adbf', font:{ family:'IBM Plex Mono', size:10 }, boxWidth:12 } },
+          tooltip:{ callbacks:{ title: items => items[0].label, label: c => c.dataset.label + ': ' + nok0(c.parsed.y) + ' NOK' } } },
+        scales:{ x:{ ...axis, ticks:{ ...axis.ticks, autoSkip:true, maxTicksLimit:9, maxRotation:0 } },
+                 y:{ ...axis, ticks:{ ...axis.ticks, callback:v => (v/1000).toFixed(1) + 'k' } } } },
+    });
+  } else {
+    const data = [...ppState.contrib].sort((a, b) => b.pnl - a.pnl);
+    ppChart = new Chart(ctx, {
+      type:'bar',
+      data:{ labels: data.map(c => c.ticker), datasets:[
+        { label:'P&L contribution (NOK)', data: data.map(c => c.pnl),
+          backgroundColor: data.map(c => c.w >= 0 ? 'rgba(67,224,151,0.65)' : 'rgba(240,96,96,0.65)'),
+          borderColor: data.map(c => c.w >= 0 ? '#43e097' : '#f06060'), borderWidth:1 },
+      ]},
+      options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, animation:false,
+        plugins:{ legend:{ display:false },
+          tooltip:{ callbacks:{ label: c => { const d = data[c.dataIndex]; return `${d.side} ${(d.w*100).toFixed(2)}% · ${sNok(d.pnl)} NOK (${sPct(d.ret)})`; } } } },
+        scales:{ x:{ ...axis, ticks:{ ...axis.ticks, callback:v => sNok(v) } }, y:{ ...axis, ticks:{ ...axis.ticks, font:{ family:'IBM Plex Mono', size:8 } } } } },
+    });
+  }
+}
+
 // ─── MAIN ─────────────────────────────────────────────────────────────
 (async () => {
   const get = async p => { try { const r = await fetch(`${API}/${p}`); return r.ok ? await r.json() : null; } catch(e) { return null; } };
@@ -699,6 +913,12 @@ function renderSectors(weights) {
 
   // Eigenstructure
   renderEigen(mat.eigen_top || [], mat.tickers);
+
+  // Paper portfolio tracker (this week, 100k NOK on the live book)
+  buildTracker(liveW, m, convictionByIsin);
+  document.getElementById('ppMode').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (b) renderPP(b.dataset.mode);
+  });
 
   // Sector concentration (uses live weights)
   renderSectors(liveW);
