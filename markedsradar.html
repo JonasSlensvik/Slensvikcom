@@ -871,6 +871,207 @@ tbody tr.selected { background: var(--ice-dim); }
 }
 .cat-score-fill { height: 100%; border-radius: 1px; }
 
+/* ═══ Market Pulse hero ════════════════════════════════════════════════════ */
+.hero {
+  position: relative;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: linear-gradient(160deg, #0a1019 0%, #0b1320 55%, #0a0f18 100%);
+  overflow: hidden;
+  margin-bottom: 36px;
+  isolation: isolate;
+}
+#ambientCanvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  opacity: 0.55;
+  pointer-events: none;
+}
+.hero::after {  /* readability scrim so text always wins over the animation */
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background:
+    radial-gradient(120% 130% at 15% 0%, rgba(10,16,25,0.30), rgba(10,16,25,0.85) 75%);
+  pointer-events: none;
+}
+.hero-inner { position: relative; z-index: 2; padding: 26px 28px 24px; }
+.hero-top {
+  display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.hero-eyebrow {
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.28em;
+  text-transform: uppercase; color: var(--amber);
+}
+.hero-eyebrow .dot { color: var(--green); animation: pulse 2s infinite; }
+.hero-date { font-family: var(--mono); font-size: 11px; color: var(--text-dim); letter-spacing: 1px; }
+.hero-fx-toggle {
+  margin-left: auto; font-family: var(--mono); font-size: 10px; letter-spacing: 1px;
+  color: var(--text-dim); background: transparent; border: 1px solid var(--border);
+  border-radius: 4px; padding: 3px 9px; cursor: pointer; transition: all 0.15s;
+}
+.hero-fx-toggle:hover { color: var(--ice); border-color: var(--ice-dim); }
+.hero-lede {
+  font-family: var(--sans); font-weight: 600;
+  font-size: clamp(19px, 2.4vw, 27px); line-height: 1.32;
+  color: var(--text-bright); letter-spacing: -0.3px;
+  max-width: 60ch; margin-bottom: 20px;
+}
+.hero-lede b { color: var(--ice); font-weight: 600; }
+.hero-lede .up { color: var(--green); } .hero-lede .dn { color: var(--red); }
+.hero-lede .warn { color: var(--amber); }
+
+/* hero KPI ticks */
+.hero-ticks { display: flex; flex-wrap: wrap; gap: 26px; margin-bottom: 22px; }
+.hero-tick { display: flex; flex-direction: column; gap: 2px; }
+.hero-tick-label { font-family: var(--mono); font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--text-dim); }
+.hero-tick-value { font-family: var(--mono); font-size: 20px; font-weight: 600; color: var(--text-bright); font-variant-numeric: tabular-nums; }
+.hero-tick-value.up { color: var(--green); } .hero-tick-value.dn { color: var(--red); }
+.hero-tick-value.warn { color: var(--amber); }
+.hero-tick-sub { font-family: var(--mono); font-size: 10px; color: var(--text-dim); }
+
+/* story cards */
+.story-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(248px, 1fr)); gap: 12px; }
+.story-card {
+  position: relative;
+  background: rgba(13,20,32,0.72);
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--ice);
+  border-radius: 5px;
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.15s, background 0.15s;
+  backdrop-filter: blur(2px);
+}
+.story-card:hover { transform: translateY(-2px); background: rgba(16,24,38,0.92); }
+.story-card.pos { border-left-color: var(--green); }
+.story-card.neg { border-left-color: var(--red); }
+.story-card.warn { border-left-color: var(--amber); }
+.story-card.dark { border-left-color: var(--purple); }
+.story-head { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
+.story-glyph { font-size: 14px; color: var(--ice); }
+.story-card.pos .story-glyph { color: var(--green); }
+.story-card.neg .story-glyph { color: var(--red); }
+.story-card.warn .story-glyph { color: var(--amber); }
+.story-card.dark .story-glyph { color: var(--purple); }
+.story-kicker { font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-dim); }
+.story-title { font-family: var(--mono); font-size: 14px; font-weight: 600; color: var(--text-bright); margin-bottom: 4px; }
+.story-body { font-size: 12px; color: var(--text); line-height: 1.45; }
+.story-body .num { font-family: var(--mono); font-weight: 600; }
+.story-body .up { color: var(--green); } .story-body .dn { color: var(--red); } .story-body .warn { color: var(--amber); }
+
+/* ═══ Market Today dashboard ═══════════════════════════════════════════════ */
+.dash-grid {
+  display: grid;
+  grid-template-columns: 1.15fr 1fr 1fr;
+  gap: 14px;
+  align-items: start;
+}
+@media (max-width: 1080px) { .dash-grid { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 720px)  { .dash-grid { grid-template-columns: 1fr; } }
+.panel {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 14px 16px 16px;
+}
+.panel-span2 { grid-column: span 2; }
+@media (max-width: 720px) { .panel-span2 { grid-column: span 1; } }
+.panel-title {
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--text-bright); margin-bottom: 12px; display: flex; align-items: center; gap: 8px;
+}
+.panel-title .g { color: var(--amber); }
+.panel-title .meta { margin-left: auto; color: var(--text-dim); font-size: 10px; letter-spacing: 1px; }
+
+/* breadth bar */
+.breadth-wrap { margin-bottom: 14px; }
+.breadth-bar { display: flex; height: 26px; border-radius: 4px; overflow: hidden; border: 1px solid var(--border); }
+.breadth-seg { display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: 11px; font-weight: 600; color: var(--bg); min-width: 28px; }
+.breadth-seg.adv { background: var(--green); }
+.breadth-seg.unch { background: var(--text-dim); }
+.breadth-seg.dec { background: var(--red); }
+.breadth-legend { display: flex; justify-content: space-between; margin-top: 6px; font-family: var(--mono); font-size: 10px; color: var(--text-dim); }
+.breadth-legend .up { color: var(--green); } .breadth-legend .dn { color: var(--red); }
+
+/* mini stat rows inside panels */
+.dash-stat-row { display: flex; align-items: baseline; justify-content: space-between; padding: 5px 0; border-bottom: 1px dashed var(--border); }
+.dash-stat-row:last-child { border-bottom: none; }
+.dash-stat-label { font-size: 12px; color: var(--text-dim); }
+.dash-stat-val { font-family: var(--mono); font-size: 13px; font-weight: 600; color: var(--text-bright); font-variant-numeric: tabular-nums; }
+.dash-stat-val.up { color: var(--green); } .dash-stat-val.dn { color: var(--red); } .dash-stat-val.warn { color: var(--amber); }
+
+/* mover / leader list rows */
+.mlist { display: flex; flex-direction: column; }
+.mrow {
+  display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: center;
+  padding: 6px 0; border-bottom: 1px dashed var(--border); cursor: pointer;
+}
+.mrow:last-child { border-bottom: none; }
+.mrow:hover .mrow-tkr { color: var(--ice); }
+.mrow-tkr { font-family: var(--mono); font-size: 13px; font-weight: 600; color: var(--text-bright); }
+.mrow-name { font-size: 10.5px; color: var(--text-dim); max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mrow-num { font-family: var(--mono); font-size: 12px; text-align: right; font-variant-numeric: tabular-nums; color: var(--text); }
+.mrow-num.up { color: var(--green); } .mrow-num.dn { color: var(--red); } .mrow-num.warn { color: var(--amber); }
+.mrow-badge { font-family: var(--mono); font-size: 9px; padding: 1px 5px; border-radius: 3px; border: 1px solid var(--border); color: var(--text-dim); }
+
+/* insider feed */
+.feed { display: flex; flex-direction: column; gap: 0; max-height: 280px; overflow-y: auto; }
+.feed-row { display: flex; gap: 9px; padding: 7px 0; border-bottom: 1px dashed var(--border); cursor: pointer; }
+.feed-row:last-child { border-bottom: none; }
+.feed-row:hover .feed-issuer { color: var(--ice); }
+.feed-glyph { color: var(--amber); font-size: 13px; flex-shrink: 0; line-height: 1.5; }
+.feed-main { min-width: 0; }
+.feed-issuer { font-family: var(--mono); font-size: 12px; font-weight: 600; color: var(--text-bright); }
+.feed-title { font-size: 11px; color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 320px; }
+.feed-date { font-family: var(--mono); font-size: 10px; color: var(--text-dim); margin-left: auto; flex-shrink: 0; }
+
+/* intraday activity sparkbars */
+.act-spark { display: flex; align-items: flex-end; gap: 1px; height: 56px; margin-top: 4px; }
+.act-bar { flex: 1; background: var(--ice-dim); border-radius: 1px 1px 0 0; min-height: 1px; transition: background 0.15s; }
+.act-bar.peak { background: var(--amber); }
+.act-axis { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 9px; color: var(--text-dim); margin-top: 4px; }
+
+/* ─── Drill-down intel strip ─────────────────────────────────────────────── */
+.dive-intel { display: flex; flex-wrap: wrap; gap: 10px; margin: 0 0 22px; }
+.intel-chip {
+  display: flex; flex-direction: column; gap: 3px;
+  background: var(--bg3); border: 1px solid var(--border);
+  border-left: 2px solid var(--border); border-radius: 4px;
+  padding: 9px 14px; min-width: 104px;
+}
+.intel-chip.pos  { border-left-color: var(--green); }
+.intel-chip.neg  { border-left-color: var(--red); }
+.intel-chip.warn { border-left-color: var(--amber); }
+.intel-chip.dark { border-left-color: var(--purple); }
+.intel-chip.ice  { border-left-color: var(--ice); }
+.intel-k { font-family: var(--mono); font-size: 9px; letter-spacing: 1px; color: var(--text-dim); text-transform: uppercase; }
+.intel-v { font-family: var(--mono); font-size: 16px; font-weight: 700; color: var(--text-bright); line-height: 1.1; }
+.intel-sub { font-size: 9px; color: var(--text-dim); }
+.dive-syn {
+  font-size: 13px; line-height: 1.65; color: var(--text-bright);
+  background: var(--bg3); border: 1px solid var(--border); border-radius: 6px;
+  padding: 14px 18px; margin-bottom: 22px;
+}
+.dive-syn .hl-pos  { color: var(--green); font-weight: 600; }
+.dive-syn .hl-neg  { color: var(--red); font-weight: 600; }
+.dive-syn .hl-warn { color: var(--amber); font-weight: 600; }
+.dive-syn .hl-dark { color: var(--purple); font-weight: 600; }
+.dive-syn .hl-ice  { color: var(--ice); font-weight: 600; }
+.si-bar { height: 5px; border-radius: 3px; background: var(--bg2); overflow: hidden; margin-top: 6px; }
+.si-bar > span { display: block; height: 100%; background: var(--amber); }
+
+/* ─── Advanced section divider ───────────────────────────────────────────── */
+.adv-divider { display: flex; align-items: center; gap: 16px; margin: 44px 0 24px; }
+.adv-divider-line { flex: 1; height: 1px; background: linear-gradient(90deg, transparent, var(--border) 40%, var(--border)); }
+.adv-divider-line:last-child { background: linear-gradient(90deg, var(--border), var(--border) 60%, transparent); }
+.adv-divider-label { font-family: var(--mono); font-size: 10px; letter-spacing: 2px; color: var(--text-dim); white-space: nowrap; }
+
 </style>
 </head>
 <body>
@@ -888,6 +1089,21 @@ tbody tr.selected { background: var(--ice-dim); }
       <div class="meta-pill" id="totalTradesPill">— TRADES</div>
     </div>
   </header>
+
+  <!-- ── Market Pulse hero ─────────────────────────────────────────────────── -->
+  <section class="hero" id="hero">
+    <canvas id="ambientCanvas"></canvas>
+    <div class="hero-inner">
+      <div class="hero-top">
+        <span class="hero-eyebrow"><span class="dot">●</span> Market Pulse</span>
+        <span class="hero-date" id="heroDate">—</span>
+        <button class="hero-fx-toggle" id="fxToggle" onclick="toggleAmbient()">⊘ FX</button>
+      </div>
+      <div class="hero-lede" id="heroLede">Reading the tape…</div>
+      <div class="hero-ticks" id="heroTicks"></div>
+      <div class="story-grid" id="storyGrid"></div>
+    </div>
+  </section>
 
   <!-- ── Date selector ───────────────────────────────────────────────────── -->
   <div class="date-bar">
@@ -929,138 +1145,6 @@ tbody tr.selected { background: var(--ice-dim); }
     </div>
   </div>
 
-  <!-- ── Signal Track Record ──────────────────────────────────────────────── -->
-  <div class="section collapsed" id="sec-track-record">
-    <div class="section-head collapsible" onclick="toggleSection('sec-track-record')">
-      <div class="section-title">▢ Signal Track Record</div>
-      <div class="section-desc">Per-signal-type hit rate and average return at T+1 / T+5 / T+20. Populates once outcomes accumulate (typically T+1 morning).</div>
-      <div class="section-count" id="trackRecordCount">—</div>
-      <span class="section-chevron">▾</span>
-    </div>
-    <div class="section-body">
-      <div class="table-wrap">
-        <table class="perf-table"><thead><tr>
-          <th>Signal</th>
-          <th>Fired</th>
-          <th>Strong</th>
-          <th>Mod</th>
-          <th>T+1 Obs</th>
-          <th>T+1 Hit</th>
-          <th>T+1 Avg</th>
-          <th>T+5 Obs</th>
-          <th>T+5 Hit</th>
-          <th>T+5 Avg</th>
-          <th>T+20 Obs</th>
-          <th>T+20 Hit</th>
-          <th>T+20 Avg</th>
-        </tr></thead>
-        <tbody id="trackRecordBody"><tr><td colspan="13" class="perf-empty">LOADING …</td></tr></tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-
-  <!-- ── Overview KPIs ───────────────────────────────────────────────────── -->
-  <div class="section" id="sec-overview">
-    <div class="section-head">
-      <div class="section-title">Market Overview</div>
-      <div class="section-desc">Aggregated statistics across all Norwegian-listed equities for the selected trading day</div>
-    </div>
-    <div class="stat-grid" id="kpiGrid"><div class="loader">LOADING …</div></div>
-  </div>
-
-  <!-- ── Catalyst Alerts ───────────────────────────────────────────────────── -->
-  <div class="section" id="sec-catalyst">
-    <div class="section-head collapsible" onclick="toggleSection('sec-catalyst')">
-      <div class="section-title">◆ Catalysts</div>
-      <div class="section-desc">Smart-money activity preceding a known corporate event. Red card when a sell signal precedes results or AGM.</div>
-      <div class="section-count" id="catalystCount">—</div>
-      <span class="section-chevron">▾</span>
-    </div>
-    <div class="section-body">
-      <div class="catalyst-grid" id="catalystGrid"><div class="loader">LOADING …</div></div>
-    </div>
-  </div>
-
-  <!-- ── Signal × Event Proximity ──────────────────────────────────────────── -->
-  <div class="section" id="sec-proximity">
-    <div class="section-head collapsible" onclick="toggleSection('sec-proximity')">
-      <div class="section-title">≡ Signal × Event Proximity</div>
-      <div class="section-desc">Signals within 30 days of a corporate event — the informed-trading fingerprint. Red when event imminent at signal time.</div>
-      <div class="section-count" id="proximityCount">—</div>
-      <span class="section-chevron">▾</span>
-    </div>
-    <div class="section-body">
-      <div class="table-wrap">
-        <table><thead><tr>
-          <th>SIGNAL DATE</th><th>ISIN</th><th>SIGNAL</th><th>STRENGTH</th>
-          <th>EVENT TYPE</th><th>EVENT DATE</th><th class="r">DAYS TO EVENT</th>
-          <th>PROXIMITY</th><th class="r">T+1</th><th class="r">T+5</th><th class="r">T+20</th>
-        </tr></thead>
-        <tbody id="proximityBody"><tr><td colspan="11" class="loader">LOADING …</td></tr></tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-
-  <!-- ── Whale Alerts ────────────────────────────────────────────────────── -->
-  <div class="section" id="sec-whales">
-    <div class="section-head collapsible" onclick="toggleSection('sec-whales')">
-      <div class="section-title">■ Large Prints</div>
-      <div class="section-desc">Single trades exceeding NOK 5M, dark-pool large prints, OTC reports.</div>
-      <div class="section-count" id="whaleCount">—</div>
-      <span class="section-chevron">▾</span>
-    </div>
-    <div class="section-body">
-      <div class="whale-grid" id="whaleGrid"><div class="loader">LOADING …</div></div>
-    </div>
-  </div>
-
-  <!-- ── Smart Money Signals ─────────────────────────────────────────────── -->
-  <div class="section" id="sec-signals">
-    <div class="section-head collapsible" onclick="toggleSection('sec-signals')">
-      <div class="section-title">╳ Smart Money Signals</div>
-      <div class="section-desc">Cross-sectionally ranked patterns — dark accumulation / distribution, EOD sweeps, ceiling &amp; floor breaks.</div>
-      <div class="section-count" id="signalCount">—</div>
-      <span class="section-chevron">▾</span>
-    </div>
-    <div class="section-body">
-      <div class="signal-list" id="signalList"><div class="loader">LOADING …</div></div>
-    </div>
-  </div>
-
-  <!-- ── Corporate Events Calendar ────────────────────────────────────────── -->
-  <div class="section" id="sec-events">
-    <div class="section-head collapsible" onclick="toggleSection('sec-events')">
-      <div class="section-title">▌ Corporate Events</div>
-      <div class="section-desc">Upcoming and recent regulatory announcements — results, dividends, profit warnings. Signals near events are highlighted.</div>
-      <div class="section-count" id="eventsCount">—</div>
-      <span class="section-chevron">▾</span>
-    </div>
-    <div class="section-body">
-      <div style="display:flex;gap:8px;padding:0 0 12px 0;flex-wrap:wrap" id="eventFilters">
-        <button onclick="filterEvents('ALL')"           class="evt-btn active" data-f="ALL">ALL</button>
-        <button onclick="filterEvents('AGM')"           class="evt-btn" data-f="AGM">Ⅱ AGM</button>
-        <button onclick="filterEvents('EARNINGS_CALL')" class="evt-btn" data-f="EARNINGS_CALL">◴ EARNINGS</button>
-        <button onclick="filterEvents('RESULTS')"       class="evt-btn" data-f="RESULTS">▢ RESULTS</button>
-        <button onclick="filterEvents('EX_DATE')"       class="evt-btn" data-f="EX_DATE">◇ EX DATE</button>
-        <button onclick="filterEvents('WARNING')"       class="evt-btn" data-f="WARNING">△ WARNING</button>
-        <button onclick="filterEvents('INSIDER')"       class="evt-btn" data-f="INSIDER">◐ INSIDER</button>
-        <button onclick="filterEvents('PLACEMENT')"     class="evt-btn" data-f="PLACEMENT">▦ PLACEMENT</button>
-        <button onclick="filterEvents('DELISTING')"     class="evt-btn" data-f="DELISTING">⊘ DELISTING</button>
-        <button onclick="filterEvents('IPO')"           class="evt-btn" data-f="IPO">▴ IPO</button>
-      </div>
-      <div class="table-wrap">
-        <table id="eventsTable"><thead><tr>
-          <th>DATE</th><th>TYPE</th><th>ISSUER</th><th>TITLE</th>
-          <th class="r">DAYS</th><th>SIGNAL PROXIMITY</th>
-        </tr></thead>
-        <tbody id="eventsBody"><tr><td colspan="6" class="loader">LOADING …</td></tr></tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-
   <!-- ── Company Deep Dive ─────────────────────────────────────────────────── -->
   <div id="companyDeepDive" style="display:none">
     <div class="dive-header">
@@ -1078,6 +1162,9 @@ tbody tr.selected { background: var(--ice-dim); }
       </div>
       <button class="drill-close" onclick="closeDrill()">✕ CLOSE</button>
     </div>
+
+    <div class="dive-syn" id="diveSyn" style="display:none"></div>
+    <div class="dive-intel" id="diveIntel"></div>
 
     <div class="dive-metrics" id="diveMetrics"></div>
 
@@ -1121,6 +1208,191 @@ tbody tr.selected { background: var(--ice-dim); }
     <div class="dive-panel" style="margin-top:16px">
       <div class="dive-panel-title">Recent Smart Money Signals</div>
       <div id="diveSignalsList"><div style="color:var(--text-dim);font-size:12px">—</div></div>
+    </div>
+  </div>
+
+  <!-- ── Market Today (whole-market dashboard) ─────────────────────────────── -->
+  <div class="section" id="sec-market-today">
+    <div class="section-head">
+      <div class="section-title">◷ Market Today</div>
+      <div class="section-desc">The whole tape at a glance — breadth, where the money went, unusual dark flow, insider activity, and when the day was busiest.</div>
+      <div class="section-count" id="marketTodayCount">—</div>
+    </div>
+    <div class="section-body">
+      <div class="dash-grid">
+
+        <div class="panel panel-span2">
+          <div class="panel-title"><span class="g">⊞</span> Breadth &amp; Flow</div>
+          <div class="breadth-wrap" id="breadthWrap"></div>
+          <div id="dashStats"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-title"><span class="g">◐</span> Insider Activity <span class="meta" id="insiderMeta">—</span></div>
+          <div class="feed" id="insiderFeed"><div class="conv-empty">LOADING …</div></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-title"><span class="g">▲</span> Top Movers <span class="meta">vs prior close</span></div>
+          <div class="mlist" id="moversList"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-title"><span class="g">■</span> Most Active <span class="meta">turnover</span></div>
+          <div class="mlist" id="activeList"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-title"><span class="g">◍</span> Dark-Flow Leaders <span class="meta">% of volume</span></div>
+          <div class="mlist" id="darkLeadersList"></div>
+        </div>
+
+        <div class="panel panel-span2">
+          <div class="panel-title"><span class="g">∿</span> Intraday Activity <span class="meta">notional / minute · Oslo</span></div>
+          <div class="act-spark" id="actSpark"></div>
+          <div class="act-axis"><span>07:00</span><span id="actPeakLabel">—</span><span>16:30</span></div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Signal Track Record ──────────────────────────────────────────────── -->
+  <div class="section collapsed" id="sec-track-record">
+    <div class="section-head collapsible" onclick="toggleSection('sec-track-record')">
+      <div class="section-title">▢ Signal Track Record</div>
+      <div class="section-desc">Per-signal-type hit rate and average return at T+1 / T+5 / T+20. Populates once outcomes accumulate (typically T+1 morning).</div>
+      <div class="section-count" id="trackRecordCount">—</div>
+      <span class="section-chevron">▾</span>
+    </div>
+    <div class="section-body">
+      <div class="table-wrap">
+        <table class="perf-table"><thead><tr>
+          <th>Signal</th>
+          <th>Fired</th>
+          <th>Strong</th>
+          <th>Mod</th>
+          <th>T+1 Obs</th>
+          <th>T+1 Hit</th>
+          <th>T+1 Avg</th>
+          <th>T+5 Obs</th>
+          <th>T+5 Hit</th>
+          <th>T+5 Avg</th>
+          <th>T+20 Obs</th>
+          <th>T+20 Hit</th>
+          <th>T+20 Avg</th>
+        </tr></thead>
+        <tbody id="trackRecordBody"><tr><td colspan="13" class="perf-empty">LOADING …</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Advanced · Microstructure & Expert Tools ───────────────────────── -->
+  <div class="adv-divider">
+    <span class="adv-divider-line"></span>
+    <span class="adv-divider-label">⊞ ADVANCED · MICROSTRUCTURE &amp; EXPERT TOOLS</span>
+    <span class="adv-divider-line"></span>
+  </div>
+
+  <!-- ── Overview KPIs ───────────────────────────────────────────────────── -->
+  <div class="section" id="sec-overview">
+    <div class="section-head">
+      <div class="section-title">Market Overview</div>
+      <div class="section-desc">Aggregated statistics across all Norwegian-listed equities for the selected trading day</div>
+    </div>
+    <div class="stat-grid" id="kpiGrid"><div class="loader">LOADING …</div></div>
+  </div>
+
+  <!-- ── Catalyst Alerts ───────────────────────────────────────────────────── -->
+  <div class="section collapsed" id="sec-catalyst">
+    <div class="section-head collapsible" onclick="toggleSection('sec-catalyst')">
+      <div class="section-title">◆ Catalysts</div>
+      <div class="section-desc">Smart-money activity preceding a known corporate event. Red card when a sell signal precedes results or AGM.</div>
+      <div class="section-count" id="catalystCount">—</div>
+      <span class="section-chevron">▾</span>
+    </div>
+    <div class="section-body">
+      <div class="catalyst-grid" id="catalystGrid"><div class="loader">LOADING …</div></div>
+    </div>
+  </div>
+
+  <!-- ── Signal × Event Proximity ──────────────────────────────────────────── -->
+  <div class="section collapsed" id="sec-proximity">
+    <div class="section-head collapsible" onclick="toggleSection('sec-proximity')">
+      <div class="section-title">≡ Signal × Event Proximity</div>
+      <div class="section-desc">Signals within 30 days of a corporate event — the informed-trading fingerprint. Red when event imminent at signal time.</div>
+      <div class="section-count" id="proximityCount">—</div>
+      <span class="section-chevron">▾</span>
+    </div>
+    <div class="section-body">
+      <div class="table-wrap">
+        <table><thead><tr>
+          <th>SIGNAL DATE</th><th>ISIN</th><th>SIGNAL</th><th>STRENGTH</th>
+          <th>EVENT TYPE</th><th>EVENT DATE</th><th class="r">DAYS TO EVENT</th>
+          <th>PROXIMITY</th><th class="r">T+1</th><th class="r">T+5</th><th class="r">T+20</th>
+        </tr></thead>
+        <tbody id="proximityBody"><tr><td colspan="11" class="loader">LOADING …</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Whale Alerts ────────────────────────────────────────────────────── -->
+  <div class="section collapsed" id="sec-whales">
+    <div class="section-head collapsible" onclick="toggleSection('sec-whales')">
+      <div class="section-title">■ Large Prints</div>
+      <div class="section-desc">Single trades exceeding NOK 5M, dark-pool large prints, OTC reports.</div>
+      <div class="section-count" id="whaleCount">—</div>
+      <span class="section-chevron">▾</span>
+    </div>
+    <div class="section-body">
+      <div class="whale-grid" id="whaleGrid"><div class="loader">LOADING …</div></div>
+    </div>
+  </div>
+
+  <!-- ── Smart Money Signals ─────────────────────────────────────────────── -->
+  <div class="section collapsed" id="sec-signals">
+    <div class="section-head collapsible" onclick="toggleSection('sec-signals')">
+      <div class="section-title">╳ Smart Money Signals</div>
+      <div class="section-desc">Cross-sectionally ranked patterns — dark accumulation / distribution, EOD sweeps, ceiling &amp; floor breaks.</div>
+      <div class="section-count" id="signalCount">—</div>
+      <span class="section-chevron">▾</span>
+    </div>
+    <div class="section-body">
+      <div class="signal-list" id="signalList"><div class="loader">LOADING …</div></div>
+    </div>
+  </div>
+
+  <!-- ── Corporate Events Calendar ────────────────────────────────────────── -->
+  <div class="section collapsed" id="sec-events">
+    <div class="section-head collapsible" onclick="toggleSection('sec-events')">
+      <div class="section-title">▌ Corporate Events</div>
+      <div class="section-desc">Upcoming and recent regulatory announcements — results, dividends, profit warnings. Signals near events are highlighted.</div>
+      <div class="section-count" id="eventsCount">—</div>
+      <span class="section-chevron">▾</span>
+    </div>
+    <div class="section-body">
+      <div style="display:flex;gap:8px;padding:0 0 12px 0;flex-wrap:wrap" id="eventFilters">
+        <button onclick="filterEvents('ALL')"           class="evt-btn active" data-f="ALL">ALL</button>
+        <button onclick="filterEvents('AGM')"           class="evt-btn" data-f="AGM">Ⅱ AGM</button>
+        <button onclick="filterEvents('EARNINGS_CALL')" class="evt-btn" data-f="EARNINGS_CALL">◴ EARNINGS</button>
+        <button onclick="filterEvents('RESULTS')"       class="evt-btn" data-f="RESULTS">▢ RESULTS</button>
+        <button onclick="filterEvents('EX_DATE')"       class="evt-btn" data-f="EX_DATE">◇ EX DATE</button>
+        <button onclick="filterEvents('WARNING')"       class="evt-btn" data-f="WARNING">△ WARNING</button>
+        <button onclick="filterEvents('INSIDER')"       class="evt-btn" data-f="INSIDER">◐ INSIDER</button>
+        <button onclick="filterEvents('PLACEMENT')"     class="evt-btn" data-f="PLACEMENT">▦ PLACEMENT</button>
+        <button onclick="filterEvents('DELISTING')"     class="evt-btn" data-f="DELISTING">⊘ DELISTING</button>
+        <button onclick="filterEvents('IPO')"           class="evt-btn" data-f="IPO">▴ IPO</button>
+      </div>
+      <div class="table-wrap">
+        <table id="eventsTable"><thead><tr>
+          <th>DATE</th><th>TYPE</th><th>ISSUER</th><th>TITLE</th>
+          <th class="r">DAYS</th><th>SIGNAL PROXIMITY</th>
+        </tr></thead>
+        <tbody id="eventsBody"><tr><td colspan="6" class="loader">LOADING …</td></tr></tbody>
+        </table>
+      </div>
     </div>
   </div>
 
@@ -1474,9 +1746,372 @@ async function loadTrackRecord() {
   }
 }
 
+/* ═══ Market Pulse hero + Market Today dashboard ═══════════════════════════ */
+let marketMovers = [];
+let marketPulse  = null;
+
+const nf0 = v => v == null ? '—' : Number(v).toLocaleString('nb-NO', { maximumFractionDigits: 0 });
+const bnok = v => v == null ? '—' : (v / 1e9).toFixed(2);
+const mnok = v => v == null ? '—' : (v / 1e6).toFixed(0);
+const signed = v => (v >= 0 ? '+' : '') + Number(v).toFixed(2);
+const fmtNok = v => v == null ? '—' : v >= 1e9 ? `NOK ${(v/1e9).toFixed(2)}B` : v >= 1e6 ? `NOK ${(v/1e6).toFixed(0)}M` : `NOK ${(v/1e3).toFixed(0)}K`;
+
+async function loadMarketPulse() {
+  try {
+    const [pulseRows, movers] = await Promise.all([
+      API('market_pulse', ''),
+      API('movers', 'limit=300'),
+    ]);
+    marketPulse  = pulseRows[0] || null;
+    marketMovers = movers || [];
+    if (!marketPulse) return;
+    document.getElementById('heroDate').textContent =
+      `${marketPulse.trade_date} · T-1 settled`;
+    renderHeroLede(marketPulse);
+    renderHeroTicks(marketPulse);
+    renderStories(marketPulse, marketMovers);
+    renderDashboard(marketPulse, marketMovers);
+  } catch (e) {
+    console.error('Market pulse failed:', e);
+    document.getElementById('heroLede').textContent = 'Market data temporarily unavailable.';
+  }
+}
+
+function renderHeroLede(p) {
+  const adv = p.advancers || 0, dec = p.decliners || 0, tot = p.total_names || 0;
+  const turnB = bnok(p.total_turnover);
+  const tchg = p.turnover_chg_pct;
+  const lean = adv > dec * 1.1 ? 'Buyers led' : dec > adv * 1.1 ? 'Sellers pressed' : 'A balanced tape';
+  const leadNums = adv >= dec
+    ? `<span class="up">${adv}</span> up vs <span class="dn">${dec}</span> down`
+    : `<span class="dn">${dec}</span> down vs <span class="up">${adv}</span> up`;
+  const turnVerb = tchg == null ? 'turnover NOK ' + turnB + 'bn'
+    : `turnover ${tchg >= 0 ? 'rose' : 'eased'} <b>${signed(tchg)}%</b> to NOK ${turnB}bn`;
+  let s = `${lean} on the Oslo tape — ${leadNums} as ${turnVerb}.`;
+  if (p.dark_unusual && p.market_dark_pct_avg > 0) {
+    const ratio = (p.market_dark_pct / p.market_dark_pct_avg).toFixed(1);
+    s += ` Dark trading spiked to <span class="warn">${p.market_dark_pct}%</span> of shares — <span class="warn">${ratio}×</span> the recent norm.`;
+  }
+  document.getElementById('heroLede').innerHTML = s;
+}
+
+function renderHeroTicks(p) {
+  const tick = (label, value, cls, sub) => `
+    <div class="hero-tick">
+      <div class="hero-tick-label">${label}</div>
+      <div class="hero-tick-value ${cls || ''}">${value}</div>
+      <div class="hero-tick-sub">${sub || ''}</div>
+    </div>`;
+  const tchg = p.turnover_chg_pct;
+  document.getElementById('heroTicks').innerHTML =
+    tick('Turnover', `${bnok(p.total_turnover)}<span style="font-size:12px">bn</span>`,
+         tchg >= 0 ? 'up' : 'dn', tchg == null ? 'NOK' : `${signed(tchg)}% vs prior`) +
+    tick('Breadth', `${p.advancers}<span style="font-size:12px;color:var(--text-dim)">/${p.total_names}</span>`,
+         (p.pct_advancers >= 50 ? 'up' : 'dn'), `${p.pct_advancers}% advancing`) +
+    tick('Dark Vol', `${p.market_dark_pct}<span style="font-size:12px">%</span>`,
+         p.dark_unusual ? 'warn' : '', `avg ${p.market_dark_pct_avg}%`) +
+    tick('Insiders', `${p.insiders_today}`, p.insiders_today > 0 ? 'warn' : '', `${p.insiders_7d} this week`) +
+    tick('Events ≤14d', `${p.events_14d}`, '', 'results · agm · ex-div') +
+    tick('Signals', `${p.signals_today}`, '', 'smart-money fires');
+}
+
+/* Compose a one-line narrative for a single name from its facts. */
+function nameStory(m) {
+  const bits = [];
+  if (m.change_pct != null)
+    bits.push(`${m.change_pct >= 0 ? 'rose' : 'fell'} <span class="num ${m.change_pct >= 0 ? 'up' : 'dn'}">${signed(m.change_pct)}%</span>`);
+  if (m.adv_zscore != null && m.adv_zscore >= 1.8)
+    bits.push(`on <span class="num warn">${m.adv_zscore.toFixed(1)}σ</span> volume`);
+  let s = bits.length ? `${m.name} ${bits.join(' ')}.` : `${m.name}.`;
+  if (m.next_event_type && m.days_to_event != null && m.days_to_event <= 14) {
+    const lbl = { RESULTS: 'reports Q-results', EARNINGS_CALL: 'hosts earnings call',
+                  WARNING: 'flagged a notice', AGM: 'holds its AGM', EX_DATE: 'goes ex-dividend' }[m.next_event_type] || m.next_event_type;
+    s += ` ${lbl} ${m.days_to_event === 0 ? 'today' : m.days_to_event === 1 ? 'tomorrow' : 'in ' + m.days_to_event + ' days'}.`;
+  }
+  if (m.dark_pct != null && m.dark_pct >= 20 && m.dark_side_bias && m.dark_side_bias !== 'NEUTRAL')
+    s += ` Dark flow <span class="num ${m.dark_side_bias === 'BUY' ? 'up' : 'dn'}">${m.dark_side_bias === 'BUY' ? 'accumulating' : 'distributing'}</span>${m.bias_confirmed ? ' (confirmed)' : ''}.`;
+  if (m.insider_7d > 0)
+    s += ` <span class="num warn">${m.insider_7d}</span> insider filing${m.insider_7d > 1 ? 's' : ''} this week.`;
+  return s;
+}
+
+function renderStories(p, movers) {
+  const liquid = movers.filter(m => (m.turnover || 0) >= 1e6);
+  const imminent = new Set(['RESULTS', 'EARNINGS_CALL', 'WARNING']);
+  const score = m => {
+    let sc = 0;
+    if (m.next_event_type && m.days_to_event != null && m.days_to_event <= 14)
+      sc += (imminent.has(m.next_event_type) ? 40 : 18) * (1 - m.days_to_event / 16);
+    sc += Math.min(Math.abs(m.change_pct || 0), 15) * 2.2;
+    if (m.adv_zscore != null) sc += Math.max(0, m.adv_zscore) * 8;
+    if (m.dark_pct >= 20 && m.dark_side_bias && m.dark_side_bias !== 'NEUTRAL') sc += m.bias_confirmed ? 22 : 12;
+    sc += (m.insider_7d || 0) * 6;
+    if (m.conviction) sc += m.conviction * 0.25;
+    return sc;
+  };
+  const ranked = liquid.map(m => ({ m, sc: score(m) }))
+    .sort((a, b) => b.sc - a.sc).slice(0, 4).map(x => x.m);
+
+  const cardCls = m => {
+    if (m.next_event_type === 'WARNING') return 'warn';
+    if ((m.change_pct || 0) >= 3) return 'pos';
+    if ((m.change_pct || 0) <= -3) return 'neg';
+    if (m.dark_pct >= 20 && m.dark_side_bias !== 'NEUTRAL') return 'dark';
+    return '';
+  };
+  const kicker = m => {
+    if (m.next_event_type && m.days_to_event != null && m.days_to_event <= 14)
+      return `${({ RESULTS: 'RESULTS', EARNINGS_CALL: 'EARNINGS', WARNING: 'NOTICE', AGM: 'AGM', EX_DATE: 'EX-DIV' }[m.next_event_type] || m.next_event_type)} ${m.days_to_event === 0 ? 'TODAY' : 'IN ' + m.days_to_event + 'D'}`;
+    if (m.adv_zscore >= 2) return 'UNUSUAL VOLUME';
+    if (m.dark_pct >= 20) return 'DARK FLOW';
+    if (m.insider_7d > 0) return 'INSIDER ACTIVITY';
+    return (m.change_pct || 0) >= 0 ? 'GAINER' : 'DECLINER';
+  };
+  const glyph = m => {
+    if (m.next_event_type === 'WARNING') return '△';
+    if (m.next_event_type) return EVT_GLYPH[m.next_event_type] || '◇';
+    if (m.dark_pct >= 20) return '◍';
+    return (m.change_pct || 0) >= 0 ? '▲' : '▼';
+  };
+
+  const cards = ranked.map(m => `
+    <div class="story-card ${cardCls(m)}" onclick="drillIntoISIN('${m.isin}','${m.venue || 'XOSL'}')">
+      <div class="story-head">
+        <span class="story-glyph">${glyph(m)}</span>
+        <span class="story-kicker">${kicker(m)}</span>
+      </div>
+      <div class="story-title">${m.ticker || isinTicker(m.isin)}</div>
+      <div class="story-body">${nameStory(m)}</div>
+    </div>`);
+
+  // A market-level card to close out the row.
+  if (p.dark_unusual) {
+    cards.push(`
+      <div class="story-card dark" onclick="document.getElementById('sec-market-today').scrollIntoView({behavior:'smooth'})">
+        <div class="story-head"><span class="story-glyph">◍</span><span class="story-kicker">MARKET-WIDE</span></div>
+        <div class="story-title">Dark volume surged</div>
+        <div class="story-body"><span class="num warn">${p.market_dark_pct}%</span> of all shares crossed in the dark today, against a <span class="num">${p.market_dark_pct_avg}%</span> norm — a handful of large blocks moving size off-screen.</div>
+      </div>`);
+  } else {
+    cards.push(`
+      <div class="story-card" onclick="document.getElementById('sec-market-today').scrollIntoView({behavior:'smooth'})">
+        <div class="story-head"><span class="story-glyph">⊞</span><span class="story-kicker">MARKET-WIDE</span></div>
+        <div class="story-title">${p.pct_advancers >= 50 ? 'Broad participation' : 'Breadth was thin'}</div>
+        <div class="story-body"><span class="num ${p.pct_advancers >= 50 ? 'up' : 'dn'}">${p.pct_advancers}%</span> of ${p.total_names} names advanced. Busiest at ${toOsloHHMM(marketPulse.trade_date + 'T' + (marketPulse.busiest_minute || '07:00:00'))}; ${p.signals_today} smart-money signals fired.</div>
+      </div>`);
+  }
+  document.getElementById('storyGrid').innerHTML = cards.join('');
+}
+
+function renderDashboard(p, movers) {
+  document.getElementById('marketTodayCount').textContent = `${p.total_names} NAMES`;
+
+  // Breadth bar
+  const tot = p.total_names || 1;
+  const aw = (p.advancers / tot * 100).toFixed(1);
+  const uw = (p.unchanged / tot * 100).toFixed(1);
+  const dw = (p.decliners / tot * 100).toFixed(1);
+  document.getElementById('breadthWrap').innerHTML = `
+    <div class="breadth-bar">
+      <div class="breadth-seg adv" style="width:${aw}%" title="${p.advancers} advancing">${p.advancers}</div>
+      <div class="breadth-seg unch" style="width:${uw}%" title="${p.unchanged} unchanged"></div>
+      <div class="breadth-seg dec" style="width:${dw}%" title="${p.decliners} declining">${p.decliners}</div>
+    </div>
+    <div class="breadth-legend"><span class="up">▲ ${p.advancers} advancing</span><span>${p.unchanged} flat</span><span class="dn">${p.decliners} declining ▼</span></div>`;
+
+  const row = (label, val, cls) => `<div class="dash-stat-row"><span class="dash-stat-label">${label}</span><span class="dash-stat-val ${cls || ''}">${val}</span></div>`;
+  document.getElementById('dashStats').innerHTML =
+    row('Total turnover', `NOK ${bnok(p.total_turnover)}bn`, p.turnover_chg_pct >= 0 ? 'up' : 'dn') +
+    row('vs prior session', p.turnover_chg_pct == null ? '—' : `${signed(p.turnover_chg_pct)}%`, p.turnover_chg_pct >= 0 ? 'up' : 'dn') +
+    row('Market dark share', `${p.market_dark_pct}%`, p.dark_unusual ? 'warn' : '') +
+    row('Trades printed', nf0(p.total_trades)) +
+    row('Smart-money signals', nf0(p.signals_today)) +
+    row('Events next 14 days', nf0(p.events_14d));
+
+  // Top movers: 4 up + 4 down, liquidity-gated
+  const liquid = movers.filter(m => (m.turnover || 0) >= 1e6 && m.change_pct != null);
+  const ups = [...liquid].sort((a, b) => b.change_pct - a.change_pct).slice(0, 4);
+  const dns = [...liquid].sort((a, b) => a.change_pct - b.change_pct).slice(0, 4);
+  const moverRow = m => `
+    <div class="mrow" onclick="drillIntoISIN('${m.isin}','${m.venue || 'XOSL'}')">
+      <div><div class="mrow-tkr">${m.ticker || isinTicker(m.isin)}</div><div class="mrow-name">${m.name || ''}</div></div>
+      <div class="mrow-num ${m.change_pct >= 0 ? 'up' : 'dn'}">${signed(m.change_pct)}%</div>
+      <div class="mrow-num" style="color:var(--text-dim)">${mnok(m.turnover)}M</div>
+    </div>`;
+  document.getElementById('moversList').innerHTML = ups.map(moverRow).join('') + dns.map(moverRow).join('');
+
+  // Most active by turnover (movers already sorted desc)
+  document.getElementById('activeList').innerHTML = movers.slice(0, 7).map(m => `
+    <div class="mrow" onclick="drillIntoISIN('${m.isin}','${m.venue || 'XOSL'}')">
+      <div><div class="mrow-tkr">${m.ticker || isinTicker(m.isin)}</div><div class="mrow-name">${m.name || ''}</div></div>
+      <div class="mrow-num ${(m.change_pct || 0) >= 0 ? 'up' : 'dn'}">${signed(m.change_pct || 0)}%</div>
+      <div class="mrow-num" style="color:var(--text-bright)">${mnok(m.turnover)}M</div>
+    </div>`).join('');
+
+  // Dark-flow leaders: highest dark_pct among names with real trading
+  const dark = movers.filter(m => (m.total_trades || 0) >= 20 && m.dark_pct != null)
+    .sort((a, b) => b.dark_pct - a.dark_pct).slice(0, 7);
+  document.getElementById('darkLeadersList').innerHTML = dark.map(m => {
+    const b = m.dark_side_bias && m.dark_side_bias !== 'NEUTRAL'
+      ? `<span class="mrow-badge" style="color:${m.dark_side_bias === 'BUY' ? 'var(--green)' : 'var(--red)'}">${m.dark_side_bias}${m.bias_confirmed ? '✓' : ''}</span>`
+      : `<span class="mrow-badge">—</span>`;
+    return `
+    <div class="mrow" onclick="drillIntoISIN('${m.isin}','${m.venue || 'XOSL'}')">
+      <div><div class="mrow-tkr">${m.ticker || isinTicker(m.isin)}</div><div class="mrow-name">${m.name || ''}</div></div>
+      <div class="mrow-num warn">${Number(m.dark_pct).toFixed(1)}%</div>
+      ${b}
+    </div>`;
+  }).join('');
+
+  loadInsiderFeed();
+  loadActivitySpark();
+}
+
+async function loadInsiderFeed() {
+  try {
+    const data = await API('corporate_events',
+      `event_type=eq.INSIDER&order=event_date.desc&limit=14`);
+    document.getElementById('insiderMeta').textContent = `${data.length} recent`;
+    if (!data.length) { document.getElementById('insiderFeed').innerHTML = '<div class="conv-empty">No filings.</div>'; return; }
+    document.getElementById('insiderFeed').innerHTML = data.map(e => `
+      <div class="feed-row" onclick="drillIntoISIN('${e.isin}','XOSL')">
+        <span class="feed-glyph">◐</span>
+        <div class="feed-main">
+          <div class="feed-issuer">${e.issuer || isinName(e.isin) || e.isin}</div>
+          <div class="feed-title" title="${(e.title || '').replace(/"/g, '&quot;')}">${e.title || 'Mandatory notification of trade'}</div>
+        </div>
+        <span class="feed-date">${e.event_date}</span>
+      </div>`).join('');
+  } catch (e) {
+    console.error('Insider feed failed:', e);
+    document.getElementById('insiderFeed').innerHTML = '<div class="conv-empty">DATA UNAVAILABLE</div>';
+  }
+}
+
+async function loadActivitySpark() {
+  try {
+    const data = await API('market_intraday', 'limit=600');
+    if (!data.length) return;
+    // Downsample to ~46 buckets for a clean sparkline.
+    const N = 46, step = Math.ceil(data.length / N);
+    const buckets = [];
+    for (let i = 0; i < data.length; i += step) {
+      const slice = data.slice(i, i + step);
+      buckets.push({
+        notional: slice.reduce((s, r) => s + Number(r.notional || 0), 0),
+        bucket: slice[0].minute_bucket,
+      });
+    }
+    const max = Math.max(...buckets.map(b => b.notional)) || 1;
+    const peakIdx = buckets.reduce((mi, b, i, a) => b.notional > a[mi].notional ? i : mi, 0);
+    document.getElementById('actSpark').innerHTML = buckets.map((b, i) => {
+      const h = Math.max(2, b.notional / max * 100);
+      const t = toOsloHHMM(marketPulse.trade_date + 'T' + b.bucket);
+      return `<div class="act-bar ${i === peakIdx ? 'peak' : ''}" style="height:${h}%" title="${t} · NOK ${mnok(b.notional)}M"></div>`;
+    }).join('');
+    const peakT = toOsloHHMM(marketPulse.trade_date + 'T' + buckets[peakIdx].bucket);
+    document.getElementById('actPeakLabel').innerHTML = `peak <span style="color:var(--amber)">${peakT}</span>`;
+  } catch (e) {
+    console.error('Activity spark failed:', e);
+  }
+}
+
+/* ═══ Ambient background — Matrix × Bloomberg × Einstein ════════════════════ */
+let ambientRAF = null, ambientOn = true, ambientCtx = null, ambientState = null;
+const AMBIENT_GLYPHS = 'アイウエオカ0123456789ΣΔμσΩπ∂∫√∞±λθρ$€NOK';
+const AMBIENT_EQS = ['∂V/∂t + ½σ²S²∂²V/∂S² = rV', 'E = Σ pᵢxᵢ', 'σ = √(Σ(x−μ)²/n)',
+  'ΔP = β·ΔM + ε', 'dS = μS dt + σS dW', 'r = (Pₜ−Pₜ₋₁)/Pₜ₋₁', 'Sharpe = (R−Rf)/σ'];
+const AMBIENT_TKRS = ['EQNR', 'DNB', 'NHY', 'MOWI', 'AKRBP', 'YAR', 'TEL', 'KOG', 'VAR', 'ORK'];
+
+function initAmbient() {
+  const canvas = document.getElementById('ambientCanvas');
+  if (!canvas) return;
+  ambientCtx = canvas.getContext('2d');
+  const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const saved = localStorage.getItem('ambientFx');
+  ambientOn = saved == null ? !reduce : saved === '1';
+
+  const resize = () => {
+    const r = canvas.getBoundingClientRect();
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = r.width * dpr; canvas.height = r.height * dpr;
+    ambientCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const cols = Math.floor(r.width / 14);
+    ambientState = {
+      w: r.width, h: r.height, cols,
+      drops: Array.from({ length: cols }, () => Math.random() * -40),
+      eqs: AMBIENT_EQS.slice(0, 4).map((t, i) => ({ t, x: Math.random() * r.width, y: Math.random() * r.height, vy: 0.12 + Math.random() * 0.15 })),
+      tkrs: Array.from({ length: 5 }, () => ({ t: AMBIENT_TKRS[(Math.random() * AMBIENT_TKRS.length) | 0], x: Math.random() * r.width, y: Math.random() * r.height, vy: 0.05 + Math.random() * 0.1 })),
+      last: 0,
+    };
+  };
+  resize();
+  new ResizeObserver(resize).observe(canvas);
+  updateFxToggle();
+  if (ambientOn) startAmbient(); else drawAmbientStatic();
+}
+
+function drawAmbientFrame(ts) {
+  const st = ambientState, ctx = ambientCtx;
+  if (!st || !ctx) return;
+  if (ts - st.last > 66) {        // ~15fps matrix step
+    st.last = ts;
+    ctx.fillStyle = 'rgba(7,11,18,0.10)';
+    ctx.fillRect(0, 0, st.w, st.h);
+    ctx.font = '13px IBM Plex Mono, monospace';
+    for (let i = 0; i < st.cols; i++) {
+      const ch = AMBIENT_GLYPHS[(Math.random() * AMBIENT_GLYPHS.length) | 0];
+      const x = i * 14, y = st.drops[i] * 14;
+      ctx.fillStyle = Math.random() > 0.92 ? 'rgba(79,195,247,0.75)' : 'rgba(67,224,151,0.25)';
+      ctx.fillText(ch, x, y);
+      if (y > st.h && Math.random() > 0.975) st.drops[i] = 0;
+      st.drops[i] += 1;
+    }
+    // drifting equations (Einstein)
+    ctx.font = '12px IBM Plex Mono, monospace';
+    st.eqs.forEach(e => {
+      ctx.fillStyle = 'rgba(167,139,250,0.22)';
+      ctx.fillText(e.t, e.x, e.y);
+      e.y += e.vy; if (e.y > st.h + 14) { e.y = -10; e.x = Math.random() * st.w; }
+    });
+    // drifting tickers (Bloomberg)
+    ctx.font = '11px IBM Plex Mono, monospace';
+    st.tkrs.forEach(k => {
+      ctx.fillStyle = 'rgba(245,166,35,0.18)';
+      ctx.fillText(k.t, k.x, k.y);
+      k.y += k.vy; if (k.y > st.h + 14) { k.y = -10; k.x = Math.random() * st.w; }
+    });
+  }
+  ambientRAF = requestAnimationFrame(drawAmbientFrame);
+}
+
+function drawAmbientStatic() {
+  const st = ambientState, ctx = ambientCtx;
+  if (!st || !ctx) return;
+  ctx.clearRect(0, 0, st.w, st.h);
+  ctx.font = '12px IBM Plex Mono, monospace';
+  st.eqs.forEach((e, i) => { ctx.fillStyle = 'rgba(167,139,250,0.18)'; ctx.fillText(e.t, 24, 30 + i * 22); });
+}
+
+function startAmbient() { if (!ambientRAF) ambientRAF = requestAnimationFrame(drawAmbientFrame); }
+function stopAmbient() { if (ambientRAF) { cancelAnimationFrame(ambientRAF); ambientRAF = null; } }
+function updateFxToggle() {
+  const b = document.getElementById('fxToggle');
+  if (b) b.innerHTML = ambientOn ? '◉ FX' : '⊘ FX';
+}
+function toggleAmbient() {
+  ambientOn = !ambientOn;
+  localStorage.setItem('ambientFx', ambientOn ? '1' : '0');
+  updateFxToggle();
+  if (ambientOn) startAmbient();
+  else { stopAmbient(); if (ambientCtx && ambientState) ambientCtx.clearRect(0, 0, ambientState.w, ambientState.h); }
+}
+
 /* ─── Init: load instruments + available dates ─────────────────────────── */
 async function init() {
   restoreSectionStates();
+  initAmbient();
+  loadMarketPulse();  // hero + Market Today dashboard (always latest day)
   try {
     await loadInstruments();  // Enrich ISIN map from instruments table
 
@@ -1969,12 +2604,30 @@ async function drillIntoISIN(isin, venue) {
 
   // Header — populate immediately from cache
   const info = ISIN_MAP[isin] || {};
-  document.getElementById('diveTicker').textContent = info.t || isin.slice(-6);
-  document.getElementById('diveName').textContent   = info.n || '—';
+  const mv = marketMovers.find(m => m.isin === isin) || {};
+  document.getElementById('diveTicker').textContent = mv.ticker || info.t || isin.slice(-6);
+  document.getElementById('diveName').textContent   = mv.name || info.n || '—';
   document.getElementById('diveVenueBadge').textContent = venue;
   document.getElementById('diveISINBadge').textContent  = isin;
-  document.getElementById('diveMcap').textContent    = '— loading…';
-  document.getElementById('diveMcapSub').textContent = '';
+
+  // Real price + market cap from daily_close (via movers cache)
+  const close = mv.close != null ? Number(mv.close) : null;
+  const chgPct = mv.change_pct != null ? Number(mv.change_pct) : null;
+  const mcap = mv.market_cap != null ? Number(mv.market_cap) : null;
+  if (close != null) {
+    document.getElementById('diveMcap').textContent = `NOK ${close.toFixed(2)}`;
+    const chgColor = chgPct == null ? 'var(--text-dim)' : chgPct >= 0 ? 'var(--green)' : 'var(--red)';
+    const mcapStr = mcap ? (mcap >= 1e9 ? `${(mcap/1e9).toFixed(1)}B` : `${(mcap/1e6).toFixed(0)}M`) + ' mcap' : '';
+    document.getElementById('diveMcapSub').innerHTML =
+      (chgPct != null ? `<span style="color:${chgColor}">${chgPct >= 0 ? '+' : ''}${chgPct.toFixed(2)}% today</span>` : '')
+      + (mcapStr ? ` &nbsp;· NOK ${mcapStr}` : '');
+  } else {
+    document.getElementById('diveMcap').textContent = '—';
+    document.getElementById('diveMcapSub').textContent = '';
+  }
+
+  // Synthesized intel strip + narrative (from movers cache; SI fetched below)
+  renderDiveIntel(mv, null);
 
   // Metrics strip from already-loaded day data
   const summary = allSummary.find(r => r.isin === isin && r.venue === venue) || {};
@@ -2007,31 +2660,15 @@ async function drillIntoISIN(isin, venue) {
   renderDiveEvents(isin);
 
   // Fetch everything else in parallel
-  const [intradayRows, impactRows, instRows, signalRows] = await Promise.all([
-    API('intraday',      `trade_date=eq.${currentDate}&isin=eq.${isin}&venue=eq.${venue}&order=minute_bucket.asc&limit=500`),
-    API('trade_impact',  `trade_date=eq.${currentDate}&isin=eq.${isin}&venue=eq.${venue}&order=trading_time.asc&limit=5000`),
-    API('instruments',   `isin=eq.${isin}&select=market_cap_eur,name,ticker&limit=1`),
-    API('smart_signals', `isin=eq.${isin}&order=trade_date.desc&limit=10`),
+  const [intradayRows, impactRows, siRows, signalRows] = await Promise.all([
+    API('intraday',       `trade_date=eq.${currentDate}&isin=eq.${isin}&venue=eq.${venue}&order=minute_bucket.asc&limit=500`),
+    API('trade_impact',   `trade_date=eq.${currentDate}&isin=eq.${isin}&venue=eq.${venue}&order=trading_time.asc&limit=5000`),
+    API('short_interest', `isin=eq.${isin}&order=position_date.desc&limit=1`),
+    API('smart_signals',  `isin=eq.${isin}&order=trade_date.desc&limit=10`),
   ]);
 
-  // Market cap estimation
-  const inst = instRows[0] || {};
-  if (inst.market_cap_eur && intradayRows.length >= 2) {
-    const prices   = intradayRows.filter(r => r.vwap).map(r => parseFloat(r.vwap));
-    const firstPx  = prices[0], lastPx = prices[prices.length - 1];
-    const dayRet   = (lastPx - firstPx) / firstPx;
-    const estNok   = inst.market_cap_eur * (1 + dayRet) * 11.7;
-    const retPct   = (dayRet * 100).toFixed(2);
-    const retColor = dayRet >= 0 ? 'var(--green)' : 'var(--red)';
-    document.getElementById('diveMcap').textContent =
-      estNok >= 1e9 ? `≈ NOK ${(estNok/1e9).toFixed(1)}B est. market cap`
-                    : `≈ NOK ${(estNok/1e6).toFixed(0)}M est. market cap`;
-    document.getElementById('diveMcapSub').innerHTML =
-      `<span style="color:${retColor}">${dayRet >= 0 ? '+' : ''}${retPct}% today</span>`
-      + ` &nbsp;(Euronext ref × EURNOK 11.7)`;
-  } else {
-    document.getElementById('diveMcap').textContent = '— market cap not available';
-  }
+  // Re-render intel strip now that short interest is in
+  renderDiveIntel(mv, siRows[0] || null);
 
   // Intraday volume chart
   document.getElementById('intradayLabel').textContent = (info.t || isinTicker(isin)) + ' — Intraday';
@@ -2091,6 +2728,105 @@ async function drillIntoISIN(isin, venue) {
 }
 
 /* ─── Deep Dive helpers ─────────────────────────────────────────────────── */
+
+const EVENT_LABEL = {
+  RESULTS: 'Q-results', EARNINGS_CALL: 'earnings call', WARNING: 'profit warning',
+  AGM: 'AGM', EX_DATE: 'ex-dividend', INSIDER: 'insider filing',
+};
+
+function renderDiveIntel(mv, si) {
+  const intel = document.getElementById('diveIntel');
+  const synEl = document.getElementById('diveSyn');
+  if (!mv || mv.isin == null) { intel.innerHTML = ''; synEl.style.display = 'none'; return; }
+
+  const chg   = mv.change_pct != null ? Number(mv.change_pct) : null;
+  const conv  = mv.conviction != null ? Number(mv.conviction) : null;
+  const side  = mv.conviction_side;
+  const bias  = mv.dark_side_bias;
+  const confirmed = mv.bias_confirmed === true;
+  const dte   = mv.days_to_event != null ? Number(mv.days_to_event) : null;
+  const evt   = mv.next_event_type;
+  const ins7  = Number(mv.insider_7d || 0);
+  const darkP = mv.dark_pct != null ? Number(mv.dark_pct) : null;
+  const shortP = si && si.short_pct != null ? Number(si.short_pct) : null;
+  const chips = [];
+
+  // Price / change
+  if (chg != null) {
+    const cls = chg >= 0 ? 'pos' : 'neg';
+    chips.push(`<div class="intel-chip ${cls}"><div class="intel-k">Day move</div>`
+      + `<div class="intel-v">${chg >= 0 ? '+' : ''}${chg.toFixed(2)}%</div>`
+      + `<div class="intel-sub">${mv.close != null ? 'NOK ' + Number(mv.close).toFixed(2) : ''}</div></div>`);
+  }
+  // Conviction
+  if (conv != null && side) {
+    const cls = side === 'LONG' ? 'pos' : side === 'SHORT' ? 'neg' : 'ice';
+    chips.push(`<div class="intel-chip ${cls}"><div class="intel-k">Conviction</div>`
+      + `<div class="intel-v">${side === 'LONG' ? '▲' : side === 'SHORT' ? '▼' : '◇'} ${conv}</div>`
+      + `<div class="intel-sub">${side.toLowerCase()} bias</div></div>`);
+  }
+  // Dark flow bias
+  if (darkP != null) {
+    const cls = bias === 'BUY' ? 'pos' : bias === 'SELL' ? 'neg' : 'dark';
+    const word = bias === 'BUY' ? '▲ Buying' : bias === 'SELL' ? '▼ Selling' : '◇ Balanced';
+    chips.push(`<div class="intel-chip ${cls}"><div class="intel-k">Dark flow</div>`
+      + `<div class="intel-v">${word}${confirmed ? ' ✓' : ''}</div>`
+      + `<div class="intel-sub">${darkP.toFixed(1)}% of volume</div></div>`);
+  }
+  // Next event countdown
+  if (dte != null && evt) {
+    const cls = dte <= 7 ? 'warn' : 'ice';
+    chips.push(`<div class="intel-chip ${cls}"><div class="intel-k">Next event</div>`
+      + `<div class="intel-v">${dte === 0 ? 'Today' : dte + 'd'}</div>`
+      + `<div class="intel-sub">${EVENT_LABEL[evt] || evt.toLowerCase()}</div></div>`);
+  }
+  // Short interest
+  if (shortP != null) {
+    const cls = shortP >= 3 ? 'warn' : 'ice';
+    const pct = Math.min(shortP / 10 * 100, 100);
+    chips.push(`<div class="intel-chip ${cls}"><div class="intel-k">Short interest</div>`
+      + `<div class="intel-v">⊖ ${shortP.toFixed(2)}%</div>`
+      + `<div class="si-bar"><span style="width:${pct}%"></span></div></div>`);
+  }
+  // Insider filings
+  if (ins7 > 0) {
+    chips.push(`<div class="intel-chip warn"><div class="intel-k">Insiders 7d</div>`
+      + `<div class="intel-v">${ins7}</div>`
+      + `<div class="intel-sub">primary filings</div></div>`);
+  }
+  intel.innerHTML = chips.join('');
+
+  // Narrative synthesis
+  const t = mv.ticker || mv.name || 'The stock';
+  const parts = [];
+  if (chg != null) {
+    const dir = chg >= 0 ? 'rose' : 'fell';
+    const cls = chg >= 0 ? 'hl-pos' : 'hl-neg';
+    parts.push(`<strong>${t}</strong> ${dir} <span class="${cls}">${chg >= 0 ? '+' : ''}${chg.toFixed(2)}%</span>`
+      + (mv.turnover ? ` on <span class="hl-ice">${fmtNok(mv.turnover)}</span> turnover` : '') + '.');
+  }
+  if (dte != null && evt) {
+    const ev = EVENT_LABEL[evt] || evt.toLowerCase();
+    parts.push(`<span class="${dte <= 7 ? 'hl-warn' : 'hl-ice'}">${ev === 'Q-results' ? 'Q-results' : ev.charAt(0).toUpperCase() + ev.slice(1)} ${dte === 0 ? 'is today' : 'in ' + dte + (dte === 1 ? ' day' : ' days')}</span>.`);
+  }
+  if (darkP != null && bias && bias !== 'NEUTRAL') {
+    const w = bias === 'BUY' ? 'buyer-initiated' : 'seller-initiated';
+    parts.push(`Dark flow is net <span class="hl-dark">${w}</span>${confirmed ? ' and impact-confirmed' : ''} at ${darkP.toFixed(1)}% of volume.`);
+  } else if (darkP != null && darkP >= 10) {
+    parts.push(`Dark trading is elevated at <span class="hl-dark">${darkP.toFixed(1)}%</span> of volume.`);
+  }
+  if (shortP != null && shortP >= 1) {
+    parts.push(`Short interest sits at <span class="hl-warn">${shortP.toFixed(2)}%</span>.`);
+  }
+  if (ins7 > 0) {
+    parts.push(`<span class="hl-warn">${ins7}</span> insider filing${ins7 > 1 ? 's' : ''} in the past week.`);
+  }
+  if (conv != null && side && side !== 'NEUTRAL') {
+    parts.push(`Net signal read: <span class="${side === 'LONG' ? 'hl-pos' : 'hl-neg'}">${side} conviction ${conv}/100</span>.`);
+  }
+  if (parts.length) { synEl.innerHTML = parts.join(' '); synEl.style.display = 'block'; }
+  else synEl.style.display = 'none';
+}
 
 async function renderCompanyHistory(isin, venue) {
   const rows = await API('dark_flow_summary',
