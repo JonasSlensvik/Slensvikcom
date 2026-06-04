@@ -190,6 +190,14 @@ tbody tr:last-child td { border-bottom: none; }
 
 /* ── Adjusted cost note & auto-suggest ───────────────────────────────────── */
 .adj-note { font-family: var(--mono); font-size: 8px; color: var(--green); margin-top: 2px; letter-spacing: .04em; }
+.live-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--green);
+            vertical-align: middle; margin-left: 5px; box-shadow: 0 0 0 0 rgba(67,224,151,0.6);
+            animation: livePulse 2s infinite; cursor: help; }
+@keyframes livePulse {
+  0%   { box-shadow: 0 0 0 0 rgba(67,224,151,0.5); }
+  70%  { box-shadow: 0 0 0 5px rgba(67,224,151,0); }
+  100% { box-shadow: 0 0 0 0 rgba(67,224,151,0); }
+}
 .hold-suggest {
   font-family: var(--mono); font-size: 9px; letter-spacing: .06em;
   color: var(--red); margin-top: 3px; padding: 2px 6px;
@@ -833,7 +841,7 @@ async function fetchMarketData(isins) {
   const since90  = new Date(Date.now() - 90 *864e5).toISOString().slice(0,10);
   const since3y  = new Date(Date.now() - 1095*864e5).toISOString().slice(0,10);  // past ex-dates for div basis
 
-  const [darkRows, signals, catalysts, upcoming, pastDivs, whales, instruments, conviction, idxRows] = await Promise.all([
+  const [darkRows, signals, catalysts, upcoming, pastDivs, whales, instruments, conviction, idxRows, livePrices] = await Promise.all([
     GET_ALL('dark_flow_summary',
       `isin=in.(${isinStr})&trade_date=gte.${since90}&select=isin,trade_date,modal_price,dark_pct,dark_side_bias&order=isin.asc,trade_date.asc`),
     GET('smart_signals',
@@ -850,6 +858,7 @@ async function fetchMarketData(isins) {
     GET('instruments', `isin=in.(${isinStr})`).catch(()=>[]),
     GET('conviction',  `isin=in.(${isinStr})`).catch(()=>[]),
     GET('market_index', `trade_date=gte.${since90}&order=trade_date.asc&select=trade_date,index_level,ret`).catch(()=>[]),
+    GET('latest_price', `isin=in.(${isinStr})&select=isin,price,fidelity,day_change_pct,as_of`).catch(()=>[]),
   ]);
 
   marketIndex = idxRows || [];
@@ -866,6 +875,7 @@ async function fetchMarketData(isins) {
       latestPrice: null, darkBias: null, darkPct: null,
       signals: [], catalysts: [], events: [], pastDivs: [], whales: [],
       conviction: null,
+      priceFidelity: 'eod', dayChangePct: null, priceAsOf: null,
     };
   }
   for (const r of darkRows) {
@@ -881,6 +891,19 @@ async function fetchMarketData(isins) {
   for (const e of pastDivs)  marketData[e.isin]?.pastDivs.push(e);
   for (const w of whales)    marketData[w.isin]?.whales.push(w);
   for (const c of conviction) marketData[c.isin] && (marketData[c.isin].conviction = c);
+
+  // ── Best-available price: prefer today's live tick over the daily modal ──
+  // api.latest_price reports fidelity='live' while the iMac scraper is feeding
+  // intraday ticks; the EOD pipeline sweeps those rows once the canonical close
+  // lands, so this falls back to 'eod' (= modal_price basis) automatically.
+  for (const lp of (livePrices || [])) {
+    const md = marketData[lp.isin];
+    if (!md) continue;
+    md.priceFidelity = lp.fidelity;
+    md.dayChangePct  = lp.day_change_pct;
+    md.priceAsOf     = lp.as_of;
+    if (lp.fidelity === 'live' && lp.price != null) md.latestPrice = +lp.price;
+  }
 
   // ── Track dividend income (Model A: cost basis untouched) ──────────────
   applyDividendIncome();
@@ -1062,6 +1085,15 @@ function sparkline(isin) {
   </svg>`;
 }
 
+// Small "live" marker shown next to a price sourced from today's intraday feed
+// (15-min delayed). Absent once the EOD pipeline swaps in the canonical close.
+function liveTag(md) {
+  if (!md || md.priceFidelity !== 'live') return '';
+  const d = md.dayChangePct;
+  const t = d != null ? `15-min delayed · ${d >= 0 ? '+' : ''}${fmtNum(d)}% today` : '15-min delayed live quote';
+  return ` <span class="live-dot" title="${t}"></span>`;
+}
+
 function renderHoldings() {
   if (!positions.size) { renderEmptyHoldings(); return; }
   const rows = [...positions.entries()].map(([isin, p]) => {
@@ -1083,7 +1115,7 @@ function renderHoldings() {
       </td>
       <td class="r" style="font-family:var(--mono)">${fmtNum(p.netQty, p.netQty % 1 === 0 ? 0 : 2)}</td>
       <td class="r" style="font-family:var(--mono)">${fmtNum(p.avgCost)}${divNote}</td>
-      <td class="r" style="font-family:var(--mono)">${price ? fmtNum(price) : '—'}</td>
+      <td class="r" style="font-family:var(--mono)">${price ? fmtNum(price) : '—'}${liveTag(md)}</td>
       <td>${sparkline(isin)}</td>
       <td class="r" style="font-family:var(--mono)">${fmtNOK(value)}</td>
       <td class="r" style="font-family:var(--mono);${plColor}">${fmtPct(pl)}</td>

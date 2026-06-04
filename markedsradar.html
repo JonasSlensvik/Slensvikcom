@@ -552,6 +552,11 @@ tbody tr.selected { background: var(--ice-dim); }
 }
 .badge-amber  { background: var(--amber-dim); color: var(--amber); border: 1px solid var(--amber-dim); }
 .badge-ice    { background: var(--ice-dim); color: var(--ice); border: 1px solid var(--ice-dim); }
+.live-pill { display: inline-block; margin-left: 6px; padding: 1px 5px; border-radius: 3px;
+             font-family: var(--mono); font-size: 8px; letter-spacing: 0.12em; font-weight: 600;
+             color: var(--green); background: rgba(67,224,151,0.12); border: 1px solid rgba(67,224,151,0.35);
+             vertical-align: middle; animation: livePillPulse 2s infinite; }
+@keyframes livePillPulse { 0%,100% { opacity: 1; } 50% { opacity: 0.55; } }
 .badge-green  { background: var(--green-dim); color: var(--green); }
 .badge-red    { background: var(--red-dim); color: var(--red); }
 .badge-purple { background: #2d1f5e; color: var(--purple); }
@@ -2646,12 +2651,27 @@ async function drillIntoISIN(isin, venue) {
   renderDiveEvents(isin);
 
   // Fetch everything else in parallel
-  const [intradayRows, impactRows, siRows, signalRows] = await Promise.all([
+  const [intradayRows, impactRows, siRows, signalRows, livePriceRows] = await Promise.all([
     API('intraday',       `trade_date=eq.${currentDate}&isin=eq.${isin}&venue=eq.${venue}&order=minute_bucket.asc&limit=500`),
     API('trade_impact',   `trade_date=eq.${currentDate}&isin=eq.${isin}&venue=eq.${venue}&order=trading_time.asc&limit=5000`),
     API('short_interest', `isin=eq.${isin}&order=position_date.desc&limit=1`),
     API('smart_signals',  `isin=eq.${isin}&order=trade_date.desc&limit=10`),
+    API('latest_price',   `isin=eq.${isin}&select=price,fidelity,day_change_pct`),
   ]);
+
+  // Best-available header price: today's 15-min-delayed quote overrides the
+  // daily close until the EOD pipeline reconciles it back to canonical.
+  const lp = livePriceRows && livePriceRows[0];
+  if (lp && lp.fidelity === 'live' && lp.price != null) {
+    const lpx = Number(lp.price), lchg = lp.day_change_pct != null ? Number(lp.day_change_pct) : null;
+    document.getElementById('diveMcap').textContent = `NOK ${lpx.toFixed(2)}`;
+    const lchgColor = lchg == null ? 'var(--text-dim)' : lchg >= 0 ? 'var(--green)' : 'var(--red)';
+    const mcapStr = mcap ? (mcap >= 1e9 ? `${(mcap/1e9).toFixed(1)}B` : `${(mcap/1e6).toFixed(0)}M`) + ' mcap' : '';
+    document.getElementById('diveMcapSub').innerHTML =
+      (lchg != null ? `<span style="color:${lchgColor}">${lchg >= 0 ? '+' : ''}${lchg.toFixed(2)}% today</span>` : '')
+      + ` <span class="live-pill" title="15-min delayed live quote">LIVE</span>`
+      + (mcapStr ? ` &nbsp;· NOK ${mcapStr}` : '');
+  }
 
   // Re-render intel strip now that short interest is in
   renderDiveIntel(mv, siRows[0] || null);
