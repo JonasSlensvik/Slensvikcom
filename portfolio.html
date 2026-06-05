@@ -560,6 +560,7 @@ let marketData = {};         // isin → { latestPrice, darkBias, darkPct, signa
 let priceHistory = {};       // isin → [{ trade_date, modal_price }]
 let intradayData = {};       // isin → [{ dt, price }]
 let portfolioChart = null;
+let liveTimer = null;        // market-hours auto-refresh interval
 let txnType = 'BUY';
 let editingTxnId = null;
 let chartPeriod = '4W';
@@ -755,6 +756,7 @@ async function createPortfolio() {
 
 function logout() {
   currentUser = null;
+  if (liveTimer) { clearInterval(liveTimer); liveTimer = null; }
   localStorage.removeItem('pfUser');
   document.getElementById('dashboard').style.display = 'none';
   document.getElementById('authScreen').style.display = 'flex';
@@ -801,6 +803,7 @@ async function loadData() {
     renderCorrelation();
     renderRebalDrift();
     renderMonthly();
+    startLiveRefresh();
   } catch(e) {
     console.error(e);
     document.getElementById('holdingsBody').innerHTML =
@@ -893,17 +896,7 @@ async function fetchMarketData(isins) {
   for (const c of conviction) marketData[c.isin] && (marketData[c.isin].conviction = c);
 
   // ── Best-available price: prefer today's live tick over the daily modal ──
-  // api.latest_price reports fidelity='live' while the iMac scraper is feeding
-  // intraday ticks; the EOD pipeline sweeps those rows once the canonical close
-  // lands, so this falls back to 'eod' (= modal_price basis) automatically.
-  for (const lp of (livePrices || [])) {
-    const md = marketData[lp.isin];
-    if (!md) continue;
-    md.priceFidelity = lp.fidelity;
-    md.dayChangePct  = lp.day_change_pct;
-    md.priceAsOf     = lp.as_of;
-    if (lp.fidelity === 'live' && lp.price != null) md.latestPrice = +lp.price;
-  }
+  applyLatestPrices(livePrices);
 
   // ── Track dividend income (Model A: cost basis untouched) ──────────────
   applyDividendIncome();
@@ -1187,6 +1180,38 @@ function toggleBenchmark() {
   renderChart();
 }
 
+// Apply api.latest_price rows onto marketData: prefer today's live tick over
+// the daily modal. fidelity='live' means the iMac scraper is feeding 15-min
+// delayed quotes; the EOD pipeline sweeps those rows once the canonical close
+// lands, so this reverts to 'eod' (= modal_price basis) automatically.
+function applyLatestPrices(rows) {
+  for (const lp of (rows || [])) {
+    const md = marketData[lp.isin];
+    if (!md) continue;
+    md.priceFidelity = lp.fidelity;
+    md.dayChangePct  = lp.day_change_pct;
+    md.priceAsOf     = lp.as_of;
+    if (lp.fidelity === 'live' && lp.price != null) md.latestPrice = +lp.price;
+  }
+}
+
+// Oslo market window (matches the intraday scraper's self-gate): Mon–Fri 08:00–16:45.
+function marketIsOpenOslo() {
+  const p = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Oslo', weekday: 'short', hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(new Date());
+  const wd = p.find(x => x.type === 'weekday').value;
+  if (wd === 'Sat' || wd === 'Sun') return false;
+  const mins = (+p.find(x => x.type === 'hour').value) * 60 + (+p.find(x => x.type === 'minute').value);
+  return mins >= 8 * 60 && mins <= 16 * 60 + 45;
+}
+
+// Oslo wall-clock "YYYY-MM-DDTHH:MM" for a timestamptz string — same shape as the
+// daily intraday dt (which uses exchange-local minute_bucket), so they sort together.
+function osloMinuteDt(iso) {
+  const p = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Oslo', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(new Date(iso));
+  const g = t => p.find(x => x.type === t).value;
+  return `${g('year')}-${g('month')}-${g('day')}T${g('hour')}:${g('minute')}`;
+}
+
 async function fetchIntradayData(isins) {
   if (!isins.length) return;
   const since = new Date(Date.now() - 8 * 864e5).toISOString().slice(0, 10);
@@ -1204,7 +1229,50 @@ async function fetchIntradayData(isins) {
         });
       }
     }
+    await mergeLiveTicks(isins);
   } catch(e) { console.warn('intraday fetch failed', e); }
+}
+
+// Append today's 15-min-delayed ticks (api.intraday_live) to the intraday series
+// so the 5D value curve extends through the live session until Euronext lands.
+async function mergeLiveTicks(isins) {
+  const todayOslo = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Oslo' }).format(new Date());
+  try {
+    const rows = await GET_ALL('intraday_live',
+      `isin=in.(${isins.join(',')})&ts=gte.${todayOslo}T00:00:00&select=isin,ts,price&order=ts.asc`,
+      2000
+    );
+    for (const r of rows) {
+      if (intradayData[r.isin] === undefined || r.price == null) continue;
+      const dt = osloMinuteDt(r.ts);
+      const series = intradayData[r.isin];
+      const last = series[series.length - 1];
+      if (last && last.dt === dt) last.price = +r.price;   // collapse same-minute ticks
+      else series.push({ dt, price: +r.price });
+    }
+  } catch(e) { console.warn('live tick merge failed', e); }
+}
+
+// Poll best-available prices while Oslo is trading and refresh the value chart,
+// KPIs and holdings in place — no full reload. Self-gates to market hours so it
+// is a cheap no-op off-session.
+async function refreshLive() {
+  if (!currentUser || !positions.size || !marketIsOpenOslo()) return;
+  const isins = [...positions.keys()];
+  try {
+    const livePrices = await GET('latest_price',
+      `isin=in.(${isins.join(',')})&select=isin,price,fidelity,day_change_pct,as_of`);
+    applyLatestPrices(livePrices);
+    if (chartPeriod === '5D' && Object.keys(intradayData).length) await mergeLiveTicks(isins);
+    renderKPIs();
+    renderHoldings();
+    renderChart();
+  } catch(e) { console.warn('live refresh failed', e); }
+}
+
+function startLiveRefresh() {
+  if (liveTimer) clearInterval(liveTimer);
+  liveTimer = setInterval(refreshLive, 60000);
 }
 
 function renderChart() {
@@ -1285,6 +1353,31 @@ function renderChart() {
       valueData = labels.map(d => histMap.get(d) || null);
       const p = positions.get(isin);
       costData = labels.map(() => p?.avgCost || null);
+    }
+
+    // Live "now" point: extend the daily curve to today's best-available value
+    // (live quotes) while the market is open and today has no canonical row yet.
+    if (marketIsOpenOslo()) {
+      const todayOslo = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Oslo' }).format(new Date());
+      if (!labels.includes(todayOslo)) {
+        let liveVal = 0, hasLive = false, priced = false;
+        if (chartView === 'portfolio') {
+          for (const [isin, p] of positions) {
+            const md = marketData[isin];
+            if (!md || md.latestPrice == null) continue;
+            liveVal += p.netQty * md.latestPrice; priced = true;
+            if (md.priceFidelity === 'live') hasLive = true;
+          }
+        } else {
+          const md = marketData[chartView];
+          if (md && md.latestPrice != null) { liveVal = md.latestPrice; priced = true; if (md.priceFidelity === 'live') hasLive = true; }
+        }
+        if (hasLive && priced) {
+          labels.push(todayOslo);
+          valueData.push(liveVal);
+          costData.push(costData[costData.length - 1] ?? null);
+        }
+      }
     }
   }
 
