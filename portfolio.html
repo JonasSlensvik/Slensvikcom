@@ -28,13 +28,13 @@ body::before { content: ''; position: fixed; inset: 0; background: repeating-lin
 /* ── Ambient background (matrix / equations / tickers) ─────────────────────── */
 #ambientCanvas {
   position: fixed; inset: 0; width: 100vw; height: 100vh;
-  z-index: 0; opacity: 0.42; pointer-events: none;
+  z-index: 0; opacity: 0.72; pointer-events: none;
 }
 body::after { /* readability scrim so content always wins over the animation */
   content: ''; position: fixed; inset: 0; z-index: 0; pointer-events: none;
   background:
-    radial-gradient(120% 90% at 50% -10%, rgba(7,11,18,0.30), rgba(7,11,18,0.66) 70%),
-    linear-gradient(180deg, rgba(7,11,18,0.45) 0%, rgba(7,11,18,0.72) 100%);
+    radial-gradient(120% 90% at 50% -10%, rgba(7,11,18,0.12), rgba(7,11,18,0.48) 70%),
+    linear-gradient(180deg, rgba(7,11,18,0.24) 0%, rgba(7,11,18,0.52) 100%);
 }
 .fx-toggle {
   font-family: var(--mono); font-size: 11px; letter-spacing: 1px;
@@ -214,8 +214,10 @@ tbody tr:last-child td { border-bottom: none; }
 }
 .evt-tl-axis {
   position: absolute; top: 0; bottom: 0; left: 0; right: 0;
+  /* Glow emanates from the "today" line (left edge) and tapers toward +30d. */
   background: linear-gradient(to right,
-    var(--bg3) 0%, var(--bg3) 50%, rgba(245,166,35,0.08) 50%, var(--bg3) 100%);
+    rgba(245,166,35,0.16) 0%, rgba(245,166,35,0.05) 30%,
+    rgba(245,166,35,0.015) 60%, var(--bg3) 100%);
 }
 .evt-tl-today {
   position: absolute; top: -2px; bottom: -2px; width: 1px;
@@ -238,6 +240,75 @@ tbody tr:last-child td { border-bottom: none; }
   display: flex; justify-content: space-between;
   padding: 0 8px; font-size: 8px; color: var(--text-dim);
 }
+
+/* ── News reel (ticker tape) ─────────────────────────────────────────────── */
+.newsreel {
+  display: flex; align-items: stretch; gap: 0; margin-bottom: 22px;
+  border: 1px solid var(--border); border-radius: 8px;
+  background: rgba(13,20,32,0.74); backdrop-filter: blur(3px); overflow: hidden;
+}
+.nr-rail { display: flex; align-items: center; gap: 6px; padding: 0 12px;
+  border-right: 1px solid var(--border); background: var(--bg2); flex-shrink: 0; }
+.nr-tab { font-family: var(--mono); font-size: 9px; letter-spacing: 1px; color: var(--text-dim);
+  background: transparent; border: 1px solid var(--border); border-radius: 4px; padding: 4px 9px; cursor: pointer; transition: all .15s; }
+.nr-tab:hover { color: var(--ice); border-color: var(--ice-dim); }
+.nr-tab.nr-active { color: var(--ice); border-color: var(--ice); background: var(--ice-dim); }
+.nr-live { font-family: var(--mono); font-size: 8px; letter-spacing: 1px; color: var(--green);
+  animation: nrBlink 2s infinite; margin-left: 2px; }
+@keyframes nrBlink { 0%,100%{opacity:1} 50%{opacity:.35} }
+.nr-window { position: relative; flex: 1; overflow: hidden; }
+.nr-window::before, .nr-window::after { content:''; position:absolute; top:0; bottom:0; width:42px; z-index:2; pointer-events:none; }
+.nr-window::before { left:0;  background: linear-gradient(90deg, rgba(13,20,32,0.95), transparent); }
+.nr-window::after  { right:0; background: linear-gradient(270deg, rgba(13,20,32,0.95), transparent); }
+.nr-track { display: inline-flex; align-items: center; gap: 0; white-space: nowrap;
+  padding: 9px 0; will-change: transform; animation: nrScroll 90s linear infinite; }
+.nr-track:hover { animation-play-state: paused; }
+@keyframes nrScroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+.nr-item { display: inline-flex; align-items: center; gap: 7px; padding: 0 16px;
+  border-right: 1px solid var(--border); font-family: var(--mono); font-size: 11px;
+  text-decoration: none; color: var(--text); transition: color .15s; }
+.nr-item:hover { color: var(--text-bright); }
+.nr-glyph { font-size: 12px; }
+.nr-tk { font-weight: 600; color: var(--text-bright); }
+.nr-title { color: var(--text-dim); max-width: 360px; overflow: hidden; text-overflow: ellipsis; }
+.nr-date { font-size: 9px; color: var(--text-dim); opacity: .7; }
+.nr-item.nr-new .nr-tk { color: var(--green); }
+.nr-c-ice  { color: var(--ice); } .nr-c-red { color: var(--red); }
+.nr-c-amber{ color: var(--amber); } .nr-c-purple { color: var(--purple); }
+.nr-c-green{ color: var(--green); } .nr-c-dim { color: var(--text-dim); }
+
+/* ── Live intraday P&L ───────────────────────────────────────────────────── */
+.intraday-top { display: grid; grid-template-columns: 180px 1fr; gap: 24px; align-items: stretch; }
+@media (max-width: 700px) { .intraday-top { grid-template-columns: 1fr; } }
+.intraday-hero { display: flex; flex-direction: column; justify-content: center;
+  border-right: 1px solid var(--border); padding-right: 20px; }
+@media (max-width: 700px) { .intraday-hero { border-right: none; border-bottom: 1px solid var(--border); padding-bottom: 14px; } }
+.intraday-hero-val { font-family: var(--mono); font-size: 30px; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.1; margin-top: 4px; }
+.intraday-hero-sub { font-family: var(--mono); font-size: 13px; margin-top: 4px; font-variant-numeric: tabular-nums; }
+.intraday-hero-val.up, .intraday-hero-sub.up { color: var(--green); }
+.intraday-hero-val.dn, .intraday-hero-sub.dn { color: var(--red); }
+.intraday-contrib { display: flex; flex-direction: column; gap: 7px; }
+.ic-row { display: grid; grid-template-columns: 56px 1fr 92px; align-items: center; gap: 10px; font-family: var(--mono); font-size: 11px; }
+.ic-tk { color: var(--text-bright); font-weight: 600; }
+.ic-bar-wrap { position: relative; height: 14px; background: var(--bg3); border-radius: 3px; overflow: hidden; }
+.ic-mid { position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; background: var(--text-dim); opacity: 0.45; }
+.ic-bar { position: absolute; top: 2px; bottom: 2px; border-radius: 2px; }
+.ic-bar.up { background: var(--green); } .ic-bar.dn { background: var(--red); }
+.ic-val { text-align: right; font-variant-numeric: tabular-nums; }
+.ic-val.up { color: var(--green); } .ic-val.dn { color: var(--red); }
+.ic-pct { color: var(--text-dim); font-size: 9px; }
+
+/* Whole-page blink when the live feed refreshes */
+@keyframes liveRefreshBlink {
+  0%   { opacity: 0; }
+  18%  { opacity: 0.5; }
+  100% { opacity: 0; }
+}
+#liveRefreshFlash {
+  position: fixed; inset: 0; z-index: 3; pointer-events: none; opacity: 0;
+  background: radial-gradient(120% 80% at 50% 0%, rgba(67,224,151,0.10), rgba(67,224,151,0) 60%);
+}
+#liveRefreshFlash.flash { animation: liveRefreshBlink 0.9s ease-out; }
 
 /* ── Sector concentration ring ───────────────────────────────────────────── */
 .sector-row { display: flex; align-items: center; gap: 18px; }
@@ -303,6 +374,7 @@ tbody tr:last-child td { border-bottom: none; }
 <body>
 
 <canvas id="ambientCanvas"></canvas>
+<div id="liveRefreshFlash"></div>
 
 <!-- ── Auth screen ─────────────────────────────────────────────────────────── -->
 <div id="authScreen">
@@ -339,13 +411,23 @@ tbody tr:last-child td { border-bottom: none; }
     </div>
   </header>
 
+  <!-- News reel -->
+  <div class="newsreel" id="newsReel" style="display:none">
+    <div class="nr-rail">
+      <button class="nr-tab nr-active" id="nrTabHold" onclick="setNewsScope('holdings')">◐ HOLDINGS</button>
+      <button class="nr-tab" id="nrTabMkt" onclick="setNewsScope('market')">⊞ MARKET</button>
+      <span class="nr-live" id="nrLive">● LIVE</span>
+    </div>
+    <div class="nr-window"><div class="nr-track" id="nrTrack"></div></div>
+  </div>
+
   <!-- KPI strip -->
   <div class="kpi-strip" id="kpiStrip">
     <div class="kpi-card"><div class="kpi-label">Total Value</div><div class="kpi-value" id="kpiValue">—</div><div class="kpi-sub" id="kpiValueSub"></div></div>
     <div class="kpi-card"><div class="kpi-label">Cost Basis</div><div class="kpi-value" id="kpiCost">—</div><div class="kpi-sub" id="kpiCostSub"></div></div>
     <div class="kpi-card" id="kpiPlCard"><div class="kpi-label">Unrealised P&L</div><div class="kpi-value" id="kpiPL">—</div><div class="kpi-sub" id="kpiPLSub"></div></div>
     <div class="kpi-card"><div class="kpi-label">Positions</div><div class="kpi-value" id="kpiCount">—</div><div class="kpi-sub" id="kpiCountSub"></div></div>
-    <div class="kpi-card"><div class="kpi-label">Yield on Cost</div><div class="kpi-value" id="kpiYoc">—</div><div class="kpi-sub">based on ex-dates</div></div>
+    <div class="kpi-card"><div class="kpi-label">Yield on Cost</div><div class="kpi-value" id="kpiYoc">—</div><div class="kpi-sub" id="kpiYocSub">based on ex-dates</div></div>
   </div>
 
   <!-- Chart panel - full width -->
@@ -369,8 +451,31 @@ tbody tr:last-child td { border-bottom: none; }
     </div>
     <div class="evt-timeline" id="evtTimeline"></div>
     <canvas id="portfolioChart" height="120"></canvas>
+    <div id="chartSrcHint" style="display:none;justify-content:flex-end;gap:16px;font-family:var(--mono);font-size:9px;letter-spacing:.08em;color:var(--text-dim);margin-top:4px">
+      <span><span style="display:inline-block;width:14px;height:2px;background:#4fc3f7;vertical-align:middle;margin-right:5px"></span>EURONEXT</span>
+      <span><span style="display:inline-block;width:14px;height:2px;background:#43e097;vertical-align:middle;margin-right:5px"></span>LIVE · IMAC FEED</span>
+    </div>
     <div class="dd-head" id="ddHead">▽ Drawdown from peak</div>
     <div style="height:92px"><canvas id="drawdownChart"></canvas></div>
+  </div>
+
+  <!-- Live intraday P&L -->
+  <div class="section" id="intradaySection" style="display:none">
+    <div class="section-head">
+      <div class="section-title">▦ Live Intraday P&amp;L</div>
+      <div class="section-desc">Today's mark-to-market move and per-holding contribution — iMac 15-min feed</div>
+      <div class="section-count" id="intradayAsOf">—</div>
+    </div>
+    <div class="panel" style="padding:18px 20px">
+      <div class="intraday-top">
+        <div class="intraday-hero">
+          <div class="kpi-label">Day P&amp;L</div>
+          <div class="intraday-hero-val" id="intradayPnl">—</div>
+          <div class="intraday-hero-sub" id="intradayPnlPct">—</div>
+        </div>
+        <div class="intraday-contrib" id="intradayContrib"></div>
+      </div>
+    </div>
   </div>
 
   <!-- Risk metrics strip -->
@@ -561,6 +666,7 @@ let priceHistory = {};       // isin → [{ trade_date, modal_price }]
 let intradayData = {};       // isin → [{ dt, price }]
 let portfolioChart = null;
 let liveTimer = null;        // market-hours auto-refresh interval
+let newsTimer = null;        // news reel poll interval
 let txnType = 'BUY';
 let editingTxnId = null;
 let chartPeriod = '4W';
@@ -757,6 +863,7 @@ async function createPortfolio() {
 function logout() {
   currentUser = null;
   if (liveTimer) { clearInterval(liveTimer); liveTimer = null; }
+  if (newsTimer) { clearInterval(newsTimer); newsTimer = null; }
   localStorage.removeItem('pfUser');
   document.getElementById('dashboard').style.display = 'none';
   document.getElementById('authScreen').style.display = 'flex';
@@ -793,6 +900,7 @@ async function loadData() {
     renderViewToggles();
     renderKPIs();
     renderHoldings();
+    renderIntraday();
     renderChart();
     renderRiskMetrics();
     renderIntelligence();
@@ -804,6 +912,8 @@ async function loadData() {
     renderRebalDrift();
     renderMonthly();
     startLiveRefresh();
+    fetchNews();
+    startNewsRefresh();
   } catch(e) {
     console.error(e);
     document.getElementById('holdingsBody').innerHTML =
@@ -861,7 +971,7 @@ async function fetchMarketData(isins) {
     GET('instruments', `isin=in.(${isinStr})`).catch(()=>[]),
     GET('conviction',  `isin=in.(${isinStr})`).catch(()=>[]),
     GET('market_index', `trade_date=gte.${since90}&order=trade_date.asc&select=trade_date,index_level,ret`).catch(()=>[]),
-    GET('latest_price', `isin=in.(${isinStr})&select=isin,price,fidelity,day_change_pct,as_of`).catch(()=>[]),
+    GET('latest_price', `isin=in.(${isinStr})&select=isin,price,fidelity,day_change_pct,prev_close,as_of`).catch(()=>[]),
   ]);
 
   marketIndex = idxRows || [];
@@ -1191,8 +1301,153 @@ function applyLatestPrices(rows) {
     md.priceFidelity = lp.fidelity;
     md.dayChangePct  = lp.day_change_pct;
     md.priceAsOf     = lp.as_of;
+    md.prevClose     = lp.prev_close != null ? +lp.prev_close : null;
     if (lp.fidelity === 'live' && lp.price != null) md.latestPrice = +lp.price;
   }
+}
+
+// Today's per-holding P&L from the live feed: netQty × (price − prevClose).
+// Renders the hero number + a contribution bar chart, sorted by |contribution|.
+// Hidden entirely when no holding is on a live price (off-session / weekend).
+function renderIntraday() {
+  const sec = document.getElementById('intradaySection');
+  if (!sec) return;
+  const rows = [];
+  let totalPnl = 0, totalPrev = 0, anyLive = false, asOf = null;
+  for (const [isin, p] of positions) {
+    const md = marketData[isin];
+    if (!md || md.latestPrice == null || md.prevClose == null || !p.netQty) continue;
+    if (md.priceFidelity === 'live') anyLive = true;
+    const pnl = p.netQty * (md.latestPrice - md.prevClose);
+    const pct = md.dayChangePct != null ? md.dayChangePct
+              : (md.prevClose ? (md.latestPrice / md.prevClose - 1) * 100 : 0);
+    totalPnl  += pnl;
+    totalPrev += p.netQty * md.prevClose;
+    if (md.priceAsOf && (!asOf || md.priceAsOf > asOf)) asOf = md.priceAsOf;
+    rows.push({ tk: ticker(isin), pnl, pct });
+  }
+  if (!anyLive || !rows.length) { sec.style.display = 'none'; return; }
+  sec.style.display = '';
+
+  const totalPct = totalPrev ? (totalPnl / totalPrev) * 100 : 0;
+  const sign = v => (v > 0 ? 'up' : v < 0 ? 'dn' : '');
+  const pnlEl = document.getElementById('intradayPnl');
+  const pctEl = document.getElementById('intradayPnlPct');
+  pnlEl.textContent = (totalPnl >= 0 ? '+' : '−') + 'NOK ' + fmtNum(Math.abs(totalPnl), 0);
+  pnlEl.className = 'intraday-hero-val ' + sign(totalPnl);
+  pctEl.textContent = (totalPct >= 0 ? '+' : '') + totalPct.toFixed(2) + '% today';
+  pctEl.className = 'intraday-hero-sub ' + sign(totalPnl);
+
+  if (asOf) {
+    const t = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Oslo', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(asOf));
+    document.getElementById('intradayAsOf').textContent = 'as of ' + t;
+  }
+
+  rows.sort((a, b) => Math.abs(b.pnl) - Math.abs(a.pnl));
+  const maxAbs = Math.max(...rows.map(r => Math.abs(r.pnl)), 1);
+  document.getElementById('intradayContrib').innerHTML = rows.map(r => {
+    const w = Math.min(50, (Math.abs(r.pnl) / maxAbs) * 50);  // half-width = 50%
+    const bar = r.pnl >= 0
+      ? `<div class="ic-bar up" style="left:50%;width:${w}%"></div>`
+      : `<div class="ic-bar dn" style="right:50%;width:${w}%"></div>`;
+    return `<div class="ic-row">
+      <span class="ic-tk">${r.tk}</span>
+      <div class="ic-bar-wrap"><div class="ic-mid"></div>${bar}</div>
+      <span class="ic-val ${sign(r.pnl)}">${r.pnl >= 0 ? '+' : '−'}${fmtNum(Math.abs(r.pnl), 0)}
+        <span class="ic-pct">${r.pct >= 0 ? '+' : ''}${r.pct.toFixed(1)}%</span></span>
+    </div>`;
+  }).join('');
+}
+
+// ── News reel ────────────────────────────────────────────────────────────────
+// NewsWeb announcements (api.corporate_events) as a scrolling ticker tape.
+// HOLDINGS = portfolio issuers only; MARKET = the whole Oslo Børs feed.
+// Ordered by message_id desc (NewsWeb's monotonic id) so newest is first; polled
+// every 90s and flashes when a new headline appears at the top.
+let newsScope = 'holdings';
+const newsCache = { holdings: [], market: [] };
+const newsSeenTop = { holdings: null, market: null };
+
+const NEWS_COLOR = {
+  RESULTS:'nr-c-ice', EARNINGS_CALL:'nr-c-ice',
+  WARNING:'nr-c-red', DELISTING:'nr-c-red',
+  INSIDER:'nr-c-purple', PLACEMENT:'nr-c-purple', IPO:'nr-c-purple',
+  PRESS_RELEASE:'nr-c-amber', REGULATED:'nr-c-amber', PROSPECTUS:'nr-c-amber',
+  AGM:'nr-c-dim', EX_DATE:'nr-c-green',
+};
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c =>
+    ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+}
+
+async function fetchNews() {
+  const held = [...positions.keys()];
+  const sel = 'select=isin,issuer,issuer_sign,event_type,title,event_date,message_id,source_url';
+  try {
+    const [market, holdings] = await Promise.all([
+      GET('corporate_events', `${sel}&order=message_id.desc&limit=60`).catch(() => []),
+      held.length
+        ? GET('corporate_events', `${sel}&isin=in.(${held.join(',')})&order=message_id.desc&limit=50`).catch(() => [])
+        : Promise.resolve([]),
+    ]);
+    newsCache.market = market;
+    newsCache.holdings = holdings;
+    renderNews();
+  } catch(e) { console.warn('news fetch failed', e); }
+}
+
+function renderNews() {
+  const reel = document.getElementById('newsReel');
+  const track = document.getElementById('nrTrack');
+  if (!reel || !track) return;
+  const items = newsCache[newsScope] || [];
+  if (!items.length) { reel.style.display = 'none'; return; }
+  reel.style.display = 'flex';
+
+  const topId = items[0].message_id;
+  const fresh = newsSeenTop[newsScope] && topId !== newsSeenTop[newsScope];
+
+  const cell = r => {
+    const cls   = NEWS_COLOR[r.event_type] || 'nr-c-dim';
+    const glyph = EVT_GLYPH_P[r.event_type] || '▣';
+    const tk    = ticker(r.isin) || r.issuer_sign || (r.issuer || '').slice(0, 8);
+    const title = (r.title || '').replace(/\s+/g, ' ').trim();
+    const dt    = (r.event_date || '').slice(5);
+    const href  = /^https?:\/\//.test(r.source_url || '') ? r.source_url : '#';
+    return `<a class="nr-item" href="${escapeHtml(href)}" target="_blank" rel="noopener">
+      <span class="nr-glyph ${cls}">${glyph}</span>
+      <span class="nr-tk">${escapeHtml(tk)}</span>
+      <span class="nr-title">${escapeHtml(title)}</span>
+      <span class="nr-date">${escapeHtml(dt)}</span>
+    </a>`;
+  };
+  const html = items.map(cell).join('');
+  track.innerHTML = html + html;   // duplicate so the -50% scroll loops seamlessly
+
+  if (fresh) pulseLiveRefresh();
+  newsSeenTop[newsScope] = topId;
+}
+
+function setNewsScope(scope) {
+  newsScope = scope;
+  document.getElementById('nrTabHold').classList.toggle('nr-active', scope === 'holdings');
+  document.getElementById('nrTabMkt').classList.toggle('nr-active', scope === 'market');
+  renderNews();
+}
+
+function startNewsRefresh() {
+  if (newsTimer) clearInterval(newsTimer);
+  newsTimer = setInterval(fetchNews, 90000);
+}
+
+// Subtle whole-page green flash signalling a live refresh just landed.
+function pulseLiveRefresh() {
+  const el = document.getElementById('liveRefreshFlash');
+  if (!el) return;
+  el.classList.remove('flash');
+  void el.offsetWidth;        // restart the animation
+  el.classList.add('flash');
 }
 
 // Oslo market window (matches the intraday scraper's self-gate): Mon–Fri 08:00–16:45.
@@ -1261,12 +1516,14 @@ async function refreshLive() {
   const isins = [...positions.keys()];
   try {
     const livePrices = await GET('latest_price',
-      `isin=in.(${isins.join(',')})&select=isin,price,fidelity,day_change_pct,as_of`);
+      `isin=in.(${isins.join(',')})&select=isin,price,fidelity,day_change_pct,prev_close,as_of`);
     applyLatestPrices(livePrices);
     if (chartPeriod === '5D' && Object.keys(intradayData).length) await mergeLiveTicks(isins);
     renderKPIs();
     renderHoldings();
+    renderIntraday();
     renderChart();
+    pulseLiveRefresh();
   } catch(e) { console.warn('live refresh failed', e); }
 }
 
@@ -1282,6 +1539,10 @@ function renderChart() {
 
   const isinsToShow = chartView === 'portfolio' ? [...positions.keys()] : [chartView];
   let labels = [], valueData = [], costData = [];
+  // Index from which the curve is sourced from the live iMac intraday feed
+  // (today's intraday_live ticks) rather than canonical Euronext data. -1 = none.
+  let liveFromIdx = -1;
+  const todayOsloStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Oslo' }).format(new Date());
 
   if (chartPeriod === '5D') {
     const dtSet = new Set();
@@ -1292,6 +1553,9 @@ function renderChart() {
       return;
     }
     document.getElementById('portfolioChart').style.display = '';
+    // In 5D mode every point dated today comes from the live feed (Euronext
+    // T-1 bars only cover prior days), so the live region starts at today.
+    liveFromIdx = labels.findIndex(dt => dt.slice(0, 10) === todayOsloStr);
 
     const priceAt = {};
     for (const isin of isinsToShow) {
@@ -1376,6 +1640,7 @@ function renderChart() {
           labels.push(todayOslo);
           valueData.push(liveVal);
           costData.push(costData[costData.length - 1] ?? null);
+          liveFromIdx = labels.length - 1;  // the appended now-point is live
         }
       }
     }
@@ -1498,13 +1763,19 @@ function renderChart() {
       });
     });
   } else {
-    // Single value line
+    // Single value line — Euronext canonical in ice-blue, live iMac feed in green
+    const EURONEXT_COL = '#4fc3f7', LIVE_COL = '#43e097';
+    const isLiveIdx = i => liveFromIdx >= 0 && i >= liveFromIdx;
     datasets.push({
       label: isPortfolio ? 'Portfolio Value (NOK)' : ticker(chartView) + ' Price (NOK)',
       data: valueData,
-      borderColor: '#4fc3f7', backgroundColor: 'rgba(79,195,247,0.08)',
+      borderColor: EURONEXT_COL, backgroundColor: 'rgba(79,195,247,0.08)',
       borderWidth: 2, fill: true, tension: 0.3,
-      pointRadius: labels.length < 15 ? 3 : 0, pointBackgroundColor: '#4fc3f7',
+      pointRadius: ctx => (isLiveIdx(ctx.dataIndex) ? 3 : (labels.length < 15 ? 3 : 0)),
+      pointBackgroundColor: ctx => isLiveIdx(ctx.dataIndex) ? LIVE_COL : EURONEXT_COL,
+      segment: {
+        borderColor: ctx => isLiveIdx(ctx.p1DataIndex) ? LIVE_COL : EURONEXT_COL,
+      },
     });
   }
   if (showCostBasis) {
@@ -1573,6 +1844,12 @@ function renderChart() {
       },
     },
   });
+
+  // Source legend only matters when there's a live segment and we're on the
+  // single value line (the stacked view colours by holding instead).
+  const srcHint = document.getElementById('chartSrcHint');
+  if (srcHint) srcHint.style.display =
+    (liveFromIdx >= 0 && !(isPortfolio && chartMode === 'stacked')) ? 'flex' : 'none';
 
   // Pair the event timeline strip above the chart + the aligned drawdown below
   renderEventTimeline(allUpcoming);
@@ -2220,11 +2497,26 @@ function renderDividends() {
     : '';
   document.getElementById('divList').innerHTML = upcomingHTML + incomeHTML;
 
-  // YoC KPI = expected next-12-months dividend cash / cost basis (price-independent)
+  // YoC KPI: prefer forward 12m expected (known ex-dates); when none are loaded,
+  // fall back to trailing-12-month dividends actually received so a portfolio with
+  // a paid-out history still shows a yield instead of "—".
   let totalCost = 0;
   for (const p of positions.values()) totalCost += p.totalCost;
-  if (expectedNOK && totalCost) {
-    document.getElementById('kpiYoc').textContent = (expectedNOK / totalCost * 100).toFixed(2) + '%';
+  const yocEl = document.getElementById('kpiYoc');
+  const yocSub = document.getElementById('kpiYocSub');
+  let yocCash = expectedNOK, yocBasis = 'forward 12m ex-dates';
+  if (!yocCash) {
+    const cutoff = new Date(); cutoff.setFullYear(cutoff.getFullYear() - 1);
+    const cutoffStr = cutoff.toISOString().slice(0, 10);
+    yocCash = income.reduce((s, x) => x.date >= cutoffStr ? s + x.amount : s, 0);
+    yocBasis = 'trailing 12m received';
+  }
+  if (yocCash && totalCost) {
+    yocEl.textContent = (yocCash / totalCost * 100).toFixed(2) + '%';
+    if (yocSub) yocSub.textContent = yocBasis;
+  } else {
+    yocEl.textContent = '—';
+    if (yocSub) yocSub.textContent = 'no dividend data';
   }
 }
 
