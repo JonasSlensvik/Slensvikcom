@@ -690,24 +690,36 @@ function osloHHMM(bucket) {
   return String(Math.floor(mins / 60)).padStart(2, '0') + ':' + String(mins % 60).padStart(2, '0');
 }
 
+// timestamptz string → Oslo wall-clock "YYYY-MM-DDTHH:MM", same shape as the daily
+// intraday ts so live ticks sort together with the Euronext minute buckets.
+function osloMinuteDt(iso) {
+  const p = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Oslo', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(new Date(iso));
+  const g = t => p.find(x => x.type === t).value;
+  return `${g('year')}-${g('month')}-${g('day')}T${g('hour')}:${g('minute')}`;
+}
+
 async function buildTracker(book, m, convByIsin) {
   const reb = m.rebalance_date;
   const isins = book.map(r => r.isin);
   const inList = '(' + isins.map(s => `"${s}"`).join(',') + ')';
   const noteEl = document.getElementById('ppNote');
 
+  const todayOslo = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Oslo' }).format(new Date());
   // Minute-level VWAP where we have it, daily close for days we don't (auto-upgrades as markedsradar backfills).
-  const [intra, daily, live] = await Promise.all([
+  // intraday_live carries today's accumulating 15-min ticks so the live session renders
+  // at minute resolution — same source the portfolio tracker's 5D curve uses.
+  const [intra, daily, live, liveTicks] = await Promise.all([
     fetch(`${API}/intraday?isin=in.${inList}&trade_date=gte.${reb}&select=isin,trade_date,minute_bucket,vwap,volume&order=trade_date.asc,minute_bucket.asc&limit=200000`).then(r => r.ok ? r.json() : []).catch(() => []),
     fetch(`${API}/daily_close?isin=in.${inList}&trade_date=gte.${reb}&select=isin,trade_date,close&order=trade_date.asc`).then(r => r.ok ? r.json() : []).catch(() => []),
     fetch(`${API}/latest_price?isin=in.${inList}&select=isin,price,prev_close,fidelity`).then(r => r.ok ? r.json() : []).catch(() => []),
+    fetch(`${API}/intraday_live?isin=in.${inList}&ts=gte.${todayOslo}T00:00:00&select=isin,ts,price&order=ts.asc&limit=200000`).then(r => r.ok ? r.json() : []).catch(() => []),
   ]);
   // Cold start = rebalance day before Euronext intraday/EOD has landed. We can still
   // show a live book off the 15-min quotes, anchored to prev_close (like the portfolio
   // tracker), so only bail when there's no live quote to show either.
   const coldStart = (!intra || !intra.length) && (!daily || !daily.length);
   const liveQuotes = (live || []).filter(r => r.fidelity === 'live' && r.price != null);
-  if (coldStart && !liveQuotes.length) { noteEl.textContent = 'awaiting first close'; return; }
+  if (coldStart && !liveQuotes.length && !(liveTicks && liveTicks.length)) { noteEl.textContent = 'awaiting first close'; return; }
 
   const intradayDays = new Set(intra.map(r => r.trade_date));
 
@@ -737,16 +749,27 @@ async function buildTracker(book, m, convByIsin) {
     tsSet.add(ts); tsMeta[ts] = { date: r.trade_date, label: r.trade_date.slice(5) + ' close' };
   }
 
-  // Live tail: extend today's curve with the 15-min-delayed quote until Euronext
-  // intraday/close lands. Skipped once today is covered by canonical data.
-  const todayOslo = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Oslo' }).format(new Date());
+  // Live tail: extend today's curve with the full run of 15-min-delayed ticks
+  // (api.intraday_live) so the live session renders at minute resolution, like the
+  // portfolio tracker's 5D curve. Skipped once today is covered by canonical data.
+  let liveMinutePoints = 0;
   if (!intradayDays.has(todayOslo)) {
-    const nowOslo = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Oslo', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).format(new Date());
-    for (const r of (live || [])) {
-      if (r.fidelity !== 'live' || r.price == null) continue;
-      const ts = todayOslo + 'T' + nowOslo;
+    for (const r of (liveTicks || [])) {
+      if (r.price == null) continue;
+      const dt = osloMinuteDt(r.ts), ts = dt + ':00';
       priceByName[r.isin][ts] = Number(r.price);
-      tsSet.add(ts); tsMeta[ts] = { date: todayOslo, label: todayOslo.slice(5) + ' live' };
+      tsSet.add(ts); tsMeta[ts] = { date: dt.slice(0, 10), label: dt.slice(5, 10) + ' ' + dt.slice(11, 16) };
+      liveMinutePoints++;
+    }
+    // Fallback: if the tick table is empty but latest_price has a fresh quote, drop a
+    // single point so the cold-start book still shows something until ticks accumulate.
+    if (!liveMinutePoints) {
+      const nowOslo = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Oslo', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).format(new Date());
+      for (const r of liveQuotes) {
+        const ts = todayOslo + 'T' + nowOslo;
+        priceByName[r.isin][ts] = Number(r.price);
+        tsSet.add(ts); tsMeta[ts] = { date: todayOslo, label: todayOslo.slice(5) + ' live' };
+      }
     }
   }
 
@@ -776,7 +799,7 @@ async function buildTracker(book, m, convByIsin) {
   const dates  = [...new Set(timeline.map(ts => ts.slice(0, 10)))];
   const tickerByIsin = Object.fromEntries(book.map(r => [r.isin, r.ticker]));
   ppCache = { isins, priceByName, timeline, entryPx, lastPx, labels, dates,
-              granular: intradayDays.size > 0, lastLabel: tsMeta[timeline[timeline.length - 1]].label, tickerByIsin };
+              granular: intradayDays.size > 0 || liveMinutePoints > 0, lastLabel: tsMeta[timeline[timeline.length - 1]].label, tickerByIsin };
 
   ppBaseline = computeBook(book);                  // live coefficients — the reference curve
   ppBaseline.band = Number(m.forecast_weekly_vol) || 0;
