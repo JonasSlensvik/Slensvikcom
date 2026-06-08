@@ -700,9 +700,14 @@ async function buildTracker(book, m, convByIsin) {
   const [intra, daily, live] = await Promise.all([
     fetch(`${API}/intraday?isin=in.${inList}&trade_date=gte.${reb}&select=isin,trade_date,minute_bucket,vwap,volume&order=trade_date.asc,minute_bucket.asc&limit=200000`).then(r => r.ok ? r.json() : []).catch(() => []),
     fetch(`${API}/daily_close?isin=in.${inList}&trade_date=gte.${reb}&select=isin,trade_date,close&order=trade_date.asc`).then(r => r.ok ? r.json() : []).catch(() => []),
-    fetch(`${API}/latest_price?isin=in.${inList}&select=isin,price,fidelity`).then(r => r.ok ? r.json() : []).catch(() => []),
+    fetch(`${API}/latest_price?isin=in.${inList}&select=isin,price,prev_close,fidelity`).then(r => r.ok ? r.json() : []).catch(() => []),
   ]);
-  if ((!intra || !intra.length) && (!daily || !daily.length)) { noteEl.textContent = 'awaiting first close'; return; }
+  // Cold start = rebalance day before Euronext intraday/EOD has landed. We can still
+  // show a live book off the 15-min quotes, anchored to prev_close (like the portfolio
+  // tracker), so only bail when there's no live quote to show either.
+  const coldStart = (!intra || !intra.length) && (!daily || !daily.length);
+  const liveQuotes = (live || []).filter(r => r.fidelity === 'live' && r.price != null);
+  if (coldStart && !liveQuotes.length) { noteEl.textContent = 'awaiting first close'; return; }
 
   const intradayDays = new Set(intra.map(r => r.trade_date));
 
@@ -742,6 +747,17 @@ async function buildTracker(book, m, convByIsin) {
       const ts = todayOslo + 'T' + nowOslo;
       priceByName[r.isin][ts] = Number(r.price);
       tsSet.add(ts); tsMeta[ts] = { date: todayOslo, label: todayOslo.slice(5) + ' live' };
+    }
+  }
+
+  // Cold-start seed: with no intraday/EOD yet, anchor each name to prev_close at the
+  // week's open so the live quote produces a real PnL instead of a flat zero.
+  if (coldStart) {
+    const openTs = reb + 'T00:00:00';
+    for (const r of liveQuotes) {
+      if (r.prev_close == null) continue;
+      priceByName[r.isin][openTs] = Number(r.prev_close);
+      tsSet.add(openTs); tsMeta[openTs] = { date: reb, label: reb.slice(5) + ' open' };
     }
   }
 
@@ -981,6 +997,12 @@ function renderPP(mode) {
   document.getElementById('ppMode').addEventListener('click', e => {
     const b = e.target.closest('button'); if (b) renderPP(b.dataset.mode);
   });
+  // Live refresh: re-pull the curve every 3 min so the cold-start book tracks the
+  // 15-min quotes intraday. Paused while a what-if preview (slider) is on screen.
+  setInterval(() => {
+    if (ppState && !ppState.isLive) return;
+    buildTracker(liveW, m, convictionByIsin);
+  }, 180000);
 
   // Sector concentration (uses live weights)
   renderSectors(liveW);
