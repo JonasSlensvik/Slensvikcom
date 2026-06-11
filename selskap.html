@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=Syne:wght@500;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.3/dist/lightweight-charts.standalone.production.js"></script>
 <link rel="stylesheet" href="assets/intel.css">
 <script src="assets/intel.js"></script>
 <style>
@@ -90,14 +91,42 @@
   .mark-legend { display:flex; gap:14px; flex-wrap:wrap; margin-top:10px; font-family:var(--mono); font-size:9px; letter-spacing:.08em; color:var(--text3); }
   .mark-legend i { font-style:normal; margin-right:4px; }
 
-  /* ── bias gauge ── */
-  .gauge { margin:6px 0 2px; }
-  .gauge-bar { display:flex; height:14px; border-radius:3px; overflow:hidden; background:var(--bg3); }
-  .gauge-buy  { background:linear-gradient(90deg, rgba(67,224,151,.55), rgba(67,224,151,.9)); }
-  .gauge-sell { background:linear-gradient(90deg, rgba(240,96,96,.9), rgba(240,96,96,.55)); }
-  .gauge-lbl { display:flex; justify-content:space-between; font-size:9px; letter-spacing:.1em; color:var(--text3); margin-top:5px; }
+  /* ── lightweight-charts price tape ── */
+  #priceChartBox { position:relative; }
+  .lwc-legend {
+    position:absolute; top:6px; left:8px; z-index:20; pointer-events:none;
+    font-family:var(--mono); font-size:9.5px; letter-spacing:.05em; color:var(--text3);
+    background:rgba(5,8,16,.55); padding:3px 9px; border-radius:3px;
+    -webkit-backdrop-filter:blur(3px); backdrop-filter:blur(3px);
+    font-variant-numeric:tabular-nums; white-space:nowrap; max-width:96%;
+    overflow:hidden; text-overflow:ellipsis;
+  }
+  .lwc-legend b { color:var(--text1); font-weight:500; }
+  .lwc-legend .u { color:var(--green); } .lwc-legend .d { color:var(--red); }
+  .lwc-tip {
+    position:absolute; z-index:30; pointer-events:none; display:none;
+    background:rgba(17,22,31,.96); border:1px solid var(--border2); border-radius:var(--radius);
+    padding:8px 11px; font-family:var(--mono); font-size:9.5px; color:var(--text2);
+    max-width:270px; line-height:1.7; box-shadow:var(--shadow-panel);
+  }
+  .lwc-tip .tt { color:var(--text1); font-weight:600; letter-spacing:.06em; }
+
+  /* ── dark-flow pressure gauge ── */
+  .df-gauge-frame { position:relative; margin:8px 0 0; }
+  .df-gauge-frame canvas { display:block; width:100%; }
+  .gauge-lbl { display:flex; justify-content:space-between; font-size:9px; letter-spacing:.1em; color:var(--text3); margin-top:2px; }
   .gauge-lbl b { font-weight:500; }
   .gauge-lbl .b { color:var(--green); } .gauge-lbl .s { color:var(--red); }
+
+  /* ── whale particle stream ── */
+  .whale-stream { position:relative; margin-top:14px; }
+  .whale-stream canvas {
+    display:block; width:100%; height:84px; cursor:crosshair;
+    border:1px solid var(--border); border-radius:var(--radius);
+    background:linear-gradient(180deg, rgba(17,22,31,.55), rgba(5,8,16,.35));
+  }
+  .ws-cap { display:flex; gap:12px; flex-wrap:wrap; font-family:var(--mono); font-size:8.5px; letter-spacing:.08em; color:var(--text4); margin-top:6px; }
+  .ws-cap i { font-style:normal; }
 
   .mini-kpis { display:grid; grid-template-columns:repeat(3,1fr); gap:1px; background:var(--border); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin-bottom:12px; }
   .mini-kpi { background:var(--bg2); padding:9px 12px; }
@@ -202,9 +231,12 @@
           <button data-d="0">ALL</button>
         </div>
       </div>
-      <div class="chart-frame" style="height:400px"><canvas id="priceCanvas"></canvas></div>
+      <div class="chart-frame" id="priceChartBox" style="height:430px">
+        <div class="lwc-legend" id="lwcLegend"></div>
+        <div class="lwc-tip" id="lwcTip"></div>
+      </div>
       <div class="mark-legend">
-        <span><i style="color:var(--purple)">◆</i>SMART SIGNAL (hover for type + t5 hit-rate)</span>
+        <span><i style="color:var(--purple)">●■</i>SMART SIGNAL (shape+color by type · hover for t5 hit-rate)</span>
         <span><i style="color:var(--amber)">│</i>CORPORATE EVENT</span>
         <span><i style="color:var(--green)">▲</i>INSIDER BUY</span>
         <span><i style="color:var(--red)">▼</i>INSIDER SELL (size ∝ value)</span>
@@ -281,16 +313,17 @@ const C = {
   purple:'#a78bfa', text3:'#5a6377',
 };
 
-/* signal-type glyph styles for chart markers + badges */
+/* signal-type marker styles (lightweight-charts shapes) + badges
+   arrows are reserved for insider buys/sells — signals use circle/square */
 const SIG_STYLE = {
-  DARK_ACCUMULATION: { style:'circle',   color:C.green,  badge:'badge-green'  },
-  DARK_DISTRIBUTION: { style:'circle',   color:C.red,    badge:'badge-red'    },
-  EOD_SWEEP:         { style:'rectRot',  color:C.purple, badge:'badge-purple' },
-  LARGE_NOTIONAL:    { style:'rect',     color:C.ice,    badge:'badge-ice'    },
-  FLOOR_BREAK:       { style:'rectRot',  color:C.red,    badge:'badge-red'    },
-  CEILING_BREAK:     { style:'rectRot',  color:C.green,  badge:'badge-green'  },
+  DARK_ACCUMULATION: { shape:'circle', color:C.green,  badge:'badge-green'  },
+  DARK_DISTRIBUTION: { shape:'circle', color:C.red,    badge:'badge-red'    },
+  EOD_SWEEP:         { shape:'square', color:C.purple, badge:'badge-purple' },
+  LARGE_NOTIONAL:    { shape:'square', color:C.ice,    badge:'badge-ice'    },
+  FLOOR_BREAK:       { shape:'square', color:C.red,    badge:'badge-red'    },
+  CEILING_BREAK:     { shape:'square', color:C.green,  badge:'badge-green'  },
 };
-const sigStyle = (t) => SIG_STYLE[t] || { style:'rectRot', color:C.purple, badge:'badge-purple' };
+const sigStyle = (t) => SIG_STYLE[t] || { shape:'circle', color:C.purple, badge:'badge-purple' };
 
 const today = new Date(); today.setHours(0,0,0,0);
 const daysTo = (d) => d ? Math.round((new Date(d + 'T00:00:00') - today) / 864e5) : null;
@@ -322,11 +355,11 @@ const [
   safeGet(`latest_price?isin=eq.${Q}`),
   safeGet(`instruments?isin=eq.${Q}`),
   safeGet(`daily_close_adj?isin=eq.${Q}&order=trade_date.asc`),
-  safeGet(`price_ohlcv?isin=eq.${Q}&select=ts,close&order=ts.asc&limit=600`),
+  safeGet(`price_ohlcv?isin=eq.${Q}&source=eq.trades&select=ts,venue,open,high,low,close,volume&order=ts.asc&limit=600`),
   safeGet(`smart_signals?isin=eq.${Q}&order=trade_date.desc&limit=60`),
   safeGet('signal_performance'),
   safeGet(`dark_flow_summary?isin=eq.${Q}&order=trade_date.desc&limit=60`),
-  safeGet(`whale_alerts?isin=eq.${Q}&order=trading_time.desc&limit=10`),
+  safeGet(`whale_alerts?isin=eq.${Q}&order=trade_date.desc,trading_time.desc&limit=60`),
   safeGet(`short_interest?isin=eq.${Q}&order=position_date.asc`),
   safeGet(`short_interest_holders?isin=eq.${Q}&order=position_date.desc,short_pct.desc&limit=40`),
   safeGet(`corporate_events?isin=eq.${Q}&order=event_date.desc&limit=40`),
@@ -336,11 +369,29 @@ const [
   safeGet('instruments?select=isin,ticker,name&order=ticker.asc&limit=600'),
 ]);
 
+/* euronext trade-tape candles: keep the dominant venue, one bar per day */
+const ohlc = (() => {
+  if (!ohlcv || !ohlcv.length) return [];
+  const cnt = {};
+  ohlcv.forEach(r => { cnt[r.venue] = (cnt[r.venue] || 0) + 1; });
+  const ven = Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a])[0];
+  const out = [], seen = new Set();
+  ohlcv.forEach(r => {
+    if (r.venue !== ven || r.open == null || r.close == null) return;
+    const t = r.ts.slice(0, 10);
+    if (seen.has(t)) return;
+    seen.add(t);
+    out.push({ time: t, open: +r.open, high: +r.high, low: +r.low, close: +r.close,
+               volume: r.volume != null ? +r.volume : null });
+  });
+  return out;   // already ts.asc from the API
+})();
+
 /* merge price history: euronext tape (longer) + dividend/split-adjusted closes
    (authoritative where present) into one daily series */
 const closes = (() => {
   const byDate = new Map();
-  (ohlcv || []).forEach(r => byDate.set(r.ts.slice(0, 10), { trade_date: r.ts.slice(0, 10), adj_close: r.close }));
+  ohlc.forEach(r => byDate.set(r.time, { trade_date: r.time, adj_close: r.close }));
   (closesAdj || []).forEach(r => byDate.set(r.trade_date, { trade_date: r.trade_date, adj_close: r.adj_close != null ? r.adj_close : r.close }));
   return [...byDate.values()].sort((a, b) => a.trade_date < b.trade_date ? -1 : 1);
 })();
@@ -451,43 +502,13 @@ if (nxtEvt) {
   $('kEvtSub').textContent = `${nxtEvt.event_type || ''} · ${nxtEvt.event_date}`;
 } else { $('kEvt').textContent = '—'; $('kEvtSub').textContent = 'nothing scheduled'; }
 
-/* ══════════ PRICE CHART — closes + signal/event/insider overlays ══════════ */
-const evtLinesPlugin = {
-  id: 'evtLines',
-  afterDatasetsDraw(chart) {
-    const evs = chart.options.plugins.evtLines && chart.options.plugins.evtLines.events;
-    if (!evs || !evs.length) return;
-    const { ctx, chartArea: ca, scales: { x } } = chart;
-    ctx.save();
-    ctx.font = "8px 'IBM Plex Mono', monospace";
-    const drawn = [];                       // occupied label spans per row
-    const labelH = 11, rowGap = 12;
-    evs.slice().sort((a, b) => a.idx - b.idx).forEach(e => {
-      const px = x.getPixelForValue(e.idx);
-      if (px < ca.left - 1 || px > ca.right + 1) return;
-      const tag = e.label.slice(0, 9);
-      const tw = ctx.measureText(tag).width + 8;
-      let left = Math.min(Math.max(px - tw / 2, ca.left), ca.right - tw), row = 0;
-      while (row < 3 && drawn.some(d => d.row === row && left < d.right + 3)) row++;
-      const top = ca.top + row * rowGap;
-      drawn.push({ right: left + tw, row });
-      ctx.strokeStyle = 'rgba(245,166,35,0.34)';
-      ctx.setLineDash([3, 4]); ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.moveTo(px, top + labelH + 1); ctx.lineTo(px, ca.bottom); ctx.stroke();
-      ctx.setLineDash([]);
-      ctx.fillStyle = 'rgba(245,166,35,0.14)';
-      ctx.fillRect(left, top, tw, labelH);
-      ctx.fillStyle = '#f5a623';
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText(tag, left + tw / 2, top + labelH / 2);
-    });
-    ctx.restore();
-  }
-};
-
-let priceChart = null;
+/* ══════════ PRICE TAPE — lightweight-charts 4.2.3 ══════════
+   Candles from the euronext trade tape + ice area for the pre-tape
+   close-only era, merged on one time scale. Overlays: signal/insider
+   markers (native series markers), corporate-event ribbons via a custom
+   series primitive (redrawn inside the chart's render loop, so labels
+   track pan/zoom exactly), volume histogram pane underneath. */
 const layers = { sig: true, evt: true, ins: true };
-let rangeDays = 126;
 
 function nearestIdx(labels, dateStr) {
   if (!dateStr) return -1;
@@ -499,138 +520,501 @@ function nearestIdx(labels, dateStr) {
   return best;
 }
 
-function renderPriceChart() {
+(function buildPriceTape() {
+  const box = $('priceChartBox'), legend = $('lwcLegend'), tip = $('lwcTip');
   const all = closes || [];
   if (!all.length) {
-    $('priceCanvas').closest('.chart-frame').innerHTML =
-      '<div class="empty-note" style="margin-top:120px">NO PRICE HISTORY FOR THIS ISIN</div>';
+    box.innerHTML = '<div class="empty-note" style="margin-top:120px">NO PRICE HISTORY FOR THIS ISIN</div>';
     return;
   }
-  const rows = rangeDays > 0 ? all.slice(-rangeDays) : all;
-  const labels = rows.map(r => r.trade_date);
-  const px = rows.map(r => r.adj_close);
-  $('pcMeta').textContent = `${labels[0]} → ${labels[labels.length-1]} · ${labels.length} sessions · adjusted`;
+  if (typeof LightweightCharts === 'undefined') {
+    box.innerHTML = '<div class="empty-note" style="margin-top:120px">CHART LIBRARY UNAVAILABLE — RELOAD</div>';
+    return;
+  }
 
-  /* signals scatter */
-  const sigPts = [];
-  if (layers.sig) (signals || []).forEach(s => {
-    const i = nearestIdx(labels, s.trade_date);
-    if (i < 0 || labels[i] !== s.trade_date) return;
-    sigPts.push({ x: labels[i], y: s.price_at_signal != null ? s.price_at_signal : px[i], meta: s });
-  });
+  const dates = all.map(r => r.trade_date);
+  const dateSet = new Set(dates);
+  const lastClose = all[all.length - 1].adj_close;
+  const prec = lastClose != null && lastClose < 10 ? 3 : 2;
+  const minMove = prec === 3 ? 0.001 : 0.01;
+  const tstr = (t) => typeof t === 'string' ? t
+    : (t && t.year) ? `${t.year}-${String(t.month).padStart(2,'0')}-${String(t.day).padStart(2,'0')}` : '';
 
-  /* insider scatter (buy/sell separately) */
-  const buyPts = [], sellPts = [];
-  if (layers.ins) (insiderTrades || []).forEach(t => {
-    if (!t.trade_date || (t.side !== 'BUY' && t.side !== 'SELL')) return;
-    const i = nearestIdx(labels, t.trade_date);
-    if (i < 0) return;
-    const pt = { x: labels[i], y: t.price != null ? +t.price : px[i], meta: t };
-    (t.side === 'BUY' ? buyPts : sellPts).push(pt);
-  });
-  const insRadius = (pts) => pts.map(p => {
-    const v = p.meta.value ? Math.abs(+p.meta.value) : 0;
-    return Math.max(5, Math.min(13, 4 + Math.sqrt(v) / 350));
-  });
-
-  /* corporate event lines */
-  const evByIdx = new Map();
-  if (layers.evt) (events || []).forEach(e => {
-    const i = nearestIdx(labels, e.event_date);
-    if (i < 0 || labels[i] !== e.event_date) return;
-    if (!evByIdx.has(i)) evByIdx.set(i, new Set());
-    evByIdx.get(i).add(e.event_type || 'EVENT');
-  });
-  const evIdx = [...evByIdx.entries()].map(([idx, types]) =>
-    ({ idx, label: [...types].join('+') }));
-
-  const grad = (ctx) => {
-    const g = ctx.createLinearGradient(0, 0, 0, 400);
-    g.addColorStop(0, 'rgba(79,195,247,0.16)'); g.addColorStop(1, 'rgba(79,195,247,0)');
-    return g;
-  };
-
-  if (priceChart) priceChart.destroy();
-  priceChart = new Chart($('priceCanvas'), {
-    type: 'line',
-    data: {
-      labels,
-      datasets: [
-        { label: 'close', data: px, borderColor: C.ice, borderWidth: 1.5,
-          pointRadius: 0, pointHitRadius: 6, tension: 0.12, fill: true,
-          backgroundColor: (c) => grad(c.chart.ctx), order: 10 },
-        { label: 'sig', type: 'scatter', data: sigPts,
-          pointStyle: sigPts.map(p => sigStyle(p.meta.signal_type).style),
-          rotation: sigPts.map(p => sigStyle(p.meta.signal_type).rot || 0),
-          pointBackgroundColor: sigPts.map(p => sigStyle(p.meta.signal_type).color + 'cc'),
-          pointBorderColor: sigPts.map(p => sigStyle(p.meta.signal_type).color),
-          pointBorderWidth: 1,
-          pointRadius: sigPts.map(p => p.meta.strength === 'STRONG' ? 6 : 4.5),
-          pointHoverRadius: 9, order: 5 },
-        { label: 'insBuy', type: 'scatter', data: buyPts, pointStyle: 'triangle',
-          pointBackgroundColor: C.green + 'd9', pointBorderColor: C.green, pointBorderWidth: 1,
-          pointRadius: insRadius(buyPts), pointHoverRadius: 12, order: 4 },
-        { label: 'insSell', type: 'scatter', data: sellPts, pointStyle: 'triangle', rotation: 180,
-          pointBackgroundColor: C.red + 'd9', pointBorderColor: C.red, pointBorderWidth: 1,
-          pointRadius: insRadius(sellPts), pointHoverRadius: 12, order: 4 },
-      ]
+  const chart = LightweightCharts.createChart(box, {
+    autoSize: true,
+    layout: {
+      background: { type: 'solid', color: 'transparent' },
+      textColor: '#5a6377', fontFamily: "'IBM Plex Mono', monospace", fontSize: 10,
+      attributionLogo: false,
     },
-    options: {
-      responsive: true, maintainAspectRatio: false, animation: { duration: 280 },
-      interaction: { mode: 'nearest', intersect: false },
-      plugins: {
-        legend: { display: false },
-        evtLines: { events: evIdx },
-        tooltip: {
-          displayColors: false,
-          callbacks: {
-            title: (items) => items[0] ? String(items[0].label) : '',
-            label: (item) => {
-              const dsl = item.dataset.label;
-              if (dsl === 'close') return `close ${fmtNum(item.parsed.y, 2)} ${ccy}`;
-              if (dsl === 'sig') {
-                const s = item.raw.meta, p = perfByType[s.signal_type];
-                const out = [`◆ ${s.signal_type} · ${s.strength}`, `@ ${fmtNum(item.raw.y, 2)}`];
-                if (p && p.t5_hit_rate_pct != null)
-                  out.push(`type t5 hit-rate ${fmtNum(p.t5_hit_rate_pct,0)}% (${p.t5_observed} obs)`);
-                if (s.return_t5_pct != null) out.push(`this fire t5 ${fmtPct(s.return_t5_pct)}`);
-                if (s.signal_desc) out.push(...String(s.signal_desc).match(/.{1,46}(\s|$)/g).map(x => x.trim()));
-                return out;
-              }
-              const t = item.raw.meta;
-              return [
-                `${t.side === 'BUY' ? '▲ INSIDER BUY' : '▼ INSIDER SELL'}`,
-                `${t.person_name || 'unnamed'} · ${t.person_role || ''}`.trim(),
-                `${t.quantity ? fmtCompact(+t.quantity) + ' sh @ ' + fmtNum(+t.price, 2) : ''}`,
-                `value ${t.value ? fmtCompact(+t.value) + ' ' + (t.currency || ccy) : '—'} · conf ${t.parse_confidence}`,
-              ].filter(Boolean);
-            }
-          }
-        }
-      },
-      scales: {
-        x: { ticks: { maxTicksLimit: 12, maxRotation: 0 }, grid: { display: false } },
-        y: { position: 'right', grid: { color: 'rgba(255,255,255,0.045)' },
-             ticks: { callback: (v) => fmtNum(v, 0) } },
+    grid: { vertLines: { visible: false }, horzLines: { color: 'rgba(255,255,255,0.045)' } },
+    crosshair: {
+      mode: LightweightCharts.CrosshairMode.Magnet,
+      vertLine: { color: 'rgba(79,195,247,0.38)', width: 1, style: LightweightCharts.LineStyle.Dashed, labelBackgroundColor: '#1a212d' },
+      horzLine: { color: 'rgba(79,195,247,0.38)', width: 1, style: LightweightCharts.LineStyle.Dashed, labelBackgroundColor: '#1a212d' },
+    },
+    rightPriceScale: { borderVisible: false, scaleMargins: { top: 0.17, bottom: 0.22 } },
+    timeScale: { borderVisible: false, rightOffset: 3, minBarSpacing: 0.25 },
+    localization: { priceFormatter: (v) => fmtNum(v, prec) },
+  });
+
+  /* candle series — trade-tape era */
+  let candle = null;
+  if (ohlc.length) {
+    candle = chart.addCandlestickSeries({
+      upColor: C.green, downColor: C.red,
+      borderUpColor: C.green, borderDownColor: C.red,
+      wickUpColor: 'rgba(67,224,151,0.75)', wickDownColor: 'rgba(240,96,96,0.75)',
+      priceLineColor: 'rgba(79,195,247,0.4)', priceLineStyle: LightweightCharts.LineStyle.Dotted,
+      priceFormat: { type: 'price', precision: prec, minMove },
+    });
+    candle.setData(ohlc.map(({ time, open, high, low, close }) => ({ time, open, high, low, close })));
+  }
+  const firstCandleDate = ohlc.length ? ohlc[0].time : null;
+
+  /* area series — adjusted closes for dates the tape doesn't cover
+     (overlaps one session with the first candle for visual continuity) */
+  let area = null;
+  const areaRows = (firstCandleDate ? all.filter(r => r.trade_date <= firstCandleDate) : all)
+    .filter(r => r.adj_close != null)
+    .map(r => ({ time: r.trade_date, value: +r.adj_close }));
+  if (areaRows.length > 1 || !candle) {
+    area = chart.addAreaSeries({
+      lineColor: C.ice, lineWidth: 1.5,
+      topColor: 'rgba(79,195,247,0.16)', bottomColor: 'rgba(79,195,247,0)',
+      priceLineVisible: false, lastValueVisible: !candle,
+      crosshairMarkerRadius: 3,
+      priceFormat: { type: 'price', precision: prec, minMove },
+    });
+    area.setData(areaRows);
+  }
+  const host = candle || area;
+
+  /* volume histogram pane (overlay scale pinned to the bottom strip) */
+  let vol = null;
+  if (candle && ohlc.some(r => r.volume != null)) {
+    vol = chart.addHistogramSeries({
+      priceScaleId: 'vol', priceFormat: { type: 'volume' },
+      lastValueVisible: false, priceLineVisible: false,
+    });
+    vol.setData(ohlc.map(r => ({
+      time: r.time, value: r.volume || 0,
+      color: r.close >= r.open ? 'rgba(67,224,151,0.30)' : 'rgba(240,96,96,0.28)',
+    })));
+    chart.priceScale('vol').applyOptions({ scaleMargins: { top: 0.84, bottom: 0 } });
+  }
+
+  $('pcMeta').textContent =
+    `${dates[0]} → ${dates[dates.length - 1]} · ${dates.length} sessions · ${ohlc.length} candle days · adjusted`;
+
+  /* ── markers: signals (◆ era shapes) + insiders (▲▼, size ∝ value) ── */
+  const markerMeta = new Map();
+  function buildMarkers() {
+    markerMeta.clear();
+    const mk = [];
+    if (layers.sig) (signals || []).forEach((s, n) => {
+      if (!s.trade_date || !dateSet.has(s.trade_date)) return;
+      const st = sigStyle(s.signal_type), id = 'sig:' + n;
+      markerMeta.set(id, { kind: 'sig', s });
+      mk.push({ time: s.trade_date, position: 'aboveBar', shape: st.shape, color: st.color,
+                id, size: s.strength === 'STRONG' ? 0.95 : 0.6 });
+    });
+    if (layers.ins) (insiderTrades || []).forEach((t, n) => {
+      if (!t.trade_date || (t.side !== 'BUY' && t.side !== 'SELL')) return;
+      const i = nearestIdx(dates, t.trade_date);
+      if (i < 0) return;
+      const v = t.value ? Math.abs(+t.value) : 0;
+      const id = 'ins:' + n;
+      markerMeta.set(id, { kind: 'ins', t });
+      mk.push({ time: dates[i],
+                position: t.side === 'BUY' ? 'belowBar' : 'aboveBar',
+                shape: t.side === 'BUY' ? 'arrowUp' : 'arrowDown',
+                color: t.side === 'BUY' ? C.green : C.red,
+                id, size: Math.max(0.4, Math.min(1.1, 0.38 + Math.sqrt(v) / 12000)) });
+    });
+    return mk.sort((a, b) => a.time < b.time ? -1 : a.time > b.time ? 1 : 0);
+  }
+  function applyMarkers() {
+    const mk = buildMarkers();
+    if (candle && area) {
+      const c = [], a = [];
+      mk.forEach(m => (m.time >= firstCandleDate ? c : a).push(m));
+      candle.setMarkers(c); area.setMarkers(a);
+    } else if (host) host.setMarkers(mk);
+  }
+
+  /* ── corporate-event ribbons: custom series primitive ──
+     draw() runs inside lightweight-charts' own render pass, converting
+     event dates → x via timeScale().timeToCoordinate() every frame, so the
+     dashed flags + label chips stay glued to their bars through pan/zoom. */
+  function makeEvtRibbon() {
+    let P = null, evts = [];
+    function drawRibbons(ctx, size) {
+      if (!P || !evts.length) return;
+      const ts = P.chart.timeScale();
+      ctx.save();
+      ctx.font = "8px 'IBM Plex Mono', monospace";
+      const drawn = [], labelH = 11, rowGap = 12, top0 = 4;
+      evts.forEach(e => {
+        const x = ts.timeToCoordinate(e.time);
+        if (x == null || x < -40 || x > size.width + 40) return;
+        const tag = e.label.slice(0, 9);
+        const tw = ctx.measureText(tag).width + 8;
+        let left = Math.min(Math.max(x - tw / 2, 2), size.width - tw - 2), row = 0;
+        while (row < 3 && drawn.some(d => d.row === row && left < d.right + 3)) row++;
+        const top = top0 + row * rowGap;
+        drawn.push({ right: left + tw, row });
+        ctx.strokeStyle = 'rgba(245,166,35,0.34)';
+        ctx.setLineDash([3, 4]); ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(x, top + labelH + 1); ctx.lineTo(x, size.height); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = 'rgba(245,166,35,0.14)';
+        ctx.fillRect(left, top, tw, labelH);
+        ctx.fillStyle = C.amber;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(tag, left + tw / 2, top + labelH / 2);
+      });
+      ctx.restore();
+    }
+    const view = {
+      zOrder: () => 'top',
+      renderer: () => ({
+        draw: (target) => target.useMediaCoordinateSpace(
+          ({ context, mediaSize }) => drawRibbons(context, mediaSize)),
+      }),
+    };
+    return {
+      attached(p) { P = p; },
+      detached() { P = null; },
+      paneViews() { return [view]; },
+      setEvents(e) { evts = e; if (P) P.requestUpdate(); },
+    };
+  }
+  const ribbon = makeEvtRibbon();
+  host.attachPrimitive(ribbon);
+  function evtList() {
+    if (!layers.evt) return [];
+    const byDate = new Map();
+    (events || []).forEach(e => {
+      if (!e.event_date || !dateSet.has(e.event_date)) return;
+      if (!byDate.has(e.event_date)) byDate.set(e.event_date, new Set());
+      byDate.get(e.event_date).add(e.event_type || 'EVENT');
+    });
+    return [...byDate.entries()]
+      .sort((a, b) => a[0] < b[0] ? -1 : 1)
+      .map(([time, types]) => ({ time, label: [...types].join('+') }));
+  }
+
+  /* ── crosshair: OHLC legend readout + marker hover tooltip ── */
+  const baseLegend = `<b>${esc(ticker)}</b> · ${ohlc.length ? 'tape candles' : 'adjusted closes'} · ${ccy}`;
+  legend.innerHTML = baseLegend;
+  function tipHtml(m) {
+    if (m.kind === 'sig') {
+      const s = m.s, p = perfByType[s.signal_type];
+      return `<div class="tt" style="color:${sigStyle(s.signal_type).color}">◆ ${esc(s.signal_type.replace(/_/g, ' '))} · ${esc(s.strength || '')}</div>
+        <div>${esc(s.trade_date)} @ ${fmtNum(s.price_at_signal != null ? +s.price_at_signal : null, 2)}</div>
+        ${p && p.t5_hit_rate_pct != null ? `<div>type t5 hit-rate <b style="color:var(--text1)">${fmtNum(p.t5_hit_rate_pct, 0)}%</b> (${p.t5_observed} obs)</div>` : ''}
+        ${s.return_t5_pct != null ? `<div>this fire t5 ${fmtPct(s.return_t5_pct)}</div>` : ''}
+        ${s.signal_desc ? `<div style="color:var(--text3)">${esc(s.signal_desc)}</div>` : ''}`;
+    }
+    const t = m.t;
+    return `<div class="tt" style="color:${t.side === 'BUY' ? C.green : C.red}">${t.side === 'BUY' ? '▲ INSIDER BUY' : '▼ INSIDER SELL'}</div>
+      <div>${esc(t.trade_date || '')} · ${esc(t.person_name || 'unnamed')}</div>
+      ${t.person_role ? `<div style="color:var(--text3)">${esc(String(t.person_role).slice(0, 42))}</div>` : ''}
+      ${t.quantity ? `<div>${fmtCompact(+t.quantity)} sh @ ${fmtNum(+t.price, 2)}</div>` : ''}
+      <div>value ${t.value ? fmtCompact(+t.value) + ' ' + (t.currency || ccy) : '—'} · conf ${t.parse_confidence != null ? t.parse_confidence : '—'}</div>`;
+  }
+  chart.subscribeCrosshairMove((param) => {
+    if (!param || !param.time || !param.point) {
+      legend.innerHTML = baseLegend;
+      tip.style.display = 'none';
+      return;
+    }
+    const d = tstr(param.time);
+    const cd = candle && param.seriesData.get(candle);
+    const ad = area && param.seriesData.get(area);
+    const vd = vol && param.seriesData.get(vol);
+    if (cd && cd.open != null) {
+      const chg = cd.open ? (cd.close / cd.open - 1) * 100 : null;
+      const cls = (cd.close >= cd.open) ? 'u' : 'd';
+      legend.innerHTML = `<b>${d}</b> &nbsp;O <b>${fmtNum(cd.open, prec)}</b> &nbsp;H <b>${fmtNum(cd.high, prec)}</b> &nbsp;L <b>${fmtNum(cd.low, prec)}</b> &nbsp;C <b class="${cls}">${fmtNum(cd.close, prec)}</b> <span class="${cls}">${fmtPct(chg)}</span>${vd && vd.value != null ? ` &nbsp;VOL <b>${fmtCompact(vd.value)}</b>` : ''}`;
+    } else if (ad && ad.value != null) {
+      legend.innerHTML = `<b>${d}</b> &nbsp;CLOSE <b>${fmtNum(ad.value, prec)}</b> <span style="color:var(--text4)">adj · pre-tape</span>`;
+    } else {
+      legend.innerHTML = baseLegend;
+    }
+    const meta = param.hoveredObjectId != null ? markerMeta.get(param.hoveredObjectId) : null;
+    if (meta) {
+      tip.innerHTML = tipHtml(meta);
+      tip.style.display = 'block';
+      const bw = box.clientWidth, tw = tip.offsetWidth, th = tip.offsetHeight;
+      let tx = param.point.x + 16, ty = param.point.y - th - 12;
+      if (tx + tw > bw - 6) tx = param.point.x - tw - 16;
+      if (ty < 4) ty = param.point.y + 18;
+      tip.style.left = Math.max(4, tx) + 'px';
+      tip.style.top = ty + 'px';
+    } else {
+      tip.style.display = 'none';
+    }
+  });
+
+  /* ── range + layer controls ── */
+  function setRange(days) {
+    const ts = chart.timeScale();
+    if (!days || dates.length <= days) ts.fitContent();
+    else ts.setVisibleRange({ from: dates[dates.length - days], to: dates[dates.length - 1] });
+  }
+  [['lyrSig', 'sig'], ['lyrEvt', 'evt'], ['lyrIns', 'ins']].forEach(([id, key]) => {
+    $(id).addEventListener('click', () => {
+      layers[key] = !layers[key];
+      $(id).classList.toggle('on', layers[key]);
+      applyMarkers();
+      ribbon.setEvents(evtList());
+    });
+  });
+  $('rangeSeg').querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+    $('rangeSeg').querySelectorAll('button').forEach(x => x.classList.toggle('active', x === b));
+    setRange(+b.dataset.d);
+  }));
+
+  applyMarkers();
+  ribbon.setEvents(evtList());
+  setRange(126);
+})();
+
+/* ══════════ DARK-FLOW PRESSURE GAUGE (canvas, no lib) ══════════
+   Outer arc: SELL↔BUY pressure (at-bid vs at-ask dark volume), needle
+   eased in on load. Inner ring: today's dark % of volume vs its 5d/20d
+   norm ticks. Reduced motion → final frame, no sweep. */
+const REDUCED = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+
+function renderGauge(canvas, g) {
+  if (!canvas) return;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const w = canvas.parentElement.clientWidth || 420, h = 178;
+  canvas.width = w * dpr; canvas.height = h * dpr;
+  canvas.style.height = h + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  const cx = w / 2, cy = h - 30;
+  const R = Math.min(w * 0.34, 118), R2 = R - 19;
+  const sideCol = g.bias === 'SELL' ? C.red : C.green;
+  const a0 = Math.PI, a100 = 2 * Math.PI;                  // left → right over the top
+  const shareAngle = (s) => a0 + (Math.max(0, Math.min(100, s)) / 100) * Math.PI;
+  const scaleMax = Math.max((Math.max(g.darkPct || 0, g.d5 || 0, g.d20 || 0)) * 1.3, 4);
+  const pctAngle = (p) => a0 + (Math.max(0, Math.min(1, p / scaleMax))) * Math.PI;
+
+  function frame(t) {                                       // t in [0,1], eased
+    ctx.clearRect(0, 0, w, h);
+    const share = 50 + ((g.buyShare ?? 50) - 50) * t;
+    const aN = shareAngle(share);
+
+    /* outer track: red → slate → green */
+    const grad = ctx.createLinearGradient(cx - R, 0, cx + R, 0);
+    grad.addColorStop(0, 'rgba(240,96,96,0.34)');
+    grad.addColorStop(0.5, 'rgba(255,255,255,0.07)');
+    grad.addColorStop(1, 'rgba(67,224,151,0.34)');
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = grad; ctx.lineWidth = 9;
+    ctx.beginPath(); ctx.arc(cx, cy, R, a0, a100); ctx.stroke();
+
+    /* pressure arc: from neutral top to the needle */
+    if (Math.abs(share - 50) > 0.4) {
+      ctx.save();
+      ctx.strokeStyle = sideCol; ctx.lineWidth = 9;
+      ctx.shadowColor = sideCol; ctx.shadowBlur = 12;
+      ctx.beginPath();
+      ctx.arc(cx, cy, R, Math.min(1.5 * Math.PI, aN), Math.max(1.5 * Math.PI, aN));
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    /* outer scale ticks */
+    ctx.strokeStyle = 'rgba(255,255,255,0.16)'; ctx.lineWidth = 1;
+    [0, 25, 50, 75, 100].forEach(p => {
+      const a = shareAngle(p);
+      ctx.beginPath();
+      ctx.moveTo(cx + Math.cos(a) * (R + 7), cy + Math.sin(a) * (R + 7));
+      ctx.lineTo(cx + Math.cos(a) * (R + 11), cy + Math.sin(a) * (R + 11));
+      ctx.stroke();
+    });
+
+    /* inner ring: dark % vs norms */
+    ctx.strokeStyle = 'rgba(255,255,255,0.07)'; ctx.lineWidth = 5;
+    ctx.beginPath(); ctx.arc(cx, cy, R2, a0, a100); ctx.stroke();
+    if (g.darkPct != null) {
+      ctx.save();
+      ctx.strokeStyle = C.purple; ctx.lineWidth = 5;
+      ctx.shadowColor = C.purple; ctx.shadowBlur = 8;
+      ctx.beginPath(); ctx.arc(cx, cy, R2, a0, pctAngle(g.darkPct * t)); ctx.stroke();
+      ctx.restore();
+    }
+    [['5D', g.d5, C.ice], ['20D', g.d20, C.text3]].forEach(([lbl, v, col]) => {
+      if (v == null) return;
+      const a = pctAngle(v);
+      ctx.strokeStyle = col; ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(cx + Math.cos(a) * (R2 - 5), cy + Math.sin(a) * (R2 - 5));
+      ctx.lineTo(cx + Math.cos(a) * (R2 + 5), cy + Math.sin(a) * (R2 + 5));
+      ctx.stroke();
+      ctx.fillStyle = col; ctx.font = "7px 'IBM Plex Mono', monospace";
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(lbl, cx + Math.cos(a) * (R2 - 13), cy + Math.sin(a) * (R2 - 13));
+    });
+
+    /* needle */
+    ctx.save();
+    ctx.strokeStyle = '#e8eef7'; ctx.lineWidth = 1.6;
+    ctx.shadowColor = sideCol; ctx.shadowBlur = 10;
+    ctx.beginPath();
+    ctx.moveTo(cx + Math.cos(aN) * 12, cy + Math.sin(aN) * 12);
+    ctx.lineTo(cx + Math.cos(aN) * (R - 7), cy + Math.sin(aN) * (R - 7));
+    ctx.stroke();
+    ctx.restore();
+    ctx.fillStyle = '#11161f'; ctx.strokeStyle = sideCol; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(cx, cy, 4.5, 0, 7); ctx.fill(); ctx.stroke();
+
+    /* readouts */
+    ctx.textAlign = 'center';
+    ctx.fillStyle = sideCol;
+    ctx.font = "600 21px 'IBM Plex Mono', monospace"; ctx.textBaseline = 'alphabetic';
+    ctx.fillText(`${Math.round(share)}%`, cx, cy - 28);
+    ctx.fillStyle = '#5a6377'; ctx.font = "8px 'IBM Plex Mono', monospace";
+    ctx.fillText('AT-ASK PRESSURE', cx, cy - 17);
+    ctx.fillStyle = C.purple;
+    ctx.font = "9px 'IBM Plex Mono', monospace";
+    ctx.fillText(`DARK ${fmtNum(g.darkPct, 1)}% OF VOLUME`, cx, cy + 15);
+    /* end labels */
+    ctx.font = "8.5px 'IBM Plex Mono', monospace";
+    ctx.fillStyle = C.red;   ctx.textAlign = 'center'; ctx.fillText('SELL', cx - R, cy + 15);
+    ctx.fillStyle = C.green; ctx.fillText('BUY', cx + R, cy + 15);
+  }
+
+  if (REDUCED) { frame(1); return; }
+  const T = 950, t0 = performance.now();
+  (function tick(now) {
+    const p = Math.min(1, (now - t0) / T);
+    frame(1 - Math.pow(1 - p, 3));                          // ease-out cubic
+    if (p < 1) requestAnimationFrame(tick);
+  })(t0);
+}
+
+/* ══════════ WHALE PARTICLE STREAM (canvas, no lib) ══════════
+   Each recent whale/dark print drifts across as a glowing particle —
+   size ∝ notional, color by print mechanism (side not inferable from the
+   tape: dark=purple, block=amber, else ice). rAF pauses when the tab is
+   hidden; reduced motion → static scatter ordered by recency. */
+function whaleStream(canvas, tip, rows) {
+  if (!canvas) return;
+  const prints = rows.slice(0, 60);
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const ctx = canvas.getContext('2d');
+  let cw = 0, ch = 84;
+  function size() {
+    cw = canvas.clientWidth || 420;
+    canvas.width = cw * dpr; canvas.height = ch * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  size();
+
+  if (!prints.length) {
+    ctx.fillStyle = '#3a4252'; ctx.font = "9px 'IBM Plex Mono', monospace";
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('NO WHALE-SCALE PRINTS', cw / 2, ch / 2);
+    return;
+  }
+
+  const colorOf = (w) => w.dark_alert ? C.purple
+    : (w.block_alert || w.block_trade_code === 'Y') ? C.amber : C.ice;
+  const parts = prints.map((w, i) => {
+    const notional = w.notional != null ? +w.notional
+      : (w.price != null && w.quantity != null ? +w.price * +w.quantity : 0);
+    return {
+      w, notional, color: colorOf(w),
+      r: Math.max(2.4, Math.min(9, 1.5 + Math.sqrt(notional) / 1400)),
+      x: cw * (1 - i / Math.max(prints.length, 1)) * 0.97 + Math.random() * 10,
+      y0: 13 + Math.random() * (ch - 26),
+      vx: 0.07 + Math.random() * 0.16,
+      ph: Math.random() * Math.PI * 2,
+    };
+  });
+  let hovered = null;
+
+  function draw(now) {
+    ctx.clearRect(0, 0, cw, ch);
+    for (const p of parts) {
+      const y = REDUCED ? p.y0 : p.y0 + Math.sin(now * 0.0006 + p.ph) * 3;
+      ctx.save();
+      ctx.shadowColor = p.color; ctx.shadowBlur = p.r * 2.2;
+      ctx.fillStyle = p.color + (p === hovered ? 'ff' : '99');
+      ctx.beginPath(); ctx.arc(p.x, y, p.r, 0, 7); ctx.fill();
+      if (p === hovered) {
+        ctx.strokeStyle = p.color; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.arc(p.x, y, p.r + 3, 0, 7); ctx.stroke();
       }
-    },
-    plugins: [evtLinesPlugin]
+      ctx.restore();
+      p._y = y;
+    }
+  }
+
+  let raf = 0;
+  function loop(now) {
+    for (const p of parts) {
+      p.x += p.vx;
+      if (p.x > cw + p.r) p.x = -p.r;                       // wrap: ambient drift
+    }
+    draw(now);
+    raf = requestAnimationFrame(loop);
+  }
+  function start() { if (!raf && !REDUCED) raf = requestAnimationFrame(loop); }
+  function stop()  { if (raf) { cancelAnimationFrame(raf); raf = 0; } }
+
+  if (REDUCED) draw(0);
+  else {
+    start();
+    document.addEventListener('visibilitychange', () => document.hidden ? stop() : start());
+    if ('IntersectionObserver' in window) {
+      new IntersectionObserver((en) =>
+        en[0].isIntersecting && !document.hidden ? start() : stop()
+      ).observe(canvas);
+    }
+  }
+
+  canvas.addEventListener('mousemove', (e) => {
+    const b = canvas.getBoundingClientRect();
+    const mx = e.clientX - b.left, my = e.clientY - b.top;
+    let best = null, bd = 1e9;
+    for (const p of parts) {
+      const dd = (p.x - mx) ** 2 + ((p._y ?? p.y0) - my) ** 2;
+      if (dd < bd) { bd = dd; best = p; }
+    }
+    if (best && bd <= (best.r + 6) ** 2) {
+      hovered = best;
+      const w = best.w;
+      const flags = [w.dark_alert, w.block_alert, w.otc_alert, w.size_alert].filter(Boolean)
+        .map(f => f.replace(/_/g, ' ')).join(' · ') || 'PRINT';
+      tip.innerHTML = `<div class="tt" style="color:${best.color}">● ${esc(flags)}</div>
+        <div>${esc(w.trade_date || '')} ${w.trading_time ? esc(w.trading_time.slice(11, 19)) : ''}</div>
+        <div>${fmtCompact(w.quantity)} sh @ ${fmtNum(w.price, 2)} → <b style="color:var(--text1)">${fmtCompact(best.notional)} NOK</b></div>
+        <div style="color:var(--text3)">mech ${w.market_mechanism != null ? w.market_mechanism : '—'} · mode ${esc(w.trading_mode || '—')}${w.participant_class ? ' · ' + esc(w.participant_class) : ''}</div>`;
+      tip.style.display = 'block';
+      const pw = tip.offsetWidth;
+      let tx = best.x + 14;
+      if (tx + pw > cw - 4) tx = best.x - pw - 14;
+      tip.style.left = Math.max(2, tx) + 'px';
+      tip.style.top = Math.max(2, (best._y ?? best.y0) - tip.offsetHeight - 10 + canvas.offsetTop) + 'px';
+      if (REDUCED) draw(0);
+    } else if (hovered) {
+      hovered = null; tip.style.display = 'none';
+      if (REDUCED) draw(0);
+    }
+  });
+  canvas.addEventListener('mouseleave', () => {
+    hovered = null; tip.style.display = 'none';
+    if (REDUCED) draw(0);
   });
 }
-renderPriceChart();
-
-[['lyrSig','sig'], ['lyrEvt','evt'], ['lyrIns','ins']].forEach(([id, key]) => {
-  $(id).addEventListener('click', () => {
-    layers[key] = !layers[key];
-    $(id).classList.toggle('on', layers[key]);
-    renderPriceChart();
-  });
-});
-$('rangeSeg').querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
-  rangeDays = +b.dataset.d;
-  $('rangeSeg').querySelectorAll('button').forEach(x => x.classList.toggle('active', x === b));
-  renderPriceChart();
-}));
 
 /* ══════════ DARK FLOW PANEL ══════════ */
 (function renderDark() {
@@ -655,22 +1039,35 @@ $('rangeSeg').querySelectorAll('button').forEach(b => b.addEventListener('click'
         <div class="v ${d.dark_impact_bps > 0 ? 'up' : d.dark_impact_bps < 0 ? 'down' : ''}">${d.dark_impact_bps != null ? fmtNum(d.dark_impact_bps,1)+' bps' : '—'}</div>
         <div class="s">${d.dark_trades_classified || 0} classified prints</div></div>
     </div>
-    <div class="gauge">
-      <div class="gauge-bar">
-        <div class="gauge-buy" style="width:${buyShare.toFixed(1)}%"></div>
-        <div class="gauge-sell" style="width:${(100-buyShare).toFixed(1)}%"></div>
-      </div>
-      <div class="gauge-lbl">
-        <span class="b">▲ AT-ASK ${fmtCompact(atAsk)} (${fmtNum(buyShare,0)}%)</span>
-        <span>SIDE BIAS <b style="color:${d.dark_side_bias==='BUY'?C.green:C.red}">${d.dark_side_bias || '—'}</b>${d.bias_confirmed ? ' ✓' : ''}</span>
-        <span class="s">▼ AT-BID ${fmtCompact(atBid)} (${fmtNum(100-buyShare,0)}%)</span>
+    <div class="df-gauge-frame"><canvas id="dfGauge"></canvas></div>
+    <div class="gauge-lbl">
+      <span class="s">▼ AT-BID ${fmtCompact(atBid)} (${fmtNum(100-buyShare,0)}%)</span>
+      <span>SIDE BIAS <b style="color:${d.dark_side_bias==='BUY'?C.green:C.red}">${d.dark_side_bias || '—'}</b>${d.bias_confirmed ? ' ✓' : ''}</span>
+      <span class="b">▲ AT-ASK ${fmtCompact(atAsk)} (${fmtNum(buyShare,0)}%)</span>
+    </div>
+    <div class="chart-frame" style="height:96px;margin:14px 0 4px"><canvas id="dfCanvas"></canvas></div>
+    <div class="whale-stream">
+      <div class="panel-title" style="margin:10px 0 8px"><span class="glyph">≋</span>Whale Stream · last ${Math.min((whales||[]).length, 60)} prints</div>
+      <canvas id="wsCanvas"></canvas>
+      <div class="lwc-tip" id="wsTip"></div>
+      <div class="ws-cap">
+        <span><i style="color:var(--purple)">●</i> DARK PRINT</span>
+        <span><i style="color:var(--amber)">●</i> BLOCK</span>
+        <span><i style="color:var(--ice)">●</i> LIT LARGE</span>
+        <span>SIZE ∝ NOTIONAL · HOVER FOR DETAIL</span>
       </div>
     </div>
-    <div class="chart-frame" style="height:110px;margin:14px 0 4px"><canvas id="dfCanvas"></canvas></div>
-    <div style="margin-top:12px">
+    <div style="margin-top:14px">
       <div class="panel-title" style="margin-bottom:8px"><span class="glyph">▪</span>Whale Prints</div>
       <div class="scrollwrap">${renderWhales()}</div>
     </div>`;
+
+  renderGauge($('dfGauge'), {
+    buyShare, atAsk, atBid,
+    bias: d.dark_side_bias, confirmed: d.bias_confirmed,
+    darkPct: d.dark_pct, d5: d.dark_pct_5d_avg, d20: d.dark_pct_20d_avg,
+  });
+  whaleStream($('wsCanvas'), $('wsTip'), whales || []);
 
   const hist = darkHist.slice().reverse();
   new Chart($('dfCanvas'), {
@@ -698,7 +1095,7 @@ $('rangeSeg').querySelectorAll('button').forEach(b => b.addEventListener('click'
 
   function renderWhales() {
     if (!whales || !whales.length) return '<div class="empty-note">NO WHALE-SCALE PRINTS</div>';
-    const rows = whales.map(w => {
+    const rows = whales.slice(0, 10).map(w => {
       const alerts = [w.dark_alert, w.size_alert, w.block_alert, w.otc_alert].filter(Boolean);
       const notional = w.notional != null ? +w.notional : (w.price && w.quantity ? w.price * w.quantity : null);
       return `<tr>
