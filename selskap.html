@@ -386,6 +386,7 @@ const venue  = (ti && ti.venue)   || (ins && ins.market) || '—';
 const ccy    = (ti && ti.currency)|| (ins && ins.currency) || 'NOK';
 document.title = `${ticker} · ${name} · Slensvik`;
 $('hName').textContent  = name;
+$('hName').classList.add('materialize');   // skeleton → content morph
 $('hTicker').textContent = ticker;
 $('hVenue').textContent  = venue;
 $('hCcy').textContent    = ccy;
@@ -898,6 +899,34 @@ $('rangeSeg').querySelectorAll('button').forEach(b => b.addEventListener('click'
     <th>Date</th><th>Signal</th><th>Str</th><th>Description</th>
     <th class="r">Px@Sig</th><th class="r">t1</th><th class="r">t5</th><th class="r">t20</th><th class="r">Type t5 Hit</th>
   </tr></thead><tbody>${rows}</tbody></table></div>`;
+})();
+
+/* ══════════ LIVE HEADER POLL ══════════
+   While Oslo is trading, re-pull latest_price every 60s and roll the hero
+   price / 1D change in place (INTEL.liveNumber — odometer + afterglow).
+   Cheap no-op off-session; only repaints when as_of actually advances. */
+(function liveHeaderPoll() {
+  const openOslo = () => {
+    const o = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Oslo' }));
+    const m = o.getHours() * 60 + o.getMinutes();
+    return o.getDay() >= 1 && o.getDay() <= 5 && m >= 9 * 60 && m < 16 * 60 + 35;
+  };
+  let lastSeen = asOf || null;
+  setInterval(async () => {
+    if (!openOslo()) return;
+    const rows = await safeGet(`latest_price?isin=eq.${Q}`);
+    const r = rows && rows[0];
+    if (!r || r.price == null || r.as_of === lastSeen) return;
+    lastSeen = r.as_of;
+    INTEL.liveNumber($('hPrice'), fmtNum(r.price, r.price < 10 ? 3 : 2));
+    const chg = r.day_change_pct;
+    $('hChg').className = 'hp-chg ' + (chg > 0 ? 'up' : chg < 0 ? 'down' : '');
+    INTEL.liveNumber($('hChg'), chg != null ? `${fmtPct(chg)} · 1D` : '—');
+    $('hFid').innerHTML = r.fidelity === 'live'
+      ? '<span class="pill pill-live">LIVE · 15M DELAY</span>'
+      : '<span class="pill pill-neu">EOD</span>';
+    $('hAsOf').textContent = r.as_of ? r.as_of.replace('T', ' ').slice(0, 16) : '—';
+  }, 60000);
 })();
 
 })();

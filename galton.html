@@ -842,17 +842,18 @@ function paintTracker(book, opts) {
   const totRet = a.totalPnl / NOTIONAL;
   const baseRet = ppBaseline ? (ppBaseline.totalPnl / NOTIONAL) : totRet;
 
-  document.getElementById('ppVal').textContent = nok0(a.curVal) + '';
+  INTEL.liveNumber(document.getElementById('ppVal'), nok0(a.curVal) + '');
   const tag = isLive ? `<span style="color:var(--ice)">LIVE</span>` : `<span style="color:var(--amber)">WHAT-IF</span>`;
   document.getElementById('ppAsOf').innerHTML = `MARK <strong style="color:var(--text1)">${lastLabel}</strong> · DAY ${dates.length} · ${granular ? labels.length + ' min marks' : dates.length + ' closes'} · ${tag}`;
-  const pnlEl = document.getElementById('ppPnl'); pnlEl.textContent = sNok(a.totalPnl);
+  const pnlEl = document.getElementById('ppPnl');
   pnlEl.className = 'kpi-val ' + (a.totalPnl >= 0 ? 'pp-pos' : 'pp-neg');
+  INTEL.liveNumber(pnlEl, sNok(a.totalPnl));
   document.getElementById('ppPnlSub').innerHTML = isLive
     ? sPct(totRet) + ' on capital'
     : sPct(totRet) + ` · <span style="color:var(--amber)">Δ ${sPct(totRet - baseRet)}</span> vs live`;
-  const lEl = document.getElementById('ppLong'); lEl.textContent = sNok(a.longPnl); lEl.className = 'kpi-val ' + (a.longPnl>=0?'pp-pos':'pp-neg');
+  const lEl = document.getElementById('ppLong'); lEl.className = 'kpi-val ' + (a.longPnl>=0?'pp-pos':'pp-neg'); INTEL.liveNumber(lEl, sNok(a.longPnl));
   document.getElementById('ppLongSub').textContent = `${(a.grossLong*100).toFixed(0)}% gross · ${a.contrib.filter(c=>c.w>=0).length} names`;
-  const shEl = document.getElementById('ppShort'); shEl.textContent = sNok(a.shortPnl); shEl.className = 'kpi-val ' + (a.shortPnl>=0?'pp-pos':'pp-neg');
+  const shEl = document.getElementById('ppShort'); shEl.className = 'kpi-val ' + (a.shortPnl>=0?'pp-pos':'pp-neg'); INTEL.liveNumber(shEl, sNok(a.shortPnl));
   document.getElementById('ppShortSub').textContent = `${(a.grossShort*100).toFixed(0)}% gross · ${a.contrib.filter(c=>c.w<0).length} names`;
   const sig = band ? (totRet / band) : 0;
   document.getElementById('ppFcst').textContent = sPct(totRet) + ' / ±' + (band*100).toFixed(2) + '%';

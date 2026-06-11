@@ -1109,13 +1109,13 @@ function renderKPIs() {
   const totalReturn  = priceOnlyPL + totalDivIncome;   // includes dividends received
   const totalRetPct  = totalCost ? (totalReturn / totalCost) * 100 : null;
 
-  document.getElementById('kpiValue').textContent = fmtNOK(totalValue || null);
+  INTEL.liveNumber(document.getElementById('kpiValue'), fmtNOK(totalValue || null));
   document.getElementById('kpiValueSub').textContent = `${positions.size} holdings`;
   document.getElementById('kpiCost').textContent = fmtNOK(totalCost);
   document.getElementById('kpiCostSub').textContent = totalDivIncome > 0
     ? `+ NOK ${fmtNum(totalDivIncome, 0)} div income received`
     : 'avg incl. all lots';
-  document.getElementById('kpiPL').textContent = totalCost ? fmtNOK(priceOnlyPL) : '—';
+  INTEL.liveNumber(document.getElementById('kpiPL'), totalCost ? fmtNOK(priceOnlyPL) : '—');
   document.getElementById('kpiPLSub').textContent = totalRetPct != null
     ? `${fmtPct(priceOnlyPct)} price · ${fmtPct(totalRetPct)} total return`
     : '';

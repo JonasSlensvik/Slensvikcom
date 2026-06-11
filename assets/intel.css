@@ -84,6 +84,21 @@
    Texture
      body::before is page-local; use .scanlines on a wrapper for the shared
      horizontal scan-line texture, .gridbg for the faint blueprint grid
+
+   ── MOTION & DEPTH SYSTEM (v3 "the terminal is alive") ─────────────────────
+   All motion is gated behind @media (prefers-reduced-motion: no-preference);
+   reduced-motion users get the full static design. Driven by intel.js.
+     .intel-ambient        fixed background layer (grid + scanline + mood glow)
+                           injected by intel.js; parallax via --ambient-y
+     --mood-rgb --mood-a   market-mood accent (set from /market_pulse by
+                           intel.js; green when breadth>50%, red below,
+                           ice neutral) — 3–5% alpha ambient tinting
+     .intel-reveal(.in)    staggered fade-up entrance (IntersectionObserver;
+                           delay via --reveal-delay)
+     .ln-digit(.roll)      odometer digit roll inside INTEL.liveNumber targets
+     .ln-up .ln-dn         green/red afterglow on value change
+     .intel-k*             ⌘K command palette (overlay, input, list, hints)
+     .sn-klaunch           ⌘K affordance chip appended to the injected nav
    ═══════════════════════════════════════════════════════════════════════ */
 
 :root {
@@ -107,6 +122,9 @@
   /* geometry */
   --radius: 4px; --radius-lg: 8px;
   --space-1: 4px; --space-2: 8px; --space-3: 14px; --space-4: 22px; --space-5: 36px;
+  /* market mood (overridden at runtime by intel.js from /market_pulse) */
+  --mood-rgb: 79,195,247;   /* neutral ice */
+  --mood-a: 0.03;
   /* depth */
   --shadow-panel: 0 8px 28px rgba(0,0,0,0.45);
   --glow-amber: 0 0 18px rgba(245,166,35,0.18);
@@ -144,13 +162,29 @@
 }
 .site-nav .sn-sep { color: var(--text4); font-size: 9px; user-select: none; }
 
-/* ── Panels ──────────────────────────────────────────────────────────────── */
+/* ── Panels (layered glass) ──────────────────────────────────────────────── */
 .panel {
-  background: var(--bg1); border: 1px solid var(--border);
+  background: rgba(11,15,23,0.72);
+  -webkit-backdrop-filter: blur(9px); backdrop-filter: blur(9px);
+  border: 1px solid rgba(255,255,255,0.075);
   border-radius: var(--radius-lg); padding: var(--space-4);
-  transition: border-color .2s;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.045),                       /* luminous top edge */
+    inset 0 0 32px rgba(var(--mood-rgb), calc(var(--mood-a) * 0.5)),
+    0 1px 2px rgba(0,0,0,0.25);
+  transition: border-color .25s, transform .25s, box-shadow .25s;
 }
-.panel:hover { border-color: var(--border2); }
+.panel:hover {
+  border-color: var(--border2);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.07),
+    inset 0 0 32px rgba(var(--mood-rgb), calc(var(--mood-a) * 0.8)),
+    0 6px 22px rgba(0,0,0,0.30),
+    0 0 24px rgba(var(--mood-rgb), calc(var(--mood-a) * 1.4));
+}
+@media (prefers-reduced-motion: no-preference) {
+  .panel:hover { transform: translateY(-1px); }
+}
 .panel-head {
   display: flex; align-items: baseline; justify-content: space-between;
   gap: var(--space-3); margin-bottom: var(--space-3);
@@ -310,3 +344,161 @@
 ::-webkit-scrollbar-track { background: var(--bg0); }
 ::-webkit-scrollbar-thumb { background: var(--bg3); border-radius: 5px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--border3); }
+
+/* ═══ MOTION & DEPTH SYSTEM ═══════════════════════════════════════════════ */
+
+/* ── Ambient background (injected by intel.js as <div class="intel-ambient">)
+      grid + scanlines + a faint market-mood glow bleeding from the top.
+      Sits at z-index:-1 (above the page canvas bg, below all content).
+      Parallax: intel.js drives --ambient-y from scroll. ─────────────────── */
+.intel-ambient {
+  position: fixed; left: 0; right: 0; top: -80px; bottom: -80px;
+  z-index: -1; pointer-events: none;
+  background-image:
+    radial-gradient(ellipse 75% 42% at 50% -4%,
+      rgba(var(--mood-rgb), calc(var(--mood-a) * 1.6)), transparent 70%),
+    repeating-linear-gradient(0deg,
+      transparent 0 3px, rgba(255,255,255,0.008) 3px 4px),
+    linear-gradient(rgba(255,255,255,0.020) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.020) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 100%, 56px 56px, 56px 56px;
+  transform: translateY(var(--ambient-y, 0px));
+  will-change: transform;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .intel-ambient { animation: intel-grid-drift 120s linear infinite; }
+  @keyframes intel-grid-drift {
+    from { background-position: 0 0, 0 0, 0 0, 0 0; }
+    to   { background-position: 0 0, 0 0, 56px 112px, 56px 112px; }
+  }
+}
+
+/* ── Staggered entrance (intel.js adds .intel-reveal, then .in on
+      intersection; --reveal-delay staggers items in the same batch) ─────── */
+@media (prefers-reduced-motion: no-preference) {
+  .intel-reveal {
+    opacity: 0; transform: translateY(14px);
+  }
+  .intel-reveal.in {
+    opacity: 1; transform: none;
+    transition:
+      opacity  .65s cubic-bezier(.22,.7,.3,1) var(--reveal-delay, 0s),
+      transform .65s cubic-bezier(.22,.7,.3,1) var(--reveal-delay, 0s);
+  }
+  /* sec-head underline sweep (the ::after rule line draws left→right) */
+  .sec-head.intel-reveal::after { transform: scaleX(0); transform-origin: left center; }
+  .sec-head.intel-reveal.in::after {
+    transform: scaleX(1);
+    transition: transform 1.1s cubic-bezier(.22,.8,.2,1) calc(var(--reveal-delay, 0s) + .2s);
+  }
+  /* skeleton → content morph: apply to a container the moment real content
+     replaces a .skeleton (used by pages; generic utility) */
+  .materialize { animation: intel-materialize .55s cubic-bezier(.2,.7,.3,1) both; }
+  @keyframes intel-materialize {
+    from { opacity: 0; filter: blur(5px); transform: translateY(4px); }
+    to   { opacity: 1; filter: blur(0);  transform: none; }
+  }
+}
+
+/* ── Living numbers (INTEL.liveNumber) ───────────────────────────────────── */
+.ln-digit { display: inline-block; }
+@media (prefers-reduced-motion: no-preference) {
+  .ln-digit.roll { animation: intel-digit-roll .55s cubic-bezier(.18,.85,.3,1) both; }
+  @keyframes intel-digit-roll {
+    from { transform: translateY(.55em); opacity: 0; filter: blur(1.5px); }
+    to   { transform: none; opacity: 1; filter: blur(0); }
+  }
+  .ln-up { animation: intel-glow-up 1.2s ease-out; }
+  .ln-dn { animation: intel-glow-dn 1.2s ease-out; }
+  @keyframes intel-glow-up {
+    0%   { text-shadow: 0 0 14px rgba(67,224,151,.9), 0 0 4px rgba(67,224,151,.7); color: #43e097; }
+    100% { text-shadow: 0 0 0 rgba(67,224,151,0); }
+  }
+  @keyframes intel-glow-dn {
+    0%   { text-shadow: 0 0 14px rgba(240,96,96,.9), 0 0 4px rgba(240,96,96,.7); color: #f06060; }
+    100% { text-shadow: 0 0 0 rgba(240,96,96,0); }
+  }
+}
+
+/* ═══ ⌘K COMMAND PALETTE ═════════════════════════════════════════════════ */
+.intel-k {
+  position: fixed; inset: 0; z-index: 999;
+  display: flex; align-items: flex-start; justify-content: center;
+  padding: 14vh 20px 20px;
+  background: rgba(3,5,10,0.55);
+  -webkit-backdrop-filter: blur(7px); backdrop-filter: blur(7px);
+}
+.intel-k-box {
+  width: 100%; max-width: 560px;
+  background: rgba(11,15,23,0.88);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+  border: 1px solid var(--border2); border-radius: var(--radius-lg);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.06),
+    0 24px 70px rgba(0,0,0,0.6),
+    0 0 40px rgba(var(--mood-rgb), calc(var(--mood-a) * 2));
+  overflow: hidden;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .intel-k       { animation: intel-k-fade .18s ease-out both; }
+  .intel-k-box   { animation: intel-k-pop  .22s cubic-bezier(.2,.9,.3,1.15) both; }
+  @keyframes intel-k-fade { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes intel-k-pop  { from { opacity: 0; transform: translateY(-10px) scale(.985); }
+                            to   { opacity: 1; transform: none; } }
+}
+.intel-k-inputrow {
+  display: flex; align-items: center; gap: 10px;
+  padding: 14px 16px; border-bottom: 1px solid var(--border);
+}
+.intel-k-inputrow .glyph { color: var(--amber); font-family: var(--mono); font-size: 13px; }
+.intel-k-input {
+  flex: 1; background: transparent; border: 0; outline: 0;
+  font-family: var(--mono); font-size: 14px; color: var(--text1);
+  letter-spacing: 0.04em; caret-color: var(--amber);
+}
+.intel-k-input::placeholder { color: var(--text4); }
+.intel-k-list { max-height: 46vh; overflow-y: auto; padding: 6px; }
+.intel-k-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 9px 12px; border-radius: var(--radius);
+  font-family: var(--mono); cursor: pointer;
+  border: 1px solid transparent;
+}
+.intel-k-item .ki-glyph { color: var(--text4); font-size: 12px; width: 14px; text-align: center; }
+.intel-k-item .ki-main  { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 10px; }
+.intel-k-item .ki-tick  { font-size: 12px; font-weight: 600; color: var(--text1); letter-spacing: .06em; white-space: nowrap; }
+.intel-k-item .ki-name  { font-size: 10.5px; color: var(--text3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.intel-k-item .ki-kind  { font-size: 9px; letter-spacing: .14em; color: var(--text4); text-transform: uppercase; }
+.intel-k-item .ki-name b { color: var(--ice); font-weight: 500; }
+.intel-k-item .ki-tick b { color: var(--amber); font-weight: 600; }
+.intel-k-item.sel {
+  background: var(--bg3); border-color: var(--border2);
+  box-shadow: inset 2px 0 0 var(--amber);
+}
+.intel-k-item.sel .ki-glyph { color: var(--amber); }
+.intel-k-empty {
+  padding: 26px 16px; text-align: center;
+  font-family: var(--mono); font-size: 10.5px; letter-spacing: .12em;
+  color: var(--text4); text-transform: uppercase;
+}
+.intel-k-hints {
+  display: flex; gap: 14px; justify-content: center;
+  padding: 9px 14px; border-top: 1px solid var(--border);
+  font-family: var(--mono); font-size: 9px; letter-spacing: .1em;
+  color: var(--text4); text-transform: uppercase;
+}
+.intel-k-hints kbd {
+  font-family: var(--mono); font-size: 9px; color: var(--text3);
+  background: var(--bg2); border: 1px solid var(--border2); border-radius: 3px;
+  padding: 1px 5px; margin-right: 4px;
+}
+/* nav affordance chip */
+.sn-klaunch {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-family: var(--mono); font-size: 9px; letter-spacing: .1em;
+  color: var(--text4); background: transparent;
+  border: 1px solid var(--border); border-radius: 3px;
+  padding: 3px 7px; margin-left: 8px; cursor: pointer;
+  transition: color .15s, border-color .15s, box-shadow .15s;
+}
+.sn-klaunch:hover { color: var(--amber); border-color: rgba(245,166,35,0.4); box-shadow: var(--glow-amber); }

@@ -185,6 +185,26 @@
   }
   .gw:hover .gw-arrow { transform: translateX(4px); }
 
+  /* ─── Market constellation (three.js hero; replaces matrix when WebGL+data ok) ── */
+  #constellation {
+    position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    opacity: 0; transition: opacity 1.6s ease;
+  }
+  #constellation.on { opacity: 1; }
+  #constellation-tip {
+    position: fixed; z-index: 60; pointer-events: none; display: none;
+    background: rgba(17,22,31,0.92);
+    -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+    border: 1px solid var(--border2); border-radius: var(--radius);
+    padding: 8px 12px; font-family: var(--mono); font-size: 10px;
+    color: var(--text2); box-shadow: var(--shadow-panel);
+    letter-spacing: 0.04em; white-space: nowrap;
+  }
+  #constellation-tip .ct-tick { color: var(--text1); font-weight: 600; letter-spacing: .1em; }
+  #constellation-tip .ct-chg.up { color: var(--green); }
+  #constellation-tip .ct-chg.down { color: var(--red); }
+  #constellation-tip .ct-sub { color: var(--text4); font-size: 9px; margin-top: 2px; }
+
   /* ─── Footer ──────────────────────────────────────────────────────────── */
   .foot {
     padding: 18px 36px 22px;
@@ -416,6 +436,7 @@
   }
 
   function frame(t) {
+    if (window.__matrixHalt) return;     // constellation took over the hero
     if (!lastShuffle) lastShuffle = t;
     if (t - lastShuffle > 12000) {       // re-randomise structure every 12s
       reshuffleTargets();
@@ -503,6 +524,233 @@
       st.textContent = 'LIVE';
     }
   }
+})();
+
+/* ─── Market constellation ─────────────────────────────────────────────────
+   Every listed name is a glowing star: size = market cap, color = 1d return
+   (red ↔ slate ↔ green), pulse = dark-flow share. One BufferGeometry of
+   point sprites (~290 names), drift + pulse computed in the vertex shader
+   (zero per-frame CPU work). Degrades silently to the covariance-matrix
+   canvas above when WebGL, the CDN or the data feed is unavailable.
+   three.js pinned @0.160.0 (last UMD build). */
+(async () => {
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* gate 1: WebGL */
+  try {
+    const probe = document.createElement('canvas');
+    if (!(probe.getContext('webgl2') || probe.getContext('webgl'))) return;
+  } catch (e) { return; }
+
+  /* gate 2: data */
+  const ti = await INTEL.safeGet(
+    'ticker_intel?select=isin,ticker,issuer,market_cap_eur,return_1d_pct,dark_pct&limit=1000');
+  if (!ti || ti.length < 20) return;
+
+  /* market caps: ticker_intel.market_cap_eur is often null → fall back to the
+     latest daily_close snapshot; uniform size if that misses too */
+  const mcap = {};
+  ti.forEach(r => { if (r.market_cap_eur != null) mcap[r.isin] = +r.market_cap_eur; });
+  if (!Object.keys(mcap).length) {
+    const last = await INTEL.safeGet('daily_close?select=trade_date&order=trade_date.desc&limit=1');
+    if (last && last[0]) {
+      const rows = await INTEL.safeGet(
+        `daily_close?trade_date=eq.${last[0].trade_date}&select=isin,market_cap&limit=1000`);
+      (rows || []).forEach(r => { if (r.market_cap != null) mcap[r.isin] = +r.market_cap; });
+    }
+  }
+
+  /* gate 3: pinned CDN */
+  const ok = await new Promise(res => {
+    const s = document.createElement('script');
+    s.src = 'https://unpkg.com/three@0.160.0/build/three.min.js';
+    s.onload = () => res(true); s.onerror = () => res(false);
+    document.head.appendChild(s);
+  });
+  if (!ok || !window.THREE) return;
+
+  /* take over from the matrix fallback */
+  window.__matrixHalt = true;
+  const mbg = document.getElementById('matrix-bg');
+  if (mbg) mbg.style.display = 'none';
+
+  const stars = ti.slice(0, 320);
+  const N = stars.length;
+  const maxMc = Math.max(1, ...stars.map(s => mcap[s.isin] || 0));
+
+  const canvas = document.createElement('canvas');
+  canvas.id = 'constellation';
+  document.body.insertBefore(canvas, document.querySelector('.vignette'));
+
+  const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: false });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  const camera = new THREE.PerspectiveCamera(55, 1, 1, 600);
+  camera.position.set(0, 5, 150);
+  const scene = new THREE.Scene();
+  const group = new THREE.Group();
+  group.rotation.x = 0.30;
+  scene.add(group);
+
+  /* one buffer geometry of point sprites */
+  const pos = new Float32Array(N * 3), col = new Float32Array(N * 3),
+        size = new Float32Array(N), pulse = new Float32Array(N),
+        amp = new Float32Array(N), phase = new Float32Array(N), freq = new Float32Array(N);
+
+  const lerp3 = (a, b, t) => [a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, a[2]+(b[2]-a[2])*t];
+  const SLATE = [0.36, 0.40, 0.50], GREEN = [0.26, 0.88, 0.59], RED = [0.94, 0.38, 0.38];
+
+  for (let i = 0; i < N; i++) {
+    const s = stars[i];
+    /* tilted galactic disc, denser toward the core */
+    const a2 = Math.random() * Math.PI * 2;
+    const r  = Math.sqrt(Math.random());
+    pos[i*3]   = Math.cos(a2) * r * 130;
+    pos[i*3+1] = (Math.random() - 0.5) * (1.15 - r) * 60;
+    pos[i*3+2] = Math.sin(a2) * r * 70;
+
+    /* color ← 1d return through the site palette */
+    const t = Math.max(-1, Math.min(1, (s.return_1d_pct || 0) / 2));
+    const c = t >= 0 ? lerp3(SLATE, GREEN, t) : lerp3(SLATE, RED, -t);
+    col[i*3] = c[0]; col[i*3+1] = c[1]; col[i*3+2] = c[2];
+
+    /* size ← market cap (cube-root flattening keeps mid-caps visible) */
+    const mc = mcap[s.isin];
+    size[i] = mc ? 6 + 26 * Math.pow(mc / maxMc, 0.30) : 7;
+
+    /* pulse ← dark-flow share */
+    const dk = +s.dark_pct || 0;
+    amp[i]   = Math.min(1, dk / 12);
+    pulse[i] = 0.7 + Math.min(3.2, dk / 10 * 2.6);
+    phase[i] = Math.random() * Math.PI * 2;
+    freq[i]  = 0.05 + Math.random() * 0.10;     /* slow autonomous drift */
+  }
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute('aColor',   new THREE.BufferAttribute(col, 3));
+  geo.setAttribute('aSize',    new THREE.BufferAttribute(size, 1));
+  geo.setAttribute('aPulse',   new THREE.BufferAttribute(pulse, 1));
+  geo.setAttribute('aAmp',     new THREE.BufferAttribute(amp, 1));
+  geo.setAttribute('aPhase',   new THREE.BufferAttribute(phase, 1));
+  geo.setAttribute('aFreq',    new THREE.BufferAttribute(freq, 1));
+
+  const mat = new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+    uniforms: { uTime: { value: 0 }, uPR: { value: renderer.getPixelRatio() } },
+    vertexShader: `
+      attribute vec3  aColor;
+      attribute float aSize, aPulse, aAmp, aPhase, aFreq;
+      uniform float uTime, uPR;
+      varying vec3 vColor; varying float vGlow;
+      void main() {
+        vec3 p = position + vec3(
+          sin(uTime * aFreq        + aPhase),
+          cos(uTime * aFreq * 1.31 + aPhase * 1.7),
+          sin(uTime * aFreq * 0.73 + aPhase * 2.3)) * 2.8;
+        vec4 mv = modelViewMatrix * vec4(p, 1.0);
+        float pl = 0.5 + 0.5 * sin(uTime * aPulse + aPhase);
+        vGlow  = 0.62 + 0.38 * pl * max(aAmp, 0.12);
+        vColor = aColor;
+        gl_PointSize = aSize * uPR * (210.0 / -mv.z) * (1.0 + 0.22 * pl * aAmp);
+        gl_Position  = projectionMatrix * mv;
+      }`,
+    fragmentShader: `
+      precision mediump float;
+      varying vec3 vColor; varying float vGlow;
+      void main() {
+        vec2  c = gl_PointCoord - 0.5;
+        float d = length(c) * 2.0;
+        if (d > 1.0) discard;
+        float halo = pow(1.0 - d, 2.0);
+        float core = smoothstep(0.26, 0.0, d);
+        vec3 col = vColor * (1.0 + 0.5 * vGlow) + vec3(1.0) * core * 0.35;
+        gl_FragColor = vec4(col, (halo * 0.95 + core) * vGlow);
+      }`,
+  });
+  const points = new THREE.Points(geo, mat);
+  group.add(points);
+
+  function resize() {
+    renderer.setSize(window.innerWidth, window.innerHeight, false);
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  /* ── hover tooltip + click → dossier (events on document: canvas sits
+        behind .page, so we raycast from wherever the cursor is) ── */
+  const tip = document.createElement('div');
+  tip.id = 'constellation-tip';
+  document.body.appendChild(tip);
+  const ray = new THREE.Raycaster();
+  ray.params.Points.threshold = 4;
+  const ndc = new THREE.Vector2();
+  let hover = -1, mx = 0, my = 0;
+
+  function pick(e) {
+    ndc.x = (e.clientX / window.innerWidth) * 2 - 1;
+    ndc.y = -(e.clientY / window.innerHeight) * 2 + 1;
+    ray.setFromCamera(ndc, camera);
+    const hit = ray.intersectObject(points)[0];
+    return hit ? hit.index : -1;
+  }
+  document.addEventListener('mousemove', (e) => {
+    mx = (e.clientX / window.innerWidth - 0.5) * 2;
+    my = (e.clientY / window.innerHeight - 0.5) * 2;
+    if (e.target.closest('a, button, input, nav, .gw')) {
+      if (hover !== -1) { hover = -1; tip.style.display = 'none'; document.body.style.cursor = ''; }
+      return;
+    }
+    const idx = pick(e);
+    if (idx !== hover) {
+      hover = idx;
+      if (idx === -1) { tip.style.display = 'none'; document.body.style.cursor = ''; }
+    }
+    if (hover !== -1) {
+      const s = stars[hover];
+      const chg = s.return_1d_pct;
+      tip.innerHTML =
+        `<span class="ct-tick">${s.ticker || ''}</span> · ${s.issuer || s.isin}` +
+        ` <span class="ct-chg ${chg > 0 ? 'up' : chg < 0 ? 'down' : ''}">${INTEL.fmtPct(chg)}</span>` +
+        `<div class="ct-sub">dark ${INTEL.fmtNum(s.dark_pct, 1)}% · click for dossier</div>`;
+      tip.style.display = 'block';
+      tip.style.left = Math.min(e.clientX + 16, window.innerWidth - 280) + 'px';
+      tip.style.top  = (e.clientY + 18) + 'px';
+      document.body.style.cursor = 'pointer';
+    }
+  }, { passive: true });
+  document.addEventListener('click', (e) => {
+    if (hover === -1 || e.target.closest('a, button, input, nav')) return;
+    location.href = INTEL.selskapHref(stars[hover].isin);
+  });
+
+  /* ── render loop: 60fps budget, rAF paused when tab hidden ── */
+  let raf = 0;
+  const clock = new THREE.Clock();
+  let t = 0;
+  function frame() {
+    raf = requestAnimationFrame(frame);
+    t += Math.min(clock.getDelta(), 0.1);
+    mat.uniforms.uTime.value = t;
+    group.rotation.y += 0.00045;                       /* slow autonomous spin */
+    camera.position.x += (mx * 9  - camera.position.x) * 0.04;   /* parallax */
+    camera.position.y += (-my * 5 + 6 - camera.position.y) * 0.04;
+    camera.lookAt(0, 0, 0);
+    renderer.render(scene, camera);
+  }
+  if (reduce) {
+    /* static rendered frame — no drift, no spin */
+    mat.uniforms.uTime.value = 8;
+    renderer.render(scene, camera);
+  } else {
+    frame();
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) { cancelAnimationFrame(raf); raf = 0; clock.getDelta(); }
+      else if (!raf) frame();
+    });
+  }
+  canvas.classList.add('on');
 })();
 </script>
 
