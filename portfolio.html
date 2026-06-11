@@ -8,21 +8,23 @@
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=Syne:wght@400;600;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+<link rel="stylesheet" href="assets/intel.css">
+<script src="assets/intel.js"></script>
 <style>
+/* Canonical tokens live in assets/intel.css. This block maps this page's
+   legacy names onto the shared system (--text stays one step below
+   --text-bright; intel's translucent accent -dim tokens apply directly). */
 :root {
-  --bg:          #070b12; --bg2: #0d1420; --bg3: #111927;
-  --border:      #1e2d42; --border-glow: #1e3a5f;
-  --text:        #c8d8e8; --text-dim: #5a7a96; --text-bright: #e8f4ff;
-  --amber:       #f5a623; --amber-dim: #7a4e0a;
-  --ice:         #4fc3f7; --ice-dim: #0a3a52;
-  --green:       #43e097; --green-dim: #0a3320;
-  --red:         #f06060; --red-dim: #3a1010;
-  --purple:      #a78bfa;
-  --mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace; --sans: 'Syne', sans-serif; --body: 'DM Sans', sans-serif;
+  --bg:           var(--bg0);
+  --border-glow:  var(--border3);
+  --text:         var(--text2);
+  --text-dim:     var(--text3);
+  --text-bright:  var(--text1);
+  --body:         var(--mono);
 }
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { scroll-behavior: smooth; }
-body { background: var(--bg); color: var(--text); font-family: var(--body); font-size: 14px; line-height: 1.5; min-height: 100vh; overflow-x: hidden; }
+body { background: var(--bg); color: var(--text); font-family: var(--body); font-size: 13px; line-height: 1.5; min-height: 100vh; overflow-x: hidden; }
 body::before { content: ''; position: fixed; inset: 0; background: repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(255,255,255,.012) 2px,rgba(255,255,255,.012) 4px); pointer-events: none; z-index: 1; }
 
 /* ── Ambient background (matrix / equations / tickers) ─────────────────────── */
@@ -83,6 +85,10 @@ header {
 .logo span { color: var(--ice); }
 .logo-sub { font-family: var(--mono); font-size: 10px; color: var(--text-dim); letter-spacing: 2px; text-transform: uppercase; margin-top: 2px; }
 .header-right { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+/* Site nav gets its own full-width row under logo + controls (the three
+   header children otherwise overflow 1440px and wrap unpredictably). */
+header [data-intel-nav] { order: 3; flex-basis: 100%; }
+header [data-intel-nav] .site-nav { justify-content: flex-end; }
 .user-pill { font-family: var(--mono); font-size: 11px; background: var(--ice-dim); border: 1px solid var(--ice); color: var(--ice); border-radius: 20px; padding: 4px 14px; }
 .btn-sm { font-family: var(--mono); font-size: 11px; letter-spacing: 1px; padding: 7px 16px; border-radius: 5px; cursor: pointer; border: none; }
 .btn-add { background: var(--green); color: var(--bg); }
@@ -405,10 +411,10 @@ tbody tr:last-child td { border-bottom: none; }
       <div class="logo">SLENS<span>VIK</span> / PORTFOLIO</div>
       <div class="logo-sub">Personal Investment Intelligence</div>
     </div>
+    <div data-intel-nav></div>
     <div class="header-right">
       <span class="user-pill" id="userPill">—</span>
       <button class="btn-sm btn-add" onclick="openAddModal()">+ ADD POSITION</button>
-      <a href="markedsradar.html" class="btn-sm btn-out" style="text-decoration:none;font-family:var(--mono);font-size:11px;letter-spacing:1px;padding:7px 16px;display:inline-block">MARKEDSRADAR ↗</a>
       <button class="fx-toggle" id="fxToggle" onclick="toggleAmbient()">◉ FX</button>
       <button class="btn-sm btn-out" onclick="logout()">LOGOUT</button>
     </div>
@@ -633,6 +639,10 @@ tbody tr:last-child td { border-bottom: none; }
 
 <script>
 const API_URL = 'https://api.slensvik.com';
+
+/* Shared Chart.js defaults (Plex Mono, slate ticks, bg2 tooltips) — per-chart
+   options below still override where they need to. */
+INTEL.chartDefaults();
 
 const GET = (table, params = '') =>
   fetch(`${API_URL}/${table}?${params}`, { headers: { Accept: 'application/json' } })
@@ -1215,7 +1225,7 @@ function renderHoldings() {
 
     return `<tr onclick="window.open('markedsradar.html','_blank')">
       <td>
-        <div class="ticker-badge">${ticker(isin)}</div>
+        <div class="ticker-badge">${INTEL.tkLink(isin, ticker(isin))}</div>
         <div class="name-small">${p.name || isin.slice(-6)}</div>
         ${suggest}
       </td>
@@ -1702,7 +1712,7 @@ function renderChart() {
     : t === 'WARNING'       ? '#f06060'
     : t === 'EARNINGS_CALL' ? '#4fc3f7'
     : t === 'RESULTS'       ? '#a78bfa'
-    : t === 'AGM'           ? '#c8d8e8'
+    : t === 'AGM'           ? '#e8eef7'
                             : '#a78bfa';
   const evGlyph = t => EVT_GLYPH_P[t] || '▣';
   const evDedup = new Map();
@@ -1729,7 +1739,7 @@ function renderChart() {
         content: evGlyph(type) + ' ' + tkList,
         color: color,
         font: { family: 'IBM Plex Mono, monospace', size: 10, weight: '500' },
-        backgroundColor: 'rgba(13,20,32,0.92)',
+        backgroundColor: 'rgba(17,22,31,0.92)',
         borderColor: color, borderWidth: 1, borderRadius: 2,
         padding: { x: 5, y: 3 },
         yAdjust: -4,
@@ -1819,7 +1829,7 @@ function renderChart() {
       datasets.push({
         label: 'OSE Market (cap-wtd)',
         data: benchSeries,
-        borderColor: '#5a7a96', borderWidth: 1.6, borderDash: [3, 3],
+        borderColor: '#5a6377', borderWidth: 1.6, borderDash: [3, 3],
         fill: false, pointRadius: 0, tension: 0.25, spanGaps: true,
         stack: null,
       });
@@ -1833,10 +1843,10 @@ function renderChart() {
       responsive: true,
       interaction: { mode: 'index', intersect: false },
       plugins: {
-        legend: { labels: { color: '#5a7a96', font: { family: 'IBM Plex Mono, monospace', size: 10 }, boxWidth: 12 } },
+        legend: { labels: { color: '#5a6377', font: { family: 'IBM Plex Mono, monospace', size: 10 }, boxWidth: 12 } },
         tooltip: {
-          backgroundColor: '#0d1420', borderColor: '#1e2d42', borderWidth: 1,
-          titleColor: '#c8d8e8', bodyColor: '#c8d8e8',
+          backgroundColor: '#11161f', borderColor: 'rgba(255,255,255,0.12)', borderWidth: 1,
+          titleColor: '#e8eef7', bodyColor: '#a4adbf',
           callbacks: {
             label: c => ` ${c.dataset.label}: NOK ${(c.raw||0).toLocaleString('nb-NO', { minimumFractionDigits: dp, maximumFractionDigits: dp })}`,
           },
@@ -1846,17 +1856,17 @@ function renderChart() {
       scales: {
         x: {
           stacked: chartMode === 'stacked' && isPortfolio,
-          ticks: { color: '#5a7a96', font: { family: 'IBM Plex Mono, monospace', size: 9 }, maxTicksLimit: 14 },
-          grid: { color: '#1e2d42' },
+          ticks: { color: '#5a6377', font: { family: 'IBM Plex Mono, monospace', size: 9 }, maxTicksLimit: 14 },
+          grid: { color: 'rgba(255,255,255,0.06)' },
         },
         y: {
           stacked: chartMode === 'stacked' && isPortfolio,
           afterFit: s => { s.width = 78; },
           ticks: {
-            color: '#5a7a96', font: { family: 'IBM Plex Mono, monospace', size: 9 },
+            color: '#5a6377', font: { family: 'IBM Plex Mono, monospace', size: 9 },
             callback: v => 'NOK ' + v.toLocaleString('nb-NO', { minimumFractionDigits: dp, maximumFractionDigits: dp }),
           },
-          grid: { color: '#1e2d42' },
+          grid: { color: 'rgba(255,255,255,0.06)' },
         },
       },
     },
@@ -1962,7 +1972,7 @@ function renderIntelligence() {
 
     return `<div class="intel-card">
       <div class="intel-card-header">
-        <span class="intel-ticker">${tk}</span>
+        <span class="intel-ticker">${INTEL.tkLink(isin, tk)}</span>
         ${biasText ? `<span style="font-family:var(--mono);font-size:10px;color:${biasColor}">${biasText}</span>` : ''}
       </div>
       <div class="intel-signals">${sigHTML}${catHTML}${whaleHTML}</div>
@@ -2118,14 +2128,14 @@ function renderWaterfall() {
       plugins: {
         legend: { display: false },
         tooltip: {
-          backgroundColor: '#0d1420', borderColor: '#1e2d42', borderWidth: 1,
-          titleColor: '#c8d8e8', bodyColor: '#c8d8e8',
+          backgroundColor: '#11161f', borderColor: 'rgba(255,255,255,0.12)', borderWidth: 1,
+          titleColor: '#e8eef7', bodyColor: '#a4adbf',
           callbacks: { label: c => { const d = c.raw[1] - c.raw[0]; return ' ' + (d >= 0 ? '+' : '') + 'NOK ' + d.toLocaleString('nb-NO', { maximumFractionDigits: 0 }); } },
         },
       },
       scales: {
-        x: { ticks: { color: '#5a7a96', font: { family: 'IBM Plex Mono, monospace', size: 8 }, callback: v => (v / 1000).toFixed(0) + 'k' }, grid: { color: '#1e2d42' } },
-        y: { ticks: { color: '#9fb6cc', font: { family: 'IBM Plex Mono, monospace', size: 9 } }, grid: { display: false } },
+        x: { ticks: { color: '#5a6377', font: { family: 'IBM Plex Mono, monospace', size: 8 }, callback: v => (v / 1000).toFixed(0) + 'k' }, grid: { color: 'rgba(255,255,255,0.06)' } },
+        y: { ticks: { color: '#a4adbf', font: { family: 'IBM Plex Mono, monospace', size: 9 } }, grid: { display: false } },
       },
     },
   });
@@ -2376,14 +2386,14 @@ function renderDrawdown(labels, values) {
       plugins: {
         legend: { display: false },
         tooltip: {
-          backgroundColor: '#0d1420', borderColor: '#1e2d42', borderWidth: 1,
-          titleColor: '#c8d8e8', bodyColor: '#c8d8e8',
+          backgroundColor: '#11161f', borderColor: 'rgba(255,255,255,0.12)', borderWidth: 1,
+          titleColor: '#e8eef7', bodyColor: '#a4adbf',
           callbacks: { label: c => ' ' + (c.raw ?? 0).toFixed(2) + '%' },
         },
       },
       scales: {
         x: { ticks: { display: false }, grid: { display: false } },
-        y: { max: 0, afterFit: s => { s.width = 78; }, ticks: { color: '#5a7a96', font: { family: 'IBM Plex Mono, monospace', size: 8 }, maxTicksLimit: 4, callback: v => v + '%' }, grid: { color: 'rgba(30,45,66,0.5)' } },
+        y: { max: 0, afterFit: s => { s.width = 78; }, ticks: { color: '#5a6377', font: { family: 'IBM Plex Mono, monospace', size: 8 }, maxTicksLimit: 4, callback: v => v + '%' }, grid: { color: 'rgba(255,255,255,0.05)' } },
       },
     },
   });
@@ -2402,7 +2412,7 @@ function renderSectorRing() {
   const entries = Object.entries(sectorTotals).sort((a,b) => b[1] - a[1]);
   document.getElementById('sectorCount').textContent = entries.length ? `${entries.length} sectors` : 'no data';
 
-  const PAL = ['#4fc3f7','#f5a623','#43e097','#a78bfa','#f06060','#ffcd6b','#7fdfff','#c39fff','#ff97a0','#bfeb83','#5a7a96'];
+  const PAL = ['#4fc3f7','#f5a623','#43e097','#a78bfa','#f06060','#ffcd6b','#7fdfff','#c39fff','#ff97a0','#bfeb83','#5a6377'];
   const legend = entries.map(([s, v], i) => {
     const pct = total ? (v / total * 100) : 0;
     return `<div class="sector-row-li">
@@ -2425,7 +2435,7 @@ function renderSectorRing() {
       datasets: [{
         data: entries.map(([_, v]) => v),
         backgroundColor: entries.map((_, i) => PAL[i % PAL.length]),
-        borderColor: '#0d1420', borderWidth: 2,
+        borderColor: '#0b0f17', borderWidth: 2,
       }],
     },
     options: {
@@ -2490,7 +2500,7 @@ function renderDividends() {
         const sep = direct && yoc ? ' · ' : '';
         return `<div class="div-row">
           <span class="div-date">◇ ${d.date}</span>
-          <span class="div-ticker">${d.ticker}</span>
+          <span class="div-ticker">${INTEL.tkLink(d.isin, d.ticker)}</span>
           <span class="div-title">${d.title}</span>
           <span class="div-yield">${direct}${sep}${yoc}</span>
         </div>`;

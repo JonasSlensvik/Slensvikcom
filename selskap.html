@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Selskap · Dossier · Slensvik</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=Syne:wght@500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link rel="stylesheet" href="assets/intel.css">
+<script src="assets/intel.js"></script>
+<style>
+  /* Design tokens live in assets/intel.css (shared design system). */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background:var(--bg0); color:var(--text1); font-family:var(--mono); min-height:100vh; -webkit-font-smoothing:antialiased; }
+  body::before {
+    content:''; position:fixed; inset:0; pointer-events:none; z-index:0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.022) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.022) 1px, transparent 1px);
+    background-size:44px 44px;
+    mask-image:radial-gradient(ellipse 90% 60% at 50% 0%, black 0%, transparent 75%);
+    -webkit-mask-image:radial-gradient(ellipse 90% 60% at 50% 0%, black 0%, transparent 75%);
+  }
+  .topbar { position:relative; z-index:2; display:flex; align-items:center; gap:14px; padding:18px 36px; border-bottom:1px solid var(--border); flex-wrap:wrap; }
+  .crumb { font-family:var(--mono); font-size:11px; letter-spacing:.18em; text-transform:uppercase; color:var(--text2); white-space:nowrap; }
+  .crumb .glyph { color:var(--amber); margin-right:8px; }
+
+  /* ── ticker switcher ── */
+  .tk-search { position:relative; margin-left:auto; }
+  .tk-search input {
+    font-family:var(--mono); font-size:11px; letter-spacing:.08em;
+    background:var(--bg1); color:var(--text1);
+    border:1px solid var(--border2); border-radius:var(--radius);
+    padding:7px 12px 7px 30px; width:280px; outline:none;
+    transition:border-color .15s, box-shadow .15s;
+  }
+  .tk-search input:focus { border-color:var(--ice); box-shadow:var(--glow-ice); }
+  .tk-search input::placeholder { color:var(--text4); }
+  .tk-search::before {
+    content:'⌕'; position:absolute; left:10px; top:50%; transform:translateY(-54%);
+    color:var(--text3); font-size:14px; pointer-events:none;
+  }
+
+  main { position:relative; z-index:1; max-width:1340px; margin:0 auto; padding:30px 28px 80px; }
+
+  /* ── hero ── */
+  .hero { display:flex; align-items:flex-end; justify-content:space-between; gap:24px; flex-wrap:wrap; margin-bottom:20px; }
+  .hero h1 { font-family:var(--sans); font-weight:700; font-size:clamp(26px,3.4vw,42px); line-height:1.02; letter-spacing:-0.02em; }
+  .hero-idrow { display:flex; align-items:center; gap:10px; margin-top:10px; flex-wrap:wrap; }
+  .hero-tick { font-family:var(--mono); font-size:13px; font-weight:600; letter-spacing:.14em; color:var(--amber); }
+  .hero-isin { font-family:var(--mono); font-size:10px; letter-spacing:.1em; color:var(--text3); }
+  .hero-price { text-align:right; min-width:230px; }
+  .hp-val { font-family:var(--mono); font-size:40px; font-weight:600; line-height:1; font-variant-numeric:tabular-nums; letter-spacing:-0.02em; }
+  .hp-chg { font-family:var(--mono); font-size:14px; margin-top:6px; font-variant-numeric:tabular-nums; }
+  .hp-chg.up { color:var(--green); } .hp-chg.down { color:var(--red); }
+  .hp-meta { font-family:var(--mono); font-size:9px; letter-spacing:.1em; color:var(--text4); margin-top:6px; display:flex; gap:8px; justify-content:flex-end; align-items:center; }
+
+  .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .grid-2-w { display:grid; grid-template-columns:1.35fr 1fr; gap:14px; }
+  @media (max-width:1080px){ .grid-2,.grid-2-w{ grid-template-columns:1fr; } }
+  .sec { margin-top:14px; }
+
+  .panel { padding:18px 20px 16px; }
+  .panel-head { margin-bottom:12px; }
+
+  /* ── chart layer toggles ── */
+  .layer-bar { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:10px; }
+  .layer-btn {
+    font-family:var(--mono); font-size:9px; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--text3); background:transparent; border:1px solid var(--border2);
+    border-radius:var(--radius); padding:4px 10px; cursor:pointer;
+    display:inline-flex; align-items:center; gap:6px; transition:all .15s;
+  }
+  .layer-btn .dot { width:7px; height:7px; border-radius:2px; background:var(--text4); }
+  .layer-btn.on { color:var(--text1); border-color:var(--border3); background:var(--bg2); }
+  .layer-btn.on .dot.sig { background:var(--purple); }
+  .layer-btn.on .dot.evt { background:var(--amber); }
+  .layer-btn.on .dot.ins { background:var(--green); }
+  .layer-btn:hover { border-color:var(--border3); }
+  .range-seg { display:flex; border:1px solid var(--border2); border-radius:var(--radius); overflow:hidden; margin-left:auto; }
+  .range-seg button {
+    font-family:var(--mono); font-size:9px; letter-spacing:.12em; padding:4px 12px;
+    background:transparent; color:var(--text3); border:none; border-right:1px solid var(--border2); cursor:pointer;
+  }
+  .range-seg button:last-child { border-right:none; }
+  .range-seg button.active { color:var(--amber); background:var(--amber-dim); }
+
+  /* legend for marker glyphs */
+  .mark-legend { display:flex; gap:14px; flex-wrap:wrap; margin-top:10px; font-family:var(--mono); font-size:9px; letter-spacing:.08em; color:var(--text3); }
+  .mark-legend i { font-style:normal; margin-right:4px; }
+
+  /* ── bias gauge ── */
+  .gauge { margin:6px 0 2px; }
+  .gauge-bar { display:flex; height:14px; border-radius:3px; overflow:hidden; background:var(--bg3); }
+  .gauge-buy  { background:linear-gradient(90deg, rgba(67,224,151,.55), rgba(67,224,151,.9)); }
+  .gauge-sell { background:linear-gradient(90deg, rgba(240,96,96,.9), rgba(240,96,96,.55)); }
+  .gauge-lbl { display:flex; justify-content:space-between; font-size:9px; letter-spacing:.1em; color:var(--text3); margin-top:5px; }
+  .gauge-lbl b { font-weight:500; }
+  .gauge-lbl .b { color:var(--green); } .gauge-lbl .s { color:var(--red); }
+
+  .mini-kpis { display:grid; grid-template-columns:repeat(3,1fr); gap:1px; background:var(--border); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin-bottom:12px; }
+  .mini-kpi { background:var(--bg2); padding:9px 12px; }
+  .mini-kpi .l { font-size:8.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--text3); margin-bottom:4px; }
+  .mini-kpi .v { font-size:15px; font-weight:600; color:var(--text1); font-variant-numeric:tabular-nums; }
+  .mini-kpi .v.up { color:var(--green); } .mini-kpi .v.down { color:var(--red); }
+  .mini-kpi .s { font-size:8.5px; color:var(--text4); margin-top:2px; }
+
+  /* ── events timeline ── */
+  .tl { position:relative; padding-left:18px; max-height:430px; overflow-y:auto; }
+  .tl::before { content:''; position:absolute; left:5px; top:4px; bottom:4px; width:1px; background:var(--border2); }
+  .tl-item { position:relative; padding:8px 0 10px; border-bottom:1px dashed var(--border); }
+  .tl-item:last-child { border-bottom:none; }
+  .tl-item::before {
+    content:''; position:absolute; left:-17px; top:14px; width:7px; height:7px;
+    border-radius:50%; background:var(--bg0); border:1.5px solid var(--text3);
+  }
+  .tl-item.future::before { border-color:var(--amber); background:var(--amber-dim); }
+  .tl-item.today::before { border-color:var(--green); background:var(--green); box-shadow:var(--glow-green); }
+  .tl-top { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .tl-date { font-size:10px; color:var(--text2); font-variant-numeric:tabular-nums; }
+  .tl-days { font-size:9px; letter-spacing:.06em; color:var(--text4); }
+  .tl-days.soon { color:var(--amber); }
+  .tl-title { font-size:10.5px; color:var(--text3); margin-top:4px; line-height:1.5; }
+  .tl-sig { margin-top:5px; display:flex; gap:5px; flex-wrap:wrap; }
+
+  /* ── empty / pending states ── */
+  .empty-note {
+    font-family:var(--mono); font-size:10px; letter-spacing:.1em; color:var(--text3);
+    text-align:center; padding:28px 10px; border:1px dashed var(--border); border-radius:var(--radius); background:var(--bg2);
+  }
+  .pending-note {
+    font-family:var(--mono); font-size:10px; letter-spacing:.1em; color:var(--amber);
+    text-align:center; padding:28px 10px; border:1px dashed rgba(245,166,35,.45); border-radius:var(--radius);
+    background:var(--amber-dim); line-height:1.8;
+  }
+  .pending-note .sub { color:var(--text3); display:block; letter-spacing:.05em; }
+
+  tr.muted td { opacity:.45; }
+  .intel-table td.nw { white-space:nowrap; }
+  .scrollwrap { overflow-x:auto; }
+  .desc-clip { max-width:340px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+  footer { font-family:var(--mono); font-size:9px; letter-spacing:.1em; color:var(--text4); text-align:center; padding:30px 0 10px; }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <span class="crumb"><span class="glyph">◈</span>SELSKAP · INTELLIGENCE DOSSIER</span>
+  <div data-intel-nav></div>
+  <div class="tk-search">
+    <input id="tkInput" list="tkList" placeholder="SEARCH TICKER / NAME …" autocomplete="off" spellcheck="false">
+    <datalist id="tkList"></datalist>
+  </div>
+</header>
+
+<main>
+
+  <!-- HERO -->
+  <div class="hero">
+    <div>
+      <h1 id="hName"><span class="skeleton" style="display:inline-block;width:320px;height:38px"></span></h1>
+      <div class="hero-idrow">
+        <span class="hero-tick" id="hTicker">—</span>
+        <span class="badge badge-ice" id="hVenue">—</span>
+        <span class="badge badge-dim" id="hCcy">—</span>
+        <span class="hero-isin" id="hIsin">—</span>
+      </div>
+    </div>
+    <div class="hero-price">
+      <div class="hp-val" id="hPrice">—</div>
+      <div class="hp-chg" id="hChg">—</div>
+      <div class="hp-meta"><span id="hFid"></span><span id="hAsOf">—</span></div>
+    </div>
+  </div>
+
+  <!-- KPI STRIP -->
+  <div class="kpi-strip" id="kpiStrip">
+    <div class="kpi"><div class="kpi-label">1D Return</div><div class="kpi-value" id="k1d">—</div><div class="kpi-sub">vs prev close</div></div>
+    <div class="kpi"><div class="kpi-label">5D Return</div><div class="kpi-value" id="k5d">—</div><div class="kpi-sub">adjusted closes</div></div>
+    <div class="kpi"><div class="kpi-label">Dark-Flow Bias</div><div class="kpi-value" id="kDark">—</div><div class="kpi-sub" id="kDarkSub">—</div></div>
+    <div class="kpi"><div class="kpi-label">Short Interest</div><div class="kpi-value" id="kShort">—</div><div class="kpi-sub" id="kShortSub">of free float</div></div>
+    <div class="kpi"><div class="kpi-label">Insider 30D Net</div><div class="kpi-value" id="kIns">—</div><div class="kpi-sub" id="kInsSub">parsed newsweb flow</div></div>
+    <div class="kpi"><div class="kpi-label">Next Event</div><div class="kpi-value" id="kEvt">—</div><div class="kpi-sub" id="kEvtSub">—</div></div>
+  </div>
+
+  <!-- PRICE CHART -->
+  <div class="sec">
+    <div class="panel">
+      <div class="panel-head">
+        <span class="panel-title"><span class="glyph">◢</span>Price · Annotated Tape</span>
+        <span class="panel-meta" id="pcMeta">adjusted daily closes</span>
+      </div>
+      <div class="layer-bar">
+        <button class="layer-btn on" id="lyrSig"><span class="dot sig"></span>SIGNALS</button>
+        <button class="layer-btn on" id="lyrEvt"><span class="dot evt"></span>EVENTS</button>
+        <button class="layer-btn on" id="lyrIns"><span class="dot ins"></span>INSIDERS</button>
+        <div class="range-seg" id="rangeSeg">
+          <button data-d="63">3M</button>
+          <button data-d="126" class="active">6M</button>
+          <button data-d="0">ALL</button>
+        </div>
+      </div>
+      <div class="chart-frame" style="height:400px"><canvas id="priceCanvas"></canvas></div>
+      <div class="mark-legend">
+        <span><i style="color:var(--purple)">◆</i>SMART SIGNAL (hover for type + t5 hit-rate)</span>
+        <span><i style="color:var(--amber)">│</i>CORPORATE EVENT</span>
+        <span><i style="color:var(--green)">▲</i>INSIDER BUY</span>
+        <span><i style="color:var(--red)">▼</i>INSIDER SELL (size ∝ value)</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- DARK FLOW + INSIDERS -->
+  <div class="sec grid-2-w">
+    <div class="panel">
+      <div class="panel-head">
+        <span class="panel-title"><span class="glyph">◍</span>Dark Flow</span>
+        <span class="panel-meta" id="dfMeta">—</span>
+      </div>
+      <div id="dfBody">
+        <div class="skeleton" style="height:220px"></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-head">
+        <span class="panel-title"><span class="glyph">◉</span>Insider Activity</span>
+        <span class="panel-meta" id="insMeta">newsweb PDMR parse</span>
+      </div>
+      <div id="insBody">
+        <div class="skeleton" style="height:220px"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SHORT INTEREST + EVENTS -->
+  <div class="sec grid-2">
+    <div class="panel">
+      <div class="panel-head">
+        <span class="panel-title"><span class="glyph">◣</span>Short Interest</span>
+        <span class="panel-meta" id="siMeta">finanstilsynet register</span>
+      </div>
+      <div id="siBody"><div class="skeleton" style="height:200px"></div></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head">
+        <span class="panel-title"><span class="glyph">◷</span>Event Timeline</span>
+        <span class="panel-meta" id="evMeta">newsweb calendar</span>
+      </div>
+      <div id="evBody"><div class="skeleton" style="height:200px"></div></div>
+    </div>
+  </div>
+
+  <!-- SIGNALS TABLE -->
+  <div class="sec">
+    <div class="panel">
+      <div class="panel-head">
+        <span class="panel-title"><span class="glyph">◬</span>Smart Signals · Recent Fires</span>
+        <span class="panel-meta" id="sgMeta">dark-pool microstructure engine</span>
+      </div>
+      <div id="sgBody"><div class="skeleton" style="height:160px"></div></div>
+    </div>
+  </div>
+
+  <footer>SLENSVIK INTELLIGENCE · EOD TAPE T+0 · NOT INVESTMENT ADVICE</footer>
+</main>
+
+<script>
+(async function () {
+'use strict';
+const { safeGet, fmtNum, fmtPct, fmtCompact, chartDefaults } = INTEL;
+chartDefaults();
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => s == null ? '' : String(s)
+  .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+const C = {
+  ice:'#4fc3f7', green:'#43e097', red:'#f06060', amber:'#f5a623',
+  purple:'#a78bfa', text3:'#5a6377',
+};
+
+/* signal-type glyph styles for chart markers + badges */
+const SIG_STYLE = {
+  DARK_ACCUMULATION: { style:'circle',   color:C.green,  badge:'badge-green'  },
+  DARK_DISTRIBUTION: { style:'circle',   color:C.red,    badge:'badge-red'    },
+  EOD_SWEEP:         { style:'rectRot',  color:C.purple, badge:'badge-purple' },
+  LARGE_NOTIONAL:    { style:'rect',     color:C.ice,    badge:'badge-ice'    },
+  FLOOR_BREAK:       { style:'rectRot',  color:C.red,    badge:'badge-red'    },
+  CEILING_BREAK:     { style:'rectRot',  color:C.green,  badge:'badge-green'  },
+};
+const sigStyle = (t) => SIG_STYLE[t] || { style:'rectRot', color:C.purple, badge:'badge-purple' };
+
+const today = new Date(); today.setHours(0,0,0,0);
+const daysTo = (d) => d ? Math.round((new Date(d + 'T00:00:00') - today) / 864e5) : null;
+const dShort = (d) => d ? d.slice(5).replace('-', '·') : '—';
+const fmtVal = (v, ccy) => v == null ? '—' :
+  ((v < 0 ? '−' : '+') + fmtCompact(Math.abs(v)) + ' ' + (ccy || 'NOK'));
+
+function pendingNote(el, feed) {
+  el.innerHTML = `<div class="pending-note">⟳ ${feed} FEED PROVISIONING
+    <span class="sub">endpoint not yet in API schema cache — lights up automatically on next reload</span></div>`;
+}
+function emptyNote(el, msg) { el.innerHTML = `<div class="empty-note">${msg}</div>`; }
+
+/* ── resolve ISIN: ?isin= param, else top conviction name ── */
+let ISIN = new URLSearchParams(location.search).get('isin');
+if (!ISIN) {
+  const top = await safeGet('conviction?select=isin&order=conviction.desc&limit=1');
+  ISIN = (top && top[0] && top[0].isin) || 'NO0010096985'; // Equinor fallback
+}
+const Q = encodeURIComponent(ISIN);
+
+/* ── parallel fetch everything ── */
+const [
+  intel, lastPx, instr, closesAdj, ohlcv, signals, sigPerf, darkHist, whales,
+  shortHist, shortHolders, eventsRaw, proximity, insiderTrades, insiderIntel,
+  instrAll,
+] = await Promise.all([
+  safeGet(`ticker_intel?isin=eq.${Q}`),                                             // NEW (may 404)
+  safeGet(`latest_price?isin=eq.${Q}`),
+  safeGet(`instruments?isin=eq.${Q}`),
+  safeGet(`daily_close_adj?isin=eq.${Q}&order=trade_date.asc`),
+  safeGet(`price_ohlcv?isin=eq.${Q}&select=ts,close&order=ts.asc&limit=600`),
+  safeGet(`smart_signals?isin=eq.${Q}&order=trade_date.desc&limit=60`),
+  safeGet('signal_performance'),
+  safeGet(`dark_flow_summary?isin=eq.${Q}&order=trade_date.desc&limit=60`),
+  safeGet(`whale_alerts?isin=eq.${Q}&order=trading_time.desc&limit=10`),
+  safeGet(`short_interest?isin=eq.${Q}&order=position_date.asc`),
+  safeGet(`short_interest_holders?isin=eq.${Q}&order=position_date.desc,short_pct.desc&limit=40`),
+  safeGet(`corporate_events?isin=eq.${Q}&order=event_date.desc&limit=40`),
+  safeGet(`signal_event_proximity?isin=eq.${Q}&order=trade_date.desc&limit=80`),
+  safeGet(`insider_trades?isin=eq.${Q}&order=trade_date.desc.nullslast&limit=30`),  // NEW (may 404)
+  safeGet(`insider_intel?isin=eq.${Q}`),                                            // NEW (may 404)
+  safeGet('instruments?select=isin,ticker,name&order=ticker.asc&limit=600'),
+]);
+
+/* merge price history: euronext tape (longer) + dividend/split-adjusted closes
+   (authoritative where present) into one daily series */
+const closes = (() => {
+  const byDate = new Map();
+  (ohlcv || []).forEach(r => byDate.set(r.ts.slice(0, 10), { trade_date: r.ts.slice(0, 10), adj_close: r.close }));
+  (closesAdj || []).forEach(r => byDate.set(r.trade_date, { trade_date: r.trade_date, adj_close: r.adj_close != null ? r.adj_close : r.close }));
+  return [...byDate.values()].sort((a, b) => a.trade_date < b.trade_date ? -1 : 1);
+})();
+
+/* newsweb publishes most messages twice (NO + EN) — collapse to one per
+   (event_date, event_type) for the timeline / chart ribbons */
+const events = (() => {
+  const seen = new Map();
+  (eventsRaw || []).forEach(e => {
+    const k = `${e.event_date}|${e.event_type}`;
+    if (!seen.has(k)) seen.set(k, e);
+  });
+  return [...seen.values()];
+})();
+
+const ti  = intel && intel[0] || null;
+const lp  = lastPx && lastPx[0] || null;
+const ins = instr && instr[0] || null;
+const ii  = insiderIntel && insiderIntel[0] || null;
+const perfByType = {};
+(sigPerf || []).forEach(p => perfByType[p.signal_type] = p);
+
+/* ══ ticker switcher ══ */
+if (instrAll && instrAll.length) {
+  $('tkList').innerHTML = instrAll.map(r =>
+    `<option value="${esc(r.ticker)} — ${esc(r.name)}" data-isin="${esc(r.isin)}"></option>`).join('');
+  const jump = () => {
+    const v = $('tkInput').value.trim().toUpperCase();
+    if (!v) return;
+    const hit = instrAll.find(r =>
+      `${r.ticker} — ${r.name}`.toUpperCase() === v || r.ticker === v ||
+      r.isin === v || (r.name || '').toUpperCase() === v);
+    if (hit && hit.isin !== ISIN) location.search = '?isin=' + encodeURIComponent(hit.isin);
+  };
+  $('tkInput').addEventListener('change', jump);
+  $('tkInput').addEventListener('keydown', e => { if (e.key === 'Enter') jump(); });
+}
+
+/* ══ HERO + KPI strip (ticker_intel preferred, graceful fallback) ══ */
+const name   = (ti && ti.issuer)  || (ins && ins.name)   || ISIN;
+const ticker = (ti && ti.ticker)  || (ins && ins.ticker) || '—';
+const venue  = (ti && ti.venue)   || (ins && ins.market) || '—';
+const ccy    = (ti && ti.currency)|| (ins && ins.currency) || 'NOK';
+document.title = `${ticker} · ${name} · Slensvik`;
+$('hName').textContent  = name;
+$('hTicker').textContent = ticker;
+$('hVenue').textContent  = venue;
+$('hCcy').textContent    = ccy;
+$('hIsin').textContent   = ISIN;
+
+const px    = ti ? ti.price : (lp && lp.price);
+const fid   = ti ? ti.price_fidelity : (lp && lp.fidelity);
+const asOf  = ti ? ti.price_as_of : (lp && lp.as_of);
+let r1d = ti ? ti.return_1d_pct : (lp && lp.day_change_pct);
+let r5d = ti ? ti.return_5d_pct : null;
+if (r5d == null && closes && closes.length >= 6) {
+  const a = closes[closes.length - 6].adj_close, b = closes[closes.length - 1].adj_close;
+  if (a) r5d = (b / a - 1) * 100;
+}
+$('hPrice').textContent = px != null ? fmtNum(px, px < 10 ? 3 : 2) : '—';
+$('hChg').textContent   = r1d != null ? `${fmtPct(r1d)} · 1D` : '—';
+$('hChg').className     = 'hp-chg ' + (r1d > 0 ? 'up' : r1d < 0 ? 'down' : '');
+$('hFid').innerHTML     = fid === 'live'
+  ? '<span class="pill pill-live">LIVE · 15M DELAY</span>'
+  : '<span class="pill pill-neu">EOD</span>';
+$('hAsOf').textContent  = asOf ? asOf.replace('T', ' ').slice(0, 16) : '—';
+
+const setKpi = (id, v, dirVal) => {
+  $(id).textContent = v;
+  const cell = $(id).closest('.kpi');
+  cell.classList.remove('up','down');
+  if (dirVal > 0) cell.classList.add('up'); else if (dirVal < 0) cell.classList.add('down');
+};
+setKpi('k1d', fmtPct(r1d), r1d);
+setKpi('k5d', fmtPct(r5d), r5d);
+
+const dfLatest = ti || (darkHist && darkHist[0]) || null;
+if (dfLatest && dfLatest.dark_side_bias) {
+  setKpi('kDark', dfLatest.dark_side_bias, dfLatest.dark_side_bias === 'BUY' ? 1 : -1);
+  $('kDarkSub').textContent = `dark ${fmtNum(dfLatest.dark_pct, 1)}% · ${ti ? (ti.bias_confirmed ? 'confirmed' : 'unconfirmed') : (dfLatest.bias_confirmed ? 'confirmed' : 'unconfirmed')}`;
+} else { $('kDark').textContent = '—'; $('kDarkSub').textContent = 'no dark prints'; }
+
+const shCur = ti ? { pct: ti.short_pct, date: ti.short_date, chg: ti.short_pct_chg }
+  : (shortHist && shortHist.length
+      ? { pct: shortHist[shortHist.length-1].short_pct, date: shortHist[shortHist.length-1].position_date, chg: null }
+      : null);
+if (shCur && shCur.pct != null) {
+  setKpi('kShort', fmtNum(shCur.pct, 2) + '%', shCur.chg != null ? -shCur.chg : 0);
+  $('kShortSub').textContent = (shCur.chg != null ? `Δ ${fmtPct(shCur.chg)} · ` : '') + (shCur.date || '');
+} else { $('kShort').textContent = '< 0.5%'; $('kShortSub').textContent = 'below disclosure threshold'; }
+
+const insNet = ti ? ti.insider_net_value_30d : (ii ? ii.net_value_30d : null);
+if (insNet != null) {
+  setKpi('kIns', fmtVal(insNet, ccy), insNet);
+  $('kInsSub').textContent = `${(ti ? ti.insider_trades_30d : ii.trades_30d) || 0} trades · 30d`;
+} else if (insiderTrades === null && !ti) {
+  $('kIns').textContent = '…'; $('kInsSub').textContent = 'feed provisioning';
+} else { $('kIns').textContent = '—'; $('kInsSub').textContent = 'no parsed trades 30d'; }
+
+const nxtEvtList = (events || []).filter(e => daysTo(e.event_date) >= 0)
+  .sort((a, b) => a.event_date < b.event_date ? -1 : 1);
+const nxtEvt = ti && ti.next_event_date
+  ? { event_type: ti.next_event_type, event_date: ti.next_event_date, dt: ti.days_to_event }
+  : (nxtEvtList[0] ? { event_type: nxtEvtList[0].event_type, event_date: nxtEvtList[0].event_date, dt: daysTo(nxtEvtList[0].event_date) } : null);
+if (nxtEvt) {
+  $('kEvt').textContent = nxtEvt.dt === 0 ? 'TODAY' : `T−${nxtEvt.dt}`;
+  $('kEvtSub').textContent = `${nxtEvt.event_type || ''} · ${nxtEvt.event_date}`;
+} else { $('kEvt').textContent = '—'; $('kEvtSub').textContent = 'nothing scheduled'; }
+
+/* ══════════ PRICE CHART — closes + signal/event/insider overlays ══════════ */
+const evtLinesPlugin = {
+  id: 'evtLines',
+  afterDatasetsDraw(chart) {
+    const evs = chart.options.plugins.evtLines && chart.options.plugins.evtLines.events;
+    if (!evs || !evs.length) return;
+    const { ctx, chartArea: ca, scales: { x } } = chart;
+    ctx.save();
+    ctx.font = "8px 'IBM Plex Mono', monospace";
+    const drawn = [];                       // occupied label spans per row
+    const labelH = 11, rowGap = 12;
+    evs.slice().sort((a, b) => a.idx - b.idx).forEach(e => {
+      const px = x.getPixelForValue(e.idx);
+      if (px < ca.left - 1 || px > ca.right + 1) return;
+      const tag = e.label.slice(0, 9);
+      const tw = ctx.measureText(tag).width + 8;
+      let left = Math.min(Math.max(px - tw / 2, ca.left), ca.right - tw), row = 0;
+      while (row < 3 && drawn.some(d => d.row === row && left < d.right + 3)) row++;
+      const top = ca.top + row * rowGap;
+      drawn.push({ right: left + tw, row });
+      ctx.strokeStyle = 'rgba(245,166,35,0.34)';
+      ctx.setLineDash([3, 4]); ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(px, top + labelH + 1); ctx.lineTo(px, ca.bottom); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = 'rgba(245,166,35,0.14)';
+      ctx.fillRect(left, top, tw, labelH);
+      ctx.fillStyle = '#f5a623';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(tag, left + tw / 2, top + labelH / 2);
+    });
+    ctx.restore();
+  }
+};
+
+let priceChart = null;
+const layers = { sig: true, evt: true, ins: true };
+let rangeDays = 126;
+
+function nearestIdx(labels, dateStr) {
+  if (!dateStr) return -1;
+  let lo = 0, hi = labels.length - 1, best = -1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    if (labels[mid] <= dateStr) { best = mid; lo = mid + 1; } else hi = mid - 1;
+  }
+  return best;
+}
+
+function renderPriceChart() {
+  const all = closes || [];
+  if (!all.length) {
+    $('priceCanvas').closest('.chart-frame').innerHTML =
+      '<div class="empty-note" style="margin-top:120px">NO PRICE HISTORY FOR THIS ISIN</div>';
+    return;
+  }
+  const rows = rangeDays > 0 ? all.slice(-rangeDays) : all;
+  const labels = rows.map(r => r.trade_date);
+  const px = rows.map(r => r.adj_close);
+  $('pcMeta').textContent = `${labels[0]} → ${labels[labels.length-1]} · ${labels.length} sessions · adjusted`;
+
+  /* signals scatter */
+  const sigPts = [];
+  if (layers.sig) (signals || []).forEach(s => {
+    const i = nearestIdx(labels, s.trade_date);
+    if (i < 0 || labels[i] !== s.trade_date) return;
+    sigPts.push({ x: labels[i], y: s.price_at_signal != null ? s.price_at_signal : px[i], meta: s });
+  });
+
+  /* insider scatter (buy/sell separately) */
+  const buyPts = [], sellPts = [];
+  if (layers.ins) (insiderTrades || []).forEach(t => {
+    if (!t.trade_date || (t.side !== 'BUY' && t.side !== 'SELL')) return;
+    const i = nearestIdx(labels, t.trade_date);
+    if (i < 0) return;
+    const pt = { x: labels[i], y: t.price != null ? +t.price : px[i], meta: t };
+    (t.side === 'BUY' ? buyPts : sellPts).push(pt);
+  });
+  const insRadius = (pts) => pts.map(p => {
+    const v = p.meta.value ? Math.abs(+p.meta.value) : 0;
+    return Math.max(5, Math.min(13, 4 + Math.sqrt(v) / 350));
+  });
+
+  /* corporate event lines */
+  const evByIdx = new Map();
+  if (layers.evt) (events || []).forEach(e => {
+    const i = nearestIdx(labels, e.event_date);
+    if (i < 0 || labels[i] !== e.event_date) return;
+    if (!evByIdx.has(i)) evByIdx.set(i, new Set());
+    evByIdx.get(i).add(e.event_type || 'EVENT');
+  });
+  const evIdx = [...evByIdx.entries()].map(([idx, types]) =>
+    ({ idx, label: [...types].join('+') }));
+
+  const grad = (ctx) => {
+    const g = ctx.createLinearGradient(0, 0, 0, 400);
+    g.addColorStop(0, 'rgba(79,195,247,0.16)'); g.addColorStop(1, 'rgba(79,195,247,0)');
+    return g;
+  };
+
+  if (priceChart) priceChart.destroy();
+  priceChart = new Chart($('priceCanvas'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label: 'close', data: px, borderColor: C.ice, borderWidth: 1.5,
+          pointRadius: 0, pointHitRadius: 6, tension: 0.12, fill: true,
+          backgroundColor: (c) => grad(c.chart.ctx), order: 10 },
+        { label: 'sig', type: 'scatter', data: sigPts,
+          pointStyle: sigPts.map(p => sigStyle(p.meta.signal_type).style),
+          rotation: sigPts.map(p => sigStyle(p.meta.signal_type).rot || 0),
+          pointBackgroundColor: sigPts.map(p => sigStyle(p.meta.signal_type).color + 'cc'),
+          pointBorderColor: sigPts.map(p => sigStyle(p.meta.signal_type).color),
+          pointBorderWidth: 1,
+          pointRadius: sigPts.map(p => p.meta.strength === 'STRONG' ? 6 : 4.5),
+          pointHoverRadius: 9, order: 5 },
+        { label: 'insBuy', type: 'scatter', data: buyPts, pointStyle: 'triangle',
+          pointBackgroundColor: C.green + 'd9', pointBorderColor: C.green, pointBorderWidth: 1,
+          pointRadius: insRadius(buyPts), pointHoverRadius: 12, order: 4 },
+        { label: 'insSell', type: 'scatter', data: sellPts, pointStyle: 'triangle', rotation: 180,
+          pointBackgroundColor: C.red + 'd9', pointBorderColor: C.red, pointBorderWidth: 1,
+          pointRadius: insRadius(sellPts), pointHoverRadius: 12, order: 4 },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: { duration: 280 },
+      interaction: { mode: 'nearest', intersect: false },
+      plugins: {
+        legend: { display: false },
+        evtLines: { events: evIdx },
+        tooltip: {
+          displayColors: false,
+          callbacks: {
+            title: (items) => items[0] ? String(items[0].label) : '',
+            label: (item) => {
+              const dsl = item.dataset.label;
+              if (dsl === 'close') return `close ${fmtNum(item.parsed.y, 2)} ${ccy}`;
+              if (dsl === 'sig') {
+                const s = item.raw.meta, p = perfByType[s.signal_type];
+                const out = [`◆ ${s.signal_type} · ${s.strength}`, `@ ${fmtNum(item.raw.y, 2)}`];
+                if (p && p.t5_hit_rate_pct != null)
+                  out.push(`type t5 hit-rate ${fmtNum(p.t5_hit_rate_pct,0)}% (${p.t5_observed} obs)`);
+                if (s.return_t5_pct != null) out.push(`this fire t5 ${fmtPct(s.return_t5_pct)}`);
+                if (s.signal_desc) out.push(...String(s.signal_desc).match(/.{1,46}(\s|$)/g).map(x => x.trim()));
+                return out;
+              }
+              const t = item.raw.meta;
+              return [
+                `${t.side === 'BUY' ? '▲ INSIDER BUY' : '▼ INSIDER SELL'}`,
+                `${t.person_name || 'unnamed'} · ${t.person_role || ''}`.trim(),
+                `${t.quantity ? fmtCompact(+t.quantity) + ' sh @ ' + fmtNum(+t.price, 2) : ''}`,
+                `value ${t.value ? fmtCompact(+t.value) + ' ' + (t.currency || ccy) : '—'} · conf ${t.parse_confidence}`,
+              ].filter(Boolean);
+            }
+          }
+        }
+      },
+      scales: {
+        x: { ticks: { maxTicksLimit: 12, maxRotation: 0 }, grid: { display: false } },
+        y: { position: 'right', grid: { color: 'rgba(255,255,255,0.045)' },
+             ticks: { callback: (v) => fmtNum(v, 0) } },
+      }
+    },
+    plugins: [evtLinesPlugin]
+  });
+}
+renderPriceChart();
+
+[['lyrSig','sig'], ['lyrEvt','evt'], ['lyrIns','ins']].forEach(([id, key]) => {
+  $(id).addEventListener('click', () => {
+    layers[key] = !layers[key];
+    $(id).classList.toggle('on', layers[key]);
+    renderPriceChart();
+  });
+});
+$('rangeSeg').querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+  rangeDays = +b.dataset.d;
+  $('rangeSeg').querySelectorAll('button').forEach(x => x.classList.toggle('active', x === b));
+  renderPriceChart();
+}));
+
+/* ══════════ DARK FLOW PANEL ══════════ */
+(function renderDark() {
+  const body = $('dfBody');
+  if (!darkHist || !darkHist.length) { emptyNote(body, 'NO DARK-POOL PRINTS RECORDED FOR THIS ISIN'); return; }
+  const d = darkHist[0];
+  $('dfMeta').textContent = d.trade_date;
+  const atAsk = d.dark_volume_at_ask || 0, atBid = d.dark_volume_at_bid || 0;
+  const tot = atAsk + atBid;
+  const buyShare = tot > 0 ? atAsk / tot * 100 : 50;
+  const norm = d.dark_pct_vs_5d_norm;
+
+  body.innerHTML = `
+    <div class="mini-kpis">
+      <div class="mini-kpi"><div class="l">Dark Share</div>
+        <div class="v">${fmtNum(d.dark_pct,1)}%</div>
+        <div class="s">5d avg ${d.dark_pct_5d_avg != null ? fmtNum(d.dark_pct_5d_avg,1)+'%' : '—'} · 20d ${d.dark_pct_20d_avg != null ? fmtNum(d.dark_pct_20d_avg,1)+'%' : '—'}</div></div>
+      <div class="mini-kpi"><div class="l">vs 5D Norm</div>
+        <div class="v ${norm > 0 ? 'up' : norm < 0 ? 'down' : ''}">${norm != null ? fmtPct(norm,1) : '—'}</div>
+        <div class="s">excess dark activity</div></div>
+      <div class="mini-kpi"><div class="l">Dark Impact</div>
+        <div class="v ${d.dark_impact_bps > 0 ? 'up' : d.dark_impact_bps < 0 ? 'down' : ''}">${d.dark_impact_bps != null ? fmtNum(d.dark_impact_bps,1)+' bps' : '—'}</div>
+        <div class="s">${d.dark_trades_classified || 0} classified prints</div></div>
+    </div>
+    <div class="gauge">
+      <div class="gauge-bar">
+        <div class="gauge-buy" style="width:${buyShare.toFixed(1)}%"></div>
+        <div class="gauge-sell" style="width:${(100-buyShare).toFixed(1)}%"></div>
+      </div>
+      <div class="gauge-lbl">
+        <span class="b">▲ AT-ASK ${fmtCompact(atAsk)} (${fmtNum(buyShare,0)}%)</span>
+        <span>SIDE BIAS <b style="color:${d.dark_side_bias==='BUY'?C.green:C.red}">${d.dark_side_bias || '—'}</b>${d.bias_confirmed ? ' ✓' : ''}</span>
+        <span class="s">▼ AT-BID ${fmtCompact(atBid)} (${fmtNum(100-buyShare,0)}%)</span>
+      </div>
+    </div>
+    <div class="chart-frame" style="height:110px;margin:14px 0 4px"><canvas id="dfCanvas"></canvas></div>
+    <div style="margin-top:12px">
+      <div class="panel-title" style="margin-bottom:8px"><span class="glyph">▪</span>Whale Prints</div>
+      <div class="scrollwrap">${renderWhales()}</div>
+    </div>`;
+
+  const hist = darkHist.slice().reverse();
+  new Chart($('dfCanvas'), {
+    type: 'bar',
+    data: {
+      labels: hist.map(r => r.trade_date),
+      datasets: [{
+        data: hist.map(r => r.dark_pct),
+        backgroundColor: hist.map(r => r.trade_date === d.trade_date ? C.amber : 'rgba(167,139,250,0.45)'),
+        borderRadius: 2, barPercentage: 0.7,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false },
+        tooltip: { displayColors:false, callbacks: {
+          label: (i) => `dark ${fmtNum(i.parsed.y,1)}% · bias ${hist[i.dataIndex].dark_side_bias || '—'}` } } },
+      scales: {
+        x: { display: false },
+        y: { position:'right', ticks: { maxTicksLimit: 4, callback: v => v + '%' },
+             grid: { color:'rgba(255,255,255,0.04)' } },
+      }
+    }
+  });
+
+  function renderWhales() {
+    if (!whales || !whales.length) return '<div class="empty-note">NO WHALE-SCALE PRINTS</div>';
+    const rows = whales.map(w => {
+      const alerts = [w.dark_alert, w.size_alert, w.block_alert, w.otc_alert].filter(Boolean);
+      const notional = w.notional != null ? +w.notional : (w.price && w.quantity ? w.price * w.quantity : null);
+      return `<tr>
+        <td>${esc(w.trade_date)}</td>
+        <td>${w.trading_time ? esc(w.trading_time.slice(11,19)) : '—'}</td>
+        <td class="r">${fmtNum(w.price, 2)}</td>
+        <td class="r">${fmtCompact(w.quantity)}</td>
+        <td class="r">${notional != null ? fmtCompact(notional) : '—'}</td>
+        <td>${alerts.map(a => `<span class="badge badge-ice">${esc(a.replace(/_/g,' '))}</span>`).join(' ')}</td>
+      </tr>`;
+    }).join('');
+    return `<table class="intel-table"><thead><tr>
+      <th>Date</th><th>Time</th><th class="r">Px</th><th class="r">Qty</th><th class="r">Notional</th><th>Flags</th>
+    </tr></thead><tbody>${rows}</tbody></table>`;
+  }
+})();
+
+/* ══════════ INSIDER PANEL ══════════ */
+(function renderInsiders() {
+  const body = $('insBody');
+  if (insiderTrades === null) { pendingNote(body, 'INSIDER PARSER'); return; }
+  if (!insiderTrades.length) { emptyNote(body, 'NO PARSED PDMR TRADES FOR THIS ISIN'); return; }
+
+  const flows = ii ? `
+    <div class="mini-kpis">
+      <div class="mini-kpi"><div class="l">30D Net Flow</div>
+        <div class="v ${ii.net_value_30d > 0 ? 'up' : ii.net_value_30d < 0 ? 'down' : ''}">${fmtVal(ii.net_value_30d, ccy)}</div>
+        <div class="s">${ii.trades_30d || 0} trades · buy ${fmtCompact(ii.buy_value_30d)} / sell ${fmtCompact(ii.sell_value_30d)}</div></div>
+      <div class="mini-kpi"><div class="l">90D Net Flow</div>
+        <div class="v ${ii.net_value_90d > 0 ? 'up' : ii.net_value_90d < 0 ? 'down' : ''}">${fmtVal(ii.net_value_90d, ccy)}</div>
+        <div class="s">${ii.trades_90d || 0} trades</div></div>
+      <div class="mini-kpi"><div class="l">Last Move</div>
+        <div class="v" style="font-size:13px">${esc(ii.last_side || '—')}</div>
+        <div class="s">${esc(ii.last_trade_date || '—')} · ${esc((ii.top_role_90d || '').slice(0,26))}</div></div>
+    </div>` : '';
+
+  const sidePill = (s) => s === 'BUY' ? '<span class="pill pill-pos">BUY</span>'
+    : s === 'SELL' ? '<span class="pill pill-neg">SELL</span>'
+    : `<span class="pill pill-neu">${esc(s || '?')}</span>`;
+  const confBadge = (c) => c == null ? '<span class="badge badge-dim">—</span>'
+    : c >= 0.8 ? `<span class="badge badge-green">${(+c).toFixed(2)}</span>`
+    : c >= 0.6 ? `<span class="badge badge-amber">${(+c).toFixed(2)}</span>`
+    : `<span class="badge badge-dim">${(+c).toFixed(2)}</span>`;
+
+  const rows = insiderTrades.map(t => `
+    <tr class="${t.parse_confidence != null && t.parse_confidence < 0.6 ? 'muted' : ''}" title="${esc((t.raw_excerpt || '').slice(0, 220))}">
+      <td class="nw">${esc(t.trade_date || '—')}</td>
+      <td style="color:var(--text1)">${esc(t.person_name || '—')}<br>
+        <span style="font-size:9px;color:var(--text4)">${esc((t.person_role || '').slice(0,34))}</span></td>
+      <td>${sidePill(t.side)}</td>
+      <td class="r">${t.quantity != null ? fmtCompact(+t.quantity) : '—'}</td>
+      <td class="r">${t.price != null ? fmtNum(+t.price, 2) : '—'}</td>
+      <td class="r">${t.value != null ? fmtCompact(+t.value) : '—'}</td>
+      <td class="r">${confBadge(t.parse_confidence)}</td>
+    </tr>`).join('');
+
+  body.innerHTML = flows + `
+    <div class="scrollwrap" style="max-height:330px;overflow-y:auto">
+      <table class="intel-table"><thead><tr>
+        <th>Date</th><th>Person</th><th>Side</th><th class="r">Qty</th><th class="r">Px</th><th class="r">Value</th><th class="r">Conf</th>
+      </tr></thead><tbody>${rows}</tbody></table>
+    </div>
+    ${ii && ii.low_conf_rows ? `<div style="font-size:9px;color:var(--text4);margin-top:8px;letter-spacing:.06em">${ii.low_conf_rows} of ${ii.total_rows} parses below confidence 0.6 (muted) · hover rows for raw excerpt</div>` : ''}`;
+  $('insMeta').textContent = `${insiderTrades.length} parsed trades`;
+})();
+
+/* ══════════ SHORT INTEREST ══════════ */
+(function renderShort() {
+  const body = $('siBody');
+  if (!shortHist || !shortHist.length) {
+    emptyNote(body, 'NO DISCLOSED SHORT POSITIONS ≥ 0.5% — BELOW FINANSTILSYNET THRESHOLD');
+    return;
+  }
+  const latest = shortHist[shortHist.length - 1];
+  $('siMeta').textContent = `as of ${latest.position_date}`;
+
+  const latestHolders = (shortHolders || []).filter(h => h.position_date === latest.position_date);
+  const holderRows = latestHolders.map(h => `
+    <tr><td style="color:var(--text1)">${esc(h.holder)}</td>
+      <td class="r" style="color:var(--red)">${fmtNum(h.short_pct, 2)}%</td>
+      <td class="r">${fmtCompact(h.shares)}</td></tr>`).join('');
+
+  body.innerHTML = `
+    <div class="mini-kpis" style="grid-template-columns:repeat(2,1fr)">
+      <div class="mini-kpi"><div class="l">Disclosed Short</div>
+        <div class="v down">${fmtNum(latest.short_pct, 2)}%</div>
+        <div class="s">${fmtCompact(latest.short_shares)} shares</div></div>
+      <div class="mini-kpi"><div class="l">Disclosing Holders</div>
+        <div class="v">${latestHolders.length || '—'}</div>
+        <div class="s">positions ≥ 0.5%</div></div>
+    </div>
+    <div class="chart-frame" style="height:140px;margin-bottom:12px"><canvas id="siCanvas"></canvas></div>
+    ${holderRows ? `<div class="scrollwrap" style="max-height:170px;overflow-y:auto">
+      <table class="intel-table"><thead><tr><th>Holder</th><th class="r">Short %</th><th class="r">Shares</th></tr></thead>
+      <tbody>${holderRows}</tbody></table></div>` : ''}`;
+
+  new Chart($('siCanvas'), {
+    type: 'line',
+    data: {
+      labels: shortHist.map(r => r.position_date),
+      datasets: [{
+        data: shortHist.map(r => r.short_pct),
+        borderColor: C.red, borderWidth: 1.5, pointRadius: 0, pointHitRadius: 8,
+        stepped: 'before', fill: true, backgroundColor: 'rgba(240,96,96,0.10)',
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false },
+        tooltip: { displayColors:false, callbacks: { label: i => `short ${fmtNum(i.parsed.y,2)}%` } } },
+      scales: {
+        x: { ticks: { maxTicksLimit: 7, maxRotation: 0 }, grid: { display: false } },
+        y: { position: 'right', ticks: { maxTicksLimit: 5, callback: v => v + '%' },
+             grid: { color: 'rgba(255,255,255,0.04)' } },
+      }
+    }
+  });
+})();
+
+/* ══════════ EVENT TIMELINE ══════════ */
+(function renderEvents() {
+  const body = $('evBody');
+  if (!events || !events.length) { emptyNote(body, 'NO CALENDAR EVENTS ON FILE'); return; }
+
+  /* signals that fired near each event (dedupe per signal_id+event) */
+  const sigsByEvt = {};
+  const seen = new Set();
+  (proximity || []).forEach(p => {
+    const k = `${p.event_date}|${p.event_type}`;
+    const sk = `${p.signal_id}|${k}`;
+    if (seen.has(sk)) return;
+    seen.add(sk);
+    (sigsByEvt[k] = sigsByEvt[k] || []).push(p);
+  });
+
+  const upcoming = events.filter(e => daysTo(e.event_date) >= 0)
+    .sort((a, b) => a.event_date < b.event_date ? -1 : 1);
+  const past = events.filter(e => daysTo(e.event_date) < 0).slice(0, 10);
+  const ordered = upcoming.concat(past);
+  $('evMeta').textContent = `${upcoming.length} upcoming · ${past.length} recent`;
+
+  const typeBadge = (t) => {
+    const m = { RESULTS:'badge-ice', DIVIDEND:'badge-green', EX_DATE:'badge-green', AGM:'badge-purple',
+                EGM:'badge-purple', WARNING:'badge-red', CAPITAL:'badge-amber' };
+    return `<span class="badge ${m[t] || 'badge-dim'}">${esc(t || 'EVENT')}</span>`;
+  };
+
+  body.innerHTML = '<div class="tl">' + ordered.map(e => {
+    const dt = daysTo(e.event_date);
+    const cls = dt === 0 ? 'today' : dt > 0 ? 'future' : '';
+    const days = dt === 0 ? 'TODAY' : dt > 0 ? `T−${dt}` : `${-dt}d ago`;
+    const near = sigsByEvt[`${e.event_date}|${e.event_type}`] || [];
+    const div = e.dividend_amount != null
+      ? ` <span class="badge badge-green">${fmtNum(e.dividend_amount,2)} ${esc(e.dividend_ccy || '')}</span>` : '';
+    const sigChips = near.length
+      ? `<div class="tl-sig">${[...new Set(near.map(p => p.signal_type))].map(t =>
+          `<span class="badge ${sigStyle(t).badge}">◆ ${esc(t.replace(/_/g,' '))}</span>`).join('')}
+          <span style="font-size:8.5px;color:var(--text4);align-self:center">fired ±5d of event</span></div>`
+      : '';
+    return `<div class="tl-item ${cls}">
+      <div class="tl-top">
+        <span class="tl-date">${esc(e.event_date)}</span>
+        <span class="tl-days ${dt >= 0 && dt <= 7 ? 'soon' : ''}">${days}</span>
+        ${typeBadge(e.event_type)}${div}
+      </div>
+      <div class="tl-title">${esc((e.title || '').slice(0, 130))}</div>
+      ${sigChips}
+    </div>`;
+  }).join('') + '</div>';
+})();
+
+/* ══════════ SIGNALS TABLE ══════════ */
+(function renderSignals() {
+  const body = $('sgBody');
+  if (!signals || !signals.length) { emptyNote(body, 'NO SMART SIGNALS FIRED FOR THIS ISIN'); return; }
+  $('sgMeta').textContent = `${signals.length} fires · t-returns directional where observed`;
+
+  const ret = (v) => v == null ? '<span style="color:var(--text4)">·</span>'
+    : `<span style="color:${v >= 0 ? C.green : C.red}">${fmtPct(v)}</span>`;
+
+  const rows = signals.slice(0, 25).map(s => {
+    const st = sigStyle(s.signal_type);
+    const p = perfByType[s.signal_type];
+    return `<tr>
+      <td>${esc(s.trade_date)}</td>
+      <td><span class="badge ${st.badge}">◆ ${esc(s.signal_type.replace(/_/g,' '))}</span></td>
+      <td>${s.strength === 'STRONG' ? '<span class="badge badge-amber">STRONG</span>' : '<span class="badge badge-dim">MOD</span>'}</td>
+      <td class="desc-clip" title="${esc(s.signal_desc || '')}">${esc(s.signal_desc || '—')}</td>
+      <td class="r">${fmtNum(s.price_at_signal, 2)}</td>
+      <td class="r">${ret(s.return_t1_pct)}</td>
+      <td class="r">${ret(s.return_t5_pct)}</td>
+      <td class="r">${ret(s.return_t20_pct)}</td>
+      <td class="r">${p && p.t5_hit_rate_pct != null ? fmtNum(p.t5_hit_rate_pct, 0) + '%' : '—'}</td>
+    </tr>`;
+  }).join('');
+
+  body.innerHTML = `<div class="scrollwrap"><table class="intel-table"><thead><tr>
+    <th>Date</th><th>Signal</th><th>Str</th><th>Description</th>
+    <th class="r">Px@Sig</th><th class="r">t1</th><th class="r">t5</th><th class="r">t20</th><th class="r">Type t5 Hit</th>
+  </tr></thead><tbody>${rows}</tbody></table></div>`;
+})();
+
+})();
+</script>
+</body>
+</html>

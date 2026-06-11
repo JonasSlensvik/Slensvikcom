@@ -1,0 +1,312 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   INTEL.CSS — slensvik.com shared design system
+   ─────────────────────────────────────────────────────────────────────────────
+   Terminal-quant identity: near-black blues, IBM Plex Mono data surfaces,
+   Syne display type, amber/ice/green/red accent semantics, subtle grid
+   textures and glow accents. Bloomberg-terminal-meets-modern.
+
+   Load FIRST in <head>, before any page-local <style> (page styles may extend
+   or override). Pair with assets/intel.js (nav injection, fetch + format
+   utils, Chart.js defaults).
+
+   ── DESIGN TOKENS (CSS custom properties on :root) ──────────────────────────
+   Backgrounds (darkest → lightest):
+     --bg0  #050810  page background (near-black blue)
+     --bg1  #0b0f17  panel background
+     --bg2  #11161f  raised surface / table header / tooltip
+     --bg3  #1a212d  hover / active surface
+   Borders (white-alpha, subtle → strong):
+     --border   rgba(255,255,255,.06)  hairline panel/table border
+     --border2  rgba(255,255,255,.12)  interactive border (buttons, pills)
+     --border3  rgba(255,255,255,.22)  hover/focus border
+   Text (bright → faint):
+     --text1  #e8eef7  primary (values, headings)
+     --text2  #a4adbf  secondary (body copy)
+     --text3  #5a6377  labels, metadata
+     --text4  #3a4252  disabled / decorative
+   Accents (semantic; each has a -dim translucent fill for badge/pill bg):
+     --amber  #f5a623  brand / attention / cost      --amber-dim rgba(.16)
+     --ice    #4fc3f7  data / info / canonical feed  --ice-dim   rgba(.13)
+     --green  #43e097  positive / live / long        --green-dim rgba(.16)
+     --red    #f06060  negative / risk / short       --red-dim   rgba(.16)
+     --purple #a78bfa  model / derived / signal      --purple-dim rgba(.14)
+   Type:
+     --mono  IBM Plex Mono stack — ALL data, labels, numbers (use with
+             font-variant-numeric: tabular-nums for columns)
+     --sans  Syne stack — display headings and prose
+   Geometry & depth:
+     --radius 4px  --radius-lg 8px
+     --space-1 4px --space-2 8px --space-3 14px --space-4 22px --space-5 36px
+     --shadow-panel  ambient panel drop
+     --glow-amber / --glow-ice / --glow-green / --glow-red  accent glows
+   Legacy aliases (older pages: markedsradar, portfolio — DO NOT use in new
+   code, kept so existing markup/JS template literals keep resolving):
+     --bg→bg0, --border-glow→border3, --text→text1, --text-bright→text1,
+     --text-dim→text3, --gold→amber, --body→sans
+
+   ── COMPONENT VOCABULARY ────────────────────────────────────────────────────
+   Topbar / nav
+     .site-nav            injected by intel.js into [data-intel-nav]; row of
+                          .sn-link anchors, .sn-link.active = current page
+   Panels
+     .panel               bg1 card w/ hairline border + radius (+hover lift)
+     .panel-head          flex row: .panel-title (mono micro-caps label) +
+                          .panel-meta (right-aligned mono metadata)
+     .sec-head            standalone section header: glyph + title + rule
+   KPIs
+     .kpi-strip           responsive auto-fit grid of .kpi cells
+     .kpi                 cell: .kpi-label (micro-caps) / .kpi-value (big mono)
+                          / .kpi-sub (faint context line)
+     .kpi.up .kpi.down    tints value green/red
+   Tables
+     .intel-table         data table: micro-caps thead, hairline rows,
+                          hover bg3; td.r = right-aligned tabular numerals
+   Pills & badges
+     .pill                inline status capsule (mono 10px)
+     .pill-pos .pill-neg .pill-neu     semantic green/red/slate
+     .pill-live           green + pulsing dot (live data feed)
+     .pill-mock           amber dashed (mock/simulated data)  ← MOCK badge
+     .badge / .badge-green -red -amber -ice -purple -dim     tiny chips
+   Charts & sparklines
+     .chart-frame         positioned canvas wrapper (give it a height)
+     .spark               inline-flex sparkline container (svg/canvas inside)
+   Links
+     .tk-link             ticker/ISIN → selskap.html?isin=… cross-link;
+                          subtle dotted underline, ice on hover
+   Tooltip
+     .intel-tip           positioned hover tooltip body (bg2, hairline, mono)
+   Loading
+     .skeleton            shimmering placeholder block (set w/h)
+     .spinner-dot         3-dot pulsing loader
+   Buttons
+     .btn                 mono micro-caps ghost button; .btn:hover ice
+     .btn-accent          amber filled
+   Texture
+     body::before is page-local; use .scanlines on a wrapper for the shared
+     horizontal scan-line texture, .gridbg for the faint blueprint grid
+   ═══════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* backgrounds */
+  --bg0: #050810; --bg1: #0b0f17; --bg2: #11161f; --bg3: #1a212d;
+  /* borders */
+  --border:  rgba(255,255,255,0.06);
+  --border2: rgba(255,255,255,0.12);
+  --border3: rgba(255,255,255,0.22);
+  /* text */
+  --text1: #e8eef7; --text2: #a4adbf; --text3: #5a6377; --text4: #3a4252;
+  /* accents */
+  --amber: #f5a623;  --amber-dim: rgba(245,166,35,0.16);
+  --ice:   #4fc3f7;  --ice-dim:   rgba(79,195,247,0.13);
+  --green: #43e097;  --green-dim: rgba(67,224,151,0.16);
+  --red:   #f06060;  --red-dim:   rgba(240,96,96,0.16);
+  --purple:#a78bfa;  --purple-dim:rgba(167,139,250,0.14);
+  /* type */
+  --mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --sans: 'Syne', system-ui, sans-serif;
+  /* geometry */
+  --radius: 4px; --radius-lg: 8px;
+  --space-1: 4px; --space-2: 8px; --space-3: 14px; --space-4: 22px; --space-5: 36px;
+  /* depth */
+  --shadow-panel: 0 8px 28px rgba(0,0,0,0.45);
+  --glow-amber: 0 0 18px rgba(245,166,35,0.18);
+  --glow-ice:   0 0 18px rgba(79,195,247,0.18);
+  --glow-green: 0 0 18px rgba(67,224,151,0.18);
+  --glow-red:   0 0 18px rgba(240,96,96,0.18);
+
+  /* ── legacy aliases (markedsradar / portfolio era) ── */
+  --bg: var(--bg0);
+  --border-glow: var(--border3);
+  --text: var(--text1);
+  --text-bright: var(--text1);
+  --text-dim: var(--text3);
+  --gold: var(--amber);
+  --body: var(--sans);
+}
+
+/* ── Site nav (injected by intel.js) ─────────────────────────────────────── */
+.site-nav {
+  display: flex; align-items: center; gap: 2px; flex-wrap: wrap;
+}
+.site-nav .sn-link {
+  font-family: var(--mono); font-size: 10px; font-weight: 500;
+  letter-spacing: 0.13em; text-transform: uppercase;
+  color: var(--text3); text-decoration: none;
+  padding: 5px 10px; border-radius: 3px;
+  border: 1px solid transparent;
+  transition: color .15s, border-color .15s, background .15s;
+  white-space: nowrap;
+}
+.site-nav .sn-link:hover { color: var(--text1); background: var(--bg3); }
+.site-nav .sn-link.active {
+  color: var(--amber); border-color: var(--amber-dim);
+  background: rgba(245,166,35,0.07);
+}
+.site-nav .sn-sep { color: var(--text4); font-size: 9px; user-select: none; }
+
+/* ── Panels ──────────────────────────────────────────────────────────────── */
+.panel {
+  background: var(--bg1); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: var(--space-4);
+  transition: border-color .2s;
+}
+.panel:hover { border-color: var(--border2); }
+.panel-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: var(--space-3); margin-bottom: var(--space-3);
+}
+.panel-title {
+  font-family: var(--mono); font-size: 10px; font-weight: 500;
+  letter-spacing: 0.18em; text-transform: uppercase; color: var(--text3);
+}
+.panel-title .glyph { color: var(--amber); margin-right: 6px; }
+.panel-meta { font-family: var(--mono); font-size: 10px; color: var(--text4); letter-spacing: 0.06em; }
+
+.sec-head {
+  display: flex; align-items: center; gap: var(--space-3);
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.18em;
+  text-transform: uppercase; color: var(--text3);
+  margin: var(--space-5) 0 var(--space-3);
+}
+.sec-head::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+.sec-head .glyph { color: var(--amber); }
+
+/* ── KPI strip ───────────────────────────────────────────────────────────── */
+.kpi-strip {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 1px; background: var(--border); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); overflow: hidden;
+}
+.kpi { background: var(--bg1); padding: var(--space-3) var(--space-4); }
+.kpi-label {
+  font-family: var(--mono); font-size: 9px; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--text3); margin-bottom: 6px;
+}
+.kpi-value {
+  font-family: var(--mono); font-size: 22px; font-weight: 600;
+  color: var(--text1); line-height: 1.1; font-variant-numeric: tabular-nums;
+}
+.kpi-sub { font-family: var(--mono); font-size: 10px; color: var(--text4); margin-top: 4px; }
+.kpi.up   .kpi-value { color: var(--green); }
+.kpi.down .kpi-value { color: var(--red); }
+
+/* ── Data tables ─────────────────────────────────────────────────────────── */
+.intel-table { width: 100%; border-collapse: collapse; }
+.intel-table th {
+  font-family: var(--mono); font-size: 9px; font-weight: 500;
+  letter-spacing: 0.14em; text-transform: uppercase; color: var(--text3);
+  text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border2);
+  background: var(--bg2);
+}
+.intel-table td {
+  font-family: var(--mono); font-size: 11px; color: var(--text2);
+  padding: 7px 10px; border-bottom: 1px solid var(--border);
+  font-variant-numeric: tabular-nums;
+}
+.intel-table tbody tr { transition: background .12s; }
+.intel-table tbody tr:hover { background: var(--bg3); }
+.intel-table .r, .intel-table td.r, .intel-table th.r { text-align: right; }
+
+/* ── Pills & badges ──────────────────────────────────────────────────────── */
+.pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em;
+  text-transform: uppercase; padding: 3px 10px; border-radius: 20px;
+  border: 1px solid var(--border2); color: var(--text2); white-space: nowrap;
+}
+.pill-pos { color: var(--green); border-color: rgba(67,224,151,0.4); background: var(--green-dim); }
+.pill-neg { color: var(--red);   border-color: rgba(240,96,96,0.4);  background: var(--red-dim); }
+.pill-neu { color: var(--text3); border-color: var(--border2);       background: var(--bg2); }
+.pill-live { color: var(--green); border-color: rgba(67,224,151,0.4); background: var(--green-dim); }
+.pill-live::before {
+  content: ''; width: 6px; height: 6px; border-radius: 50%;
+  background: var(--green); animation: intel-pulse 2s ease-in-out infinite;
+}
+.pill-mock {
+  color: var(--amber); border: 1px dashed rgba(245,166,35,0.55);
+  background: var(--amber-dim);
+}
+@keyframes intel-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.25; } }
+
+.badge {
+  display: inline-block; font-family: var(--mono); font-size: 9px;
+  letter-spacing: 0.08em; padding: 2px 7px; border-radius: 3px;
+  border: 1px solid transparent; white-space: nowrap; vertical-align: middle;
+}
+.badge-green  { background: var(--green-dim);  color: var(--green); }
+.badge-red    { background: var(--red-dim);    color: var(--red); }
+.badge-amber  { background: var(--amber-dim);  color: var(--amber); }
+.badge-ice    { background: var(--ice-dim);    color: var(--ice); }
+.badge-purple { background: var(--purple-dim); color: var(--purple); }
+.badge-dim    { background: var(--bg3);        color: var(--text3); }
+
+/* ── Charts & sparklines ─────────────────────────────────────────────────── */
+.chart-frame { position: relative; width: 100%; }
+.chart-frame > canvas { position: absolute; inset: 0; width: 100% !important; height: 100% !important; }
+.spark { display: inline-flex; align-items: center; height: 22px; vertical-align: middle; }
+
+/* ── Cross-link: ticker → selskap.html?isin= ─────────────────────────────── */
+.tk-link {
+  color: inherit; text-decoration: none;
+  border-bottom: 1px dotted var(--text4);
+  transition: color .12s, border-color .12s;
+}
+.tk-link:hover { color: var(--ice); border-bottom-color: var(--ice); }
+
+/* ── Tooltip ─────────────────────────────────────────────────────────────── */
+.intel-tip {
+  position: absolute; z-index: 50; pointer-events: none;
+  background: var(--bg2); border: 1px solid var(--border2);
+  border-radius: var(--radius); padding: 8px 12px;
+  font-family: var(--mono); font-size: 10px; color: var(--text2);
+  box-shadow: var(--shadow-panel); max-width: 280px;
+}
+
+/* ── Loading states ──────────────────────────────────────────────────────── */
+.skeleton {
+  position: relative; overflow: hidden;
+  background: var(--bg2); border-radius: var(--radius);
+}
+.skeleton::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent);
+  animation: intel-shimmer 1.6s infinite;
+}
+@keyframes intel-shimmer { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+.spinner-dot { display: inline-flex; gap: 5px; }
+.spinner-dot i {
+  width: 5px; height: 5px; border-radius: 50%; background: var(--text3);
+  animation: intel-pulse 1.2s ease-in-out infinite;
+}
+.spinner-dot i:nth-child(2) { animation-delay: .2s; }
+.spinner-dot i:nth-child(3) { animation-delay: .4s; }
+
+/* ── Buttons ─────────────────────────────────────────────────────────────── */
+.btn {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--text2);
+  background: transparent; border: 1px solid var(--border2);
+  border-radius: var(--radius); padding: 6px 14px; cursor: pointer;
+  transition: color .15s, border-color .15s, box-shadow .15s;
+}
+.btn:hover { color: var(--ice); border-color: var(--ice); box-shadow: var(--glow-ice); }
+.btn-accent { color: var(--bg0); background: var(--amber); border-color: var(--amber); font-weight: 600; }
+.btn-accent:hover { color: var(--bg0); box-shadow: var(--glow-amber); }
+
+/* ── Textures ────────────────────────────────────────────────────────────── */
+.scanlines {
+  background-image: repeating-linear-gradient(
+    0deg, transparent 0 2px, rgba(255,255,255,0.012) 2px 4px);
+}
+.gridbg {
+  background-image:
+    linear-gradient(rgba(255,255,255,0.022) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.022) 1px, transparent 1px);
+  background-size: 44px 44px;
+}
+
+/* ── Scrollbars (site-wide) ──────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 9px; height: 9px; }
+::-webkit-scrollbar-track { background: var(--bg0); }
+::-webkit-scrollbar-thumb { background: var(--bg3); border-radius: 5px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border3); }

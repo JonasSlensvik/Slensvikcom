@@ -8,33 +8,24 @@
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=Syne:wght@400;600;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+<link rel="stylesheet" href="assets/intel.css">
+<script src="assets/intel.js"></script>
 
 <style>
-/* ─── Variables ─────────────────────────────────────────────────────────── */
+/* ─── Variables ──────────────────────────────────────────────────────────
+   Canonical tokens live in assets/intel.css. This block maps this page's
+   legacy names onto the shared system (intel's --bg2/--bg3 raised-surface
+   values apply directly; --text must stay one step below --text-bright). */
 :root {
-  --bg:           #070b12;
-  --bg2:          #0d1420;
-  --bg3:          #111927;
-  --border:       #1e2d42;
-  --border-glow:  #1e3a5f;
-  --text:         #c8d8e8;
-  --text-dim:     #5a7a96;
-  --text-bright:  #e8f4ff;
-  --amber:        #f5a623;
-  --amber-dim:    #7a4e0a;
+  --bg:           var(--bg0);
+  --border-glow:  var(--border3);
+  --text:         var(--text2);
+  --text-dim:     var(--text3);
+  --text-bright:  var(--text1);
   --amber-glow:   rgba(245,166,35,0.12);
-  --ice:          #4fc3f7;
-  --ice-dim:      #0a3a52;
   --ice-glow:     rgba(79,195,247,0.10);
-  --green:        #43e097;
-  --green-dim:    #0a3320;
-  --red:          #f06060;
-  --red-dim:      #3a1010;
-  --purple:       #a78bfa;
-  --gold:         #ffd700;
-  --mono:         'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace;
-  --sans:         'Syne', sans-serif;
-  --body:         'DM Sans', sans-serif;
+  --gold:         var(--amber);
+  --body:         var(--mono);
 }
 
 /* ─── Reset & Base ──────────────────────────────────────────────────────── */
@@ -44,7 +35,7 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--body);
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1.5;
   min-height: 100vh;
   overflow-x: hidden;
@@ -881,7 +872,7 @@ tbody tr.selected { background: var(--ice-dim); }
   position: relative;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: linear-gradient(160deg, #0a1019 0%, #0b1320 55%, #0a0f18 100%);
+  background: linear-gradient(160deg, #070b14 0%, #0a101c 55%, #060a12 100%);
   overflow: hidden;
   margin-bottom: 36px;
   isolation: isolate;
@@ -1099,6 +1090,7 @@ tbody tr.selected { background: var(--ice-dim); }
       <div class="logo">Markeds<span>radar</span></div>
       <div class="logo-sub">Norwegian Equity Intelligence · XOSL / MERK</div>
     </div>
+    <div data-intel-nav></div>
     <div class="header-meta">
       <div class="meta-pill live" id="statusPill">T-1 DATA</div>
       <div class="meta-pill" id="tradeDatePill">—</div>
@@ -1245,7 +1237,7 @@ tbody tr.selected { background: var(--ice-dim); }
       <div class="chart-container" style="height:380px"><canvas id="darkFlowChart"></canvas></div>
       <div class="dive-flow-legend">
         <span>⚫ Dark trade (size = notional)</span>
-        <span style="color:var(--ice-dim)">● Lit trade</span>
+        <span style="color:rgba(79,195,247,0.55)">● Lit trade</span>
         <span style="color:var(--amber)">— Modal price</span>
         <span id="darkFlowStats" style="margin-left:auto;color:var(--text)"></span>
       </div>
@@ -1589,16 +1581,16 @@ async function loadInstruments() {
 }
 
 /* ─── Render a compact ISIN cell: shows ticker bold + name dim ─────────────── */
+/* Ticker links to the company dossier (selskap.html); stopPropagation inside
+   tkLink keeps the row's own drill-down onclick working. */
 const isinCell = isin => {
   const info = ISIN_MAP[isin];
-  if (info) return `<div style="font-family:var(--mono);font-size:13px;font-weight:600;color:var(--text-bright)">${info.t}</div><div style="font-size:11px;color:var(--text-dim);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${info.n}">${info.n}</div>`;
-  return `<div style="font-family:var(--mono);font-size:12px">${isin}</div>`;
+  if (info) return `<div style="font-family:var(--mono);font-size:13px;font-weight:600;color:var(--text-bright)">${INTEL.tkLink(isin, info.t)}</div><div style="font-size:11px;color:var(--text-dim);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${info.n}">${info.n}</div>`;
+  return `<div style="font-family:var(--mono);font-size:12px">${INTEL.tkLink(isin, isin)}</div>`;
 };
 
-/* ─── Chart.js global defaults ──────────────────────────────────────────── */
-Chart.defaults.color = '#5a7a96';
-Chart.defaults.borderColor = '#1e2d42';
-Chart.defaults.font.family = "'Syne Mono', monospace";
+/* ─── Chart.js global defaults (shared system) ──────────────────────────── */
+INTEL.chartDefaults();
 Chart.defaults.font.size = 11;
 
 /* ─── State ─────────────────────────────────────────────────────────────── */
@@ -1665,7 +1657,7 @@ function renderConvictionCard(r, side) {
     <div class="conv-card ${side}" onclick="drillIntoISIN('${r.isin}','${r.venue}')">
       <div class="conv-row1">
         <span class="conv-arrow ${side}">${arrow}</span>
-        <span class="conv-ticker">${ticker}</span>
+        <span class="conv-ticker">${INTEL.tkLink(r.isin, ticker)}</span>
         <span class="conv-name">${name}</span>
         <span class="conv-score">${r.conviction}</span>
       </div>
@@ -1886,7 +1878,7 @@ function renderStories(p, movers) {
         <span class="story-glyph">${glyph(m)}</span>
         <span class="story-kicker">${kicker(m)}</span>
       </div>
-      <div class="story-title">${m.ticker || isinTicker(m.isin)}</div>
+      <div class="story-title">${INTEL.tkLink(m.isin, m.ticker || isinTicker(m.isin))}</div>
       <div class="story-body">${nameStory(m)}</div>
     </div>`);
 
@@ -1940,7 +1932,7 @@ function renderDashboard(p, movers) {
   const dns = [...liquid].sort((a, b) => a.change_pct - b.change_pct).slice(0, 4);
   const moverRow = m => `
     <div class="mrow" onclick="drillIntoISIN('${m.isin}','${m.venue || 'XOSL'}')">
-      <div><div class="mrow-tkr">${m.ticker || isinTicker(m.isin)}</div><div class="mrow-name">${m.name || ''}</div></div>
+      <div><div class="mrow-tkr">${INTEL.tkLink(m.isin, m.ticker || isinTicker(m.isin))}</div><div class="mrow-name">${m.name || ''}</div></div>
       <div class="mrow-num ${m.change_pct >= 0 ? 'up' : 'dn'}">${signed(m.change_pct)}%</div>
       <div class="mrow-num" style="color:var(--text-dim)">${mnok(m.turnover)}M</div>
     </div>`;
@@ -1949,7 +1941,7 @@ function renderDashboard(p, movers) {
   // Most active by turnover (movers already sorted desc)
   document.getElementById('activeList').innerHTML = movers.slice(0, 7).map(m => `
     <div class="mrow" onclick="drillIntoISIN('${m.isin}','${m.venue || 'XOSL'}')">
-      <div><div class="mrow-tkr">${m.ticker || isinTicker(m.isin)}</div><div class="mrow-name">${m.name || ''}</div></div>
+      <div><div class="mrow-tkr">${INTEL.tkLink(m.isin, m.ticker || isinTicker(m.isin))}</div><div class="mrow-name">${m.name || ''}</div></div>
       <div class="mrow-num ${(m.change_pct || 0) >= 0 ? 'up' : 'dn'}">${signed(m.change_pct || 0)}%</div>
       <div class="mrow-num" style="color:var(--text-bright)">${mnok(m.turnover)}M</div>
     </div>`).join('');
@@ -1963,7 +1955,7 @@ function renderDashboard(p, movers) {
       : `<span class="mrow-badge">—</span>`;
     return `
     <div class="mrow" onclick="drillIntoISIN('${m.isin}','${m.venue || 'XOSL'}')">
-      <div><div class="mrow-tkr">${m.ticker || isinTicker(m.isin)}</div><div class="mrow-name">${m.name || ''}</div></div>
+      <div><div class="mrow-tkr">${INTEL.tkLink(m.isin, m.ticker || isinTicker(m.isin))}</div><div class="mrow-name">${m.name || ''}</div></div>
       <div class="mrow-num warn">${Number(m.dark_pct).toFixed(1)}%</div>
       ${b}
     </div>`;
@@ -1983,7 +1975,7 @@ async function loadInsiderFeed() {
       <div class="feed-row" onclick="drillIntoISIN('${e.isin}','XOSL')">
         <span class="feed-glyph">◐</span>
         <div class="feed-main">
-          <div class="feed-issuer">${e.issuer || isinName(e.isin) || e.isin}</div>
+          <div class="feed-issuer">${INTEL.tkLink(e.isin, e.issuer || isinName(e.isin) || e.isin)}</div>
           <div class="feed-title" title="${(e.title || '').replace(/"/g, '&quot;')}">${e.title || 'Mandatory notification of trade'}</div>
         </div>
         <span class="feed-date">${e.event_date}</span>
@@ -2222,7 +2214,7 @@ async function loadWhales() {
       <div class="whale-card">
         <div class="whale-top">
           <div>
-            <div class="whale-isin">${isinTicker(r.isin)} <span style="font-size:11px;color:var(--text-dim)">${isinName(r.isin)}</span></div>
+            <div class="whale-isin">${INTEL.tkLink(r.isin, isinTicker(r.isin))} <span style="font-size:11px;color:var(--text-dim)">${isinName(r.isin)}</span></div>
             <div class="whale-venue">${r.venue} · ${time}</div>
           </div>
           <div>${r.participant_class === 'ALGO' || r.algo_ind === 'ALGO'
@@ -2271,7 +2263,7 @@ async function loadSignals() {
           <div class="signal-desc">${r.signal_desc || '—'}</div>
         </div>
         <div style="text-align:right">
-          <div class="signal-isin">${isinTicker(r.isin)}</div><div style="font-size:11px;color:var(--text-dim)">${isinName(r.isin)}</div>
+          <div class="signal-isin">${INTEL.tkLink(r.isin, isinTicker(r.isin))}</div><div style="font-size:11px;color:var(--text-dim)">${isinName(r.isin)}</div>
           <div class="signal-strength ${r.strength}">${r.strength || ''}</div>
           ${r.notional ? `<div style="font-family:var(--mono);font-size:11px;color:var(--amber)">NOK ${(r.notional/1e6).toFixed(1)}M</div>` : ''}
         </div>
@@ -2384,7 +2376,7 @@ function renderDarkBar(data) {
           ticks: { callback: v => v + '%' },
           grid: { color: 'rgba(255,255,255,0.04)' }
         },
-        y: { ticks: { font: { family: "'Syne Mono', monospace", size: 11 } } }
+        y: { ticks: { font: { family: "'IBM Plex Mono', monospace", size: 11 } } }
       },
       plugins: {
         legend: { display: false },
@@ -2599,7 +2591,8 @@ async function drillIntoISIN(isin, venue) {
   document.getElementById('diveTicker').textContent = mv.ticker || info.t || isin.slice(-6);
   document.getElementById('diveName').textContent   = mv.name || info.n || '—';
   document.getElementById('diveVenueBadge').textContent = venue;
-  document.getElementById('diveISINBadge').textContent  = isin;
+  document.getElementById('diveISINBadge').innerHTML =
+    `<a class="tk-link" href="${INTEL.selskapHref(isin)}" title="Åpne selskapsside" style="color:inherit">${isin} ↗</a>`;
 
   // Real price + market cap from daily_close (via movers cache)
   const close = mv.close != null ? Number(mv.close) : null;
@@ -2721,7 +2714,7 @@ async function drillIntoISIN(isin, venue) {
         legend: { display: false },
         title: { display: true, text: `Dark: ${(dark.dark_pct||0).toFixed(1)}% — ${biasLabel}`
             + (impactBps != null ? ` — 5m impact ${impactBps >= 0 ? '+' : ''}${impactBps.toFixed(1)}bps` : ''),
-          color: '#e8f4ff', font: { size: 12 } }
+          color: '#e8eef7', font: { size: 12 } }
       },
       scales: { x: { ticks: { callback: v => (v/1e3).toFixed(0)+'K' } } }
     }
@@ -3172,7 +3165,7 @@ function renderEvents(data) {
         return `<tr style="cursor:${isin?'pointer':'default'}" onclick="${isin?`drillIntoISIN('${isin}','XOSL')`:''}">
           <td style="font-family:var(--mono);font-size:11px">${e.event_date}</td>
           <td><span class="badge ${TYPE_COLOR[e.event_type]||'badge-dim'}">${TYPE_ICON[e.event_type]||''}${e.event_type}</span></td>
-          <td>${e.issuer||isinName(isin)||isin}</td>
+          <td>${isin ? INTEL.tkLink(isin, e.issuer||isinName(isin)||isin) : (e.issuer||'—')}</td>
           <td style="font-size:12px">${e.title||'—'}${dividendInfo}</td>
           <td class="r" style="${daysColor};font-family:var(--mono)">${daysStr}</td>
           <td id="evt-prox-${e.id}">—</td>
@@ -3357,7 +3350,7 @@ function renderCatalystCard(r) {
   <div class="cat-card ${dir}" onclick="${isin ? `drillIntoISIN('${isin}','XOSL')` : ''}">
     <div class="cat-header">
       <div>
-        <span class="cat-ticker">${ticker}</span>
+        <span class="cat-ticker">${INTEL.tkLink(isin, ticker)}</span>
         <span class="cat-company">${company}</span>
       </div>
       <span class="cat-dir ${dir}">${dirLabel}</span>
@@ -3405,7 +3398,7 @@ let _trendData = [], _sparkMap = {};
 
 function sparkSVG(values, { w=80, h=30, color='#4fc3f7' } = {}) {
   const v = (values || []).filter(x => x != null && isFinite(x) && x >= 0);
-  if (v.length < 2) return `<svg width="${w}" height="${h}" style="display:inline-block;vertical-align:middle"><line x1="2" y1="${h/2}" x2="${w-2}" y2="${h/2}" stroke="#1e2d42" stroke-width="1"/></svg>`;
+  if (v.length < 2) return `<svg width="${w}" height="${h}" style="display:inline-block;vertical-align:middle"><line x1="2" y1="${h/2}" x2="${w-2}" y2="${h/2}" stroke="rgba(255,255,255,0.10)" stroke-width="1"/></svg>`;
   const mn = Math.min(...v), mx = Math.max(...v), rng = mx - mn || 1;
   const pts = v.map((val, i) => {
     const x = 2 + (i / (v.length - 1)) * (w - 4);

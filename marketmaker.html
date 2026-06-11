@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Market Maker · Slensvik</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=Syne:wght@500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link rel="stylesheet" href="assets/intel.css">
+<script src="assets/intel.js"></script>
+<style>
+  /* Design tokens live in assets/intel.css (shared design system). */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background:var(--bg0); color:var(--text1); font-family:var(--mono); min-height:100vh; -webkit-font-smoothing:antialiased; }
+  .topbar { display:flex; align-items:center; gap:14px; padding:22px 36px; border-bottom:1px solid var(--border); }
+  .topbar a.back { font-family:var(--mono); font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--text2); text-decoration:none; padding:4px 12px; border:1px solid var(--border2); }
+  .topbar a.back:hover { color:var(--amber); border-color:var(--amber); }
+  .crumb { font-family:var(--mono); font-size:11px; letter-spacing:.18em; text-transform:uppercase; color:var(--text2); }
+  .crumb .glyph { color:var(--amber); margin-right:8px; }
+
+  main { max-width:1280px; margin:0 auto; padding:36px 28px 80px; }
+  h1 { font-family:var(--sans); font-weight:700; font-size:clamp(26px,3.5vw,38px); line-height:1.05; letter-spacing:-0.02em; margin-bottom:14px; }
+  .lead { font-size:12.5px; color:var(--text2); line-height:1.7; margin-bottom:20px; max-width:880px; }
+
+  /* ─── Alpha banner ──────────────────────────────────────── */
+  .alpha-banner {
+    display:flex; align-items:center; gap:12px;
+    border:1px solid rgba(245,166,35,0.32); background:var(--amber-dim);
+    padding:10px 16px; margin-bottom:28px;
+    font-family:var(--mono); font-size:11px; letter-spacing:.06em; color:var(--text2); line-height:1.5;
+  }
+  .alpha-banner .tag {
+    font-size:9.5px; letter-spacing:.18em; text-transform:uppercase; color:var(--amber);
+    border:1px solid rgba(245,166,35,0.4); padding:3px 8px; white-space:nowrap; font-weight:500;
+  }
+  .alpha-banner strong { color:var(--text1); }
+
+  .sec { margin-top:22px; }
+  .sec-head {
+    font-family:var(--mono); font-size:10px; letter-spacing:.2em; text-transform:uppercase;
+    color:var(--text2); margin-bottom:12px; display:flex; align-items:baseline; gap:14px;
+    padding-bottom:8px; border-bottom:1px solid var(--border);
+  }
+  .sec-head::after { display:none; }   /* page uses its own border-bottom rule */
+  .sec-head { margin-top:0; }
+  .sec-head .glyph { color:var(--amber); font-size:13px; }
+  .sec-head .desc { color:var(--text3); font-weight:400; letter-spacing:.06em; text-transform:none; flex:1; font-size:11px; }
+  .sec-head .meta { color:var(--text3); font-weight:400; }
+
+  .panel { border:1px solid var(--border2); background:var(--bg1); padding:18px 20px 16px; }
+  .grid-2 { display:grid; grid-template-columns:1.4fr 1fr; gap:14px; }
+  @media (max-width:1100px){ .grid-2{ grid-template-columns:1fr; } }
+
+  /* ─── KPI strip ─────────────────────────────────────────── */
+  .kpis { display:grid; grid-template-columns:repeat(4, 1fr); gap:10px; margin-bottom:14px; }
+  @media (max-width:1000px){ .kpis{ grid-template-columns:repeat(2,1fr); } }
+  .kpi { border:1px solid var(--border2); padding:12px 14px; background:var(--bg1); }
+  .kpi-lbl { font-family:var(--mono); font-size:9px; letter-spacing:.18em; text-transform:uppercase; color:var(--text3); margin-bottom:6px; }
+  .kpi-val { font-family:var(--mono); font-size:19px; font-weight:500; color:var(--text1); font-variant-numeric:tabular-nums; letter-spacing:-0.01em; }
+  .kpi-sub { font-family:var(--mono); font-size:9px; color:var(--text3); margin-top:3px; letter-spacing:.06em; }
+  .pp-pos { color:var(--green); } .pp-neg { color:var(--red); }
+
+  /* ─── Milestone tracker ─────────────────────────────────── */
+  .ms-list { display:flex; flex-direction:column; gap:2px; }
+  .ms-row {
+    display:grid; grid-template-columns:42px 150px 1fr 110px; align-items:center; gap:14px;
+    padding:11px 4px; border-bottom:1px dashed var(--border); font-family:var(--mono);
+  }
+  .ms-row:last-child { border-bottom:none; }
+  .ms-node {
+    width:22px; height:22px; border:1px solid var(--border2); display:flex; align-items:center; justify-content:center;
+    font-size:11px; color:var(--text3); position:relative;
+  }
+  .ms-node.done { color:var(--green); border-color:rgba(67,224,151,0.5); background:var(--green-dim); }
+  .ms-node.prog { color:var(--amber); border-color:rgba(245,166,35,0.5); background:var(--amber-dim); }
+  .ms-node.pend { color:var(--text4); }
+  .ms-id { font-size:11px; letter-spacing:.1em; color:var(--text1); font-weight:500; }
+  .ms-id .sub { display:block; font-size:9px; letter-spacing:.06em; color:var(--text3); margin-top:2px; text-transform:none; }
+  .ms-name { font-size:11.5px; color:var(--text2); letter-spacing:.02em; line-height:1.5; }
+  .ms-name em { color:var(--text1); font-style:normal; }
+  .ms-status {
+    text-align:center; font-size:8.5px; letter-spacing:.16em; text-transform:uppercase;
+    padding:3px 6px; border:1px solid var(--border2); justify-self:end; width:104px;
+  }
+  .ms-status.done { color:var(--green); border-color:rgba(67,224,151,0.4); background:rgba(67,224,151,0.06); }
+  .ms-status.prog { color:var(--amber); border-color:rgba(245,166,35,0.4); background:rgba(245,166,35,0.06); }
+  .ms-status.pend { color:var(--text4); }
+
+  .ms-progress { margin-top:14px; display:flex; align-items:center; gap:12px; }
+  .ms-bar-wrap { flex:1; height:6px; background:var(--bg3); }
+  .ms-bar { height:100%; background:linear-gradient(90deg,rgba(67,224,151,0.9),rgba(245,166,35,0.9)); transition:width .5s; }
+  .ms-bar-lbl { font-family:var(--mono); font-size:10px; color:var(--text2); letter-spacing:.08em; font-variant-numeric:tabular-nums; }
+
+  /* ─── Gate checklist (validation §7) ───────────────────── */
+  .gate-row { display:flex; align-items:flex-start; gap:10px; padding:8px 0; border-bottom:1px dashed var(--border); font-family:var(--mono); font-size:11px; line-height:1.55; }
+  .gate-row:last-child { border-bottom:none; }
+  .gate-mk { color:var(--text4); flex-shrink:0; width:14px; }
+  .gate-mk.done { color:var(--green); }
+  .gate-mk.prog { color:var(--amber); }
+  .gate-txt { color:var(--text2); }
+  .gate-txt em { color:var(--text1); font-style:normal; }
+
+  /* ─── Paper-trade table ─────────────────────────────────── */
+  .tbl-wrap { overflow-x:auto; }
+  table.trades { width:100%; border-collapse:collapse; font-family:var(--mono); font-size:10.5px; }
+  table.trades th {
+    text-align:right; font-size:8.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--text3);
+    font-weight:400; padding:8px 10px; border-bottom:1px solid var(--border2); white-space:nowrap;
+  }
+  table.trades th:first-child, table.trades td:first-child { text-align:left; }
+  table.trades td {
+    text-align:right; padding:8px 10px; border-bottom:1px dashed var(--border);
+    color:var(--text2); font-variant-numeric:tabular-nums; white-space:nowrap;
+  }
+  table.trades tr:last-child td { border-bottom:none; }
+  table.trades tr:hover td { background:var(--bg2); }
+  .t-inst { color:var(--text1); letter-spacing:.03em; }
+  .t-side { font-size:8.5px; letter-spacing:.1em; padding:2px 6px; border:1px solid var(--border2); }
+  .t-side.buy  { color:var(--green); border-color:rgba(67,224,151,0.4); background:rgba(67,224,151,0.06); }
+  .t-side.sell { color:var(--red);   border-color:rgba(240,96,96,0.4);  background:rgba(240,96,96,0.06); }
+  .t-pf { font-size:8.5px; letter-spacing:.12em; padding:2px 7px; border:1px solid var(--border2); }
+  .t-pf.y { color:var(--green); border-color:rgba(67,224,151,0.4); background:rgba(67,224,151,0.06); }
+  .t-pf.n { color:var(--red);   border-color:rgba(240,96,96,0.4);  background:rgba(240,96,96,0.06); }
+  .t-edge.pos { color:var(--green); } .t-edge.neg { color:var(--red); }
+
+  .src-pill {
+    font-family:var(--mono); font-size:8.5px; letter-spacing:.14em; text-transform:uppercase;
+    padding:2px 7px; border:1px solid var(--border2); color:var(--text3);
+  }
+  .src-pill.mock { color:var(--amber); border-color:rgba(245,166,35,0.4); background:rgba(245,166,35,0.06); }
+  .src-pill.live { color:var(--green); border-color:rgba(67,224,151,0.4); background:rgba(67,224,151,0.06); }
+
+  .ph {
+    font-family:var(--mono); font-size:11px; letter-spacing:.1em;
+    color:var(--text3); text-align:center; padding:32px 8px;
+    border:1px dashed var(--border); background:var(--bg2);
+  }
+  .ph strong { color:var(--amber); }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <span class="crumb"><span class="glyph">◆</span>MARKET MAKER · PCP OPTIONS</span>
+  <div data-intel-nav style="margin-left:auto"></div>
+  <span style="font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--text3)">DATA <strong id="srcTag" class="src-pill">—</strong></span>
+</header>
+
+<main>
+
+  <h1>Put-call-parity options market maker on Deribit.</h1>
+  <p class="lead">
+    Rest passive limit quotes on BTC options priced off put-call parity against the dated future
+    (<span style="color:var(--text1)">C = P + (F − K)/F</span>). Quote at parity ± margin so that, if filled, the
+    completing hedge (opposite option + future) locks a small positive PnL — payment for providing liquidity.
+    A quote is posted only when the edge survives modeled hedge slippage, fees and a safety buffer.
+  </p>
+
+  <div class="alpha-banner">
+    <span class="tag">Alpha · Paper only</span>
+    <span>
+      <strong>No real capital.</strong> Everything below is offline simulation / paper trading.
+      Validation order is strict: simulator proves edge net of costs → Deribit testnet reproduces sim → only
+      then a written go/no-go on real money.
+    </span>
+  </div>
+
+  <!-- ─── SECTION 1 · PROJECT PROGRESS TRACKER ─────────────── -->
+  <div class="sec">
+    <div class="grid-2">
+
+      <div class="panel">
+        <div class="sec-head"><span class="glyph">◫</span>BUILD MILESTONES<span class="desc">Fresh build; salvage proven parity / book logic, rebuilt with tests</span><span class="meta" id="msMeta">—</span></div>
+        <div class="ms-list" id="msList"></div>
+        <div class="ms-progress">
+          <span class="ms-bar-lbl">Progress</span>
+          <div class="ms-bar-wrap"><div class="ms-bar" id="msBar" style="width:0%"></div></div>
+          <span class="ms-bar-lbl" id="msPct">—</span>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="sec-head"><span class="glyph">△</span>VALIDATION GATES<span class="desc">No skipping — each gate must be green before the next</span></div>
+        <div id="gateList"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ─── SECTION 2 · STRATEGY LIVE MOCKUP ─────────────────── -->
+  <div class="sec">
+    <div class="panel">
+      <div class="sec-head"><span class="glyph">▰</span>STRATEGY MOCKUP · PAPER PNL<span class="desc">Quotes the simulator would have rested and the edge they would have realized, marked profitable / not</span><span class="meta" id="ppAsOf">—</span></div>
+
+      <div class="kpis">
+        <div class="kpi"><div class="kpi-lbl">Paper P&amp;L</div><div class="kpi-val" id="kPnl">—</div><div class="kpi-sub" id="kPnlSub">cumulative, BTC-denominated</div></div>
+        <div class="kpi"><div class="kpi-lbl">Quotes filled</div><div class="kpi-val" id="kFills">—</div><div class="kpi-sub">paper conversions / reversals</div></div>
+        <div class="kpi"><div class="kpi-lbl">Hit rate</div><div class="kpi-val" id="kHit">—</div><div class="kpi-sub" id="kHitSub">net-of-cost profitable</div></div>
+        <div class="kpi"><div class="kpi-lbl">Avg realized edge</div><div class="kpi-val" id="kEdge">—</div><div class="kpi-sub">per filled quote</div></div>
+      </div>
+
+      <div style="height:280px"><canvas id="pnlCanvas"></canvas></div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="panel">
+      <div class="sec-head"><span class="glyph">≡</span>RECENT PAPER TRADES<span class="desc">Edge = parity fair value − quote price − modeled hedge cost − fees</span><span class="meta" id="tblMeta">—</span></div>
+      <div class="tbl-wrap">
+        <table class="trades">
+          <thead>
+            <tr>
+              <th>Time (UTC)</th><th>Strike / Expiry</th><th>Side</th>
+              <th>Quote</th><th>Parity fair</th><th>Hedge cost</th><th>Realized edge</th><th>Profitable</th>
+            </tr>
+          </thead>
+          <tbody id="tradeBody">
+            <tr><td colspan="8" style="text-align:center;color:var(--text3);padding:24px;letter-spacing:.1em">LOADING …</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+const API = 'https://api.slensvik.com';
+
+/* ─── Milestone + gate model (SPEC §3 build map, §7 gates) ──────────────── */
+const MILESTONES = [
+  { id:'M0', sub:'spec + decisions',  name:'Align on <em>spec, architecture and decisions</em>',                 status:'done' },
+  { id:'M1', sub:'data recorder',     name:'Deribit <em>market-data recorder</em> — full-depth, zstd Parquet',   status:'prog' },
+  { id:'M2', sub:'book module',       name:'<em>Order-book</em> module — snapshot + increments, gap detection',  status:'pend' },
+  { id:'M3', sub:'pricing + costs',   name:'<em>Pricing + units + cost</em> model — parity engine, hedge slippage', status:'pend' },
+  { id:'M4', sub:'paper simulator',   name:'<em>Paper-trading simulator</em> + honest edge gate',                status:'pend' },
+  { id:'M5', sub:'persistence',       name:'<em>Persistence</em> to Postgres (api schema) for this page',        status:'pend' },
+  { id:'M6', sub:'this frontend',     name:'<em>Frontend</em> — milestone tracker + live paper-PnL mockup',      status:'prog' },
+  { id:'M7', sub:'testnet + go/no-go',name:'<em>Testnet run</em> reproduces sim → written go/no-go',             status:'pend' },
+];
+const GATES = [
+  { mk:'prog', txt:'<em>Unit + property tests</em> on pricing / book / costs green (units, sequence-gap, depth-walk).' },
+  { mk:'pend', txt:'<em>Replay backtest</em> shows positive PnL net of modeled costs across multiple recorded sessions.' },
+  { mk:'pend', txt:'<em>Testnet run</em> reproduces sim behaviour (quotes, fills, hedges) with no book desyncs over hours.' },
+  { mk:'pend', txt:'<em>Go / no-go</em> on real capital — only after gates 1–3, written sign-off.' },
+];
+
+function renderMilestones() {
+  const glyph = { done:'✓', prog:'◑', pend:'○' };
+  const lbl   = { done:'Done', prog:'In progress', pend:'Pending' };
+  document.getElementById('msList').innerHTML = MILESTONES.map(m => `
+    <div class="ms-row">
+      <div class="ms-node ${m.status}">${glyph[m.status]}</div>
+      <div class="ms-id">${m.id}<span class="sub">${m.sub}</span></div>
+      <div class="ms-name">${m.name}</div>
+      <div class="ms-status ${m.status}">${lbl[m.status]}</div>
+    </div>`).join('');
+  // progress: done = 1, in-progress = 0.5
+  const score = MILESTONES.reduce((s,m) => s + (m.status==='done'?1:m.status==='prog'?0.5:0), 0);
+  const pct = Math.round(100 * score / MILESTONES.length);
+  document.getElementById('msBar').style.width = pct + '%';
+  document.getElementById('msPct').textContent = pct + '%';
+  const done = MILESTONES.filter(m => m.status==='done').length;
+  const prog = MILESTONES.filter(m => m.status==='prog').length;
+  document.getElementById('msMeta').textContent = `${done} done · ${prog} active · ${MILESTONES.length} total`;
+}
+function renderGates() {
+  const glyph = { done:'✓', prog:'◑', pend:'○' };
+  document.getElementById('gateList').innerHTML = GATES.map((g,i) => `
+    <div class="gate-row">
+      <span class="gate-mk ${g.mk}">${glyph[g.mk]}</span>
+      <span class="gate-txt"><strong style="color:var(--text3)">${i+1}.</strong> ${g.txt}</span>
+    </div>`).join('');
+}
+
+/* ─── DATA LAYER ─────────────────────────────────────────────────────────────
+   SINGLE source-of-truth fetcher. Flip mock → live by simply making these
+   PostgREST endpoints return rows once the simulator persists to the api schema.
+
+   Assumed endpoints (to be created in the `api` schema, exposed via PostgREST):
+     • api.marketmaker_paper_trades  — one row per filled paper quote
+         { ts, strike, expiry, side, quote_price, parity_fair, hedge_cost,
+           realized_edge, profitable }            (BTC-denominated premiums)
+     • api.marketmaker_pnl           — cumulative paper-PnL time series
+         { ts, cum_pnl }
+
+   If either endpoint 404s / errors / is empty, we fall back to representative
+   MOCK data so the page is presentable today. `srcTag` shows MOCK vs LIVE.
+─────────────────────────────────────────────────────────────────────────────── */
+
+async function getJSON(path) {
+  const j = await INTEL.safeGet(path);      // 404 / 5xx / offline → null
+  return Array.isArray(j) ? j : null;
+}
+
+// Deterministic mock so the page looks identical on every load (no jitter).
+function buildMock() {
+  const expiries = ['28JUN26', '28JUN26', '26JUL26', '28JUN26', '26JUL26'];
+  const strikes  = [62000, 64000, 60000, 66000, 58000, 65000, 63000, 61000];
+  let rng = 20260609;                       // seeded LCG
+  const rand = () => (rng = (rng * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+
+  const trades = [];
+  let cum = 0;
+  const pnl = [];
+  const t0 = Date.UTC(2026, 5, 9, 8, 0, 0); // 2026-06-09 08:00 UTC
+  for (let i = 0; i < 26; i++) {
+    const ts = new Date(t0 + i * 23 * 60000); // ~23-min cadence
+    const strike = strikes[Math.floor(rand() * strikes.length)];
+    const expiry = expiries[Math.floor(rand() * expiries.length)];
+    const side   = rand() < 0.5 ? 'buy' : 'sell';
+    const parity = 0.045 + rand() * 0.06;     // fair value, BTC premium
+    // realized edge mostly positive (the gate only posts +EV quotes), with a
+    // realistic minority of losers from hedge slippage on the illiquid leg.
+    const win    = rand() < 0.73;
+    const edge   = win ? (0.00012 + rand() * 0.00060)
+                       : -(0.00008 + rand() * 0.00045);
+    const hedge  = 0.00030 + rand() * 0.00055;
+    const quote  = side === 'buy' ? parity - (edge + hedge) : parity + (edge + hedge);
+    cum += edge;
+    trades.push({
+      ts: ts.toISOString(), strike, expiry, side,
+      quote_price: quote, parity_fair: parity, hedge_cost: hedge,
+      realized_edge: edge, profitable: edge > 0,
+    });
+    pnl.push({ ts: ts.toISOString(), cum_pnl: cum });
+  }
+  return { trades, pnl, mock:true };
+}
+
+async function loadData() {
+  const [trades, pnl] = await Promise.all([
+    getJSON('marketmaker_paper_trades?order=ts.desc&limit=200'),
+    getJSON('marketmaker_pnl?order=ts.asc&limit=2000'),
+  ]);
+  if (trades && trades.length && pnl && pnl.length) {
+    return { trades, pnl, mock:false };
+  }
+  return buildMock();                       // <-- the one place mock kicks in
+}
+
+/* ─── Formatting helpers ────────────────────────────────────────────────── */
+const btc  = v => (v >= 0 ? '+' : '−') + '₿' + Math.abs(v).toFixed(5);
+const btc4 = v => '₿' + Number(v).toFixed(4);
+const sgn  = v => (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(5);
+const hhmm = iso => new Date(iso).toISOString().slice(11, 16);
+
+/* ─── Renderers ─────────────────────────────────────────────────────────── */
+function renderTrades(rows) {
+  // table shows newest first
+  const sorted = [...rows].sort((a,b) => new Date(b.ts) - new Date(a.ts));
+  document.getElementById('tradeBody').innerHTML = sorted.map(t => {
+    const edge = Number(t.realized_edge);
+    const prof = (t.profitable === true || t.profitable === 'true' || (t.profitable == null && edge > 0));
+    return `<tr>
+      <td>${hhmm(t.ts)}</td>
+      <td class="t-inst">${Number(t.strike).toLocaleString('en-US')} · ${t.expiry}</td>
+      <td><span class="t-side ${t.side}">${String(t.side).toUpperCase()}</span></td>
+      <td>${btc4(t.quote_price)}</td>
+      <td>${btc4(t.parity_fair)}</td>
+      <td>${btc4(t.hedge_cost)}</td>
+      <td class="t-edge ${edge>=0?'pos':'neg'}">${sgn(edge)}</td>
+      <td><span class="t-pf ${prof?'y':'n'}">${prof?'YES':'NO'}</span></td>
+    </tr>`;
+  }).join('');
+  document.getElementById('tblMeta').textContent = `${sorted.length} fills`;
+}
+
+let pnlChart = null;
+const PP_AXIS = {
+  grid:{ color:'rgba(255,255,255,0.05)' },
+  ticks:{ color:'#5a6377', font:{ family:'IBM Plex Mono', size:9 } },
+};
+function renderPnl(series) {
+  const labels = series.map(p => hhmm(p.ts));
+  const data   = series.map(p => Number(p.cum_pnl));
+  const ds = [
+    { label:'Cumulative paper P&L', data, borderColor:'#43e097',
+      backgroundColor:'rgba(67,224,151,0.08)', borderWidth:1.8, fill:true, tension:.18,
+      pointRadius: data.length < 8 ? 3 : 0, pointHoverRadius:4, pointBackgroundColor:'#43e097' },
+    { label:'Break-even', data: data.map(() => 0), borderColor:'rgba(245,166,35,0.45)',
+      borderDash:[4,4], borderWidth:1, fill:false, pointRadius:0 },
+  ];
+  if (pnlChart) { pnlChart.destroy(); pnlChart = null; }
+  pnlChart = new Chart(document.getElementById('pnlCanvas'), {
+    type:'line', data:{ labels, datasets:ds },
+    options:{ responsive:true, maintainAspectRatio:false, animation:false,
+      interaction:{ intersect:false, mode:'index' },
+      plugins:{ legend:{ labels:{ color:'#a4adbf', font:{ family:'IBM Plex Mono', size:10 }, boxWidth:12 } },
+        tooltip:{ callbacks:{ title: items => items[0].label,
+          label: c => c.dataset.label + ': ' + sgn(c.parsed.y) + ' BTC' } } },
+      scales:{ x:{ ...PP_AXIS, ticks:{ ...PP_AXIS.ticks, autoSkip:true, maxTicksLimit:9, maxRotation:0 } },
+               y:{ ...PP_AXIS, ticks:{ ...PP_AXIS.ticks, callback:v => (v>=0?'+':'−') + Math.abs(v).toFixed(4) } } } },
+  });
+}
+
+function renderKpis(trades, pnl) {
+  const fills = trades.length;
+  const cum   = pnl.length ? Number(pnl[pnl.length - 1].cum_pnl) : 0;
+  const wins  = trades.filter(t => (t.profitable === true || t.profitable === 'true' ||
+                                    (t.profitable == null && Number(t.realized_edge) > 0))).length;
+  const hit   = fills ? (100 * wins / fills) : 0;
+  const avg   = fills ? trades.reduce((s,t) => s + Number(t.realized_edge), 0) / fills : 0;
+
+  const pnlEl = document.getElementById('kPnl');
+  pnlEl.textContent = btc(cum);
+  pnlEl.className = 'kpi-val ' + (cum >= 0 ? 'pp-pos' : 'pp-neg');
+  document.getElementById('kPnlSub').textContent = `over ${fills} paper fills`;
+  document.getElementById('kFills').textContent = fills;
+  document.getElementById('kHit').textContent = hit.toFixed(0) + '%';
+  document.getElementById('kHitSub').textContent = `${wins} / ${fills} profitable`;
+  const edgeEl = document.getElementById('kEdge');
+  edgeEl.textContent = sgn(avg);
+  edgeEl.className = 'kpi-val ' + (avg >= 0 ? 'pp-pos' : 'pp-neg');
+}
+
+function setSource(mock) {
+  const el = document.getElementById('srcTag');
+  el.textContent = mock ? 'MOCK' : 'LIVE';
+  el.className = 'src-pill ' + (mock ? 'mock' : 'live');
+  const note = mock ? 'mock — endpoint not live yet' : 'live from PostgREST';
+  document.getElementById('ppAsOf').textContent = note;
+  document.getElementById('tblMeta').dataset.src = mock ? 'mock' : 'live';
+}
+
+/* ─── MAIN ──────────────────────────────────────────────────────────────── */
+(async () => {
+  renderMilestones();
+  renderGates();
+
+  async function refresh() {
+    const { trades, pnl, mock } = await loadData();
+    setSource(mock);
+    renderKpis(trades, pnl);
+    renderTrades(trades);
+    renderPnl(pnl);
+  }
+  await refresh();
+
+  // Poll for live data the same cadence galton uses for its live tracker.
+  // Once the api endpoints exist this seamlessly flips MOCK → LIVE on its own.
+  setInterval(refresh, 180000);
+})();
+</script>
+
+</body>
+</html>

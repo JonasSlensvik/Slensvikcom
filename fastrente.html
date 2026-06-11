@@ -7,6 +7,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<link rel="stylesheet" href="assets/intel.css">
+<script src="assets/intel.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
@@ -633,7 +635,7 @@ function render(renterData, swapData) {
         <div class="logo-sub">Galton Algorithm · Oslo Børs</div>
       </a>
       <div class="topbar-right">
-        <a href="/" class="nav-back">← Tilbake</a>
+        <div data-intel-nav></div>
       </div>
     </div>
 
@@ -829,6 +831,7 @@ function render(renterData, swapData) {
       <div class="footer-text" style="text-align:right">Data: Finansportalen / SEB<br>Oppdateres daglig</div>
     </div>
   `;
+  if (window.INTEL) INTEL.injectNav();   // shell is JS-rendered; re-run nav injection
 
   // ── RE-RENDER BENEFITS ON BALANCE CHANGE ──
   window._cur3 = cur3; window._cur5 = cur5; window._cur10 = cur10;

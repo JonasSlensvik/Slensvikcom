@@ -7,20 +7,11 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=Syne:wght@500;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link rel="stylesheet" href="assets/intel.css">
+<script src="assets/intel.js"></script>
 <style>
+  /* Design tokens live in assets/intel.css (shared design system). */
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  :root {
-    --bg0:#050810; --bg1:#0b0f17; --bg2:#11161f; --bg3:#1a212d;
-    --border:rgba(255,255,255,0.06); --border2:rgba(255,255,255,0.12);
-    --text1:#e8eef7; --text2:#a4adbf; --text3:#5a6377; --text4:#3a4252;
-    --amber:#f5a623; --amber-dim:rgba(245,166,35,0.16);
-    --ice:#4fc3f7;   --ice-dim:rgba(79,195,247,0.13);
-    --green:#43e097; --green-dim:rgba(67,224,151,0.16);
-    --red:#f06060;   --red-dim:rgba(240,96,96,0.16);
-    --purple:#a78bfa;
-    --mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,monospace;
-    --sans:'Syne',sans-serif;
-  }
   body { background:var(--bg0); color:var(--text1); font-family:var(--mono); min-height:100vh; -webkit-font-smoothing:antialiased; }
   .topbar { display:flex; align-items:center; gap:14px; padding:22px 36px; border-bottom:1px solid var(--border); }
   .topbar a.back { font-family:var(--mono); font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--text2); text-decoration:none; padding:4px 12px; border:1px solid var(--border2); }
@@ -38,6 +29,8 @@
     color:var(--text2); margin-bottom:12px; display:flex; align-items:baseline; gap:14px;
     padding-bottom:8px; border-bottom:1px solid var(--border);
   }
+  .sec-head::after { display:none; }   /* page uses its own border-bottom rule */
+  .sec-head { margin-top:0; }
   .sec-head .glyph { color:var(--amber); font-size:13px; }
   .sec-head .desc { color:var(--text3); font-weight:400; letter-spacing:.06em; text-transform:none; flex:1; font-size:11px; }
   .sec-head .meta { color:var(--text3); font-weight:400; }
@@ -218,9 +211,9 @@
 <body>
 
 <header class="topbar">
-  <a class="back" href="/">← BACK</a>
   <span class="crumb"><span class="glyph">◆</span>GALTON STRATEGY · MV30</span>
-  <span style="margin-left:auto;font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--text3)">REBALANCE <strong id="rebDate" style="color:var(--text1)">—</strong></span>
+  <div data-intel-nav style="margin-left:auto"></div>
+  <span style="font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--text3)">REBALANCE <strong id="rebDate" style="color:var(--text1)">—</strong></span>
 </header>
 
 <main>
@@ -577,6 +570,8 @@ function updateWeightsRender(weights, rcMap, sigmaPort, isLive) {
     const rc = r.rc != null ? (r.rc * 100).toFixed(1) + '%' : '—';
     const liveRow = isLive ? liveW.find(x => x.ticker === r.ticker) : null;
     const newBadge = liveRow && liveRow.is_new_this_week ? '<span class="w-new">NEW</span>' : '';
+    const rowIsin = (liveRow && liveRow.isin) || (isinByTicker && isinByTicker[r.ticker]) || null;
+    const tkCell  = INTEL.tkLink(rowIsin, r.ticker);   // → selskap.html?isin=…
     // Markedsradar overlay
     let mrCell = '<span class="w-mr none">—</span>';
     const conv = convictionByIsin[liveRow ? liveRow.isin : null];
@@ -588,7 +583,7 @@ function updateWeightsRender(weights, rcMap, sigmaPort, isLive) {
     }
     return `<div class="w-row">
       <div class="w-rank">${r.rank}</div>
-      <div class="w-ticker">${r.ticker}${newBadge}</div>
+      <div class="w-ticker">${tkCell}${newBadge}</div>
       <div class="w-bar-wrap"><div class="w-bar ${cls}" style="width:${barW}"></div></div>
       <div class="w-pct ${cls}">${w >= 0 ? '+' : ''}${(w*100).toFixed(2)}%</div>
       <div class="w-rc">${rc}</div>
@@ -945,7 +940,7 @@ function renderPP(mode) {
 
 // ─── MAIN ─────────────────────────────────────────────────────────────
 (async () => {
-  const get = async p => { try { const r = await fetch(`${API}/${p}`); return r.ok ? await r.json() : null; } catch(e) { return null; } };
+  const get = p => INTEL.safeGet(p);   // fetch-with-fallback from assets/intel.js
   const [metrics, mats, weights, allMetrics, conv] = await Promise.all([
     get('galton_metrics?order=rebalance_date.desc&limit=1'),
     get('galton_matrices?order=rebalance_date.desc&limit=1'),

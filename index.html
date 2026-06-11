@@ -6,29 +6,10 @@
 <title>Slensvik · Norwegian Equity Intelligence</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=Syne:wght@500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/intel.css">
 <style>
+  /* Design tokens live in assets/intel.css (shared design system). */
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  :root {
-    --bg0:    #050810;
-    --bg1:    #0b0f17;
-    --bg2:    #11161f;
-    --bg3:    #1a212d;
-    --border: rgba(255,255,255,0.06);
-    --border2: rgba(255,255,255,0.12);
-    --border3: rgba(255,255,255,0.22);
-    --text1:  #e8eef7;
-    --text2:  #a4adbf;
-    --text3:  #5a6377;
-    --text4:  #3a4252;
-    --amber:  #f5a623;
-    --amber-dim: rgba(245,166,35,0.16);
-    --ice:    #4fc3f7;
-    --ice-dim:rgba(79,195,247,0.13);
-    --green:  #43e097;
-    --red:    #f06060;
-    --mono:   'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace;
-    --sans:   'Syne', sans-serif;
-  }
   html { scroll-behavior: smooth; }
   body {
     background: var(--bg0); color: var(--text1);
@@ -125,9 +106,10 @@
 
   /* ─── Gateway cards ──────────────────────────────────────────────────── */
   .gateways {
-    display: grid; grid-template-columns: repeat(3, minmax(280px, 1fr));
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     gap: 18px; width: 100%; max-width: 1120px;
   }
+  .gw.gw-wide { min-height: 0; }
   @media (max-width: 920px)  { .gateways { grid-template-columns: 1fr; max-width: 480px; } }
 
   .gw {
@@ -217,6 +199,8 @@
 </head>
 <body>
 
+<script src="assets/intel.js"></script>
+
 <canvas id="matrix-bg"></canvas>
 <div class="vignette"></div>
 
@@ -227,6 +211,7 @@
       <span class="mark">SLENSVIK<span class="dot">·</span>COM</span>
       <span class="sub">Norwegian Equity Intelligence</span>
     </div>
+    <div data-intel-nav></div>
     <div class="market-status" id="marketStatus">
       <span class="dot"></span><span class="label">CHECKING …</span>
     </div>
@@ -294,6 +279,42 @@
         <div class="gw-meta">
           <span>Source <strong>Local</strong></span>
           <span>Sync <strong>PostgREST</strong></span>
+        </div>
+        <div class="gw-enter"><span>ENTER</span><span class="gw-arrow">→</span></div>
+      </a>
+
+      <a class="gw gw-wide" href="marketmaker.html">
+        <div class="gw-head">
+          <span class="gw-glyph">⧉</span>
+          <span class="gw-status acc">ALPHA · PAPER</span>
+        </div>
+        <div class="gw-name">Market Maker</div>
+        <p class="gw-desc">
+          Put-call-parity options market maker on Deribit. Passive limit
+          quotes at parity ± margin against the dated future; paper-trade
+          milestones gate any path to live capital.
+        </p>
+        <div class="gw-meta">
+          <span>Venue <strong>Deribit</strong></span>
+          <span>Mode <strong>Paper</strong></span>
+        </div>
+        <div class="gw-enter"><span>ENTER</span><span class="gw-arrow">→</span></div>
+      </a>
+
+      <a class="gw gw-wide" href="fastrente.html">
+        <div class="gw-head">
+          <span class="gw-glyph">▥</span>
+          <span class="gw-status beta">RATES</span>
+        </div>
+        <div class="gw-name">Fastrente</div>
+        <p class="gw-desc">
+          Norwegian fixed-rate mortgage strategy — swap-curve forecast,
+          binding windows and break-even maths for locking the rate at the
+          right moment.
+        </p>
+        <div class="gw-meta">
+          <span>Curve <strong>NOK swap</strong></span>
+          <span>Horizon <strong>3–10y</strong></span>
         </div>
         <div class="gw-enter"><span>ENTER</span><span class="gw-arrow">→</span></div>
       </a>
@@ -453,16 +474,9 @@
   setInterval(tick, 30000);
 })();
 
-/* ─── Quick KPIs pulled from PostgREST ────────────────────────────────────── */
+/* ─── Quick KPIs pulled from PostgREST (INTEL.safeGet from assets/intel.js) ── */
 (async () => {
-  const API = 'https://api.slensvik.com';
-  const safeGet = async (p) => {
-    try {
-      const r = await fetch(`${API}/${p}`, { headers: { Accept: 'application/json' }});
-      if (!r.ok) return null;
-      return await r.json();
-    } catch (e) { return null; }
-  };
+  const safeGet = INTEL.safeGet;
 
   // Markedsradar universe + signal count
   const univ = await safeGet('daily_summary?select=isin&limit=10000');
