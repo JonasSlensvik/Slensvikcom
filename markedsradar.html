@@ -1316,7 +1316,7 @@ tbody tr.selected { background: var(--ice-dim); }
   </div>
 
   <!-- ── Catalyst Alerts ───────────────────────────────────────────────────── -->
-  <div class="section collapsed" id="sec-catalyst">
+  <div class="section" id="sec-catalyst">
     <div class="section-head collapsible" onclick="toggleSection('sec-catalyst')">
       <div class="section-title">◆ Catalysts</div>
       <div class="section-desc">Smart-money activity preceding a known corporate event. Red card when a sell signal precedes results or AGM.</div>
@@ -3253,111 +3253,100 @@ async function loadSignalProximity() {
   }
 }
 
-/* ─── Catalyst Alerts ───────────────────────────────────────────────────── */
+/* ─── Catalyst Alerts ───────────────────────────────────────────────────────
+   Powered by api.catalyst_radar: one row per (isin, scheduled event ≤35d)
+   with seven precursor components (insider, dark flow, signals, whales,
+   volume, trend, short) fused into catalyst_score 0–100 + direction. */
 async function loadCatalystAlerts() {
   try {
-    const today     = new Date().toISOString().slice(0,10);
-    const lookback  = new Date(); lookback.setDate(lookback.getDate() - 14);
-    const lookbackStr = lookback.toISOString().slice(0,10);
+    const rows = await APIall('catalyst_radar',
+      `order=catalyst_score.desc.nullslast&limit=60`);
 
-    const rows = await APIall('signal_event_proximity',
-      `trade_date=gte.${lookbackStr}&event_date=gte.${today}` +
-      `&event_type=in.(RESULTS,EARNINGS_CALL,WARNING)` +
-      `&days_to_event=gte.0&proximity=in.(imminent,before,same)&order=days_to_event.asc&limit=200`);
-
-    // Group all signals for the same (isin, event_date, event_type) into one card
-    const grouped = new Map();
+    // One card per ISIN — keep its highest-scored upcoming event
+    const byIsin = new Map();
     for (const r of rows) {
-      const key = `${r.isin}|${r.event_date}|${r.event_type}`;
-      if (!grouped.has(key)) grouped.set(key, { ...r, signals: [] });
-      grouped.get(key).signals.push(r);
+      const prev = byIsin.get(r.isin);
+      if (!prev || (r.catalyst_score || 0) > (prev.catalyst_score || 0)) byIsin.set(r.isin, r);
     }
-    const cards = [...grouped.values()].sort((a,b) => (a.days_to_event||999) - (b.days_to_event||999));
+    const cards = [...byIsin.values()]
+      .sort((a,b) => (b.catalyst_score||0) - (a.catalyst_score||0))
+      .slice(0, 24);
 
     document.getElementById('catalystCount').textContent =
-      cards.length ? `${cards.length} alert${cards.length > 1 ? 's' : ''}` : 'no alerts';
+      cards.length ? `${cards.length} setup${cards.length > 1 ? 's' : ''}` : 'no setups';
 
     document.getElementById('catalystGrid').innerHTML = !cards.length
       ? `<div style="font-family:var(--mono);font-size:12px;color:var(--text-dim);padding:32px;text-align:center">
-           No catalyst alerts detected — no smart money signals precede any upcoming event in the current data window.
+           No scheduled events inside the 35-day horizon — nothing to score yet.
          </div>`
       : cards.map(renderCatalystCard).join('');
 
   } catch(e) {
     document.getElementById('catalystGrid').innerHTML =
       `<div style="font-family:var(--mono);font-size:12px;color:var(--text-dim);padding:32px;text-align:center">
-         Catalyst alerts require ISIN-linked corporate events. Run the corporate_events_scraper workflow first.
+         Catalyst engine unavailable (${e.message}). Check api.catalyst_radar.
        </div>`;
   }
 }
 
 function renderCatalystCard(r) {
-  const sn        = s => s === 'STRONG' ? 8 : s === 'MODERATE' ? 5 : (Number(s) || 0);
-  const signals   = r.signals || [r];
-  const today     = new Date();
-  const evtDate   = new Date(r.event_date);
-  const daysUntil = r.days_to_event;
   const isin      = r.isin || '';
-  const issuer    = r.issuer || '';
-  const ticker    = isinTicker(isin) || issuer.split(' ')[0] || isin.slice(-4) || '—';
-  const company   = issuer || isin || '';
+  const ticker    = r.ticker || isinTicker(isin) || (r.issuer||'').split(' ')[0] || isin.slice(-4) || '—';
+  const company   = r.issuer || isin || '';
+  const daysUntil = r.days_to_event;
+  const score     = r.catalyst_score || 0;
+  const dirScore  = r.direction_score || 0;
   const fmtDate   = d => new Date(d).toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+  const fmtM      = v => v == null ? '—' : Math.abs(v) >= 1e6 ? (v/1e6).toFixed(1)+'M' : Math.abs(v) >= 1e3 ? (v/1e3).toFixed(0)+'k' : String(Math.round(v));
 
-  // Direction consensus across all signals
-  const dirScore  = signals.reduce((sum, s) => {
-    const t = (s.signal_type || '').toLowerCase();
-    return sum + (/sell|distrib/.test(t) ? -1 : /accum|buy|sweep|load/.test(t) ? 1 : 0);
-  }, 0);
-  const dir       = dirScore > 0 ? 'bullish' : dirScore < 0 ? 'bearish' : 'neutral';
-  const dirLabel  = dir === 'bearish' ? '↓ BEARISH' : dir === 'bullish' ? '↑ BULLISH' : '◆ WATCH';
+  const dir       = dirScore > 0.1 ? 'bullish' : dirScore < -0.1 ? 'bearish' : 'neutral';
+  const dirLabel  = dir === 'bearish' ? '↓ DISTRIBUTION' : dir === 'bullish' ? '↑ ACCUMULATION' : '◆ WATCH';
 
-  // Urgency
   const urgency   = daysUntil <= 5 ? 'imminent' : daysUntil <= 14 ? 'soon' : 'upcoming';
   const urgLabel  = urgency === 'imminent' ? `<span style="color:var(--red)">▼ ${daysUntil}d — IMMINENT</span>`
                   : urgency === 'soon'     ? `<span style="color:var(--amber)">◆ in ${daysUntil} days</span>`
                   :                          `🔵 in ${daysUntil} days`;
 
-  // Strongest signal for score base
-  const strongest = signals.reduce((a, b) => sn(a.strength) >= sn(b.strength) ? a : b);
-  const strNum    = sn(strongest.strength);
-  const strColor  = dir === 'bearish' ? 'var(--red)' : dir === 'bullish' ? 'var(--green)' : 'var(--amber)';
+  const scoreColor= score >= 60 ? 'var(--red)' : score >= 30 ? 'var(--amber)' : 'var(--ice)';
 
-  // Suspicion score — multiple independent signals boost it
-  const type_lc   = (strongest.signal_type || '').toLowerCase();
-  const timePts   = urgency === 'imminent' ? 35 : urgency === 'soon' ? 22 : 10;
-  const sigPts    = /dark/.test(type_lc) ? 28 : /iceberg/.test(type_lc) ? 23 : /whale/.test(type_lc) ? 18 : 12;
-  const evtPts    = ['RESULTS','EARNINGS_CALL','WARNING'].includes(r.event_type) ? 20
-                  : ['AGM','EX_DATE'].includes(r.event_type) ? 14 : 8;
-  const strPts    = Math.min(12, (strNum / 10) * 12);
-  const multiPts  = Math.min(15, (signals.length - 1) * 6);
-  const score     = Math.min(100, Math.round(timePts + sigPts + evtPts + strPts + multiPts));
-  const scoreColor= score >= 70 ? 'var(--red)' : score >= 45 ? 'var(--amber)' : 'var(--ice)';
-
-  // Event type display
   const EVT_ICON  = { RESULTS:'▢', EARNINGS_CALL:'◴', AGM:'Ⅱ', EX_DATE:'◇',
                       WARNING:'△', INSIDER:'◐', PLACEMENT:'▦', DELISTING:'⊘',
                       IPO:'▴', PROSPECTUS:'▤', REGULATED:'▣', PRESS_RELEASE:'≡' };
 
-  // Signal rows — all signals in this group
-  const sigRows   = signals.map(s => {
-    const t    = (s.signal_type || '').toLowerCase();
-    const icon = /dark/.test(t) ? '◍' : /iceberg/.test(t) ? '◌' : /large/.test(t) ? '■' : '╳';
-    const str  = sn(s.strength) >= 8 ? 'STRONG' : sn(s.strength) >= 5 ? 'MOD' : '—';
-    const dAgo = s.trade_date ? Math.round((today - new Date(s.trade_date)) / 86400000) : null;
-    const dStr = dAgo !== null ? `<em>${dAgo}d ago</em>` : '';
-    return `<div class="cat-sig-row">
-      <span>${icon} ${s.signal_type || '—'}</span>
-      <span class="badge ${sn(s.strength)>=8?'badge-purple':'badge-ice'}">${str}</span>
-      <span class="cat-date">${dStr}</span>
+  // Seven precursor components: [label, normalized 0–1, detail string]
+  const comps = [
+    ['INSIDER', r.s_insider, r.insider_trades_30d
+        ? `${r.insider_net_value_30d > 0 ? '+' : ''}${fmtM(r.insider_net_value_30d)} net · ${r.insider_trades_30d} trades${r.insider_top_role ? ' · ' + r.insider_top_role : ''}`
+        : 'no trades 30d'],
+    ['DARK FLOW', r.s_dark, r.dark_pct != null
+        ? `${Number(r.dark_pct).toFixed(0)}% dark · ${r.dark_pct_vs_5d_norm > 0 ? '+' : ''}${Number(r.dark_pct_vs_5d_norm || 0).toFixed(1)}pp vs norm · ${r.dark_side_bias || '—'}${r.bias_confirmed ? ' ✓' : ''}`
+        : '—'],
+    ['SIGNALS', r.s_signal, r.sig_count_14d
+        ? `${r.sig_count_14d} fired 14d · ${(r.sig_types || []).slice(0,2).join(', ')}${r.sig_hit_rate_t5 ? ` · ${Number(r.sig_hit_rate_t5).toFixed(0)}% hit` : ''}`
+        : 'none 14d'],
+    ['WHALES', r.s_whale, r.whale_14d
+        ? `${r.whale_14d} prints · ${fmtM(r.whale_notional_14d)} NOK${r.whale_dark_14d ? ` · ${r.whale_dark_14d} dark` : ''}`
+        : 'none 14d'],
+    ['VOLUME', r.s_volume, r.adv_zscore != null
+        ? `ADV z ${Number(r.adv_zscore).toFixed(1)}σ` : '—'],
+    ['TREND', r.s_trend, r.excess_ret_10s_pct != null
+        ? `${r.excess_ret_10s_pct > 0 ? '+' : ''}${Number(r.excess_ret_10s_pct).toFixed(1)}% vs market 10s` : '—'],
+    ['SHORT', r.s_short, r.short_pct != null
+        ? `${Number(r.short_pct).toFixed(1)}% short${r.short_pct_chg ? ` · ${r.short_pct_chg > 0 ? '+' : ''}${Number(r.short_pct_chg).toFixed(2)}pp` : ''}`
+        : 'not on list'],
+  ];
+
+  const compRows = comps.map(([label, s, detail]) => {
+    const w   = Math.round(Math.min(1, Math.max(0, s || 0)) * 100);
+    const hot = w >= 50;
+    return `<div class="cat-sig-row" style="${w === 0 ? 'opacity:.45' : ''}">
+      <span style="min-width:74px">${label}</span>
+      <span class="cat-score-bar" style="flex:0 0 64px">
+        <span class="cat-score-fill" style="display:block;height:100%;width:${w}%;background:${hot ? scoreColor : 'var(--ice)'}"></span>
+      </span>
+      <span class="cat-date" style="flex:1;text-align:right">${detail}</span>
     </div>`;
   }).join('');
-
-  // Timeline — use earliest signal date
-  const earliest  = signals.reduce((a, b) => (a.trade_date||'') < (b.trade_date||'') ? a : b);
-  const sigDate   = new Date(earliest.trade_date || today);
-  const totalSpan = Math.max(1, (evtDate - sigDate) / 86400000);
-  const todayPct  = Math.min(99, Math.max(1, ((today - sigDate) / 86400000) / totalSpan * 100));
-  const fillColor = urgency === 'imminent' ? 'var(--red)' : urgency === 'soon' ? 'var(--amber)' : 'var(--ice)';
 
   return `
   <div class="cat-card ${dir}" onclick="${isin ? `drillIntoISIN('${isin}','XOSL')` : ''}">
@@ -3370,9 +3359,9 @@ function renderCatalystCard(r) {
     </div>
 
     <div class="cat-panels">
-      <div class="cat-panel">
-        <div class="cat-panel-label">Signals Fired (${signals.length})</div>
-        ${sigRows}
+      <div class="cat-panel" style="flex:1">
+        <div class="cat-panel-label">Precursor Evidence · 14d window</div>
+        ${compRows}
       </div>
       <div class="cat-panel">
         <div class="cat-panel-label">Upcoming Event</div>
@@ -3382,22 +3371,8 @@ function renderCatalystCard(r) {
       </div>
     </div>
 
-    <div class="cat-timeline">
-      <div class="cat-tl-track">
-        <div class="cat-tl-fill" style="left:${todayPct}%;right:0;background:${fillColor}"></div>
-        <div class="cat-tl-dot"  style="left:0;background:${strColor}"></div>
-        <div class="cat-tl-today" style="left:${todayPct}%"></div>
-        <div class="cat-tl-dot"  style="left:100%;background:${fillColor}"></div>
-      </div>
-      <div class="cat-tl-labels">
-        <span>${fmtDate(earliest.trade_date)}</span>
-        <span style="color:var(--amber)">TODAY</span>
-        <span>${fmtDate(r.event_date)}</span>
-      </div>
-    </div>
-
     <div class="cat-score">
-      <span>SUSPICION</span>
+      <span>CATALYST</span>
       <div class="cat-score-bar">
         <div class="cat-score-fill" style="width:${score}%;background:${scoreColor}"></div>
       </div>
