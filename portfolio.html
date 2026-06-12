@@ -1095,7 +1095,64 @@ function showDashboard() {
   document.getElementById('dashboard').style.display = 'block';
   document.getElementById('userPill').textContent = currentUser;
   if (heroDeck) heroDeck.resize();
+  hydrateFromBootCache();   // instant paint from last session; loadData refreshes over it
   loadData();
+}
+
+/* ── PERF: stale-while-revalidate boot cache ───────────────────────────────
+   Every API round-trip rides the Cloudflare tunnel (~150–300ms each), so a
+   cold boot needs seconds before first content. We persist the last good
+   load per user and paint the whole dashboard from it instantly; loadData's
+   network refresh then re-renders over it. Derived state (positions,
+   dividend income, daily-series memo) is recomputed, never cached. */
+const BOOT_CACHE_V = 1, BOOT_CACHE_TTL = 7 * 864e5;
+
+function saveBootCache() {
+  try {
+    const payload = JSON.stringify({
+      v: BOOT_CACHE_V, ts: Date.now(),
+      allTransactions, marketData, priceHistory, marketIndex,
+    });
+    if (payload.length > 2.5e6) return;   // stay well clear of the 5MB quota
+    localStorage.setItem('pfBoot:' + currentUser, payload);
+  } catch(e) { /* quota/serialization — cache is best-effort */ }
+}
+
+function hydrateFromBootCache() {
+  try {
+    const raw = localStorage.getItem('pfBoot:' + currentUser);
+    if (!raw) return false;
+    const c = JSON.parse(raw);
+    if (c.v !== BOOT_CACHE_V || !Array.isArray(c.allTransactions) ||
+        Date.now() - c.ts > BOOT_CACHE_TTL) return false;
+    allTransactions = c.allTransactions;
+    marketData      = c.marketData   || {};
+    priceHistory    = c.priceHistory || {};
+    marketIndex     = c.marketIndex  || [];
+    _pdsCache.clear();
+    computePositions();
+    if (!positions.size) return false;
+    applyDividendIncome();
+    document.getElementById('txnCount').textContent =
+      `${allTransactions.length} transactions · syncing…`;
+    renderTransactionLog();
+    renderViewToggles();
+    renderKPIs();
+    renderDeck();
+    renderHoldingsView();
+    renderTape();
+    renderIntelligence();
+    renderDividends();
+    lazyRender('risk',     'riskStrip',      renderRiskMetrics);
+    lazyRender('sector',   'sectorSection',  renderSectorRing);
+    lazyRender('treemap',  'treemap',        renderTreemap);
+    lazyRender('waterfall','waterfallChart', renderWaterfall);
+    lazyRender('risklab',  'riskLabSection', renderRiskLab);
+    lazyRender('drift',    'rebalDrift',     renderRebalDrift);
+    lazyRender('monthly',  'monthlyHeatmap', renderMonthly);
+    lazyRender('income',   'incomePanel',    renderIncomeCalendar);
+    return true;
+  } catch(e) { return false; }
 }
 
 // ── Data loading ──────────────────────────────────────────────────────────
@@ -1144,10 +1201,16 @@ async function loadData() {
     lazyRender('drift',    'rebalDrift',     renderRebalDrift);
     lazyRender('monthly',  'monthlyHeatmap', renderMonthly);
     lazyRender('income',   'incomePanel',    renderIncomeCalendar);
+    saveBootCache();
     startLiveRefresh();
     startNewsRefresh();
   } catch(e) {
     console.error(e);
+    if (positions.size) {   // boot-cache already painted the desk — keep it, just flag the sync failure
+      document.getElementById('txnCount').textContent =
+        `${allTransactions.length} transactions · sync failed (showing cached)`;
+      return;
+    }
     document.getElementById('holdingsBody').innerHTML =
       `<tr><td colspan="10" style="color:var(--red);font-family:var(--mono);font-size:11px;padding:16px">Error: ${e.message}</td></tr>`;
     document.getElementById('deskCards').innerHTML =
