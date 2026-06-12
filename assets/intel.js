@@ -46,6 +46,28 @@
 
   const API = 'https://api.slensvik.com';
 
+  /* ── density mode (COMFORT ⇄ COMPACT) ──────────────────────────────────
+     Applied immediately (intel.js loads synchronously before first paint)
+     so a compact reader never sees a comfort-spaced flash. The CSS lives in
+     intel.css under html[data-density="compact"]. */
+  const DENSITY_KEY = 'intel_density_v1';
+  function applyDensity(mode) {
+    if (mode === 'compact') document.documentElement.setAttribute('data-density', 'compact');
+    else document.documentElement.removeAttribute('data-density');
+  }
+  let density = 'comfort';
+  try { if (localStorage.getItem(DENSITY_KEY) === 'compact') density = 'compact'; } catch (e) {}
+  applyDensity(density);
+  function toggleDensity() {
+    density = density === 'compact' ? 'comfort' : 'compact';
+    try { localStorage.setItem(DENSITY_KEY, density); } catch (e) {}
+    applyDensity(density);
+    document.querySelectorAll('.sn-density').forEach(b => {
+      b.setAttribute('aria-pressed', density === 'compact' ? 'true' : 'false');
+      b.textContent = density === 'compact' ? 'COMPACT' : 'COMFORT';
+    });
+  }
+
   /* fetch-with-fallback: resolves to parsed JSON or null, never throws */
   async function safeGet(path) {
     try {
@@ -165,25 +187,40 @@
     }, { passive: true });
   }
 
-  /* ── staggered entrance reveal (panels, KPI strips, section heads) ─────── */
+  /* ── staggered entrance reveal (panels, KPI strips, section heads) ───────
+     FAIL-SAFE BY DESIGN: content is visible by default — the hidden
+     pre-animation state (.intel-reveal without .in) is only applied here,
+     after the IntersectionObserver is armed. A force-reveal timer then
+     guarantees nothing can stay hidden even if IO callbacks never fire
+     (full-page captures, instant scroll jumps, bfcache restores, etc.):
+     the stagger plays for content near the fold, everything else is
+     quietly revealed shortly after load. */
   function initReveal() {
     if (REDUCE || !('IntersectionObserver' in window)) return;
-    const els = document.querySelectorAll('.panel, .kpi-strip, .sec-head');
+    const els = Array.from(document.querySelectorAll('.panel, .kpi-strip, .sec-head'));
     if (!els.length) return;
+    let io = null;
+    const revealAll = () => {
+      els.forEach(el => el.classList.add('in'));
+      if (io) { io.disconnect(); io = null; }
+    };
     let batch = 0, batchReset = 0;
-    const io = new IntersectionObserver((entries) => {
-      for (const e of entries) {
-        if (!e.isIntersecting) continue;
-        e.target.style.setProperty('--reveal-delay', (Math.min(batch++, 7) * 70) + 'ms');
-        e.target.classList.add('in');
-        io.unobserve(e.target);
-      }
-      cancelAnimationFrame(batchReset);
-      batchReset = requestAnimationFrame(() => { batch = 0; });
-    }, { rootMargin: '0px 0px -6% 0px' });
     try {
+      io = new IntersectionObserver((entries) => {
+        for (const e of entries) {
+          if (!e.isIntersecting) continue;
+          e.target.style.setProperty('--reveal-delay', (Math.min(batch++, 7) * 70) + 'ms');
+          e.target.classList.add('in');
+          if (io) io.unobserve(e.target);
+        }
+        cancelAnimationFrame(batchReset);
+        batchReset = requestAnimationFrame(() => { batch = 0; });
+      }, { rootMargin: '0px 0px -6% 0px' });
       els.forEach(el => { el.classList.add('intel-reveal'); io.observe(el); });
-    } catch (e) { els.forEach(el => el.classList.add('in')); }
+    } catch (e) { revealAll(); return; }
+    // safety net: no element may ever be stuck hidden
+    setTimeout(revealAll, 1500);
+    window.addEventListener('pageshow', (e) => { if (e.persisted) revealAll(); });
   }
 
   /* ── market mood: breadth from /market_pulse → ambient accent tint ─────── */
@@ -417,6 +454,15 @@
     k.textContent = /Mac/i.test(navigator.platform || '') ? '⌘K' : 'CTRL K';
     k.addEventListener('click', openPalette);
     nav.appendChild(k);
+    // density toggle chip (COMFORT ⇄ COMPACT)
+    const d = document.createElement('button');
+    d.type = 'button';
+    d.className = 'sn-density';
+    d.title = 'Toggle reading density (compact ⇄ comfort)';
+    d.setAttribute('aria-pressed', density === 'compact' ? 'true' : 'false');
+    d.textContent = density === 'compact' ? 'COMPACT' : 'COMFORT';
+    d.addEventListener('click', toggleDensity);
+    nav.appendChild(d);
     mount.replaceChildren(nav);
   }
 
@@ -435,5 +481,6 @@
   // injectNav is exposed so pages that render their shell via JS (fastrente)
   // can re-run nav injection after the [data-intel-nav] mount appears.
   window.INTEL = { API, safeGet, fmtNum, fmtPct, fmtNOK, fmtCompact, selskapHref,
-                   tkLink, chartDefaults, injectNav, liveNumber, openPalette, mood };
+                   tkLink, chartDefaults, injectNav, liveNumber, openPalette,
+                   toggleDensity, mood };
 })();

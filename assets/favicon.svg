@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- slensvik.com — terminal mark: dark tile, amber tape, ice tick -->
+  <rect width="64" height="64" rx="12" fill="#0b0f17"/>
+  <rect width="64" height="64" rx="12" fill="none" stroke="#2c3c54" stroke-width="2"/>
+  <polyline points="10,42 22,34 30,38 42,22 54,28" fill="none" stroke="#f5a623"
+            stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="42" cy="22" r="4.5" fill="#4fc3f7"/>
+</svg>

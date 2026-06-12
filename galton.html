@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Galton Strategy · Slensvik</title>
+<meta name="description" content="Galton weekly Markowitz portfolio — optimizer weights, covariance matrices, risk metrics and a live paper-traded tracker on Oslo Børs names.">
+<link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=Syne:wght@500;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -206,6 +208,31 @@
     border:1px dashed var(--border); background:var(--bg2);
   }
   .ph strong { color:var(--amber); }
+
+  /* ─── Mobile / small screens ────────────────────────────── */
+  @media (max-width: 640px) {
+    .topbar { padding:14px 16px; flex-wrap:wrap; gap:10px; }
+    main { padding:24px 14px 64px; }
+    /* section heads: title / desc / meta stack instead of squeezing */
+    .sec-head { flex-wrap:wrap; row-gap:4px; }
+    .sec-head .desc { flex:1 1 100%; }
+    .kpis, .pp-kpis { gap:8px; }
+    .panel { padding:14px 12px 12px; }
+    /* stack the 240px label columns */
+    .vec-pair, .vec-axis { grid-template-columns:1fr; gap:4px 0; }
+    .sl-row { grid-template-columns:1fr 70px 28px; gap:10px; }
+    .sl-row .lbl { grid-column:1 / -1; }
+    /* heatmaps: never wider than the panel */
+    .hm-canvas { max-width:100%; height:auto; }
+    /* weights table: tighten fixed columns */
+    .w-row { grid-template-columns:14px 52px 1fr 50px 32px 44px; gap:5px; font-size:9.5px; }
+    .pp-toggles { flex-wrap:wrap; }
+    .pp-note { margin-left:0; text-align:left; flex-basis:100%; }
+    .var-meta { flex-wrap:wrap; gap:10px 16px; }
+    /* eigen rows: PC / λ / % on one line, loading strip on its own */
+    .eig-row { grid-template-columns:40px 1fr 54px; gap:6px; }
+    .eig-strip { grid-column:1 / -1; }
+  }
 </style>
 </head>
 <body>

@@ -374,7 +374,10 @@
 }
 
 /* ── Staggered entrance (intel.js adds .intel-reveal, then .in on
-      intersection; --reveal-delay staggers items in the same batch) ─────── */
+      intersection; --reveal-delay staggers items in the same batch).
+      Fail-safe: the hidden state exists only while JS has armed the
+      observer, and intel.js force-reveals everything ~1.5s after init —
+      no content can ever be stuck hidden. ─────────────────────────────── */
 @media (prefers-reduced-motion: no-preference) {
   .intel-reveal {
     opacity: 0; transform: translateY(14px);
@@ -502,3 +505,111 @@
   transition: color .15s, border-color .15s, box-shadow .15s;
 }
 .sn-klaunch:hover { color: var(--amber); border-color: rgba(245,166,35,0.4); box-shadow: var(--glow-amber); }
+
+/* density toggle chip (COMFORT ⇄ COMPACT, persisted by intel.js) */
+.sn-density {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-family: var(--mono); font-size: 9px; letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--text4); background: transparent;
+  border: 1px solid var(--border); border-radius: 3px;
+  padding: 3px 7px; margin-left: 4px; cursor: pointer;
+  transition: color .15s, border-color .15s, box-shadow .15s;
+  white-space: nowrap;
+}
+.sn-density::before { content: '▤'; font-size: 8px; opacity: .8; }
+.sn-density:hover { color: var(--ice); border-color: rgba(79,195,247,0.4); box-shadow: var(--glow-ice); }
+.sn-density[aria-pressed="true"] {
+  color: var(--ice); border-color: rgba(79,195,247,0.35);
+  background: var(--ice-dim);
+}
+
+/* ═══ DENSITY: COMPACT MODE ═══════════════════════════════════════════════
+   <html data-density="compact"> — Bloomberg-dense reading mode. Toggled from
+   the injected nav, persisted in localStorage ('intel_density_v1'), applied
+   pre-paint by intel.js. Default (no attribute) = COMFORT. Token overrides
+   cascade through every component that spaces itself with --space-*. */
+html[data-density="compact"] {
+  --space-1: 3px; --space-2: 6px; --space-3: 9px;
+  --space-4: 13px; --space-5: 22px;
+}
+html[data-density="compact"] .kpi { padding: 8px 12px; }
+html[data-density="compact"] .kpi-value { font-size: 18px; }
+html[data-density="compact"] .kpi-label { margin-bottom: 3px; }
+html[data-density="compact"] .kpi-sub { margin-top: 2px; }
+html[data-density="compact"] .intel-table th { padding: 5px 8px; }
+html[data-density="compact"] .intel-table td { padding: 3px 8px; font-size: 10.5px; }
+html[data-density="compact"] .panel-head { margin-bottom: var(--space-2); }
+html[data-density="compact"] .btn { padding: 4px 10px; }
+html[data-density="compact"] .pill { padding: 2px 8px; }
+
+/* ═══ RESPONSIVE LAYER (site-wide) ════════════════════════════════════════
+   Shared mobile behaviour: the injected nav becomes a horizontally scrolling
+   chip rail (terminal ticker-tape flavour), KPI strips drop to 2-up, type
+   scale tightens, the ⌘K palette hugs the viewport. Pages add their own
+   layout-specific queries on top of this. */
+
+/* nav mount must be allowed to shrink inside page topbar flex rows */
+[data-intel-nav] { min-width: 0; }
+
+@media (max-width: 860px) {
+  .site-nav {
+    flex-wrap: nowrap; overflow-x: auto; max-width: 100%;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+    /* edge fade hints that the rail scrolls */
+    -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 26px), transparent);
+            mask-image: linear-gradient(90deg, #000 calc(100% - 26px), transparent);
+  }
+  .site-nav::-webkit-scrollbar { display: none; }
+  .site-nav .sn-link { padding: 6px 9px; }   /* ≥32px touch row */
+  .sn-klaunch, .sn-density { padding: 5px 8px; flex: 0 0 auto; }
+}
+
+@media (max-width: 600px) {
+  :root { --space-4: 16px; --space-5: 26px; }
+  .kpi-strip { grid-template-columns: repeat(2, 1fr); }
+  .kpi { padding: 10px 12px; }
+  .kpi-value { font-size: 18px; }
+  .panel { padding: var(--space-3) var(--space-3); }
+  .panel-head { flex-wrap: wrap; row-gap: 4px; }
+  .sec-head { letter-spacing: 0.14em; }
+  .intel-table th { padding: 7px 8px; }
+  .intel-table td { padding: 6px 8px; }
+  .intel-k { padding: 9vh 10px 10px; }
+  .intel-k-list { max-height: 52vh; }
+}
+
+/* horizontal scroll container for wide tables — edge fades signal overflow.
+   Applied to the page-local wrappers already in the markup (radar .table-wrap,
+   marketmaker .tbl-wrap, selskap .scrollwrap) plus the generic utility. */
+.intel-scroll-x, .table-wrap, .tbl-wrap, .scrollwrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  background:
+    linear-gradient(90deg,  var(--bg1) 35%, rgba(11,15,23,0)) left  / 28px 100%,
+    linear-gradient(270deg, var(--bg1) 35%, rgba(11,15,23,0)) right / 28px 100%,
+    radial-gradient(farthest-side at 0 50%,   rgba(0,0,0,.45), transparent) left  / 14px 100%,
+    radial-gradient(farthest-side at 100% 50%, rgba(0,0,0,.45), transparent) right / 14px 100%;
+  background-repeat: no-repeat;
+  background-attachment: local, local, scroll, scroll;
+}
+
+/* ═══ VIEW TRANSITIONS (progressive enhancement) ══════════════════════════
+   Same-origin cross-document transitions: a fast crossfade + 6px lift.
+   Browsers without the API ignore all of this; reduced-motion users get
+   instant navigation (the @view-transition opt-in itself sits inside the
+   no-preference media query). */
+@media (prefers-reduced-motion: no-preference) {
+  @view-transition { navigation: auto; }
+  ::view-transition-old(root) {
+    animation: intel-vt-out 140ms ease-in both;
+  }
+  ::view-transition-new(root) {
+    animation: intel-vt-in 200ms cubic-bezier(.22,.7,.3,1) both;
+  }
+  @keyframes intel-vt-out { to { opacity: 0; } }
+  @keyframes intel-vt-in  { from { opacity: 0; transform: translateY(6px); }
+                            to   { opacity: 1; transform: none; } }
+}

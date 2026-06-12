@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Selskap · Dossier · Slensvik</title>
+<meta name="description" content="Company intelligence dossier — annotated price tape, dark-flow gauge, insider trades, short interest and event timeline for any Oslo Børs name.">
+<link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=Syne:wght@500;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -59,7 +61,7 @@
 
   .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
   .grid-2-w { display:grid; grid-template-columns:1.35fr 1fr; gap:14px; }
-  @media (max-width:1080px){ .grid-2,.grid-2-w{ grid-template-columns:1fr; } }
+  @media (max-width:1080px){ .grid-2,.grid-2-w{ grid-template-columns:minmax(0,1fr); } }
   .sec { margin-top:14px; }
 
   .panel { padding:18px 20px 16px; }
@@ -171,6 +173,23 @@
   .desc-clip { max-width:340px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 
   footer { font-family:var(--mono); font-size:9px; letter-spacing:.1em; color:var(--text4); text-align:center; padding:30px 0 10px; }
+
+  /* ── mobile / small screens ── */
+  @media (max-width: 640px) {
+    .topbar { padding:14px 16px; gap:10px; }
+    .tk-search { margin-left:0; flex:1 1 100%; }
+    .tk-search input { width:100%; }
+    main { padding:20px 14px 64px; }
+    .hero { gap:14px; }
+    .hero-price { min-width:0; text-align:left; }
+    .hp-val { font-size:30px; }
+    .hp-meta { justify-content:flex-start; }
+    .panel { padding:14px 12px 12px; }
+    .mini-kpis { grid-template-columns:1fr 1fr; }
+    .mini-kpi { min-width:0; }
+    .gauge-lbl { flex-wrap:wrap; gap:4px 10px; }
+    .desc-clip { max-width:200px; }
+  }
 </style>
 </head>
 <body>

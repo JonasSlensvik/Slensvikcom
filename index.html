@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Slensvik · Norwegian Equity Intelligence</title>
+<meta name="description" content="Norwegian equity intelligence terminal — dark-flow signals, conviction radar, portfolio analytics and the Galton strategy, built on Euronext Oslo Børs data.">
+<link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=Syne:wght@500;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/intel.css">
@@ -215,6 +217,15 @@
   }
   .foot a { color: var(--text3); text-decoration: none; }
   .foot a:hover { color: var(--amber); }
+
+  /* ─── Mobile / small screens ──────────────────────────────────────────── */
+  @media (max-width: 600px) {
+    .topbar { padding: 14px 16px; flex-wrap: wrap; gap: 10px; }
+    .hub { padding: 40px 16px 56px; }
+    .subtitle { margin-bottom: 36px; }
+    .gw { min-height: 0; padding: 20px 18px 18px; }
+    .foot { padding: 14px 16px 18px; flex-wrap: wrap; gap: 8px; }
+  }
 </style>
 </head>
 <body>
@@ -574,7 +585,9 @@
   const mbg = document.getElementById('matrix-bg');
   if (mbg) mbg.style.display = 'none';
 
-  const stars = ti.slice(0, 320);
+  /* mobile budget: fewer sprites + lower DPR cap keeps the hero smooth */
+  const SMALL = window.matchMedia('(max-width: 700px)').matches;
+  const stars = ti.slice(0, SMALL ? 160 : 320);
   const N = stars.length;
   const maxMc = Math.max(1, ...stars.map(s => mcap[s.isin] || 0));
 
@@ -583,7 +596,7 @@
   document.body.insertBefore(canvas, document.querySelector('.vignette'));
 
   const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: false });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, SMALL ? 1.5 : 2));
   const camera = new THREE.PerspectiveCamera(55, 1, 1, 600);
   camera.position.set(0, 5, 150);
   const scene = new THREE.Scene();

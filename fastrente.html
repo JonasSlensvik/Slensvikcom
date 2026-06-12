@@ -3,7 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Slensvik.com — Fastrente Strategi</title>
+<title>Fastrente · Slensvik</title>
+<meta name="description" content="Lånekassen fastrente-strategi — følg onsdagsobservasjonene som bestemmer neste fastrente, og se estimert gevinst ved å binde nå.">
+<link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
@@ -37,7 +39,7 @@
   .logo { font-size: 15px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text1); text-decoration: none; }
   .logo-dot { color: var(--accent); }
   .logo-sub { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--text3); letter-spacing: 0.08em; }
-  .topbar-right { display: flex; align-items: center; gap: 16px; }
+  .topbar-right { display: flex; align-items: center; gap: 16px; min-width: 0; }
   .nav-back { font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text2); text-decoration: none; padding: 6px 14px; border: 1px solid var(--border2); border-radius: 4px; transition: all 0.2s; }
   .nav-back:hover { color: var(--text1); border-color: var(--border3); }
 
@@ -150,6 +152,9 @@
   @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
   .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
   .section-divider { font-family: 'IBM Plex Mono', monospace; font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text3); padding: 4px 0 2px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+  @media (max-width: 960px) {
+    .benefit-row { grid-template-columns: 1fr; }
+  }
   @media (max-width: 700px) {
     .main { padding: 20px 16px; }
     .hero { padding: 36px 16px 28px; }
@@ -729,7 +734,7 @@ function render(renterData, swapData) {
           <span class="card-title">Rente nå vs estimert rente · ${actMonthName.toUpperCase()}</span>
           <span class="card-meta">Bind i ${obsMonthName} · observeres i ${waitMonthName} · aktiveres i ${actMonthName}</span>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">
+        <div class="benefit-row">
           ${buildCompareCards(cur3, cur5, cur10, fwd3, fwd5, fwd10, obsMonthName, actMonthName)}
         </div>
         <div style="margin-top:14px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text3);line-height:1.8">

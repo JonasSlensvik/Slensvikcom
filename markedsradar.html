@@ -3,7 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Markedsradar — Norwegian Equity Intelligence</title>
+<title>Markedsradar · Slensvik</title>
+<meta name="description" content="Daily Oslo Børs microstructure radar — dark-flow conviction shortlist, whale prints, smart-money signals and catalyst alerts from the Euronext trade tape.">
+<link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=Syne:wght@400;600;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -595,7 +597,7 @@ tbody tr.selected { background: var(--ice-dim); }
 .chart-container.tall { height: 300px; }
 
 /* ─── Whale alert cards ─────────────────────────────────────────────────── */
-.whale-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+.whale-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr)); gap: 12px; }
 .whale-card {
   background: var(--bg2);
   border: 1px solid var(--border);
@@ -673,7 +675,7 @@ tbody tr.selected { background: var(--ice-dim); }
 /* ─── Catalyst Alert Cards ──────────────────────────────────────────────── */
 .catalyst-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(420px, 100%), 1fr));
   gap: 16px;
   padding: 4px 0;
 }
@@ -1078,6 +1080,17 @@ tbody tr.selected { background: var(--ice-dim); }
 .adv-divider-line { flex: 1; height: 1px; background: linear-gradient(90deg, transparent, var(--border) 40%, var(--border)); }
 .adv-divider-line:last-child { background: linear-gradient(90deg, var(--border), var(--border) 60%, transparent); }
 .adv-divider-label { font-family: var(--mono); font-size: 10px; letter-spacing: 2px; color: var(--text-dim); white-space: nowrap; }
+
+/* ─── Mobile / small screens ─────────────────────────────────────────────── */
+@media (max-width: 600px) {
+  .page { padding: 0 14px 56px; }
+  header { padding: 24px 0 20px; margin-bottom: 22px; }
+  .logo { font-size: 22px; }
+  .header-meta { gap: 10px; }
+  .date-bar { margin-bottom: 22px; }
+  .date-bar input#isinSearch { width: 130px !important; }
+  .feed-title { max-width: 200px; }
+}
 
 </style>
 </head>
