@@ -26,6 +26,12 @@
 html { scroll-behavior: smooth; }
 body { background: var(--bg); color: var(--text); font-family: var(--body); font-size: 13px; line-height: 1.5; min-height: 100vh; overflow-x: hidden; }
 
+/* PERF: this page stacks many .panel cards — intel.css's blur(9px) backdrop
+   compositing is the single biggest paint cost here, and the page bg behind
+   them is near-flat, so a slightly more opaque solid reads identically.
+   Blur stays only on the hero overlays (.auth-card, .deck-flyout). */
+.panel { -webkit-backdrop-filter: none; backdrop-filter: none; background: rgba(11,15,23,0.92); }
+
 .page { max-width: 1440px; margin: 0 auto; padding: 0 24px 64px; position: relative; z-index: 2; }
 
 /* ── Auth (logged-out: ghost Command Deck behind the card) ────────────────── */
@@ -144,7 +150,7 @@ header [data-intel-nav] .site-nav { justify-content: flex-end; }
 .risk-strip { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin-bottom: 24px; }
 @media (max-width: 900px) { .risk-strip { grid-template-columns: repeat(3, 1fr); } }
 @media (max-width: 520px) { .risk-strip { grid-template-columns: repeat(2, 1fr); } }
-.risk-card { background: rgba(13,20,32,0.74); border: 1px solid var(--border); border-radius: 7px; padding: 12px 14px; backdrop-filter: blur(3px); }
+.risk-card { background: rgba(13,20,32,0.92); border: 1px solid var(--border); border-radius: 7px; padding: 12px 14px; }
 .risk-label { font-family: var(--mono); font-size: 8.5px; color: var(--text-dim); letter-spacing: 1.2px; text-transform: uppercase; margin-bottom: 6px; }
 .risk-value { font-family: var(--mono); font-size: 17px; font-weight: 600; color: var(--text-bright); font-variant-numeric: tabular-nums; }
 .risk-value.up { color: var(--green); } .risk-value.dn { color: var(--red); } .risk-value.warn { color: var(--amber); }
@@ -212,7 +218,7 @@ tbody tr:last-child td { border-bottom: none; }
 
 /* ── Intelligence cards (ported) ─────────────────────────────────────────── */
 .intel-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px,1fr)); gap: 12px; }
-.intel-card { background: rgba(17,25,39,0.74); border: 1px solid var(--border); border-radius: 6px; padding: 14px 16px; backdrop-filter: blur(3px); }
+.intel-card { background: rgba(17,25,39,0.92); border: 1px solid var(--border); border-radius: 6px; padding: 14px 16px; }
 .intel-card-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
 .intel-ticker { font-family: var(--mono); font-size: 14px; font-weight: 600; color: var(--text-bright); }
 .intel-signals { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -270,7 +276,7 @@ tbody tr:last-child td { border-bottom: none; }
 .newsreel {
   display: flex; align-items: stretch; gap: 0; margin-bottom: 22px;
   border: 1px solid var(--border); border-radius: 8px;
-  background: rgba(13,20,32,0.74); backdrop-filter: blur(3px); overflow: hidden;
+  background: rgba(13,20,32,0.92); overflow: hidden;
 }
 .nr-rail { display: flex; align-items: center; gap: 6px; padding: 0 12px;
   border-right: 1px solid var(--border); background: var(--bg2); flex-shrink: 0; }
@@ -398,8 +404,7 @@ tbody tr:last-child td { border-bottom: none; }
 .lwc-legend {
   position: absolute; top: 6px; left: 8px; z-index: 20; pointer-events: none;
   font-family: var(--mono); font-size: 9.5px; letter-spacing: .05em; color: var(--text3);
-  background: rgba(5,8,16,.55); padding: 3px 9px; border-radius: 3px;
-  -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);
+  background: rgba(5,8,16,.78); padding: 3px 9px; border-radius: 3px;
   font-variant-numeric: tabular-nums; white-space: nowrap; max-width: 96%;
   overflow: hidden; text-overflow: ellipsis;
 }
@@ -422,9 +427,8 @@ tbody tr:last-child td { border-bottom: none; }
 @media (max-width: 1000px) { .desk-grid { grid-template-columns: 1fr; } }
 .dk-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); gap: 12px; }
 .dk-card {
-  position: relative; background: rgba(11,15,23,0.78); border: 1px solid var(--border);
+  position: relative; background: rgba(11,15,23,0.92); border: 1px solid var(--border);
   border-radius: var(--radius-lg); padding: 14px 16px 12px; cursor: pointer;
-  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
   transition: border-color .2s, transform .2s, box-shadow .2s;
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
 }
@@ -461,6 +465,85 @@ tbody tr:last-child td { border-bottom: none; }
   .deck-value { font-size: 24px; }
   #deckRibbon { width: 160px; }
   .dk-cards { grid-template-columns: 1fr; }
+}
+
+/* ═══ RISK LAB ═════════════════════════════════════════════════════════════ */
+#corrGraphBox { position: relative; height: 320px; }
+#corrGraph { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: default; }
+.corr-key { display: flex; gap: 14px; margin-top: 8px; font-family: var(--mono); font-size: 9px; color: var(--text-dim); letter-spacing: .06em; flex-wrap: wrap; }
+.corr-key span b { font-weight: 500; }
+.wi-row { display: grid; grid-template-columns: 52px 1fr 58px; align-items: center; gap: 10px; margin-bottom: 8px; font-family: var(--mono); font-size: 11px; }
+.wi-tk { color: var(--text-bright); }
+.wi-val { text-align: right; font-variant-numeric: tabular-nums; color: var(--ice); }
+.wi-val.changed { color: var(--amber); }
+input[type=range].wi-slider {
+  -webkit-appearance: none; appearance: none; width: 100%; height: 4px;
+  background: var(--bg3); border-radius: 2px; outline: none; cursor: pointer;
+}
+input[type=range].wi-slider::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none; width: 13px; height: 13px; border-radius: 50%;
+  background: var(--ice); border: 2px solid var(--bg); box-shadow: 0 0 6px rgba(79,195,247,0.5);
+}
+input[type=range].wi-slider::-moz-range-thumb {
+  width: 11px; height: 11px; border-radius: 50%;
+  background: var(--ice); border: 2px solid var(--bg);
+}
+.wi-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); }
+@media (max-width: 520px) { .wi-stats { grid-template-columns: repeat(2, 1fr); } }
+.wi-stat { font-family: var(--mono); }
+.wi-stat .lbl { font-size: 8.5px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--text-dim); margin-bottom: 4px; }
+.wi-stat .now { font-size: 15px; font-weight: 600; color: var(--text-bright); font-variant-numeric: tabular-nums; }
+.wi-stat .was { font-size: 9.5px; color: var(--text-dim); margin-top: 2px; font-variant-numeric: tabular-nums; }
+.wi-stat .now.up { color: var(--green); } .wi-stat .now.dn { color: var(--red); } .wi-stat .now.warn { color: var(--amber); }
+.wi-reset { font-family: var(--mono); font-size: 9px; letter-spacing: 1px; padding: 4px 10px; border-radius: 4px; cursor: pointer; background: transparent; color: var(--text-dim); border: 1px solid var(--border); }
+.wi-reset:hover { color: var(--ice); border-color: var(--ice-dim); }
+.wi-note { font-family: var(--mono); font-size: 9px; color: var(--text-dim); margin-top: 10px; letter-spacing: .04em; }
+
+/* ═══ INCOME CALENDAR ══════════════════════════════════════════════════════ */
+.inc-scroll { overflow-x: auto; padding-bottom: 6px; }
+.inc-track { display: flex; gap: 8px; align-items: stretch; min-width: min-content; }
+.inc-month { flex: 1; min-width: 86px; display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: 6px; background: var(--bg2); overflow: hidden; }
+.inc-month.now { border-color: var(--amber); }
+.inc-barzone { position: relative; height: 64px; display: flex; align-items: flex-end; justify-content: center; gap: 3px; padding: 4px 6px 0; }
+.inc-bar { width: 16px; border-radius: 2px 2px 0 0; background: var(--green); opacity: .85; }
+.inc-bar.future { background: transparent; border: 1px dashed var(--amber); opacity: .9; }
+.inc-body { padding: 6px 8px 8px; font-family: var(--mono); }
+.inc-mlabel { font-size: 8.5px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--text-dim); margin-bottom: 4px; }
+.inc-mtotal { font-size: 11.5px; font-weight: 600; color: var(--text-bright); font-variant-numeric: tabular-nums; }
+.inc-mtotal.future { color: var(--amber); }
+.inc-items { margin-top: 5px; display: flex; flex-direction: column; gap: 2px; }
+.inc-item { font-size: 9px; color: var(--text-dim); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.inc-item b { color: var(--text); font-weight: 500; }
+.inc-item.future { color: var(--amber); opacity: .85; }
+.inc-cum { margin-top: auto; padding: 5px 8px; border-top: 1px solid var(--border); font-family: var(--mono); font-size: 8.5px; color: var(--text-dim); font-variant-numeric: tabular-nums; }
+.inc-cum b { color: var(--green); font-weight: 600; }
+.inc-cum.future b { color: var(--amber); }
+
+/* ═══ TRANSACTION JOURNAL ══════════════════════════════════════════════════ */
+.txn-controls { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+.txn-search {
+  flex: 1; min-width: 160px; max-width: 280px; background: var(--bg3); border: 1px solid var(--border);
+  border-radius: 5px; padding: 6px 10px; color: var(--text-bright);
+  font-family: var(--mono); font-size: 11px; outline: none;
+}
+.txn-search:focus { border-color: var(--ice); }
+.txn-ctx { font-family: var(--mono); font-size: 8.5px; letter-spacing: .8px; padding: 2px 6px; border-radius: 3px; flex-shrink: 0; }
+.txn-ctx-new  { background: var(--ice-dim);   color: var(--ice); }
+.txn-ctx-add  { background: var(--green-dim); color: var(--green); }
+.txn-ctx-trim { background: var(--amber-dim); color: var(--amber); }
+.txn-ctx-exit { background: var(--red-dim);   color: var(--red); }
+.txn-since { font-family: var(--mono); font-size: 10.5px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.txn-since.up { color: var(--green); } .txn-since.dn { color: var(--red); }
+.txn-note { color: var(--text-dim); font-size: 11px; font-style: italic; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 260px; }
+.txn-row { flex-wrap: wrap; }
+
+/* ═══ Reduced motion: kill every always-on animation ═══════════════════════ */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .nr-track { animation: none; }
+  .nr-live { animation: none; }
+  .live-dot { animation: none; box-shadow: none; }
+  #liveRefreshFlash.flash { animation: none; }
 }
 </style>
 </head>
@@ -668,26 +751,56 @@ tbody tr:last-child td { border-bottom: none; }
     </div>
   </div>
 
-  <!-- Risk & rebalancing (ported) -->
-  <div class="section" id="riskSection">
+  <!-- ═══ RISK LAB — correlation web + what-if bench ═══ -->
+  <div class="section" id="riskLabSection">
     <div class="section-head">
-      <div class="section-title">◷ Co-movement &amp; Rebalancing</div>
-      <div class="section-desc">How your names move together, and how far weights have drifted from target</div>
+      <div class="section-title">◉ Risk Lab</div>
+      <div class="section-desc">How your names move together — and what the book looks like if you resize them</div>
+      <div class="desk-tabs" style="margin-left:auto">
+        <button class="desk-tab on-ice" id="corrV_graph" onclick="setCorrView('graph')">WEB</button>
+        <button class="desk-tab" id="corrV_matrix" onclick="setCorrView('matrix')">MATRIX</button>
+      </div>
       <div class="section-count" id="corrCount">—</div>
     </div>
     <div class="alloc-grid">
       <div class="panel">
-        <div class="panel-title">Return Correlation · daily co-movement</div>
-        <div id="corrHeatmap"><div class="empty-state">Loading …</div></div>
+        <div class="panel-title">Correlation Web · node = weight · link = co-movement</div>
+        <div id="corrGraphBox">
+          <canvas id="corrGraph"></canvas>
+          <div class="deck-flyout" id="corrFly"></div>
+        </div>
+        <div id="corrHeatmap" style="display:none"><div class="empty-state">Loading …</div></div>
+        <div class="corr-key">
+          <span><b style="color:var(--red)">━</b> moves together (+ρ, concentration)</span>
+          <span><b style="color:var(--green)">━</b> moves opposite (−ρ, diversifier)</span>
+          <span>drag nodes · hover for detail</span>
+        </div>
       </div>
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title"><span class="glyph">⚖</span>What-If Bench · resize positions, risk recomputes live</div>
+          <button class="wi-reset" onclick="resetWhatIf()">RESET</button>
+        </div>
+        <div id="whatifBox"><div class="empty-state">Loading …</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Rebalancing & seasonality (ported) -->
+  <div class="section" id="riskSection">
+    <div class="section-head">
+      <div class="section-title">◷ Rebalancing &amp; Seasonality</div>
+      <div class="section-desc">How far weights have drifted from target, and the monthly return record</div>
+    </div>
+    <div class="alloc-grid">
       <div class="panel">
         <div class="panel-title">Weight Drift · current vs equal-weight target</div>
         <div id="rebalDrift"><div class="empty-state">Loading …</div></div>
       </div>
-    </div>
-    <div class="panel" style="margin-top:20px">
-      <div class="panel-title">Monthly Returns · portfolio %</div>
-      <div id="monthlyHeatmap"><div class="empty-state">Loading …</div></div>
+      <div class="panel">
+        <div class="panel-title">Monthly Returns · portfolio %</div>
+        <div id="monthlyHeatmap"><div class="empty-state">Loading …</div></div>
+      </div>
     </div>
   </div>
 
@@ -701,21 +814,32 @@ tbody tr:last-child td { border-bottom: none; }
     <div class="intel-grid" id="intelGrid"><div class="loader">Loading …</div></div>
   </div>
 
-  <!-- Dividend calendar (ported) -->
+  <!-- Dividend & income calendar -->
   <div class="section" id="dividendSection">
     <div class="section-head">
-      <div class="section-title">◇ Dividend Calendar</div>
-      <div class="section-desc">Upcoming ex-dates for your holdings</div>
+      <div class="section-title">◇ Income Calendar</div>
+      <div class="section-desc">Dividend income on a timeline — paid (solid) and upcoming ex-dates (dashed), with running total</div>
       <div class="section-count" id="divCount">—</div>
+    </div>
+    <div class="panel" style="margin-bottom:14px" id="incomePanel">
+      <div id="incomeTimeline"><div class="empty-state">Loading …</div></div>
     </div>
     <div class="div-list" id="divList"><div class="loader">Loading …</div></div>
   </div>
 
-  <!-- Transaction log (ported) -->
-  <div class="section">
+  <!-- Transaction journal -->
+  <div class="section" id="journalSection">
     <div class="section-head">
-      <div class="section-title">▣ Transaction Log</div>
+      <div class="section-title">▣ Transaction Journal</div>
+      <div class="section-desc">Every trade with its context and how it has aged</div>
       <div class="section-count" id="txnCount">—</div>
+    </div>
+    <div class="txn-controls">
+      <input id="txnSearch" class="txn-search" type="text" placeholder="filter ticker or note …"
+             autocomplete="off" spellcheck="false" oninput="setTxnFilter()">
+      <button class="desk-tab on" id="txnF_ALL" onclick="setTxnTypeFilter('ALL')">ALL</button>
+      <button class="desk-tab" id="txnF_BUY" onclick="setTxnTypeFilter('BUY')">BUY</button>
+      <button class="desk-tab" id="txnF_SELL" onclick="setTxnTypeFilter('SELL')">SELL</button>
     </div>
     <div id="txnLog"><div class="loader">Loading …</div></div>
   </div>
@@ -839,6 +963,55 @@ const fmtNOK = v => v == null ? '—' : 'NOK ' + v.toLocaleString('nb-NO', { max
 const fmtPct = v => v == null ? '—' : (v >= 0 ? '+' : '') + v.toFixed(2) + '%';
 const fmtNum = (v, dp=2) => v == null ? '—' : v.toLocaleString('nb-NO', { minimumFractionDigits: dp, maximumFractionDigits: dp });
 
+/* ── PERF: lazy panel rendering ────────────────────────────────────────────
+   Below-the-fold panels (Chart.js + heavy DOM) render on first scroll-into-
+   view instead of all at load. Each key holds the LATEST pending render fn,
+   so data refreshes while off-screen just replace the pending work. Once a
+   panel has been seen, subsequent renders run immediately. */
+const _lazyReg = new Map();   // key → { ready, fn }
+const _lazyIO = ('IntersectionObserver' in window)
+  ? new IntersectionObserver(entries => {
+      for (const en of entries) {
+        if (!en.isIntersecting) continue;
+        const rec = _lazyReg.get(en.target.__lazyKey);
+        _lazyIO.unobserve(en.target);
+        if (!rec) continue;
+        rec.ready = true;
+        if (rec.fn) { const f = rec.fn; rec.fn = null; f(); }
+      }
+    }, { rootMargin: '180px' })
+  : null;
+function lazyRender(key, elId, fn) {
+  const el = document.getElementById(elId);
+  if (!el || !_lazyIO) { fn(); return; }
+  let rec = _lazyReg.get(key);
+  if (!rec) {
+    rec = { ready: false, fn: null };
+    _lazyReg.set(key, rec);
+    el.__lazyKey = key;
+    _lazyIO.observe(el);
+  }
+  if (rec.ready) fn(); else rec.fn = fn;
+}
+
+/* ── PERF: forward-fill a daily price history onto a sorted label axis ─────
+   Replaces the O(labels × history) `[...hist].reverse().find(...)` scans in
+   the tape/risk/monthly series math with a single merged walk. `rows` must
+   be ascending by trade_date (they are — ordered in the API query). */
+function ffPrices(rows, labels) {
+  const out = new Array(labels.length).fill(null);
+  let k = 0, last = null;
+  for (let i = 0; i < labels.length; i++) {
+    const d = labels[i];
+    while (k < rows.length && rows[k].trade_date <= d) {
+      if (rows[k].modal_price != null) last = rows[k].modal_price;
+      k++;
+    }
+    out[i] = last;
+  }
+  return out;
+}
+
 // ── Instruments (autocomplete + full ticker lookup) ───────────────────────
 async function loadInstruments() {
   try {
@@ -948,6 +1121,7 @@ async function loadData() {
       return;
     }
 
+    fetchNews();   // independent of market data — runs in parallel with it
     await fetchMarketData(isins);
     renderViewToggles();
     renderKPIs();
@@ -958,17 +1132,19 @@ async function loadData() {
       await fetchIntradayData(isins);
     }
     renderTape();
-    renderRiskMetrics();
     renderIntelligence();
-    renderDividends();
-    renderSectorRing();
-    renderTreemap();
-    renderWaterfall();
-    renderCorrelation();
-    renderRebalDrift();
-    renderMonthly();
+    renderDividends();          // eager — also feeds the above-fold YoC KPI
+    renderTransactionLog();     // re-render now that prices exist (P&L-since-trade)
+    // Below-the-fold panels render on first scroll-into-view:
+    lazyRender('risk',     'riskStrip',      renderRiskMetrics);
+    lazyRender('sector',   'sectorSection',  renderSectorRing);
+    lazyRender('treemap',  'treemap',        renderTreemap);
+    lazyRender('waterfall','waterfallChart', renderWaterfall);
+    lazyRender('risklab',  'riskLabSection', renderRiskLab);
+    lazyRender('drift',    'rebalDrift',     renderRebalDrift);
+    lazyRender('monthly',  'monthlyHeatmap', renderMonthly);
+    lazyRender('income',   'incomePanel',    renderIncomeCalendar);
     startLiveRefresh();
-    fetchNews();
     startNewsRefresh();
   } catch(e) {
     console.error(e);
@@ -1042,6 +1218,7 @@ async function fetchMarketData(isins) {
 
   priceHistory = {};
   marketData = {};
+  _pdsCache.clear();   // daily-series memo is stale once history reloads
   for (const isin of isins) {
     priceHistory[isin] = [];
     marketData[isin] = {
@@ -1549,10 +1726,36 @@ function hash01(s) {
   return (h >>> 0) / 4294967295;
 }
 
+/* PERF: pre-rendered glow sprites. The old loop built 2 radial gradients per
+   body per frame at 60fps; now each colour bucket gets one offscreen sprite,
+   drawn scaled with globalAlpha so the dark-flow pulse still modulates
+   size/intensity. Shared across both deck instances. */
+const GLOW_SPRITE_R = 64;
+const _glowSprites = new Map();   // colour string → offscreen canvas
+function glowSprite(col) {
+  let c = _glowSprites.get(col);
+  if (!c) {
+    c = document.createElement('canvas');
+    c.width = c.height = GLOW_SPRITE_R * 2;
+    const g = c.getContext('2d');
+    const grad = g.createRadialGradient(GLOW_SPRITE_R, GLOW_SPRITE_R, 0, GLOW_SPRITE_R, GLOW_SPRITE_R, GLOW_SPRITE_R);
+    grad.addColorStop(0, col.replace('rgb', 'rgba').replace(')', ',1)'));
+    grad.addColorStop(1, col.replace('rgb', 'rgba').replace(')', ',0)'));
+    g.fillStyle = grad;
+    g.fillRect(0, 0, GLOW_SPRITE_R * 2, GLOW_SPRITE_R * 2);
+    _glowSprites.set(col, c);
+  }
+  return c;
+}
+
+const DECK_FRAME_MS = 32;   // ~30fps — plenty for slow orbital motion
+
 function makeDeck(canvas, opts = {}) {
   const ctx = canvas.getContext('2d');
   const ghost = !!opts.ghost;
   let bodies = [], W = 0, H = 0, raf = 0, hoverIdx = -1;
+  let inView = true, lastDraw = 0;
+  let coreSprite = null, coreR = 0;   // cached core-glow sprite (rebuilt on resize)
   const t0 = performance.now();
 
   function resize() {
@@ -1561,6 +1764,7 @@ function makeDeck(canvas, opts = {}) {
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     canvas.width = W * dpr; canvas.height = H * dpr;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    coreSprite = null;                        // geometry changed — rebuild core glow
     if (!raf) drawFrame(performance.now());   // keep static decks fresh
   }
 
@@ -1569,8 +1773,11 @@ function makeDeck(canvas, opts = {}) {
     const maxVal = Math.max(1, ...bs.map(b => b.value || 0));
     bodies = bs.map((b, rank) => {
       const h = hash01(b.isin || b.tk || String(rank));
+      // Quantise dayPct to 0.25% buckets so the sprite cache stays small;
+      // visually indistinguishable from the continuous ramp.
+      const col = ghost ? 'rgb(70,82,104)' : tmColor(Math.round((b.dayPct || 0) * 4) / 4);
       return {
-        ...b, rank,
+        ...b, rank, col,
         a0: h * Math.PI * 2,
         omega: (0.10 + 0.06 * h) / Math.sqrt(rank + 1) * (ghost ? 0.7 : 1),
         R: Math.max(5, Math.min(17, 5 + 12 * Math.sqrt((b.value || 0) / maxVal))),
@@ -1590,6 +1797,19 @@ function makeDeck(canvas, opts = {}) {
     return { cx, cy, maxR, innerR, squash: 0.62 };
   }
 
+  function makeCoreSprite(innerR) {
+    const c = document.createElement('canvas');
+    c.width = c.height = Math.max(2, Math.ceil(innerR * 2));
+    const g = c.getContext('2d');
+    const cg = g.createRadialGradient(innerR, innerR, 0, innerR, innerR, innerR * 0.96);
+    cg.addColorStop(0, ghost ? 'rgba(79,195,247,0.07)' : 'rgba(245,166,35,0.085)');
+    cg.addColorStop(0.55, ghost ? 'rgba(79,195,247,0.03)' : 'rgba(245,166,35,0.035)');
+    cg.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = cg;
+    g.fillRect(0, 0, c.width, c.height);
+    return c;
+  }
+
   function drawFrame(now) {
     if (W < 80 || H < 80) return; // canvas hidden/unsized (auth gate) — resize() redraws later
     const s = deckFxOn && !DECK_REDUCE ? (now - t0) / 1000 : 13.7;
@@ -1598,12 +1818,8 @@ function makeDeck(canvas, opts = {}) {
     ctx.clearRect(0, 0, W, H);
 
     // core glow (the portfolio heart — DOM overlay carries the numbers)
-    const cg = ctx.createRadialGradient(cx, cy, 0, cx, cy, innerR * 0.96);
-    cg.addColorStop(0, ghost ? 'rgba(79,195,247,0.07)' : 'rgba(245,166,35,0.085)');
-    cg.addColorStop(0.55, ghost ? 'rgba(79,195,247,0.03)' : 'rgba(245,166,35,0.035)');
-    cg.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = cg;
-    ctx.fillRect(cx - innerR, cy - innerR, innerR * 2, innerR * 2);
+    if (!coreSprite || Math.abs(coreR - innerR) > 1) { coreSprite = makeCoreSprite(innerR); coreR = innerR; }
+    ctx.drawImage(coreSprite, cx - innerR, cy - innerR, innerR * 2, innerR * 2);
 
     // orbit rings
     for (let i = 0; i < n; i++) {
@@ -1625,16 +1841,15 @@ function makeDeck(canvas, opts = {}) {
       const x = cx + Math.cos(ang) * r;
       const y = cy + Math.sin(ang) * r * squash;
       b.x = x; b.y = y;
-      const col = ghost ? 'rgb(70,82,104)' : tmColor(b.dayPct || 0);
+      const col = b.col;
       const pulse = 0.5 + 0.5 * Math.sin(s * b.pulseW + b.ph);
       const glowA = ghost ? 0.10 : 0.16 + 0.30 * pulse * Math.max(b.darkAmp, 0.12);
       const gR = b.R * (2.3 + 0.5 * pulse * b.darkAmp);
 
-      const g = ctx.createRadialGradient(x, y, 0, x, y, gR);
-      g.addColorStop(0, col.replace('rgb', 'rgba').replace(')', `,${glowA.toFixed(3)})`));
-      g.addColorStop(1, col.replace('rgb', 'rgba').replace(')', ',0)'));
-      ctx.fillStyle = g;
-      ctx.beginPath(); ctx.arc(x, y, gR, 0, Math.PI * 2); ctx.fill();
+      // glow: cached sprite scaled to gR, alpha = pulse (no gradient allocation)
+      ctx.globalAlpha = glowA;
+      ctx.drawImage(glowSprite(col), x - gR, y - gR, gR * 2, gR * 2);
+      ctx.globalAlpha = 1;
 
       ctx.fillStyle = col;
       ctx.beginPath(); ctx.arc(x, y, b.R, 0, Math.PI * 2); ctx.fill();
@@ -1649,9 +1864,15 @@ function makeDeck(canvas, opts = {}) {
     }
   }
 
-  function loop(now) { raf = requestAnimationFrame(loop); drawFrame(now); }
+  // rAF loop with a frame-skip throttle to ~30fps
+  function loop(now) {
+    raf = requestAnimationFrame(loop);
+    if (now - lastDraw < DECK_FRAME_MS) return;
+    lastDraw = now;
+    drawFrame(now);
+  }
   function start() {
-    if (DECK_REDUCE || !deckFxOn) { drawFrame(performance.now()); return; }
+    if (DECK_REDUCE || !deckFxOn || document.hidden || !inView) { drawFrame(performance.now()); return; }
     if (!raf) raf = requestAnimationFrame(loop);
   }
   function stop(keepFrame = true) {
@@ -1671,7 +1892,15 @@ function makeDeck(canvas, opts = {}) {
   function setHover(i) { hoverIdx = i; if (!raf) drawFrame(performance.now()); }
 
   resize();
-  window.addEventListener('resize', resize);
+  let rzTimer = 0;   // debounced resize — avoid layout thrash mid-drag
+  window.addEventListener('resize', () => { clearTimeout(rzTimer); rzTimer = setTimeout(resize, 150); });
+  // pause the loop whenever the canvas is scrolled out of view (or hidden)
+  if ('IntersectionObserver' in window) {
+    new IntersectionObserver(entries => {
+      for (const en of entries) inView = en.isIntersecting;
+      if (inView) start(); else stop(false);
+    }, { rootMargin: '80px' }).observe(canvas);
+  }
   start();
   return { setBodies, resize, start, stop, hitTest, setHover,
            get bodies() { return bodies; }, get running() { return !!raf; } };
@@ -1931,15 +2160,15 @@ function computeTapeSeries() {
     labels = [...dateSet].sort();
     if (labels.length) {
       if (chartView === 'portfolio') {
-        valueData = labels.map(d => {
-          let val = 0;
-          for (const [isin, p] of positions) {
-            const hist = priceHistory[isin] || [];
-            const row = [...hist].reverse().find(r => r.trade_date <= d && r.trade_date >= since);
-            if (row?.modal_price) val += p.netQty * row.modal_price;
+        valueData = labels.map(() => 0);
+        for (const [isin, p] of positions) {
+          const rows = (priceHistory[isin] || []).filter(r => r.trade_date >= since);
+          const ff = ffPrices(rows, labels);
+          for (let i = 0; i < labels.length; i++) {
+            if (ff[i] != null) valueData[i] += p.netQty * ff[i];
           }
-          return val || null;
-        });
+        }
+        valueData = valueData.map(v => v || null);
         let tc = 0; for (const p of positions.values()) tc += p.totalCost;
         costData = labels.map(() => tc);
       } else {
@@ -2030,11 +2259,8 @@ function computeStackedSeries(labels, isinsToShow) {
         return lastP != null ? lastP * p.netQty : null;
       });
     } else {
-      const hist = priceHistory[isin] || [];
-      series = labels.map(d => {
-        const row = [...hist].reverse().find(r => r.trade_date <= d);
-        return row?.modal_price ? row.modal_price * p.netQty : null;
-      });
+      const ff = ffPrices(priceHistory[isin] || [], labels);
+      series = ff.map(v => v != null ? v * p.netQty : null);
     }
     return { isin, tk: ticker(isin), series };
   });
@@ -2448,7 +2674,7 @@ async function setPeriod(p) {
     await fetchIntradayData([...positions.keys()]);
   }
   renderTape();
-  renderWaterfall();
+  lazyRender('waterfall', 'waterfallChart', renderWaterfall);
 }
 
 function setChartMode(m) {
@@ -2958,25 +3184,30 @@ function renderWaterfall() {
 
 /* ─── Shared daily portfolio value series ──────────────────────────────────
    Sum over current holdings of netQty × forward-filled daily modal_price.
-   Uses current share counts (same basis as the equity chart's daily view).  */
+   Uses current share counts (same basis as the equity chart's daily view).
+   Memoised per data-load (cleared in fetchMarketData) — risk strip, monthly
+   heatmap and the what-if bench all consume it. */
+const _pdsCache = new Map();
 function portfolioDailySeries(sinceDays) {
+  const ck = sinceDays || 0;
+  if (_pdsCache.has(ck)) return _pdsCache.get(ck);
   const since = sinceDays ? new Date(Date.now() - sinceDays * 864e5).toISOString().slice(0, 10) : '0000-01-01';
   const dateSet = new Set();
   for (const isin of positions.keys())
     (priceHistory[isin] || []).forEach(r => { if (r.trade_date >= since) dateSet.add(r.trade_date); });
   const dates = [...dateSet].sort();
-  const values = dates.map(d => {
-    let v = 0, any = false;
-    for (const [isin, p] of positions) {
-      const hist = priceHistory[isin] || [];
-      const row = [...hist].reverse().find(r => r.trade_date <= d);
-      if (row?.modal_price) { v += p.netQty * row.modal_price; any = true; }
+  const values = dates.map(() => null);
+  for (const [isin, p] of positions) {
+    const ff = ffPrices(priceHistory[isin] || [], dates);
+    for (let i = 0; i < dates.length; i++) {
+      if (ff[i] != null) values[i] = (values[i] || 0) + p.netQty * ff[i];
     }
-    return any ? v : null;
-  });
+  }
   // Trim leading nulls so the series starts at the first valued day.
   let s = 0; while (s < values.length && values[s] == null) s++;
-  return { dates: dates.slice(s), values: values.slice(s) };
+  const res = { dates: dates.slice(s), values: values.slice(s) };
+  _pdsCache.set(ck, res);
+  return res;
 }
 
 const _avg = a => a.reduce((s, x) => s + x, 0) / a.length;
@@ -3059,19 +3290,14 @@ function corrColor(c) {
   return `rgb(${ch(0)},${ch(1)},${ch(2)})`;
 }
 
-function renderCorrelation() {
-  const el = document.getElementById('corrHeatmap');
-  if (!el) return;
+/* ═══ RISK LAB — correlation web + matrix + what-if bench ══════════════════ */
+let corrView = 'graph';      // 'graph' | 'matrix'
+let _corrData = null;        // { isins, M, weights, maxOverlap, series }
+let corrSim = null;          // running force simulation (one at a time)
+
+function computeCorrData() {
   const isins = [...positions.keys()];
-  const cnt = document.getElementById('corrCount');
   const series = isins.map(holdingReturns);
-  // Common dates across all names with enough overlap.
-  if (isins.length < 2) {
-    el.innerHTML = `<div class="empty-state">Need ≥2 holdings to compute correlation.</div>`;
-    if (cnt) cnt.textContent = '—';
-    return;
-  }
-  // Build per-pair correlation over each pair's shared dates.
   let maxOverlap = 0;
   const M = isins.map((_, i) => isins.map((__, j) => {
     if (i === j) return 1;
@@ -3080,6 +3306,50 @@ function renderCorrelation() {
     maxOverlap = Math.max(maxOverlap, a.length);
     return _corr(a, b);
   }));
+  let total = 0;
+  const vals = isins.map(isin => {
+    const px = marketData[isin]?.latestPrice;
+    const v = px ? (positions.get(isin)?.netQty || 0) * px : 0;
+    total += v; return v;
+  });
+  const weights = vals.map(v => total > 0 ? v / total : 1 / Math.max(1, isins.length));
+  return { isins, M, weights, maxOverlap, series };
+}
+
+function renderRiskLab() {
+  _corrData = computeCorrData();
+  renderCorrMatrix();
+  renderCorrGraph();
+  renderWhatIf();
+  applyCorrView();
+}
+
+function setCorrView(v) {
+  corrView = v;
+  document.getElementById('corrV_graph').classList.toggle('on-ice', v === 'graph');
+  document.getElementById('corrV_matrix').classList.toggle('on-ice', v === 'matrix');
+  applyCorrView();
+}
+
+function applyCorrView() {
+  const gb = document.getElementById('corrGraphBox');
+  const hm = document.getElementById('corrHeatmap');
+  if (!gb || !hm) return;
+  gb.style.display = corrView === 'graph' ? '' : 'none';
+  hm.style.display = corrView === 'matrix' ? '' : 'none';
+  if (corrView === 'graph' && corrSim) corrSim.kick();
+}
+
+function renderCorrMatrix() {
+  const el = document.getElementById('corrHeatmap');
+  if (!el || !_corrData) return;
+  const { isins, M, maxOverlap } = _corrData;
+  const cnt = document.getElementById('corrCount');
+  if (isins.length < 2) {
+    el.innerHTML = `<div class="empty-state">Need ≥2 holdings to compute correlation.</div>`;
+    if (cnt) cnt.textContent = '—';
+    return;
+  }
   if (maxOverlap < 3) {
     el.innerHTML = `<div class="empty-state">Need ≥3 overlapping sessions — accumulating price history.</div>`;
     if (cnt) cnt.textContent = maxOverlap + 'd';
@@ -3101,6 +3371,358 @@ function renderCorrelation() {
   html += `</div>`;
   el.innerHTML = html;
   if (cnt) cnt.textContent = maxOverlap + 'd window';
+}
+
+/* ── Correlation force-graph: nodes = holdings (sized by weight), springs =
+   |ρ| above threshold. Self-cooling simulation — the rAF loop stops once the
+   layout settles, and reheats on drag, so it costs nothing at rest. */
+function renderCorrGraph() {
+  const canvas = document.getElementById('corrGraph');
+  if (!canvas || !_corrData) return;
+  if (corrSim) { corrSim.destroy(); corrSim = null; }
+  const { isins, M, weights, maxOverlap } = _corrData;
+  const ctx = canvas.getContext('2d');
+
+  const drawMsg = (msg) => {
+    const r = canvas.getBoundingClientRect();
+    canvas.width = r.width || 300; canvas.height = r.height || 320;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.font = "10px 'IBM Plex Mono', monospace";
+    ctx.fillStyle = '#5a6377'; ctx.textAlign = 'center';
+    ctx.fillText(msg, canvas.width / 2, canvas.height / 2);
+  };
+  if (isins.length < 2) { drawMsg('NEED ≥2 HOLDINGS FOR THE WEB'); return; }
+  if (maxOverlap < 3)   { drawMsg('ACCUMULATING PRICE HISTORY …'); return; }
+
+  const nodes = isins.map((isin, i) => ({
+    i, isin, tk: ticker(isin), w: weights[i],
+    r: 9 + 15 * Math.sqrt(Math.max(0.001, weights[i])),
+    x: 0, y: 0, vx: 0, vy: 0, fixed: false,
+  }));
+  let edges = [];
+  const buildEdges = th => {
+    const out = [];
+    for (let i = 0; i < isins.length; i++)
+      for (let j = i + 1; j < isins.length; j++) {
+        const c = M[i][j];
+        if (c != null && Math.abs(c) >= th) out.push({ a: i, b: j, c });
+      }
+    return out;
+  };
+  edges = buildEdges(0.25);
+  if (!edges.length) edges = buildEdges(0.10);
+
+  corrSim = makeCorrSim(canvas, nodes, edges);
+}
+
+function makeCorrSim(canvas, nodes, edges) {
+  const ctx = canvas.getContext('2d');
+  const fly = document.getElementById('corrFly');
+  const ac = new AbortController();
+  let W = 0, H = 0, raf = 0, alpha = 1, hover = -1, drag = -1, inView = true;
+
+  function resize() {
+    const r = canvas.getBoundingClientRect();
+    W = r.width || canvas.parentElement.clientWidth || 300;
+    H = r.height || 320;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  resize();
+
+  // seed on a circle, deterministic per ticker
+  nodes.forEach(n => {
+    const a = hash01(n.isin) * Math.PI * 2;
+    n.x = W / 2 + Math.cos(a) * Math.min(W, H) * 0.3;
+    n.y = H / 2 + Math.sin(a) * Math.min(W, H) * 0.3;
+  });
+
+  const adj = new Map();   // node idx → Set of neighbour idx
+  nodes.forEach((_, i) => adj.set(i, new Set()));
+  edges.forEach(e => { adj.get(e.a).add(e.b); adj.get(e.b).add(e.a); });
+
+  function tick() {
+    const k = 2400;        // repulsion
+    for (let i = 0; i < nodes.length; i++) {
+      const a = nodes[i];
+      for (let j = i + 1; j < nodes.length; j++) {
+        const b = nodes[j];
+        let dx = a.x - b.x, dy = a.y - b.y;
+        let d2 = dx * dx + dy * dy;
+        if (d2 < 1) { dx = (Math.random() - .5); dy = (Math.random() - .5); d2 = 1; }
+        const d = Math.sqrt(d2);
+        const f = Math.min(8, k / d2) * alpha;
+        const fx = dx / d * f, fy = dy / d * f;
+        if (!a.fixed) { a.vx += fx; a.vy += fy; }
+        if (!b.fixed) { b.vx -= fx; b.vy -= fy; }
+      }
+      // gentle centring
+      if (!a.fixed) {
+        a.vx += (W / 2 - a.x) * 0.012 * alpha;
+        a.vy += (H / 2 - a.y) * 0.012 * alpha;
+      }
+    }
+    for (const e of edges) {        // springs: +ρ pulls in, −ρ pushes out
+      const a = nodes[e.a], b = nodes[e.b];
+      const dx = b.x - a.x, dy = b.y - a.y;
+      const d = Math.max(1, Math.hypot(dx, dy));
+      const rest = e.c >= 0 ? 150 - 95 * e.c : 150 + 70 * Math.abs(e.c);
+      const f = (d - rest) * 0.035 * Math.abs(e.c) * alpha;
+      const fx = dx / d * f, fy = dy / d * f;
+      if (!a.fixed) { a.vx += fx; a.vy += fy; }
+      if (!b.fixed) { b.vx -= fx; b.vy -= fy; }
+    }
+    for (const n of nodes) {
+      if (n.fixed) { n.vx = 0; n.vy = 0; continue; }
+      n.vx *= 0.82; n.vy *= 0.82;
+      n.x += n.vx; n.y += n.vy;
+      const pad = n.r + 6;
+      n.x = Math.max(pad, Math.min(W - pad, n.x));
+      n.y = Math.max(pad, Math.min(H - pad, n.y));
+    }
+    alpha *= 0.985;
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    ctx.lineCap = 'round';
+    for (const e of edges) {
+      const a = nodes[e.a], b = nodes[e.b];
+      const hot = hover >= 0 && (e.a === hover || e.b === hover);
+      const dim = hover >= 0 && !hot;
+      ctx.globalAlpha = dim ? 0.10 : hot ? 0.95 : 0.5;
+      ctx.strokeStyle = corrColor(e.c);
+      ctx.lineWidth = 0.8 + 2.6 * Math.abs(e.c);
+      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+      if (hot) {       // ρ value on the highlighted link
+        ctx.globalAlpha = 1;
+        ctx.font = "9px 'IBM Plex Mono', monospace";
+        ctx.fillStyle = corrColor(e.c); ctx.textAlign = 'center';
+        ctx.fillText((e.c >= 0 ? '+' : '') + e.c.toFixed(2), (a.x + b.x) / 2, (a.y + b.y) / 2 - 4);
+      }
+    }
+    ctx.globalAlpha = 1;
+    ctx.font = "600 10px 'IBM Plex Mono', monospace";
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    for (let i = 0; i < nodes.length; i++) {
+      const n = nodes[i];
+      const hot = i === hover, nb = hover >= 0 && adj.get(hover).has(i);
+      const dim = hover >= 0 && !hot && !nb;
+      ctx.globalAlpha = dim ? 0.35 : 1;
+      ctx.fillStyle = 'rgba(17,22,31,0.95)';
+      ctx.beginPath(); ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = hot ? '#e8eef7' : nb ? 'rgba(79,195,247,0.9)' : 'rgba(79,195,247,0.45)';
+      ctx.lineWidth = hot ? 1.6 : 1;
+      ctx.stroke();
+      ctx.fillStyle = hot ? '#e8eef7' : '#a4adbf';
+      ctx.fillText(n.tk, n.x, n.y - (n.r > 14 ? 0 : n.r + 9));
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function loop() {
+    raf = 0;
+    tick(); draw();
+    if ((alpha > 0.006 || drag >= 0) && inView && !document.hidden) raf = requestAnimationFrame(loop);
+  }
+  function kick(a = 0.25) {
+    alpha = Math.max(alpha, a);
+    if (DECK_REDUCE) { for (let i = 0; i < 260; i++) tick(); draw(); return; }
+    if (!raf) raf = requestAnimationFrame(loop);
+  }
+
+  function nodeAt(px, py) {
+    let best = -1, bd = 1e9;
+    for (let i = 0; i < nodes.length; i++) {
+      const d = Math.hypot(px - nodes[i].x, py - nodes[i].y);
+      if (d < nodes[i].r + 6 && d < bd) { bd = d; best = i; }
+    }
+    return best;
+  }
+  const pos = e => {
+    const r = canvas.getBoundingClientRect();
+    return [e.clientX - r.left, e.clientY - r.top];
+  };
+
+  canvas.addEventListener('pointerdown', e => {
+    const [x, y] = pos(e);
+    const i = nodeAt(x, y);
+    if (i < 0) return;
+    drag = i; nodes[i].fixed = true;
+    canvas.setPointerCapture(e.pointerId);
+    kick(0.3);
+  }, { signal: ac.signal });
+
+  canvas.addEventListener('pointermove', e => {
+    const [x, y] = pos(e);
+    if (drag >= 0) {
+      nodes[drag].x = Math.max(10, Math.min(W - 10, x));
+      nodes[drag].y = Math.max(10, Math.min(H - 10, y));
+      kick(0.2);
+      return;
+    }
+    const i = nodeAt(x, y);
+    if (i !== hover) {
+      hover = i;
+      canvas.style.cursor = i >= 0 ? 'grab' : 'default';
+      if (!raf) draw();
+      if (fly) {
+        if (i < 0) fly.style.display = 'none';
+        else {
+          const n = nodes[i];
+          const links = edges.filter(ed => ed.a === i || ed.b === i);
+          let peer = '—';
+          if (links.length) {
+            const top = links.reduce((m, ed) => Math.abs(ed.c) > Math.abs(m.c) ? ed : m);
+            peer = `${nodes[top.a === i ? top.b : top.a].tk} ${(top.c >= 0 ? '+' : '')}${top.c.toFixed(2)}`;
+          }
+          fly.innerHTML = `<span class="fo-tk">${n.tk}</span><br>${(n.w * 100).toFixed(1)}% of book · ${links.length} link${links.length === 1 ? '' : 's'}<br><span class="fo-sub">strongest: ${peer} · drag to untangle</span>`;
+          fly.style.display = 'block';
+          fly.style.left = Math.min(n.x + 16, W - 200) + 'px';
+          fly.style.top = Math.max(6, n.y - 50) + 'px';
+        }
+      }
+    }
+  }, { signal: ac.signal });
+
+  const release = e => {
+    if (drag >= 0) { nodes[drag].fixed = false; drag = -1; kick(0.12); }
+  };
+  canvas.addEventListener('pointerup', release, { signal: ac.signal });
+  canvas.addEventListener('pointercancel', release, { signal: ac.signal });
+  canvas.addEventListener('pointerleave', () => {
+    if (drag < 0) { hover = -1; if (fly) fly.style.display = 'none'; canvas.style.cursor = 'default'; if (!raf) draw(); }
+  }, { signal: ac.signal });
+
+  let rzT = 0;
+  window.addEventListener('resize', () => {
+    clearTimeout(rzT);
+    rzT = setTimeout(() => { resize(); kick(0.15); }, 180);
+  }, { signal: ac.signal });
+
+  let io = null;
+  if ('IntersectionObserver' in window) {
+    io = new IntersectionObserver(es => {
+      for (const en of es) inView = en.isIntersecting;
+      if (inView) kick(0.05);
+      else if (raf) { cancelAnimationFrame(raf); raf = 0; }
+    }, { rootMargin: '60px' });
+    io.observe(canvas);
+  }
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) { if (raf) { cancelAnimationFrame(raf); raf = 0; } }
+    else kick(0.02);
+  }, { signal: ac.signal });
+
+  kick(1);
+  return {
+    kick,
+    destroy() {
+      if (raf) cancelAnimationFrame(raf);
+      if (io) io.disconnect();
+      ac.abort();
+    },
+  };
+}
+
+/* ── What-If Bench: weight sliders → live vol / drawdown / return ──────────
+   Pure client-side math on the already-loaded daily return series. Uses the
+   intersection of dates where every holding has a return, so the comparison
+   is apples-to-apples. */
+let _wiData = null;   // { isins, R (n×T returns), baseW (pct), dates }
+function renderWhatIf() {
+  const el = document.getElementById('whatifBox');
+  if (!el || !_corrData) return;
+  const { isins, weights, series } = _corrData;
+  if (isins.length < 2) {
+    el.innerHTML = `<div class="empty-state">Need ≥2 holdings to run what-ifs.</div>`;
+    _wiData = null; return;
+  }
+  let dates = [...series[0].keys()].filter(d => series.every(s => s.has(d))).sort();
+  if (dates.length < 10) {
+    el.innerHTML = `<div class="empty-state">Need ≥10 overlapping sessions across all holdings — accumulating.</div>`;
+    _wiData = null; return;
+  }
+  const R = series.map(s => dates.map(d => s.get(d)));
+  const baseW = weights.map(w => w * 100);
+  _wiData = { isins, R, baseW, dates };
+  const sliderMax = Math.max(40, Math.ceil(Math.max(...baseW) + 10));
+  el.innerHTML = isins.map((isin, i) => `
+    <div class="wi-row">
+      <span class="wi-tk">${ticker(isin)}</span>
+      <input type="range" class="wi-slider" id="wi_${i}" min="0" max="${sliderMax}" step="0.5"
+             value="${baseW[i].toFixed(1)}" oninput="updateWhatIf()">
+      <span class="wi-val" id="wiv_${i}">${baseW[i].toFixed(1)}%</span>
+    </div>`).join('') +
+    `<div class="wi-stats" id="wiStats"></div>
+     <div class="wi-note" id="wiNote"></div>`;
+  updateWhatIf();
+}
+
+function wiStats(wPct) {
+  const { R } = _wiData;
+  const T = R[0].length;
+  const sum = wPct.reduce((s, x) => s + x, 0) || 1;
+  const w = wPct.map(x => x / sum);
+  const rets = new Array(T);
+  for (let t = 0; t < T; t++) {
+    let r = 0;
+    for (let i = 0; i < R.length; i++) r += w[i] * R[i][t];
+    rets[t] = r;
+  }
+  const mean = _avg(rets), sd = _std(rets);
+  let eq = 1, peak = 1, maxDD = 0;
+  for (const r of rets) { eq *= 1 + r; if (eq > peak) peak = eq; const dd = eq / peak - 1; if (dd < maxDD) maxDD = dd; }
+  return {
+    vol: sd * Math.sqrt(252) * 100,
+    er: mean * 252 * 100,
+    dd: maxDD * 100,
+    sharpe: sd > 0 ? (mean / sd) * Math.sqrt(252) : null,
+  };
+}
+
+function updateWhatIf() {
+  if (!_wiData) return;
+  const { isins, baseW, dates } = _wiData;
+  const cur = isins.map((_, i) => {
+    const el = document.getElementById('wi_' + i);
+    return el ? parseFloat(el.value) || 0 : baseW[i];
+  });
+  let changed = false;
+  isins.forEach((_, i) => {
+    const lbl = document.getElementById('wiv_' + i);
+    const diff = Math.abs(cur[i] - baseW[i]) > 0.26;
+    if (diff) changed = true;
+    if (lbl) { lbl.textContent = cur[i].toFixed(1) + '%'; lbl.classList.toggle('changed', diff); }
+  });
+  const base = wiStats(baseW), wi = wiStats(cur);
+  const stat = (lbl, now, was, fmt, cls) => `
+    <div class="wi-stat">
+      <div class="lbl">${lbl}</div>
+      <div class="now ${cls}">${fmt(now)}</div>
+      <div class="was">now: ${fmt(was)}</div>
+    </div>`;
+  const f1 = v => v == null ? '—' : (v >= 0 ? '+' : '') + v.toFixed(1) + '%';
+  const fv = v => v == null ? '—' : v.toFixed(1) + '%';
+  const fs = v => v == null ? '—' : v.toFixed(2);
+  document.getElementById('wiStats').innerHTML =
+    stat('Exp Return (ann.)', wi.er, base.er, f1, wi.er >= 0 ? 'up' : 'dn') +
+    stat('Volatility (ann.)', wi.vol, base.vol, fv, 'warn') +
+    stat('Max Drawdown', wi.dd, base.dd, f1, 'dn') +
+    stat('Sharpe', wi.sharpe, base.sharpe, fs, (wi.sharpe || 0) >= 0 ? 'up' : 'dn');
+  document.getElementById('wiNote').textContent =
+    `${dates.length}-session common window · weights auto-normalise to 100%` +
+    (changed ? ' · amber = changed from current book' : ' · sliders sit at your current weights');
+}
+
+function resetWhatIf() {
+  if (!_wiData) return;
+  _wiData.isins.forEach((_, i) => {
+    const el = document.getElementById('wi_' + i);
+    if (el) el.value = _wiData.baseW[i].toFixed(1);
+  });
+  updateWhatIf();
 }
 
 function renderRebalDrift() {
@@ -3321,32 +3943,205 @@ function renderDividends() {
   }
 }
 
-function renderTransactionLog() {
-  if (!allTransactions.length) {
-    document.getElementById('txnLog').innerHTML = `<div class="empty-state">No transactions yet.</div>`;
+/* ═══ INCOME CALENDAR — dividends on a horizontal month axis ═══════════════
+   Paid (◆ solid green bars, from the reconstructed divHistory) + upcoming
+   ex-dates (◇ dashed amber, parsed amount × current shares), grouped per
+   month with a cumulative running total along the bottom of each column. */
+function renderIncomeCalendar() {
+  const el = document.getElementById('incomeTimeline');
+  if (!el) return;
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const items = [];
+  for (const [isin, p] of positions) {
+    for (const h of (p.divHistory || [])) {
+      items.push({ date: h.date, tk: ticker(isin), amount: h.amount, paid: true });
+    }
+    const md = marketData[isin] || {};
+    for (const e of dedupeExDates((md.events || []).filter(x => x.event_type === 'EX_DATE'))) {
+      const d = (e.event_date || '').slice(0, 10);
+      const div = parseDivAmount(e.title);
+      if (!d || d < todayStr || !div) continue;
+      items.push({ date: d, tk: ticker(isin), amount: div * p.netQty, paid: false });
+    }
+  }
+  if (!items.length) {
+    el.innerHTML = `<div class="empty-state">No dividend history or upcoming ex-dates for your holdings yet.</div>`;
     return;
   }
-  const rows = [...allTransactions].reverse().slice(0, 50).map(t => {
+  items.sort((a, b) => a.date.localeCompare(b.date));
+
+  // Month axis: cap to 12 months back and 6 months forward of today.
+  const thisMonth = todayStr.slice(0, 7);
+  const monthAdd = (ym, k) => {
+    const d = new Date(+ym.slice(0, 4), +ym.slice(5, 7) - 1 + k, 1);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  };
+  const lo = monthAdd(thisMonth, -12), hi = monthAdd(thisMonth, 6);
+  const shown = items.filter(x => { const m = x.date.slice(0, 7); return m >= lo && m <= hi; });
+  if (!shown.length) {
+    el.innerHTML = `<div class="empty-state">No dividend events in the last 12 / next 6 months.</div>`;
+    return;
+  }
+  let mFirst = shown[0].date.slice(0, 7), mLast = shown[shown.length - 1].date.slice(0, 7);
+  if (mFirst > thisMonth) mFirst = thisMonth;
+  if (mLast < thisMonth) mLast = thisMonth;
+  const months = [];
+  for (let m = mFirst; m <= mLast && months.length < 20; m = monthAdd(m, 1)) months.push(m);
+
+  const byMonth = new Map(months.map(m => [m, []]));
+  for (const x of shown) {
+    const arr = byMonth.get(x.date.slice(0, 7));
+    if (arr) arr.push(x);
+  }
+  const totals = months.map(m => {
+    const arr = byMonth.get(m);
+    return {
+      paid: arr.reduce((s, x) => s + (x.paid ? x.amount : 0), 0),
+      fut:  arr.reduce((s, x) => s + (!x.paid ? x.amount : 0), 0),
+    };
+  });
+  const maxTot = Math.max(...totals.map(t => t.paid + t.fut), 1);
+  const mname = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+
+  let cum = 0;
+  const cols = months.map((m, k) => {
+    const arr = byMonth.get(m);
+    const t = totals[k];
+    cum += t.paid + t.fut;
+    const isFut = m > thisMonth || (m === thisMonth && t.paid === 0 && t.fut > 0);
+    const hPaid = Math.round(t.paid / maxTot * 56);
+    const hFut  = Math.round(t.fut  / maxTot * 56);
+    const [yy, mm] = m.split('-');
+    const itemsHTML = arr.slice(0, 4).map(x =>
+      `<div class="inc-item ${x.paid ? '' : 'future'}" title="${x.tk} · ${x.date} · NOK ${fmtNum(x.amount, 0)}">${x.paid ? '◆' : '◇'} <b>${x.tk}</b> ${INTEL.fmtCompact(x.amount)}</div>`
+    ).join('') + (arr.length > 4 ? `<div class="inc-item">+${arr.length - 4} more</div>` : '');
+    return `<div class="inc-month ${m === thisMonth ? 'now' : ''}">
+      <div class="inc-barzone">
+        ${hPaid > 0 ? `<div class="inc-bar" style="height:${Math.max(3, hPaid)}px" title="paid NOK ${fmtNum(t.paid, 0)}"></div>` : ''}
+        ${hFut > 0 ? `<div class="inc-bar future" style="height:${Math.max(3, hFut)}px" title="expected NOK ${fmtNum(t.fut, 0)}"></div>` : ''}
+      </div>
+      <div class="inc-body">
+        <div class="inc-mlabel">${mname[+mm - 1]} '${yy.slice(2)}</div>
+        <div class="inc-mtotal ${t.paid === 0 && t.fut > 0 ? 'future' : ''}">${t.paid + t.fut > 0 ? 'NOK ' + fmtNum(t.paid + t.fut, 0) : '—'}</div>
+        <div class="inc-items">${itemsHTML}</div>
+      </div>
+      <div class="inc-cum ${isFut ? 'future' : ''}">Σ <b>${INTEL.fmtCompact(cum)}</b></div>
+    </div>`;
+  }).join('');
+
+  const totPaid = shown.reduce((s, x) => s + (x.paid ? x.amount : 0), 0);
+  const totFut  = shown.reduce((s, x) => s + (!x.paid ? x.amount : 0), 0);
+  el.innerHTML = `
+    <div style="display:flex;gap:18px;flex-wrap:wrap;font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-bottom:10px;letter-spacing:.06em">
+      <span>◆ <b style="color:var(--green)">NOK ${fmtNum(totPaid, 0)}</b> received</span>
+      <span>◇ <b style="color:var(--amber)">NOK ${fmtNum(totFut, 0)}</b> announced upcoming</span>
+      <span>Σ cumulative income running along the foot of each month</span>
+    </div>
+    <div class="inc-scroll"><div class="inc-track">${cols}</div></div>`;
+}
+
+/* ═══ TRANSACTION JOURNAL ══════════════════════════════════════════════════
+   Each trade annotated with its position context (NEW/ADD/TRIM/EXIT, from
+   replaying the ledger) and how the price has moved since the fill. Inline
+   ticker/note search + BUY/SELL filter. Add/edit/delete flow unchanged. */
+let txnFilterQ = '', txnFilterType = 'ALL';
+
+function setTxnFilter() {
+  txnFilterQ = (document.getElementById('txnSearch')?.value || '').trim().toUpperCase();
+  renderTransactionLog();
+}
+function setTxnTypeFilter(t) {
+  txnFilterType = t;
+  ['ALL','BUY','SELL'].forEach(k =>
+    document.getElementById('txnF_' + k)?.classList.toggle('on', k === t));
+  renderTransactionLog();
+}
+
+// Replay the ledger to classify every txn: NEW / ADD / TRIM / EXIT.
+function classifyTransactions() {
+  const ctx = new Map();   // txn id → { tag }
+  const running = new Map();
+  for (const t of allTransactions) {
+    const q0 = running.get(t.isin) || 0;
+    const qty = parseFloat(t.quantity) || 0;
+    let tag;
+    if (t.transaction_type === 'BUY') {
+      tag = q0 <= 0.0001 ? 'NEW' : 'ADD';
+      running.set(t.isin, q0 + qty);
+    } else {
+      const q1 = q0 - qty;
+      tag = q1 <= 0.0001 ? 'EXIT' : 'TRIM';
+      running.set(t.isin, q1);
+    }
+    ctx.set(t.id, tag);
+  }
+  return ctx;
+}
+
+function renderTransactionLog() {
+  const log = document.getElementById('txnLog');
+  if (!log) return;
+  if (!allTransactions.length) {
+    log.innerHTML = `<div class="empty-state">No transactions yet.</div>`;
+    return;
+  }
+  const ctxMap = classifyTransactions();
+  const TAG_CLS = { NEW: 'txn-ctx-new', ADD: 'txn-ctx-add', TRIM: 'txn-ctx-trim', EXIT: 'txn-ctx-exit' };
+
+  let list = [...allTransactions].reverse();
+  if (txnFilterType !== 'ALL') list = list.filter(t => t.transaction_type === txnFilterType);
+  if (txnFilterQ) {
+    list = list.filter(t =>
+      (ticker(t.isin) || '').toUpperCase().includes(txnFilterQ) ||
+      (t.isin || '').toUpperCase().includes(txnFilterQ) ||
+      (t.notes || '').toUpperCase().includes(txnFilterQ));
+  }
+  if (!list.length) {
+    log.innerHTML = `<div class="empty-state">No transactions match the filter.</div>`;
+    return;
+  }
+
+  const rows = list.slice(0, 80).map(t => {
     const tk = ticker(t.isin) || t.isin;
     const dt = t.transaction_time ? new Date(t.transaction_time).toLocaleString('nb-NO') : '—';
-    const typeEl = t.transaction_type === 'BUY'
-      ? `<span class="txn-type-buy">BUY</span>`
-      : `<span class="txn-type-sell">SELL</span>`;
-    const notional = (parseFloat(t.quantity) * parseFloat(t.price));
+    const buy = t.transaction_type === 'BUY';
+    const typeEl = buy ? `<span class="txn-type-buy">BUY</span>` : `<span class="txn-type-sell">SELL</span>`;
+    const qty = parseFloat(t.quantity), px = parseFloat(t.price);
+    const notional = qty * px;
+    const tag = ctxMap.get(t.id) || (buy ? 'ADD' : 'TRIM');
+
+    // since-trade: price-now vs fill. For a sell, dropping after you sold is a win.
+    let sinceEl = '';
+    const cur = marketData[t.isin]?.latestPrice;
+    if (cur != null && px > 0) {
+      const movePct = (cur / px - 1) * 100;
+      if (buy) {
+        const pnl = (cur - px) * qty;
+        const cls = pnl >= 0 ? 'up' : 'dn';
+        sinceEl = `<span class="txn-since ${cls}" title="Mark-to-market on this lot since the fill">${pnl >= 0 ? '+' : '−'}${INTEL.fmtCompact(Math.abs(pnl))} · ${fmtPct(movePct)} since</span>`;
+      } else {
+        const good = movePct <= 0;   // price fell after you sold → good exit
+        sinceEl = `<span class="txn-since ${good ? 'up' : 'dn'}" title="Price move since the sale — down = the exit aged well">px ${fmtPct(movePct)} since exit</span>`;
+      }
+    }
+
     return `<div class="txn-row">
       ${typeEl}
-      <span style="font-family:var(--mono);font-size:12px;color:var(--text-bright);min-width:48px">${tk}</span>
-      <span style="color:var(--text-dim)">${fmtNum(t.quantity, t.quantity%1===0?0:4)} shares @ ${fmtNum(t.price)}</span>
+      <span class="txn-ctx ${TAG_CLS[tag]}">${tag}</span>
+      <span style="font-family:var(--mono);font-size:12px;color:var(--text-bright);min-width:48px">${INTEL.tkLink(t.isin, tk)}</span>
+      <span style="color:var(--text-dim)">${fmtNum(qty, qty % 1 === 0 ? 0 : 4)} sh @ ${fmtNum(px)}</span>
       <span style="color:var(--text-dim)">= ${fmtNOK(notional)}</span>
+      ${sinceEl}
       <span style="color:var(--text-dim);font-size:11px">${dt}</span>
-      ${t.notes ? `<span style="color:var(--text-dim);font-size:11px;font-style:italic">${t.notes}</span>` : ''}
+      ${t.notes ? `<span class="txn-note" title="${escapeHtml(t.notes)}">✎ ${escapeHtml(t.notes)}</span>` : ''}
       <div class="txn-actions">
         <button class="btn-icon" onclick="editTransaction(${t.id})" title="Edit">✏</button>
         <button class="btn-icon btn-icon-del" onclick="deleteTransaction(${t.id})" title="Delete">🗑</button>
       </div>
     </div>`;
   }).join('');
-  document.getElementById('txnLog').innerHTML = rows;
+  log.innerHTML = rows + (list.length > 80
+    ? `<div class="empty-state" style="padding:10px">… ${list.length - 80} older transactions (narrow the filter to see them)</div>` : '');
 }
 
 // ── Add / edit transaction modal ──────────────────────────────────────────
