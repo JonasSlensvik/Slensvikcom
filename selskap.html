@@ -140,6 +140,49 @@
   .fin-table td:first-child { color:var(--text2); }
   .fin-table .fin-sep td { padding:0; height:6px; border:0; }
 
+  /* ── analyst sentiment likert + meter ── */
+  .likert { margin-top:14px; }
+  .likert-cap { display:flex; justify-content:space-between; font-size:8.5px; letter-spacing:.09em; text-transform:uppercase; color:var(--text4); margin-bottom:5px; }
+  .likert-bar { display:flex; height:24px; border-radius:5px; overflow:hidden; background:var(--bg2); border:1px solid var(--border); }
+  .likert-seg { display:flex; align-items:center; justify-content:center; font-size:9.5px; font-weight:700; color:#0b0e13; font-variant-numeric:tabular-nums; min-width:0; overflow:hidden; transition:flex-grow .5s ease; }
+  .likert-key { display:flex; flex-wrap:wrap; gap:3px 12px; margin-top:7px; font-size:8px; letter-spacing:.05em; text-transform:uppercase; color:var(--text4); }
+  .likert-key span { display:flex; align-items:center; gap:4px; }
+  .likert-key i { width:8px; height:8px; border-radius:2px; display:inline-block; }
+  .sent-meter { margin-top:14px; }
+  .sent-row { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:7px; }
+  .sent-lbl { font-size:8.5px; letter-spacing:.09em; text-transform:uppercase; color:var(--text4); }
+  .sent-val { font-size:15px; font-weight:600; font-variant-numeric:tabular-nums; }
+  .sent-drift { font-size:9px; color:var(--text4); font-variant-numeric:tabular-nums; }
+  .sent-drift.up { color:var(--green); } .sent-drift.down { color:var(--red); }
+  .sent-track { position:relative; height:7px; border-radius:4px; background:linear-gradient(90deg,#f06060 0%,#f5a623 50%,#43e097 100%); }
+  .sent-pin { position:absolute; top:-4px; width:3px; height:15px; border-radius:2px; background:var(--text1); box-shadow:0 0 0 1px rgba(0,0,0,.55),0 0 7px rgba(0,0,0,.5); transform:translateX(-50%); transition:left .5s ease; }
+  .sent-ends { display:flex; justify-content:space-between; font-size:7.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--text4); margin-top:4px; }
+
+  /* ── financial health ── */
+  .fh-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  @media (max-width:760px){ .fh-grid{ grid-template-columns:1fr; } }
+  .fh-score { display:flex; align-items:center; gap:16px; padding:4px 2px 10px; }
+  .fh-dial { position:relative; flex:0 0 auto; }
+  .fh-dial canvas { display:block; }
+  .fh-dial-val { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  .fh-dial-val b { font-size:24px; font-weight:700; font-variant-numeric:tabular-nums; line-height:1; }
+  .fh-dial-val small { font-size:7.5px; letter-spacing:.12em; text-transform:uppercase; color:var(--text4); margin-top:3px; }
+  .fh-verdict { font-size:11px; font-weight:600; letter-spacing:.04em; }
+  .fh-sub { font-size:9px; color:var(--text3); margin-top:3px; line-height:1.5; }
+  .fh-pillars { display:flex; flex-direction:column; gap:9px; flex:1 1 auto; min-width:0; }
+  .fh-pillar .ph { display:flex; justify-content:space-between; font-size:9px; color:var(--text3); margin-bottom:3px; }
+  .fh-pillar .ph b { color:var(--text2); font-variant-numeric:tabular-nums; font-weight:600; }
+  .fh-meter { height:6px; border-radius:3px; background:var(--bg2); overflow:hidden; }
+  .fh-meter i { display:block; height:100%; border-radius:3px; transition:width .5s ease; }
+  .fh-bars { margin-top:4px; }
+  .fh-bars-cap { display:flex; justify-content:space-between; font-size:8.5px; letter-spacing:.07em; text-transform:uppercase; color:var(--text4); margin-bottom:8px; }
+  .fh-row { display:grid; grid-template-columns:42px 1fr auto; align-items:center; gap:9px; margin-bottom:9px; }
+  .fh-row .yr { font-size:9px; color:var(--text3); font-variant-numeric:tabular-nums; }
+  .fh-row .tk { font-size:9.5px; color:var(--text2); font-variant-numeric:tabular-nums; text-align:right; white-space:nowrap; }
+  .fh-dual { position:relative; height:14px; }
+  .fh-dual .d { position:absolute; top:0; height:14px; border-radius:2px; }
+  .fh-note { font-size:8.5px; color:var(--text4); line-height:1.6; margin-top:6px; }
+
   /* ── events timeline ── */
   .tl { position:relative; padding-left:18px; max-height:430px; overflow-y:auto; }
   .tl::before { content:''; position:absolute; left:5px; top:4px; bottom:4px; width:1px; background:var(--border2); }
@@ -335,6 +378,17 @@
     </div>
   </div>
 
+  <!-- FINANCIAL HEALTH -->
+  <div class="sec">
+    <div class="panel">
+      <div class="panel-head">
+        <span class="panel-title"><span class="glyph">❤</span>Financial Health</span>
+        <span class="panel-meta" id="fhMeta">balance-sheet diagnostics</span>
+      </div>
+      <div id="fhBody"><div class="skeleton" style="height:200px"></div></div>
+    </div>
+  </div>
+
   <footer>SLENSVIK INTELLIGENCE · EOD TAPE T+0 · NOT INVESTMENT ADVICE</footer>
 </main>
 
@@ -389,7 +443,7 @@ const Q = encodeURIComponent(ISIN);
 const [
   intel, lastPx, instr, closesAdj, ohlcv, signals, sigPerf, darkHist, whales,
   shortHist, shortHolders, eventsRaw, proximity, insiderTrades, insiderIntel,
-  instrAll, consensus, financials,
+  instrAll, consensus, financials, recTrend,
 ] = await Promise.all([
   safeGet(`ticker_intel?isin=eq.${Q}`),                                             // NEW (may 404)
   safeGet(`latest_price?isin=eq.${Q}`),
@@ -409,6 +463,7 @@ const [
   safeGet('instruments?select=isin,ticker,name&order=ticker.asc&limit=600'),
   safeGet(`analyst_consensus?isin=eq.${Q}`),                                       // NEW (may 404)
   safeGet(`financials_key?isin=eq.${Q}&freq=eq.annual&order=period_end.desc&limit=5`), // NEW (may 404)
+  safeGet(`analyst_rec_trend?isin=eq.${Q}&order=period_month.asc`),                  // NEW (may 404)
 ]);
 
 /* euronext trade-tape candles: keep the dominant venue, one bar per day */
@@ -745,6 +800,86 @@ function nearestIdx(labels, dateStr) {
     return [...byDate.entries()]
       .sort((a, b) => a[0] < b[0] ? -1 : 1)
       .map(([time, types]) => ({ time, label: [...types].join('+') }));
+  }
+
+  /* ── analyst price-target rail: a vertical ladder pinned to the right edge,
+     glued to the price axis via series.priceToCoordinate every frame. The
+     primitive also contributes the target span to autoscaleInfo so the chart
+     zooms to keep low→high in view. Targets are in the quote ccy (= the chart
+     ccy), guaranteed comparable by the scraper's price sanity gate. */
+  function makeTargetRail() {
+    let P = null, T = null;
+    function draw(ctx, size) {
+      if (!P || !T) return;
+      const s = P.series, yOf = v => v == null ? null : s.priceToCoordinate(v);
+      const railW = 6, railX = size.width - 12 - railW;
+      const yLow = yOf(T.low), yHigh = yOf(T.high), yPx = yOf(T.px), yMean = yOf(T.mean);
+      ctx.save();
+      if (yLow != null && yHigh != null) {
+        const top = Math.min(yLow, yHigh), bot = Math.max(yLow, yHigh);
+        const g = ctx.createLinearGradient(0, top, 0, bot);
+        g.addColorStop(0, 'rgba(67,224,151,0.32)'); g.addColorStop(1, 'rgba(240,96,96,0.32)');
+        ctx.fillStyle = g; ctx.fillRect(railX, top, railW, Math.max(1, bot - top));
+        ctx.strokeStyle = 'rgba(255,255,255,0.16)'; ctx.lineWidth = 1;
+        ctx.strokeRect(railX + 0.5, top + 0.5, railW - 1, Math.max(1, bot - top) - 1);
+      }
+      if (yPx != null && yMean != null) {
+        ctx.strokeStyle = T.mean >= T.px ? 'rgba(67,224,151,0.55)' : 'rgba(240,96,96,0.55)';
+        ctx.setLineDash([2, 3]); ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(railX - 5, yPx); ctx.lineTo(railX - 5, yMean); ctx.stroke();
+        ctx.setLineDash([]);
+      }
+      ctx.font = "8px 'IBM Plex Mono', monospace"; ctx.textBaseline = 'middle';
+      const placed = [];
+      [['H', T.high, '#7ed99f'], ['x̄', T.mean, C.ice],
+       ['M', T.median, 'rgba(255,255,255,0.72)'], ['L', T.low, '#f0a0a0']].forEach(([lab, val, col]) => {
+        const y = yOf(val);
+        if (y == null || y < -8 || y > size.height + 8) return;
+        ctx.strokeStyle = col; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(railX - 3, y); ctx.lineTo(railX + railW, y); ctx.stroke();
+        let ly = y; placed.forEach(py => { if (Math.abs(ly - py) < 10) ly = py + 10; }); placed.push(ly);
+        ctx.textAlign = 'right'; ctx.fillStyle = col;
+        ctx.fillText(lab + ' ' + fmtNum(val, val < 10 ? 2 : 0), railX - 6, ly);
+      });
+      if (yPx != null) {
+        ctx.strokeStyle = '#fff'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(railX - 3, yPx); ctx.lineTo(railX + railW, yPx); ctx.stroke();
+        ctx.fillStyle = '#fff'; ctx.beginPath();
+        ctx.moveTo(railX + railW, yPx); ctx.lineTo(railX + railW + 5, yPx - 3);
+        ctx.lineTo(railX + railW + 5, yPx + 3); ctx.closePath(); ctx.fill();
+      }
+      ctx.restore();
+    }
+    const view = {
+      zOrder: () => 'top',
+      renderer: () => ({ draw: (t) => t.useMediaCoordinateSpace(
+        ({ context, mediaSize }) => draw(context, mediaSize)) }),
+    };
+    return {
+      attached(p) { P = p; },
+      detached() { P = null; },
+      paneViews() { return [view]; },
+      autoscaleInfo() {
+        if (!T) return null;
+        const v = [T.low, T.median, T.mean, T.high, T.px].filter(x => x != null);
+        return v.length ? { priceRange: { minValue: Math.min(...v), maxValue: Math.max(...v) } } : null;
+      },
+      setTargets(t) { T = t; if (P) P.requestUpdate(); },
+    };
+  }
+  const cc = consensus && consensus[0];
+  if (cc && (cc.target_mean != null || cc.target_high != null || cc.target_low != null)) {
+    const rail = makeTargetRail();
+    host.attachPrimitive(rail);
+    const pxNow = (lastPx && lastPx[0] && lastPx[0].price != null) ? +lastPx[0].price
+                : (lastClose != null ? +lastClose : null);
+    rail.setTargets({
+      low: cc.target_low != null ? +cc.target_low : null,
+      median: cc.target_median != null ? +cc.target_median : null,
+      mean: cc.target_mean != null ? +cc.target_mean : null,
+      high: cc.target_high != null ? +cc.target_high : null,
+      px: pxNow,
+    });
   }
 
   /* ── crosshair: OHLC legend readout + marker hover tooltip ── */
@@ -1344,6 +1479,63 @@ function whaleStream(canvas, tip, rows) {
    Analyst consensus (api.analyst_consensus) + annual statements
    (api.financials_key). Yahoo-sourced; both endpoints may 404 until the
    schema cache reloads, in which case safeGet returns [] and we show empty. */
+/* ── analyst Likert: rating distribution weighted by analyst count, with a
+   net-sentiment meter (−100 bearish … +100 bullish) and month-over-month
+   drift. Latest month = current split; earliest stored month = drift base. */
+const LIKERT_CATS = [
+  ['Strong Buy',  'strong_buy',  '#2ea043'],
+  ['Buy',         'buy',         '#43e097'],
+  ['Hold',        'hold',        '#7a8290'],
+  ['Sell',        'sell',        '#f0883e'],
+  ['Strong Sell', 'strong_sell', '#f06060'],
+];
+function likertScore(row) {
+  const n = k => +row[k] || 0;
+  const total = LIKERT_CATS.reduce((s, [, k]) => s + n(k), 0);
+  if (!total) return null;
+  const w = n('strong_buy') * 100 + n('buy') * 50 + n('sell') * -50 + n('strong_sell') * -100;
+  return { total, score: w / total };
+}
+function buildLikert(rt) {
+  rt = rt || [];
+  if (!rt.length) return '';
+  const latest = rt[rt.length - 1];
+  const ls = likertScore(latest);
+  if (!ls) return '';
+  const n = k => +latest[k] || 0;
+  const segs = LIKERT_CATS.map(([lbl, k, col]) => {
+    const v = n(k);
+    if (!v) return '';
+    const share = v / ls.total * 100;
+    return `<div class="likert-seg" style="flex-grow:${v};background:${col}" title="${lbl}: ${v}">${share >= 9 ? v : ''}</div>`;
+  }).join('');
+  const keyHTML = LIKERT_CATS.map(([lbl, k, col]) =>
+    `<span><i style="background:${col}"></i>${lbl} ${n(k)}</span>`).join('');
+  const pin = (ls.score + 100) / 200 * 100;
+  const stone = ls.score > 15 ? 'up' : ls.score < -15 ? 'down' : '';
+  let drift = '';
+  const base = rt.find(r => { const b = likertScore(r); return b && b.total; });
+  if (rt.length > 1 && base && base !== latest) {
+    const bs = likertScore(base);
+    const d = ls.score - bs.score;
+    const cls = d > 1 ? 'up' : d < -1 ? 'down' : '';
+    const arr = d > 1 ? '▲' : d < -1 ? '▼' : '▬';
+    drift = `<span class="sent-drift ${cls}">${arr} ${d >= 0 ? '+' : ''}${fmtNum(d, 0)} since ${String(base.period_month).slice(0, 7)}</span>`;
+  }
+  return `
+    <div class="likert">
+      <div class="likert-cap"><span>Likert · ${ls.total} ratings</span><span>${String(latest.period_month).slice(0, 7)}</span></div>
+      <div class="likert-bar">${segs}</div>
+      <div class="likert-key">${keyHTML}</div>
+    </div>
+    <div class="sent-meter">
+      <div class="sent-row"><span class="sent-lbl">Net sentiment</span>
+        <span><span class="sent-val ${stone}">${ls.score >= 0 ? '+' : ''}${fmtNum(ls.score, 0)}</span> ${drift}</span></div>
+      <div class="sent-track"><div class="sent-pin" style="left:${pin}%"></div></div>
+      <div class="sent-ends"><span>−100 bearish</span><span>bullish +100</span></div>
+    </div>`;
+}
+
 (function renderFundamentals() {
   const px = (lastPx && lastPx[0] && lastPx[0].price != null) ? +lastPx[0].price : null;
 
@@ -1373,7 +1565,8 @@ function whaleStream(canvas, tip, rows) {
         <span>low ${c.target_low != null ? fmtNum(+c.target_low, 0) : '—'}</span>
         <span>median ${c.target_median != null ? fmtNum(+c.target_median, 0) : '—'}</span>
         <span>high ${c.target_high != null ? fmtNum(+c.target_high, 0) : '—'}</span>
-      </div>`;
+      </div>
+      ${buildLikert(recTrend)}`;
     const fetched = c.as_of ? String(c.as_of).slice(0, 10) : null;
     $('acMeta').textContent = 'yahoo · ' + ccy + (fetched ? ' · fetched ' + fetched : '');
   }
@@ -1413,6 +1606,141 @@ function whaleStream(canvas, tip, rows) {
       return `<tr><td>${r[0]}</td>` + F.map(p => `<td class="r">${r[1](p)}</td>`).join('') + '</tr>';
     }).join('');
     finBody.innerHTML = `<div class="scrollwrap"><table class="intel-table fin-table"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`;
+  }
+})();
+
+/* ══════════ FINANCIAL HEALTH ══════════
+   Turn the raw statements into a balance-sheet diagnosis: a composite 0–100
+   health score from four pillars (leverage, liquidity, solvency, interest
+   coverage) on the latest year, plus multi-year leverage and FCF-dividend
+   coverage trends. Ratios use Yahoo's line-item tagging, so banks/insurers
+   (no working-capital / net-debt concept) won't map cleanly — flagged below. */
+(function renderFinHealth() {
+  const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+  const num = (v) => v == null ? null : +v;
+  const fhBody = $('fhBody');
+  const P = (financials || []).slice(0, 5);          // latest → oldest
+  if (!P.length) { fhBody.innerHTML = '<div class="empty-note">NO FINANCIAL STATEMENTS</div>'; return; }
+  const latest = P[0];
+  const ccy = latest.report_ccy || '';
+  const yr = p => String(p.period_end).slice(0, 4);
+
+  /* pillar scorers → 0..100 (null = not computable for this name) */
+  const sLeverage = (nd, eb) => (nd == null || eb == null || eb <= 0) ? null
+    : nd <= 0 ? 100 : clamp(95 - (nd / eb) * 20, 5, 95);
+  const sLiquidity = (ca, cl) => (ca == null || cl == null || cl <= 0) ? null
+    : clamp(25 + (ca / cl - 0.5) * 50, 5, 100);
+  const sSolvency = (eq, ta) => (eq == null || ta == null || ta <= 0) ? null
+    : clamp((eq / ta) * 160, 5, 100);
+  const sCoverage = (ebit, ie) => {
+    if (ebit == null) return null;
+    const i = ie == null ? 0 : Math.abs(ie);
+    if (i < 1) return ebit > 0 ? 100 : 40;
+    return ebit / i <= 0 ? 5 : clamp((ebit / i) * 9, 5, 100);
+  };
+  const band = s => s == null ? { c: '#5a6377', t: 'n/a' }
+    : s >= 80 ? { c: C.green, t: 'robust' } : s >= 65 ? { c: '#7ed99f', t: 'solid' }
+    : s >= 50 ? { c: C.amber, t: 'adequate' } : s >= 35 ? { c: '#f0883e', t: 'stretched' }
+    : { c: C.red, t: 'fragile' };
+
+  const nd = num(latest.net_debt), eb = num(latest.ebitda);
+  const pillars = [
+    ['Leverage',  sLeverage(nd, eb),
+      (nd != null && eb && eb > 0) ? (nd <= 0 ? 'net cash' : fmtNum(nd / eb, 1) + '× ND/EBITDA') : '—'],
+    ['Liquidity', sLiquidity(num(latest.current_assets), num(latest.current_liabilities)),
+      (latest.current_assets != null && latest.current_liabilities) ? fmtNum(num(latest.current_assets) / num(latest.current_liabilities), 2) + '× current' : '—'],
+    ['Solvency',  sSolvency(num(latest.equity), num(latest.total_assets)),
+      (latest.equity != null && latest.total_assets) ? fmtNum(num(latest.equity) / num(latest.total_assets) * 100, 0) + '% equity' : '—'],
+    ['Int. cover', sCoverage(num(latest.ebit), num(latest.interest_expense)),
+      (latest.ebit != null) ? (latest.interest_expense == null || Math.abs(num(latest.interest_expense)) < 1 ? 'no int. cost' : fmtNum(num(latest.ebit) / Math.abs(num(latest.interest_expense)), 1) + '×') : '—'],
+  ];
+  const W = { Leverage: 0.30, Solvency: 0.25, 'Int. cover': 0.25, Liquidity: 0.20 };
+  let wsum = 0, acc = 0;
+  pillars.forEach(([name, s]) => { if (s != null) { acc += s * W[name]; wsum += W[name]; } });
+  const score = wsum ? Math.round(acc / wsum) : null;
+  const vb = band(score);
+
+  const pillarHTML = pillars.map(([name, s, sub]) => {
+    const b = band(s);
+    return `<div class="fh-pillar">
+      <div class="ph"><span>${name} <span style="color:var(--text4)">${sub}</span></span><b style="color:${b.c}">${s == null ? '—' : s}</b></div>
+      <div class="fh-meter"><i style="width:${s == null ? 0 : s}%;background:${b.c}"></i></div>
+    </div>`;
+  }).join('');
+
+  const dialHTML = `
+    <div class="fh-score">
+      <div class="fh-dial"><canvas id="fhDial"></canvas>
+        <div class="fh-dial-val"><b style="color:${vb.c}">${score == null ? '—' : score}</b><small>health</small></div></div>
+      <div class="fh-pillars">
+        <div class="fh-verdict" style="color:${vb.c}">${vb.t.toUpperCase()}</div>
+        <div class="fh-sub">composite of ${pillars.filter(p => p[1] != null).length} pillars · latest FY ${yr(latest)}</div>
+        ${pillarHTML}
+      </div>
+    </div>`;
+
+  /* trend column: leverage (ND/EBITDA) + FCF cover of dividend, chronological */
+  const chrono = P.slice().reverse();
+  const levRows = chrono.map(p => {
+    const x = num(p.net_debt), e = num(p.ebitda);
+    if (x == null || e == null || e <= 0) return { yr: yr(p), r: null };
+    return { yr: yr(p), r: x / e };
+  });
+  const levMax = Math.max(4, ...levRows.map(r => r.r == null ? 0 : Math.abs(r.r)));
+  const levHTML = levRows.map(r => {
+    if (r.r == null) return `<div class="fh-row"><span class="yr">${r.yr}</span><div class="fh-meter"></div><span class="tk">—</span></div>`;
+    const netCash = r.r <= 0;
+    const col = netCash ? C.green : r.r <= 1.5 ? C.green : r.r <= 3 ? C.amber : C.red;
+    const w = clamp(Math.abs(r.r) / levMax * 100, 3, 100);
+    return `<div class="fh-row"><span class="yr">${r.yr}</span>
+      <div class="fh-meter"><i style="width:${w}%;background:${col}"></i></div>
+      <span class="tk" style="color:${col}">${netCash ? 'net cash' : fmtNum(r.r, 1) + '×'}</span></div>`;
+  }).join('');
+
+  const hasDiv = chrono.some(p => p.dividends_paid != null && Math.abs(num(p.dividends_paid)) > 0);
+  let covHTML;
+  if (!hasDiv) {
+    covHTML = `<div class="fh-note">No dividends paid over the period — free cash flow is fully retained.</div>`;
+  } else {
+    const covRows = chrono.map(p => {
+      const f = num(p.fcf), d = p.dividends_paid != null ? Math.abs(num(p.dividends_paid)) : 0;
+      return { yr: yr(p), r: (f != null && d > 0) ? f / d : null, d };
+    });
+    const covMax = Math.max(2, ...covRows.map(r => r.r == null ? 0 : r.r));
+    covHTML = covRows.map(r => {
+      if (r.r == null) return `<div class="fh-row"><span class="yr">${r.yr}</span><div class="fh-meter"></div><span class="tk">${r.d > 0 ? 'no FCF' : '—'}</span></div>`;
+      const col = r.r >= 1.5 ? C.green : r.r >= 1 ? C.amber : C.red;
+      const w = clamp(r.r / covMax * 100, 3, 100);
+      return `<div class="fh-row"><span class="yr">${r.yr}</span>
+        <div class="fh-meter"><i style="width:${w}%;background:${col}"></i></div>
+        <span class="tk" style="color:${col}">${fmtNum(r.r, 1)}×</span></div>`;
+    }).join('');
+  }
+
+  const trendHTML = `
+    <div class="fh-bars">
+      <div class="fh-bars-cap"><span>Leverage · Net debt / EBITDA</span><span>lower = safer</span></div>
+      ${levHTML}
+      <div class="fh-bars-cap" style="margin-top:14px"><span>FCF cover of dividend</span><span>&gt;1× = self-funded</span></div>
+      ${covHTML}
+    </div>`;
+
+  fhBody.innerHTML = `<div class="fh-grid">${dialHTML}${trendHTML}</div>
+    <div class="fh-note">Ratios derive from Yahoo's line-item tagging in ${ccy || 'reporting ccy'}; banks &amp; insurers have no working-capital / net-debt concept and may not map cleanly.</div>`;
+  $('fhMeta').textContent = 'latest FY ' + yr(latest) + ' · ' + (ccy || 'reporting ccy');
+
+  /* composite dial (270° arc) */
+  const cv = $('fhDial');
+  if (cv && score != null) {
+    const dpr = window.devicePixelRatio || 1, w = 116, h = 116;
+    cv.width = w * dpr; cv.height = h * dpr; cv.style.width = w + 'px'; cv.style.height = h + 'px';
+    const ctx = cv.getContext('2d'); ctx.scale(dpr, dpr);
+    const cx = w / 2, cy = h / 2, R = 45, a0 = Math.PI * 0.75, a1 = Math.PI * 2.25;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = 'rgba(255,255,255,0.07)'; ctx.lineWidth = 9;
+    ctx.beginPath(); ctx.arc(cx, cy, R, a0, a1); ctx.stroke();
+    ctx.strokeStyle = vb.c; ctx.lineWidth = 9; ctx.shadowColor = vb.c; ctx.shadowBlur = 11;
+    ctx.beginPath(); ctx.arc(cx, cy, R, a0, a0 + (a1 - a0) * (score / 100)); ctx.stroke();
   }
 })();
 
