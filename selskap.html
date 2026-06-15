@@ -136,6 +136,9 @@
   .mini-kpi .v { font-size:15px; font-weight:600; color:var(--text1); font-variant-numeric:tabular-nums; }
   .mini-kpi .v.up { color:var(--green); } .mini-kpi .v.down { color:var(--red); }
   .mini-kpi .s { font-size:8.5px; color:var(--text4); margin-top:2px; }
+  .ac-range { display:flex; justify-content:space-between; font-size:9px; letter-spacing:.08em; color:var(--text3); text-transform:uppercase; padding:2px 2px 0; }
+  .fin-table td:first-child { color:var(--text2); }
+  .fin-table .fin-sep td { padding:0; height:6px; border:0; }
 
   /* ── events timeline ── */
   .tl { position:relative; padding-left:18px; max-height:430px; overflow-y:auto; }
@@ -314,6 +317,24 @@
     </div>
   </div>
 
+  <!-- FUNDAMENTALS -->
+  <div class="sec grid-2-w">
+    <div class="panel">
+      <div class="panel-head">
+        <span class="panel-title"><span class="glyph">◈</span>Analyst Consensus</span>
+        <span class="panel-meta" id="acMeta">yahoo finance</span>
+      </div>
+      <div id="acBody"><div class="skeleton" style="height:140px"></div></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head">
+        <span class="panel-title"><span class="glyph">▦</span>Financials</span>
+        <span class="panel-meta" id="finMeta">annual · reporting ccy</span>
+      </div>
+      <div id="finBody"><div class="skeleton" style="height:140px"></div></div>
+    </div>
+  </div>
+
   <footer>SLENSVIK INTELLIGENCE · EOD TAPE T+0 · NOT INVESTMENT ADVICE</footer>
 </main>
 
@@ -368,7 +389,7 @@ const Q = encodeURIComponent(ISIN);
 const [
   intel, lastPx, instr, closesAdj, ohlcv, signals, sigPerf, darkHist, whales,
   shortHist, shortHolders, eventsRaw, proximity, insiderTrades, insiderIntel,
-  instrAll,
+  instrAll, consensus, financials,
 ] = await Promise.all([
   safeGet(`ticker_intel?isin=eq.${Q}`),                                             // NEW (may 404)
   safeGet(`latest_price?isin=eq.${Q}`),
@@ -386,6 +407,8 @@ const [
   safeGet(`insider_trades?isin=eq.${Q}&order=trade_date.desc.nullslast&limit=30`),  // NEW (may 404)
   safeGet(`insider_intel?isin=eq.${Q}`),                                            // NEW (may 404)
   safeGet('instruments?select=isin,ticker,name&order=ticker.asc&limit=600'),
+  safeGet(`analyst_consensus?isin=eq.${Q}`),                                       // NEW (may 404)
+  safeGet(`financials_key?isin=eq.${Q}&freq=eq.annual&order=period_end.desc&limit=5`), // NEW (may 404)
 ]);
 
 /* euronext trade-tape candles: keep the dominant venue, one bar per day */
@@ -1315,6 +1338,81 @@ function whaleStream(canvas, tip, rows) {
     <th>Date</th><th>Signal</th><th>Str</th><th>Description</th>
     <th class="r">Px@Sig</th><th class="r">t1</th><th class="r">t5</th><th class="r">t20</th><th class="r">Type t5 Hit</th>
   </tr></thead><tbody>${rows}</tbody></table></div>`;
+})();
+
+/* ══════════ FUNDAMENTALS ══════════
+   Analyst consensus (api.analyst_consensus) + annual statements
+   (api.financials_key). Yahoo-sourced; both endpoints may 404 until the
+   schema cache reloads, in which case safeGet returns [] and we show empty. */
+(function renderFundamentals() {
+  const px = (lastPx && lastPx[0] && lastPx[0].price != null) ? +lastPx[0].price : null;
+
+  const c = consensus && consensus[0];
+  const acBody = $('acBody');
+  if (!c || !c.num_analysts) {
+    acBody.innerHTML = '<div class="empty-note">NO ANALYST COVERAGE</div>';
+  } else {
+    const ccy = c.quote_ccy || 'NOK';
+    const key = (c.rec_key || '').replace(/_/g, ' ').toUpperCase();
+    const tone = /BUY/.test(key) ? 'up' : /SELL/.test(key) ? 'down' : '';
+    const tgt = c.target_mean != null ? +c.target_mean : null;
+    const upside = (tgt != null && px) ? (tgt / px - 1) * 100 : null;
+    acBody.innerHTML = `
+      <div class="mini-kpis">
+        <div class="mini-kpi"><div class="l">Rating</div>
+          <div class="v ${tone}">${key || '—'}</div>
+          <div class="s">mean ${c.rec_mean != null ? fmtNum(c.rec_mean, 2) : '—'} · 1=buy 5=sell</div></div>
+        <div class="mini-kpi"><div class="l">Analysts</div>
+          <div class="v">${c.num_analysts}</div>
+          <div class="s">covering</div></div>
+        <div class="mini-kpi"><div class="l">Mean Target</div>
+          <div class="v ${upside > 0 ? 'up' : upside < 0 ? 'down' : ''}">${tgt != null ? fmtNum(tgt, tgt < 10 ? 2 : 0) : '—'}</div>
+          <div class="s">${upside != null ? (upside >= 0 ? '+' : '') + fmtNum(upside, 0) + '% vs px' : ccy}</div></div>
+      </div>
+      <div class="ac-range">
+        <span>low ${c.target_low != null ? fmtNum(+c.target_low, 0) : '—'}</span>
+        <span>median ${c.target_median != null ? fmtNum(+c.target_median, 0) : '—'}</span>
+        <span>high ${c.target_high != null ? fmtNum(+c.target_high, 0) : '—'}</span>
+      </div>`;
+    $('acMeta').textContent = 'yahoo · ' + ccy;
+  }
+
+  const finBody = $('finBody');
+  const F = (financials || []).slice(0, 4);
+  if (!F.length) {
+    finBody.innerHTML = '<div class="empty-note">NO FINANCIAL STATEMENTS</div>';
+  } else {
+    const ccy = F[0].report_ccy || '';
+    $('finMeta').textContent = 'annual · ' + (ccy || 'reporting ccy');
+    const yr = p => String(p.period_end).slice(0, 4);
+    const num = v => v == null ? '<span style="color:var(--text4)">—</span>' : fmtCompact(+v);
+    const pct = v => v == null ? '—' : fmtNum(v, 0) + '%';
+    const margin = (a, b) => (a != null && b) ? (+a / +b) * 100 : null;
+    const ROWS = [
+      ['Revenue',        p => num(p.revenue)],
+      ['Gross profit',   p => num(p.gross_profit)],
+      ['EBITDA',         p => num(p.ebitda)],
+      ['EBITDA margin',  p => pct(margin(p.ebitda, p.revenue))],
+      ['EBIT',           p => num(p.ebit)],
+      ['Net income',     p => num(p.net_income)],
+      ['SEP'],
+      ['Total assets',   p => num(p.total_assets)],
+      ['Cash',           p => num(p.cash)],
+      ['Total debt',     p => num(p.total_debt)],
+      ['Net debt',       p => num(p.net_debt)],
+      ['Equity',         p => num(p.equity)],
+      ['SEP'],
+      ['Operating CF',   p => num(p.operating_cf)],
+      ['CapEx',          p => num(p.capex)],
+      ['Free cash flow', p => num(p.fcf)],
+    ];
+    const head = `<th>${ccy}</th>` + F.map(p => `<th class="r">${yr(p)}</th>`).join('');
+    const body = ROWS.map(r => {
+      if (r[0] === 'SEP') return `<tr class="fin-sep"><td colspan="${F.length + 1}"></td></tr>`;
+      return `<tr><td>${r[0]}</td>` + F.map(p => `<td class="r">${r[1](p)}</td>`).join('') + '</tr>';
+    }).join('');
+    finBody.innerHTML = `<div class="scrollwrap"><table class="intel-table fin-table"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`;
+  }
 })();
 
 /* ══════════ LIVE HEADER POLL ══════════
