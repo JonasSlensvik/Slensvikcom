@@ -1374,7 +1374,8 @@ function whaleStream(canvas, tip, rows) {
         <span>median ${c.target_median != null ? fmtNum(+c.target_median, 0) : '—'}</span>
         <span>high ${c.target_high != null ? fmtNum(+c.target_high, 0) : '—'}</span>
       </div>`;
-    $('acMeta').textContent = 'yahoo · ' + ccy;
+    const fetched = c.as_of ? String(c.as_of).slice(0, 10) : null;
+    $('acMeta').textContent = 'yahoo · ' + ccy + (fetched ? ' · fetched ' + fetched : '');
   }
 
   const finBody = $('finBody');
@@ -1383,8 +1384,8 @@ function whaleStream(canvas, tip, rows) {
     finBody.innerHTML = '<div class="empty-note">NO FINANCIAL STATEMENTS</div>';
   } else {
     const ccy = F[0].report_ccy || '';
-    $('finMeta').textContent = 'annual · ' + (ccy || 'reporting ccy');
     const yr = p => String(p.period_end).slice(0, 4);
+    $('finMeta').textContent = 'annual · ' + (ccy || 'reporting ccy') + ' · latest ' + (F[0].period_end || '—');
     const num = v => v == null ? '<span style="color:var(--text4)">—</span>' : fmtCompact(+v);
     const pct = v => v == null ? '—' : fmtNum(v, 0) + '%';
     const margin = (a, b) => (a != null && b) ? (+a / +b) * 100 : null;
