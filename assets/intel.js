@@ -478,9 +478,145 @@
     initMotion();
   }
 
+  /* ═══ FUNDAMENTALS: analyst consensus + balance-sheet health ═══════════
+     Shared so portfolio, markedsradar and selskap all read the yfinance
+     fundamentals (api.analyst_consensus / api.financials_key) the same way
+     and render identical chips. Scoring mirrors the selskap dossier. */
+
+  const REC_LABEL = { strong_buy: 'STR BUY', buy: 'BUY', hold: 'HOLD',
+                      sell: 'SELL', strong_sell: 'STR SELL' };
+  function recColor(key) {
+    if (key === 'strong_buy' || key === 'buy') return '#43e097';
+    if (key === 'hold') return '#f5a623';
+    if (key === 'sell' || key === 'strong_sell') return '#f06060';
+    return '#5a6377';
+  }
+  // From an api.analyst_consensus row + current price. Upside assumes price
+  // and targets share a currency (Oslo names quote in NOK, as do the targets).
+  function analystRead(c, price) {
+    if (!c) return null;
+    const tm = c.target_mean == null ? null : +c.target_mean;
+    const p  = price == null ? null : +price;
+    return {
+      recKey: c.rec_key || null,
+      recMean: c.rec_mean == null ? null : +c.rec_mean,
+      label: REC_LABEL[c.rec_key] || (c.rec_key ? String(c.rec_key).toUpperCase() : '—'),
+      color: recColor(c.rec_key),
+      n: c.num_analysts == null ? null : +c.num_analysts,
+      targetMean: tm,
+      targetHigh: c.target_high == null ? null : +c.target_high,
+      targetLow:  c.target_low  == null ? null : +c.target_low,
+      ccy: c.quote_ccy || '',
+      upside: (tm != null && p && p > 0) ? (tm / p - 1) * 100 : null,
+    };
+  }
+
+  const _clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+  function healthBand(s) {
+    if (s == null)  return { c: '#5a6377', t: 'n/a' };
+    if (s >= 80)    return { c: '#43e097', t: 'robust' };
+    if (s >= 65)    return { c: '#7ed99f', t: 'solid' };
+    if (s >= 50)    return { c: '#f5a623', t: 'adequate' };
+    if (s >= 35)    return { c: '#f0883e', t: 'stretched' };
+    return { c: '#f06060', t: 'fragile' };
+  }
+  // Composite 0–100 from leverage/liquidity/solvency/interest-coverage on a
+  // single latest-annual api.financials_key row. null pillars (banks/insurers
+  // with no net-debt / working-capital concept) drop out of the weighting.
+  function finHealth(row) {
+    if (!row) return null;
+    const n = (v) => v == null ? null : +v;
+    const nd = n(row.net_debt), eb = n(row.ebitda);
+    const ca = n(row.current_assets), cl = n(row.current_liabilities);
+    const eq = n(row.equity), ta = n(row.total_assets);
+    const ebit = n(row.ebit), ie = n(row.interest_expense);
+    const sLev = (nd == null || eb == null || eb <= 0) ? null
+      : nd <= 0 ? 100 : _clamp(95 - (nd / eb) * 20, 5, 95);
+    const sLiq = (ca == null || cl == null || cl <= 0) ? null
+      : _clamp(25 + (ca / cl - 0.5) * 50, 5, 100);
+    const sSol = (eq == null || ta == null || ta <= 0) ? null
+      : _clamp((eq / ta) * 160, 5, 100);
+    let sCov;
+    if (ebit == null) sCov = null;
+    else { const i = ie == null ? 0 : Math.abs(ie);
+      sCov = i < 1 ? (ebit > 0 ? 100 : 40) : (ebit / i <= 0 ? 5 : _clamp((ebit / i) * 9, 5, 100)); }
+    const W = { lev: 0.30, sol: 0.25, cov: 0.25, liq: 0.20 };
+    let acc = 0, wsum = 0;
+    [[sLev, W.lev], [sSol, W.sol], [sCov, W.cov], [sLiq, W.liq]].forEach(([s, w]) => {
+      if (s != null) { acc += s * w; wsum += w; }
+    });
+    const score = wsum ? Math.round(acc / wsum) : null;
+    const div = n(row.dividends_paid), fcf = n(row.fcf);
+    return {
+      score, band: healthBand(score),
+      pillars: { lev: sLev, liq: sLiq, sol: sSol, cov: sCov },
+      ndE: (nd != null && eb && eb > 0) ? nd / eb : null,
+      netCash: nd != null && nd <= 0,
+      fcf, dividends: div,
+      fcfCover: (fcf != null && div != null && Math.abs(div) > 0) ? fcf / Math.abs(div) : null,
+      period: row.period_end, ccy: row.report_ccy || '',
+    };
+  }
+
+  // Self-contained pill (inline styles → no per-page CSS needed).
+  function _pill(color, text, title) {
+    const t = title ? ` title="${escHtml(title)}"` : '';
+    return `<span class="intel-pill"${t} style="display:inline-flex;align-items:center;gap:4px;`
+      + `font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.04em;padding:3px 6px;`
+      + `border-radius:4px;border:1px solid ${color}55;color:${color};background:${color}14;`
+      + `white-space:nowrap">${escHtml(text)}</span>`;
+  }
+
+  function analystChip(consensus, price) {
+    const a = analystRead(consensus, price);
+    if (!a || (!a.recKey && a.upside == null)) return '';
+    const ups = a.upside == null ? '' : ` ${a.upside >= 0 ? '+' : '−'}${Math.abs(a.upside).toFixed(0)}%`;
+    const title = [
+      a.n != null ? `${a.n} analysts` : '',
+      a.recMean != null ? `mean rec ${a.recMean.toFixed(2)}/5` : '',
+      a.targetMean != null ? `target ${fmtNum(a.targetMean, 2)} ${a.ccy}` : '',
+      (a.targetLow != null && a.targetHigh != null) ? `range ${fmtNum(a.targetLow, 0)}–${fmtNum(a.targetHigh, 0)}` : '',
+    ].filter(Boolean).join(' · ');
+    return _pill(a.color, '◈ ' + a.label + ups, title);
+  }
+
+  function healthChip(finRow) {
+    const h = finHealth(finRow);
+    if (!h || h.score == null) return '';
+    const lev = h.netCash ? 'net cash' : (h.ndE != null ? fmtNum(h.ndE, 1) + '× ND/EBITDA' : '');
+    const fcf = h.fcfCover != null ? `FCF÷div ${fmtNum(h.fcfCover, 1)}×` : '';
+    const title = [`health ${h.score}/100 · ${h.band.t}`, lev, fcf,
+                   `FY ${String(h.period).slice(0, 4)}`].filter(Boolean).join(' · ');
+    return _pill(h.band.c, '❤ ' + h.score, title);
+  }
+
+  function leverageChip(finRow) {
+    const h = finHealth(finRow);
+    if (!h || (h.ndE == null && !h.netCash)) return '';
+    const txt = h.netCash ? 'net cash' : fmtNum(h.ndE, 1) + '× lev';
+    const col = healthBand(h.pillars.lev).c;
+    return _pill(col, '⚖ ' + txt, h.netCash ? 'Net cash — no net debt'
+      : `Net debt / EBITDA ${fmtNum(h.ndE, 2)}× · lower = safer · FY ${String(h.period).slice(0, 4)}`);
+  }
+
+  function fcfChip(finRow) {
+    const h = finHealth(finRow);
+    if (!h || h.fcf == null) return '';
+    if (h.fcfCover != null) {
+      const col = h.fcfCover >= 1 ? '#43e097' : h.fcfCover >= 0.5 ? '#f5a623' : '#f06060';
+      return _pill(col, '⊳ FCF ' + fmtNum(h.fcfCover, 1) + '×',
+        `Free cash flow covers ${fmtNum(h.fcfCover, 2)}× of dividends paid · >1× = self-funded · FY ${String(h.period).slice(0, 4)}`);
+    }
+    const col = h.fcf >= 0 ? '#7ed99f' : '#f06060';
+    return _pill(col, '⊳ FCF ' + (h.fcf >= 0 ? '+' : '−') + fmtCompact(Math.abs(h.fcf)),
+      `Free cash flow ${fmtCompact(h.fcf)} ${h.ccy} · no dividend paid · FY ${String(h.period).slice(0, 4)}`);
+  }
+
   // injectNav is exposed so pages that render their shell via JS (fastrente)
   // can re-run nav injection after the [data-intel-nav] mount appears.
   window.INTEL = { API, safeGet, fmtNum, fmtPct, fmtNOK, fmtCompact, selskapHref,
                    tkLink, chartDefaults, injectNav, liveNumber, openPalette,
-                   toggleDensity, mood };
+                   toggleDensity, mood,
+                   analystRead, finHealth, healthBand,
+                   analystChip, healthChip, leverageChip, fcfChip };
 })();

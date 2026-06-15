@@ -706,9 +706,9 @@ input[type=range].wi-slider::-moz-range-thumb {
           <thead><tr>
             <th>TICKER</th><th class="r">QTY</th><th class="r">AVG COST</th>
             <th class="r">PRICE</th><th>TREND</th><th class="r">VALUE</th><th class="r">P&L%</th>
-            <th>DARK</th><th>CONVICTION</th><th>NEXT EVENT</th>
+            <th>DARK</th><th>CONVICTION</th><th>ANALYST</th><th>HEALTH</th><th>NEXT EVENT</th>
           </tr></thead>
-          <tbody id="holdingsBody"><tr><td colspan="10" class="loader">LOADING …</td></tr></tbody>
+          <tbody id="holdingsBody"><tr><td colspan="12" class="loader">LOADING …</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -1212,7 +1212,7 @@ async function loadData() {
       return;
     }
     document.getElementById('holdingsBody').innerHTML =
-      `<tr><td colspan="10" style="color:var(--red);font-family:var(--mono);font-size:11px;padding:16px">Error: ${e.message}</td></tr>`;
+      `<tr><td colspan="12" style="color:var(--red);font-family:var(--mono);font-size:11px;padding:16px">Error: ${e.message}</td></tr>`;
     document.getElementById('deskCards').innerHTML =
       `<div class="empty-state" style="color:var(--red)">Error: ${e.message}</div>`;
   }
@@ -1252,7 +1252,7 @@ async function fetchMarketData(isins) {
   const sincePx  = new Date(Date.now() - HIST_DAYS*864e5).toISOString().slice(0,10); // deep price history for 1Y/ALL
   const since3y  = new Date(Date.now() - 1095*864e5).toISOString().slice(0,10);  // past ex-dates for div basis
 
-  const [darkRows, signals, catalysts, upcoming, pastDivs, whales, instruments, conviction, idxRows, livePrices, tickerIntel] = await Promise.all([
+  const [darkRows, signals, catalysts, upcoming, pastDivs, whales, instruments, conviction, idxRows, livePrices, tickerIntel, analystCons, finRows] = await Promise.all([
     GET_ALL('dark_flow_summary',
       `isin=in.(${isinStr})&trade_date=gte.${sincePx}&select=isin,trade_date,modal_price,dark_pct,dark_side_bias&order=isin.asc,trade_date.asc`),
     GET('smart_signals',
@@ -1271,6 +1271,8 @@ async function fetchMarketData(isins) {
     GET_ALL('market_index', `trade_date=gte.${sincePx}&order=trade_date.asc&select=trade_date,index_level,ret`).catch(()=>[]),
     GET('latest_price', `isin=in.(${isinStr})&select=isin,price,fidelity,day_change_pct,prev_close,as_of`).catch(()=>[]),
     GET('ticker_intel', `isin=in.(${isinStr})`).catch(()=>[]),
+    GET('analyst_consensus', `isin=in.(${isinStr})`).catch(()=>[]),
+    GET('financials_key', `isin=in.(${isinStr})&freq=eq.annual&order=period_end.desc`).catch(()=>[]),
   ]);
 
   marketIndex = idxRows || [];
@@ -1287,7 +1289,7 @@ async function fetchMarketData(isins) {
     marketData[isin] = {
       latestPrice: null, darkBias: null, darkPct: null,
       signals: [], catalysts: [], events: [], pastDivs: [], whales: [],
-      conviction: null, intel: null,
+      conviction: null, intel: null, consensus: null, fin: [],
       priceFidelity: 'eod', dayChangePct: null, priceAsOf: null,
     };
   }
@@ -1305,6 +1307,8 @@ async function fetchMarketData(isins) {
   for (const w of whales)    marketData[w.isin]?.whales.push(w);
   for (const c of conviction) marketData[c.isin] && (marketData[c.isin].conviction = c);
   for (const t of (tickerIntel || [])) marketData[t.isin] && (marketData[t.isin].intel = t);
+  for (const c of (analystCons || [])) marketData[c.isin] && (marketData[c.isin].consensus = c);
+  for (const f of (finRows || [])) marketData[f.isin]?.fin.push(f);   // already period_end desc
 
   // ── Best-available price: prefer today's live tick over the daily modal ──
   applyLatestPrices(livePrices);
@@ -1452,6 +1456,20 @@ function nextEventChip(md) {
   return `<span class="badge" style="color:${color};border-color:${color}">${glyph} ${e.event_type} ${days}d</span>`;
 }
 
+function analystCell(md) {
+  const price = md.intel?.price ?? md.latestPrice;
+  const chip = INTEL.analystChip(md.consensus, price);
+  return chip || '<span class="badge badge-dim">◇</span>';
+}
+
+function healthCell(md) {
+  const row = (md.fin || [])[0];
+  const parts = [INTEL.healthChip(row), INTEL.leverageChip(row), INTEL.fcfChip(row)].filter(Boolean);
+  return parts.length
+    ? `<div style="display:flex;flex-wrap:wrap;gap:4px">${parts.join('')}</div>`
+    : '<span class="badge badge-dim">◇</span>';
+}
+
 function biasChip(md) {
   if (md.darkBias === 'BUY')  return '<span class="badge badge-green">▲ BUY</span>';
   if (md.darkBias === 'SELL') return '<span class="badge badge-red">▼ SELL</span>';
@@ -1543,6 +1561,8 @@ function renderHoldings() {
       <td class="r" style="font-family:var(--mono);${plColor}">${fmtPct(pl)}</td>
       <td>${biasChip(md)}</td>
       <td>${convictionCell(md, p.netQty > 0)}</td>
+      <td>${analystCell(md)}</td>
+      <td>${healthCell(md)}</td>
       <td>${nextEventChip(md)}</td>
     </tr>`;
   }).join('');
@@ -1551,7 +1571,7 @@ function renderHoldings() {
 
 function renderEmptyHoldings() {
   document.getElementById('holdingsBody').innerHTML =
-    `<tr><td colspan="10" class="empty-state">No positions yet — add your first transaction above.</td></tr>`;
+    `<tr><td colspan="12" class="empty-state">No positions yet — add your first transaction above.</td></tr>`;
 }
 
 // Apply api.latest_price rows onto marketData: prefer today's live tick over
