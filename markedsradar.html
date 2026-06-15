@@ -1501,6 +1501,40 @@ let allLatency = [];
 let drillChart1 = null, drillChart2 = null, drillChart3 = null;
 let algoDonutChart = null, darkBarChart = null, intradayChartInst = null, latencyDonutChart = null;
 
+/* ─── Dark microstructure read (v2) ─────────────────────────────────────────
+ * Euronext dark prints come in two flavours and must be read differently:
+ *   • Mid-Point Match (mechanism 3) executes AT the lit mid by rule → price
+ *     carries no side. We read these as intensity + realized forward-drift.
+ *   • Negotiated / LIS (mechanism 4) can print off-mid; a print dealt clearly
+ *     away from the lit ref reveals an aggressor (above = buyer, below = seller).
+ * Direction comes from off-mid blocks first (evidence BLOCK), mid-point forward
+ * impact as a soft secondary (evidence IMPACT), else honestly NEUTRAL.       */
+function darkRead(d) {
+  d = d || {};
+  const bias = (d.dark_side_bias && d.dark_side_bias !== 'NEUTRAL') ? d.dark_side_bias : null;
+  const ev = d.dark_evidence || (bias ? 'BLOCK' : 'NONE');
+  const confirmed = d.bias_confirmed === true;
+  const impact = d.dark_impact_bps != null ? Number(d.dark_impact_bps) : null;
+  const midTr = Number(d.mid_trades || 0);
+  const blockPrints = Number(d.dark_trades_classified || 0);
+  const worked = d.worked_order === true;
+  const arrow = bias === 'BUY' ? '▲' : bias === 'SELL' ? '▼' : '◇';
+  const tone  = bias === 'BUY' ? 'pos' : bias === 'SELL' ? 'neg' : 'dark';
+  const color = bias === 'BUY' ? 'var(--green)' : bias === 'SELL' ? 'var(--red)' : 'var(--text-dim)';
+  let word, prov;
+  if (!bias) {
+    word = midTr ? '◇ At mid' : '◇ No flow';
+    prov = midTr ? `${midTr} mid-point print${midTr !== 1 ? 's' : ''} (at mid, side-agnostic)` : 'no dark prints';
+  } else if (ev === 'IMPACT') {
+    word = `${arrow} ${bias === 'BUY' ? 'Buy' : 'Sell'} lean`;
+    prov = `mid-point drift${impact != null ? ` ${impact >= 0 ? '+' : ''}${impact.toFixed(0)}bps` : ''} (no off-mid blocks)`;
+  } else {
+    word = `${arrow} ${bias === 'BUY' ? 'Buy' : 'Sell'}-side blocks`;
+    prov = `${blockPrints} off-mid negotiated print${blockPrints !== 1 ? 's' : ''}`;
+  }
+  return { bias, ev, confirmed, impact, midTr, blockPrints, worked, arrow, tone, color, word, prov };
+}
+
 /* ─── Formatters ────────────────────────────────────────────────────────── */
 const fmt = {
   num:  v => v == null ? '—' : Number(v).toLocaleString('nb-NO'),
@@ -1791,8 +1825,11 @@ function renderDashboard(p, movers) {
   const dark = movers.filter(m => (m.total_trades || 0) >= 20 && m.dark_pct != null)
     .sort((a, b) => b.dark_pct - a.dark_pct).slice(0, 7);
   document.getElementById('darkLeadersList').innerHTML = dark.map(m => {
-    const b = m.dark_side_bias && m.dark_side_bias !== 'NEUTRAL'
-      ? `<span class="mrow-badge" style="color:${m.dark_side_bias === 'BUY' ? 'var(--green)' : 'var(--red)'}">${m.dark_side_bias}${m.bias_confirmed ? '✓' : ''}</span>`
+    const dr = darkRead(m);
+    // BLOCK bias is directional (off-mid prints); IMPACT is a soft mid-point
+    // drift lean shown in parentheses; NEUTRAL shows a dash.
+    const b = dr.bias
+      ? `<span class="mrow-badge" style="color:${dr.color}" title="${dr.prov}">${dr.ev === 'IMPACT' ? '(' + dr.bias + ')' : dr.bias}${dr.confirmed ? '✓' : ''}</span>`
       : `<span class="mrow-badge">—</span>`;
     return `
     <div class="mrow" onclick="drillIntoISIN('${m.isin}','${m.venue || 'XOSL'}')">
@@ -2553,15 +2590,9 @@ async function drillIntoISIN(isin, venue) {
   // Metrics strip from already-loaded day data
   const summary = allSummary.find(r => r.isin === isin && r.venue === venue) || {};
   const dark    = allDark.find(r => r.isin === isin && r.venue === venue) || {};
-  const bias = dark.dark_side_bias;
-  const nCls = Number(dark.dark_trades_classified || 0);
-  const confirmed = dark.bias_confirmed === true;
-  const insufficient = (bias === 'NEUTRAL' || !bias) && nCls < 5;
-  const biasWord = bias === 'SELL' ? '▼ Net selling' : bias === 'BUY' ? '▲ Net buying'
-                 : insufficient ? '◇ Insufficient flow' : '◇ Balanced';
-  const biasColor = bias === 'SELL' ? 'var(--red)' : bias === 'BUY' ? 'var(--green)' : 'var(--text-dim)';
-  const biasStr   = `<span style="color:${biasColor}">${biasWord}${confirmed ? ' ✓' : ''}</span>`
-                  + ` <span style="color:var(--text-dim);font-size:9px">${nCls} cls</span>`;
+  const dr = darkRead(dark);
+  const biasStr   = `<span style="color:${dr.color}">${dr.word}${dr.confirmed ? ' ✓' : ''}</span>`
+                  + ` <span style="color:var(--text-dim);font-size:9px">${dr.prov}</span>`;
   document.getElementById('diveMetrics').innerHTML = [
     ['Dark Pool',  fmt.pct(summary.dark_pct)],
     ['Gini',       fmt.dec(summary.gini)],
@@ -2630,18 +2661,20 @@ async function drillIntoISIN(isin, venue) {
 
   // Dark breakdown bar + side bias
   if (drillChart3) drillChart3.destroy();
-  const impactBps = dark.dark_impact_bps != null ? Number(dark.dark_impact_bps) : null;
-  const biasLabel = insufficient ? `◇ Insufficient dark flow (${nCls} classified)`
-                  : bias === 'SELL' ? `▼ Net seller-initiated${confirmed ? ' (confirmed)' : ''}`
-                  : bias === 'BUY'  ? `▲ Net buyer-initiated${confirmed ? ' (confirmed)' : ''}`
-                  : '◇ Balanced dark flow';
+  const impactBps = dr.impact;
+  // Only off-mid negotiated blocks carry a side; mid-point volume sits at the mid
+  // and is shown as a single side-agnostic bar, not split into buy/sell.
+  const midPointVol = Math.max((dark.dark_volume||0) - (dark.dark_volume_at_ask||0) - (dark.dark_volume_at_bid||0), 0);
+  const biasLabel = dr.bias
+    ? `${dr.word}${dr.confirmed ? ' (impact-confirmed)' : ' (unconfirmed)'}`
+    : (dr.midTr ? '◇ Mid-point flow (at mid, side-agnostic)' : '◇ No directional dark flow');
   drillChart3 = new Chart(document.getElementById('drillDark'), {
     type: 'bar',
     data: {
-      labels: ['Lit (CLOB)', 'Dark MTF', 'Large-in-Scale', 'Dark buyer-initiated', 'Dark seller-initiated'],
+      labels: ['Lit (CLOB)', 'Mid-point (at mid)', 'Large-in-Scale', 'Off-mid block buy', 'Off-mid block sell'],
       datasets: [{
         label: 'Volume (shares)',
-        data: [dark.lit_volume||0, dark.dark_volume||0, dark.lis_volume||0, dark.dark_volume_at_ask||0, dark.dark_volume_at_bid||0],
+        data: [dark.lit_volume||0, midPointVol, dark.lis_volume||0, dark.dark_volume_at_ask||0, dark.dark_volume_at_bid||0],
         backgroundColor: ['#4fc3f7','#a78bfa','#f5a623','#43e097','#f06060'],
         borderWidth: 0, borderRadius: 3,
       }]
@@ -2651,7 +2684,7 @@ async function drillIntoISIN(isin, venue) {
       plugins: {
         legend: { display: false },
         title: { display: true, text: `Dark: ${(dark.dark_pct||0).toFixed(1)}% — ${biasLabel}`
-            + (impactBps != null ? ` — 5m impact ${impactBps >= 0 ? '+' : ''}${impactBps.toFixed(1)}bps` : ''),
+            + (impactBps != null ? ` — 5m fwd drift ${impactBps >= 0 ? '+' : ''}${impactBps.toFixed(1)}bps` : ''),
           color: '#e8eef7', font: { size: 12 } }
       },
       scales: { x: { ticks: { callback: v => (v/1e3).toFixed(0)+'K' } } }
@@ -2701,11 +2734,10 @@ function renderDiveIntel(mv, si) {
   }
   // Dark flow bias
   if (darkP != null) {
-    const cls = bias === 'BUY' ? 'pos' : bias === 'SELL' ? 'neg' : 'dark';
-    const word = bias === 'BUY' ? '▲ Buying' : bias === 'SELL' ? '▼ Selling' : '◇ Balanced';
-    chips.push(`<div class="intel-chip ${cls}"><div class="intel-k">Dark flow</div>`
-      + `<div class="intel-v">${word}${confirmed ? ' ✓' : ''}</div>`
-      + `<div class="intel-sub">${darkP.toFixed(1)}% of volume</div></div>`);
+    const dr = darkRead(mv);
+    chips.push(`<div class="intel-chip ${dr.tone}"><div class="intel-k">Dark flow</div>`
+      + `<div class="intel-v">${dr.word}${dr.confirmed ? ' ✓' : ''}</div>`
+      + `<div class="intel-sub" title="${dr.prov}">${darkP.toFixed(1)}% of volume</div></div>`);
   }
   // Next event countdown
   if (dte != null && evt) {
@@ -2744,10 +2776,14 @@ function renderDiveIntel(mv, si) {
     parts.push(`<span class="${dte <= 7 ? 'hl-warn' : 'hl-ice'}">${ev === 'Q-results' ? 'Q-results' : ev.charAt(0).toUpperCase() + ev.slice(1)} ${dte === 0 ? 'is today' : 'in ' + dte + (dte === 1 ? ' day' : ' days')}</span>.`);
   }
   if (darkP != null && bias && bias !== 'NEUTRAL') {
-    const w = bias === 'BUY' ? 'buyer-initiated' : 'seller-initiated';
-    parts.push(`Dark flow is net <span class="hl-dark">${w}</span>${confirmed ? ' and impact-confirmed' : ''} at ${darkP.toFixed(1)}% of volume.`);
+    const dr = darkRead(mv);
+    const lean = bias === 'BUY' ? 'buying' : 'selling';
+    const src = dr.ev === 'IMPACT'
+      ? `inferred from mid-point forward drift${dr.impact != null ? ` (${dr.impact >= 0 ? '+' : ''}${dr.impact.toFixed(0)}bps)` : ''}`
+      : `from ${dr.blockPrints} off-mid block print${dr.blockPrints !== 1 ? 's' : ''}`;
+    parts.push(`Dark flow leans <span class="hl-dark">${lean}</span> ${src}${dr.confirmed ? ', impact-confirmed' : ' (unconfirmed)'}, at ${darkP.toFixed(1)}% of volume.`);
   } else if (darkP != null && darkP >= 10) {
-    parts.push(`Dark trading is elevated at <span class="hl-dark">${darkP.toFixed(1)}%</span> of volume.`);
+    parts.push(`Dark trading is elevated at <span class="hl-dark">${darkP.toFixed(1)}%</span> of volume, but prints sit at the mid — no directional lean.`);
   }
   if (shortP != null && shortP >= 1) {
     parts.push(`Short interest sits at <span class="hl-warn">${shortP.toFixed(2)}%</span>.`);
@@ -2931,11 +2967,12 @@ async function loadDarkFlowChart(isin, venue, cachedIntraday, cachedImpact, cach
     }
   });
 
-  const bias = dark.dark_side_bias;
-  const biasColor = bias === 'SELL' ? 'var(--red)' : bias === 'BUY' ? 'var(--green)' : 'var(--text-dim)';
-  const biasGlyph = bias === 'SELL' ? '▼ Distribution' : bias === 'BUY' ? '▲ Accumulation' : '◇ Neutral';
+  const dr = darkRead(dark);
+  const biasGlyph = dr.bias
+    ? `${dr.word}${dr.confirmed ? ' ✓' : ''}`
+    : (dr.midTr ? '◇ At mid' : '◇ Neutral');
   document.getElementById('darkFlowStats').innerHTML =
-    `Dark: ${(dark.dark_pct||0).toFixed(1)}% · <span style="color:${biasColor}">${biasGlyph}</span> · Modal: ${modalPrice ? parseFloat(modalPrice).toFixed(2) : '—'} · ${darkTrades.length} dark trades`;
+    `Dark: ${(dark.dark_pct||0).toFixed(1)}% · <span style="color:${dr.color}" title="${dr.prov}">${biasGlyph}</span> · Vol. wall: ${modalPrice ? parseFloat(modalPrice).toFixed(2) : '—'} · ${darkTrades.length} dark trades`;
 }
 
 /* ─── Corporate Events Calendar ─────────────────────────────────────────── */
@@ -3149,7 +3186,7 @@ function renderCatalystCard(r) {
         ? `${r.insider_net_value_30d > 0 ? '+' : ''}${fmtM(r.insider_net_value_30d)} net · ${r.insider_trades_30d} trades${r.insider_top_role ? ' · ' + r.insider_top_role : ''}`
         : 'no trades 30d'],
     ['DARK FLOW', r.s_dark, r.dark_pct != null
-        ? `${Number(r.dark_pct).toFixed(0)}% dark · ${r.dark_pct_vs_5d_norm > 0 ? '+' : ''}${Number(r.dark_pct_vs_5d_norm || 0).toFixed(1)}pp vs norm · ${r.dark_side_bias || '—'}${r.bias_confirmed ? ' ✓' : ''}`
+        ? `${Number(r.dark_pct).toFixed(0)}% dark · ${r.dark_pct_vs_5d_norm > 0 ? '+' : ''}${Number(r.dark_pct_vs_5d_norm || 0).toFixed(1)}pp vs norm · ${r.dark_side_bias && r.dark_side_bias !== 'NEUTRAL' ? (r.dark_side_bias === 'BUY' ? 'buy' : 'sell') + ' lean' + (r.bias_confirmed ? ' ✓' : '') : 'at mid'}`
         : '—'],
     ['SIGNALS', r.s_signal, r.sig_count_14d
         ? `${r.sig_count_14d} fired 14d · ${(r.sig_types || []).slice(0,2).join(', ')}${r.sig_hit_rate_t5 ? ` · ${Number(r.sig_hit_rate_t5).toFixed(0)}% hit` : ''}`

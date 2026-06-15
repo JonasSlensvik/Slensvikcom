@@ -1254,7 +1254,7 @@ async function fetchMarketData(isins) {
 
   const [darkRows, signals, catalysts, upcoming, pastDivs, whales, instruments, conviction, idxRows, livePrices, tickerIntel, analystCons, finRows] = await Promise.all([
     GET_ALL('dark_flow_summary',
-      `isin=in.(${isinStr})&trade_date=gte.${sincePx}&select=isin,trade_date,modal_price,dark_pct,dark_side_bias&order=isin.asc,trade_date.asc`),
+      `isin=in.(${isinStr})&trade_date=gte.${sincePx}&select=isin,trade_date,modal_price,dark_pct,dark_side_bias,dark_evidence,bias_confirmed,mid_trades,dark_trades_classified,dark_impact_bps&order=isin.asc,trade_date.asc`),
     GET('smart_signals',
       `isin=in.(${isinStr})&trade_date=gte.${since90}&order=trade_date.desc&limit=200`),
     GET('signal_event_proximity',
@@ -1299,6 +1299,11 @@ async function fetchMarketData(isins) {
     marketData[r.isin].latestPrice = r.modal_price;
     marketData[r.isin].darkBias    = r.dark_side_bias;
     marketData[r.isin].darkPct     = r.dark_pct;
+    marketData[r.isin].darkEvidence  = r.dark_evidence;
+    marketData[r.isin].darkConfirmed = r.bias_confirmed === true;
+    marketData[r.isin].darkMidTrades = r.mid_trades;
+    marketData[r.isin].darkBlockPrints = r.dark_trades_classified;
+    marketData[r.isin].darkImpactBps   = r.dark_impact_bps;
   }
   for (const s of signals)   marketData[s.isin]?.signals.push(s);
   for (const c of catalysts) marketData[c.isin]?.catalysts.push(c);
@@ -1471,10 +1476,22 @@ function healthCell(md) {
 }
 
 function biasChip(md) {
-  if (md.darkBias === 'BUY')  return '<span class="badge badge-green">▲ BUY</span>';
-  if (md.darkBias === 'SELL') return '<span class="badge badge-red">▼ SELL</span>';
-  if (md.darkBias)            return '<span class="badge badge-dim">◇ NEUT</span>';
-  return '—';
+  const bias = (md.darkBias && md.darkBias !== 'NEUTRAL') ? md.darkBias : null;
+  if (!bias) {
+    if (md.darkBias) return '<span class="badge badge-dim" title="dark prints sit at the mid — side-agnostic">◇ AT MID</span>';
+    return '—';
+  }
+  // BLOCK = directional off-mid prints; IMPACT = soft mid-point drift lean (parens)
+  const ev = md.darkEvidence || 'BLOCK';
+  const soft = ev === 'IMPACT';
+  const mark = md.darkConfirmed ? ' ✓' : '';
+  const title = soft
+    ? `mid-point drift lean${md.darkImpactBps != null ? ` (${md.darkImpactBps >= 0 ? '+' : ''}${Number(md.darkImpactBps).toFixed(0)}bps)` : ''} — no off-mid blocks`
+    : `${md.darkBlockPrints || 0} off-mid negotiated prints`;
+  const label = soft ? `(${bias})` : bias;
+  const arrow = bias === 'BUY' ? '▲' : '▼';
+  const cls = bias === 'BUY' ? 'badge-green' : 'badge-red';
+  return `<span class="badge ${cls}" title="${title}">${arrow} ${label}${mark}</span>`;
 }
 
 function convictionCell(md, isLong) {
@@ -3091,9 +3108,13 @@ function renderIntelligence() {
       return `<span class="badge badge-ice">■ ${a}</span>`;
     }).join('');
 
+    const biasOn  = md.darkBias && md.darkBias !== 'NEUTRAL';
     const biasColor = md.darkBias === 'BUY' ? 'var(--green)' : md.darkBias === 'SELL' ? 'var(--red)' : 'var(--text-dim)';
     const biasGlyph = md.darkBias === 'BUY' ? '▲' : md.darkBias === 'SELL' ? '▼' : '◇';
-    const biasText = md.darkBias ? `${biasGlyph} ${md.darkBias} ${md.darkPct ? `(${md.darkPct.toFixed(0)}% dark)` : ''}` : '';
+    const biasWord = biasOn
+      ? (md.darkEvidence === 'IMPACT' ? `${md.darkBias} lean` : `${md.darkBias} blocks`) + (md.darkConfirmed ? ' ✓' : '')
+      : (md.darkBias ? 'at mid' : '');
+    const biasText = md.darkBias ? `${biasGlyph} ${biasWord} ${md.darkPct ? `(${md.darkPct.toFixed(0)}% dark)` : ''}` : '';
 
     return `<div class="intel-card">
       <div class="intel-card-header">

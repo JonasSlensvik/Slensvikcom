@@ -407,6 +407,34 @@ const C = {
   purple:'#a78bfa', text3:'#5a6377',
 };
 
+/* Honest read of a dark_flow_summary row under the v2 microstructure model:
+   mid-point (mech 3) prints execute AT the lit mid → side-agnostic (intensity +
+   forward-drift only); off-mid negotiated (mech 4) blocks reveal an aggressor.
+   Direction = off-mid blocks first (BLOCK), then mid-point drift (IMPACT), else
+   NEUTRAL. dark_volume_at_ask/at_bid are ONLY the off-mid block buy/sell vol. */
+function darkRead(d) {
+  d = d || {};
+  const bias = (d.dark_side_bias && d.dark_side_bias !== 'NEUTRAL') ? d.dark_side_bias : null;
+  const ev = d.dark_evidence || (bias ? 'BLOCK' : 'NONE');
+  const confirmed = d.bias_confirmed === true;
+  const impact = d.dark_impact_bps != null ? Number(d.dark_impact_bps) : null;
+  const midTr = Number(d.mid_trades || 0);
+  const blockPrints = Number(d.dark_trades_classified || 0);
+  const color = bias === 'BUY' ? C.green : bias === 'SELL' ? C.red : C.text3;
+  let word, prov;
+  if (!bias) {
+    word = midTr ? 'AT MID' : 'NO FLOW';
+    prov = midTr ? `${midTr} mid-point prints (at mid, side-agnostic)` : 'no dark prints';
+  } else if (ev === 'IMPACT') {
+    word = `${bias} LEAN`;
+    prov = `mid-point drift${impact != null ? ` ${impact >= 0 ? '+' : ''}${impact.toFixed(0)}bps` : ''} (no off-mid blocks)`;
+  } else {
+    word = `${bias} BLOCKS`;
+    prov = `${blockPrints} off-mid negotiated print${blockPrints !== 1 ? 's' : ''}`;
+  }
+  return { bias, ev, confirmed, impact, midTr, blockPrints, color, word, prov };
+}
+
 /* signal-type marker styles (lightweight-charts shapes) + badges
    arrows are reserved for insider buys/sells — signals use circle/square */
 const SIG_STYLE = {
@@ -566,10 +594,13 @@ const setKpi = (id, v, dirVal) => {
 setKpi('k1d', fmtPct(r1d), r1d);
 setKpi('k5d', fmtPct(r5d), r5d);
 
-const dfLatest = ti || (darkHist && darkHist[0]) || null;
-if (dfLatest && dfLatest.dark_side_bias) {
-  setKpi('kDark', dfLatest.dark_side_bias, dfLatest.dark_side_bias === 'BUY' ? 1 : -1);
-  $('kDarkSub').textContent = `dark ${fmtNum(dfLatest.dark_pct, 1)}% · ${ti ? (ti.bias_confirmed ? 'confirmed' : 'unconfirmed') : (dfLatest.bias_confirmed ? 'confirmed' : 'unconfirmed')}`;
+const dfLatest = (darkHist && darkHist[0]) || ti || null;
+if (dfLatest) {
+  const dr = darkRead(dfLatest);
+  setKpi('kDark', dr.word, dr.bias === 'BUY' ? 1 : dr.bias === 'SELL' ? -1 : 0);
+  $('kDarkSub').textContent = dr.bias
+    ? `dark ${fmtNum(dfLatest.dark_pct, 1)}% · ${dr.confirmed ? 'confirmed' : 'unconfirmed'}`
+    : `dark ${fmtNum(dfLatest.dark_pct, 1)}% · ${dr.prov}`;
 } else { $('kDark').textContent = '—'; $('kDarkSub').textContent = 'no dark prints'; }
 
 const shCur = ti ? { pct: ti.short_pct, date: ti.short_date, chg: ti.short_pct_chg }
@@ -1198,6 +1229,7 @@ function whaleStream(canvas, tip, rows) {
   const body = $('dfBody');
   if (!darkHist || !darkHist.length) { emptyNote(body, 'NO DARK-POOL PRINTS RECORDED FOR THIS ISIN'); return; }
   const d = darkHist[0];
+  const dr = darkRead(d);
   $('dfMeta').textContent = d.trade_date;
   const atAsk = d.dark_volume_at_ask || 0, atBid = d.dark_volume_at_bid || 0;
   const tot = atAsk + atBid;
@@ -1212,16 +1244,17 @@ function whaleStream(canvas, tip, rows) {
       <div class="mini-kpi"><div class="l">vs 5D Norm</div>
         <div class="v ${norm > 0 ? 'up' : norm < 0 ? 'down' : ''}">${norm != null ? fmtPct(norm,1) : '—'}</div>
         <div class="s">excess dark activity</div></div>
-      <div class="mini-kpi"><div class="l">Dark Impact</div>
+      <div class="mini-kpi"><div class="l">Fwd Drift (5m)</div>
         <div class="v ${d.dark_impact_bps > 0 ? 'up' : d.dark_impact_bps < 0 ? 'down' : ''}">${d.dark_impact_bps != null ? fmtNum(d.dark_impact_bps,1)+' bps' : '—'}</div>
-        <div class="s">${d.dark_trades_classified || 0} classified prints</div></div>
+        <div class="s">${dr.midTr} mid-point · ${dr.blockPrints} off-mid block prints</div></div>
     </div>
     <div class="df-gauge-frame"><canvas id="dfGauge"></canvas></div>
     <div class="gauge-lbl">
-      <span class="s">▼ AT-BID ${fmtCompact(atBid)} (${fmtNum(100-buyShare,0)}%)</span>
-      <span>SIDE BIAS <b style="color:${d.dark_side_bias==='BUY'?C.green:C.red}">${d.dark_side_bias || '—'}</b>${d.bias_confirmed ? ' ✓' : ''}</span>
-      <span class="b">▲ AT-ASK ${fmtCompact(atAsk)} (${fmtNum(buyShare,0)}%)</span>
+      <span class="s">▼ OFF-MID SELL ${fmtCompact(atBid)} (${fmtNum(100-buyShare,0)}%)</span>
+      <span title="${dr.prov}">SIDE BIAS <b style="color:${dr.color}">${dr.word}</b>${dr.confirmed ? ' ✓' : ''}</span>
+      <span class="b">▲ OFF-MID BUY ${fmtCompact(atAsk)} (${fmtNum(buyShare,0)}%)</span>
     </div>
+    ${tot === 0 && dr.midTr ? `<div class="s" style="text-align:center;margin-top:4px;color:var(--text3)">All dark volume printed at the mid (side-agnostic); gauge reflects off-mid blocks only.</div>` : ''}
     <div class="chart-frame" style="height:96px;margin:14px 0 4px"><canvas id="dfCanvas"></canvas></div>
     <div class="whale-stream">
       <div class="panel-title" style="margin:10px 0 8px"><span class="glyph">≋</span>Whale Stream · last ${Math.min((whales||[]).length, 60)} prints</div>
