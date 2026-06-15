@@ -399,6 +399,15 @@
     </div>
   </div>
 
+  <!-- HISTORICAL WEEKLY RETURN -->
+  <div class="sec">
+    <div class="panel">
+      <div class="sec-head"><span class="glyph">▮</span>HISTORICAL WEEKLY RETURN<span class="desc">Realised return each rebalance week vs the forecast VaR₉₅ floor — bars below the dashed line are breaches</span><span class="meta" id="wrCount">—</span></div>
+      <div id="wrWrap" style="height:200px"><canvas id="wrCanvas"></canvas></div>
+      <div id="wrEmpty" class="ph" style="display:none">No realised weeks yet — the first return lands the Monday after the opening rebalance.</div>
+    </div>
+  </div>
+
   <!-- PERFORMANCE — accumulators -->
   <div class="sec">
     <div class="grid-3">
@@ -1076,6 +1085,39 @@ function renderPP(mode) {
         plugins:{ legend:{ labels:{ color:'#a4adbf', font:{ family:'IBM Plex Mono', size:10 }, boxWidth:12 } } },
         scales:{ x:{ ticks:{ color:'#5a6377', font:{ family:'IBM Plex Mono', size:9 }, maxTicksLimit:10 }, grid:{ color:'rgba(255,255,255,0.04)' } }, y:{ ticks:{ color:'#5a6377', font:{ family:'IBM Plex Mono', size:9 }, callback:v=>v.toFixed(0)+'%' }, grid:{ color:'rgba(255,255,255,0.04)' } } } },
     });
+  }
+
+  // Historical weekly return — realised return per rebalance week vs VaR floor
+  {
+    const wk = (allMetrics || []).filter(r => r.realized_return != null);
+    document.getElementById('wrCount').textContent = `${wk.length} wk`;
+    if (!wk.length) {
+      document.getElementById('wrWrap').style.display = 'none';
+      document.getElementById('wrEmpty').style.display = '';
+    } else {
+      new Chart(document.getElementById('wrCanvas'), {
+        type:'bar',
+        data:{
+          labels: wk.map(r => r.rebalance_date),
+          datasets:[
+            { label:'Realised return', type:'bar',
+              data: wk.map(r => Number(r.realized_return)*100),
+              backgroundColor: wk.map(r => Number(r.realized_return) >= 0 ? 'rgba(67,224,151,0.55)' : 'rgba(240,96,96,0.55)'),
+              borderColor:    wk.map(r => Number(r.realized_return) >= 0 ? '#43e097' : '#f06060'),
+              borderWidth:1, borderRadius:2,
+              categoryPercentage:0.6, barPercentage:0.8 },
+            { label:'VaR₉₅ floor', type:'line',
+              data: wk.map(r => -Number(r.forecast_var95)*100),
+              borderColor:'#f5a623', borderDash:[4,4], borderWidth:1, fill:false, pointRadius:0, tension:0 },
+          ],
+        },
+        options:{ responsive:true, maintainAspectRatio:false,
+          plugins:{ legend:{ labels:{ color:'#a4adbf', font:{ family:'IBM Plex Mono', size:10 }, boxWidth:12 } },
+            tooltip:{ callbacks:{ label: c => `${c.dataset.label}: ${c.parsed.y.toFixed(2)}%` } } },
+          scales:{ x:{ ticks:{ color:'#5a6377', font:{ family:'IBM Plex Mono', size:9 }, maxTicksLimit:12 }, grid:{ color:'rgba(255,255,255,0.04)' } },
+            y:{ ticks:{ color:'#5a6377', font:{ family:'IBM Plex Mono', size:9 }, callback:v=>v.toFixed(1)+'%' }, grid:{ color:'rgba(255,255,255,0.04)' } } } },
+      });
+    }
   }
 
   // Performance placeholders
