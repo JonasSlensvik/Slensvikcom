@@ -1663,7 +1663,7 @@ function buildLikert(rt) {
   const pillarHTML = pillars.map(([name, s, sub]) => {
     const b = band(s);
     return `<div class="fh-pillar">
-      <div class="ph"><span>${name} <span style="color:var(--text4)">${sub}</span></span><b style="color:${b.c}">${s == null ? '—' : s}</b></div>
+      <div class="ph"><span>${name} <span style="color:var(--text4)">${sub}</span></span><b style="color:${b.c}">${s == null ? '—' : Math.round(s)}</b></div>
       <div class="fh-meter"><i style="width:${s == null ? 0 : s}%;background:${b.c}"></i></div>
     </div>`;
   }).join('');
