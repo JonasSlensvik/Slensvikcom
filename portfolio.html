@@ -2202,6 +2202,65 @@ const timeStr = t => typeof t === 'string' ? t
   : new Date(t * 1000).toISOString().slice(0, 16).replace('T', ' ');
 
 /* ── data prep: PORTED VERBATIM from legacy renderChart() ────────────────── */
+/* ── Time-aware holdings & cost basis along the label axis ─────────────────
+   Replays transactions in date order so each label reflects the position as
+   it actually was on that date — qty held, total cost basis, and per-ISIN avg
+   cost. Before a holding's first buy these are 0/null, so the value and cost
+   lines only begin once the position existed (no back-extrapolation of trades
+   made later onto earlier dates). Sells reduce cost basis at the running avg
+   (average-cost method), matching computePositions' final state.
+   `granularity` is '5D' (compare to the minute) or daily (compare to the day). */
+function stateByLabel(labels, isinsToShow, granularity) {
+  const cut = granularity === '5D' ? 16 : 10;
+  const show = new Set(isinsToShow);
+  const txs = allTransactions
+    .filter(t => show.has(t.isin) && t.transaction_time)
+    .map(t => ({
+      isin: t.isin,
+      key: t.transaction_time.slice(0, cut),
+      qty: parseFloat(t.quantity),
+      price: parseFloat(t.price),
+      buy: t.transaction_type === 'BUY',
+    }))
+    .filter(t => t.key && !isNaN(t.qty))
+    .sort((a, b) => a.key < b.key ? -1 : a.key > b.key ? 1 : 0);
+
+  const qtyByLabel = [];
+  const costByLabel = [];
+  const avgCostByLabel = new Map(isinsToShow.map(i => [i, []]));
+  const net = new Map();   // isin → running netQty
+  const cost = new Map();  // isin → running totalCost
+  let k = 0;
+
+  for (let i = 0; i < labels.length; i++) {
+    while (k < txs.length && txs[k].key <= labels[i]) {
+      const t = txs[k++];
+      const curQ = net.get(t.isin) || 0;
+      const curC = cost.get(t.isin) || 0;
+      if (t.buy) {
+        net.set(t.isin, curQ + t.qty);
+        cost.set(t.isin, curC + t.qty * t.price);
+      } else {
+        const avg = curQ > 0 ? curC / curQ : 0;
+        net.set(t.isin, curQ - t.qty);
+        cost.set(t.isin, Math.max(0, curC - t.qty * avg));
+      }
+    }
+    const snap = new Map();
+    let totalCost = 0;
+    for (const isin of isinsToShow) {
+      const q = net.get(isin) || 0;
+      snap.set(isin, q);
+      const held = q > 0.0001;
+      if (held) totalCost += cost.get(isin) || 0;
+      avgCostByLabel.get(isin).push(held ? (cost.get(isin) || 0) / q : null);
+    }
+    qtyByLabel.push(snap);
+    costByLabel.push(totalCost > 0 ? totalCost : null);
+  }
+  return { qtyByLabel, costByLabel, avgCostByLabel };
+}
+
 function computeTapeSeries() {
   const isinsToShow = chartView === 'portfolio' ? [...positions.keys()] : [chartView];
   let labels = [], valueData = [], costData = [];
@@ -2223,30 +2282,27 @@ function computeTapeSeries() {
       for (const isin of isinsToShow) {
         priceAt[isin] = new Map((intradayData[isin] || []).map(r => [r.dt, r.price]));
       }
+      const { qtyByLabel, costByLabel, avgCostByLabel } = stateByLabel(labels, isinsToShow, '5D');
       const lastKnown = {};
-      valueData = labels.map(dt => {
+      valueData = labels.map((dt, i) => {
         let total = 0, hasAny = false;
         for (const isin of isinsToShow) {
           const p = priceAt[isin].get(dt);
           if (p != null) lastKnown[isin] = p;
           const price = lastKnown[isin];
           if (price != null) {
-            total += chartView === 'portfolio'
-              ? (positions.get(isin)?.netQty || 0) * price
-              : price;
+            // portfolio → qty held as of this point; single-isin → bare price
+            const q = chartView === 'portfolio' ? (qtyByLabel[i].get(isin) || 0) : 1;
+            total += price * q;
             hasAny = true;
           }
         }
         return hasAny ? total : null;
       });
 
-      if (chartView === 'portfolio') {
-        let tc = 0; for (const p of positions.values()) tc += p.totalCost;
-        costData = labels.map(() => tc);
-      } else {
-        const p = positions.get(chartView);
-        costData = labels.map(() => p?.avgCost || null);
-      }
+      costData = chartView === 'portfolio'
+        ? costByLabel.slice()
+        : avgCostByLabel.get(chartView).slice();
     }
 
   } else {
@@ -2260,24 +2316,25 @@ function computeTapeSeries() {
     labels = [...dateSet].sort();
     if (labels.length) {
       if (chartView === 'portfolio') {
+        const { qtyByLabel, costByLabel } = stateByLabel(labels, isinsToShow, 'daily');
         valueData = labels.map(() => 0);
-        for (const [isin, p] of positions) {
+        for (const isin of isinsToShow) {
           const rows = (priceHistory[isin] || []).filter(r => r.trade_date >= since);
           const ff = ffPrices(rows, labels);
           for (let i = 0; i < labels.length; i++) {
-            if (ff[i] != null) valueData[i] += p.netQty * ff[i];
+            const q = qtyByLabel[i].get(isin) || 0;
+            if (ff[i] != null && q) valueData[i] += q * ff[i];
           }
         }
         valueData = valueData.map(v => v || null);
-        let tc = 0; for (const p of positions.values()) tc += p.totalCost;
-        costData = labels.map(() => tc);
+        costData = costByLabel.slice();
       } else {
         const isin = chartView;
         const hist = (priceHistory[isin] || []).filter(r => r.trade_date >= since);
         const histMap = new Map(hist.map(r => [r.trade_date, r.modal_price]));
         valueData = labels.map(d => histMap.get(d) || null);
-        const p = positions.get(isin);
-        costData = labels.map(() => p?.avgCost || null);
+        const { avgCostByLabel } = stateByLabel(labels, [isin], 'daily');
+        costData = avgCostByLabel.get(isin).slice();
       }
 
       // Live "now" point: extend the daily curve to today's best-available value
@@ -2347,20 +2404,24 @@ function computeTapeSeries() {
 /* per-holding stacked contribution — PORTED VERBATIM (cumulative for lwc) */
 function computeStackedSeries(labels, isinsToShow) {
   const isinList = isinsToShow.filter(i => positions.has(i));
+  const { qtyByLabel } = stateByLabel(labels, isinList, chartPeriod === '5D' ? '5D' : 'daily');
   const perHolding = isinList.map(isin => {
-    const p = positions.get(isin);
     let series;
     if (chartPeriod === '5D') {
       const priceAt = new Map((intradayData[isin] || []).map(r => [r.dt, r.price]));
       let lastP = null;
-      series = labels.map(dt => {
+      series = labels.map((dt, i) => {
         const px = priceAt.get(dt);
         if (px != null) lastP = px;
-        return lastP != null ? lastP * p.netQty : null;
+        const q = qtyByLabel[i].get(isin) || 0;
+        return lastP != null && q ? lastP * q : null;
       });
     } else {
       const ff = ffPrices(priceHistory[isin] || [], labels);
-      series = ff.map(v => v != null ? v * p.netQty : null);
+      series = ff.map((v, i) => {
+        const q = qtyByLabel[i].get(isin) || 0;
+        return v != null && q ? v * q : null;
+      });
     }
     return { isin, tk: ticker(isin), series };
   });
