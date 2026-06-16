@@ -309,6 +309,19 @@
     </div>
   </div>
 
+  <!-- INTRADAY SESSION -->
+  <div class="sec">
+    <div class="panel">
+      <div class="panel-head">
+        <span class="panel-title"><span class="glyph">◷</span>Intraday · Live Session</span>
+        <span class="panel-meta" id="idMeta">15-min delayed · 5-min bars</span>
+      </div>
+      <div class="chart-frame" id="intradayChartBox" style="height:300px;position:relative">
+        <div class="lwc-legend" id="idLegend"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- DARK FLOW + INSIDERS -->
   <div class="sec grid-2-w">
     <div class="panel">
@@ -467,11 +480,14 @@ if (!ISIN) {
 }
 const Q = encodeURIComponent(ISIN);
 
+/* today's Oslo calendar date — bounds the live intraday fetch */
+const todayOslo = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Oslo' }).format(new Date());
+
 /* ── parallel fetch everything ── */
 const [
   intel, lastPx, instr, closesAdj, ohlcv, signals, sigPerf, darkHist, whales,
   shortHist, shortHolders, eventsRaw, proximity, insiderTrades, insiderIntel,
-  instrAll, consensus, financials, recTrend,
+  instrAll, consensus, financials, recTrend, intradayLive,
 ] = await Promise.all([
   safeGet(`ticker_intel?isin=eq.${Q}`),                                             // NEW (may 404)
   safeGet(`latest_price?isin=eq.${Q}`),
@@ -492,6 +508,7 @@ const [
   safeGet(`analyst_consensus?isin=eq.${Q}`),                                       // NEW (may 404)
   safeGet(`financials_key?isin=eq.${Q}&freq=eq.annual&order=period_end.desc&limit=5`), // NEW (may 404)
   safeGet(`analyst_rec_trend?isin=eq.${Q}&order=period_month.asc`),                  // NEW (may 404)
+  safeGet(`intraday_live?isin=eq.${Q}&ts=gte.${todayOslo}T00:00:00&select=ts,price&order=ts.asc&limit=3000`),
 ]);
 
 /* euronext trade-tape candles: keep the dominant venue, one bar per day */
@@ -520,6 +537,52 @@ const closes = (() => {
   (closesAdj || []).forEach(r => byDate.set(r.trade_date, { trade_date: r.trade_date, adj_close: r.adj_close != null ? r.adj_close : r.close }));
   return [...byDate.values()].sort((a, b) => a.trade_date < b.trade_date ? -1 : 1);
 })();
+
+/* ── INTRADAY LIVE (today, 15-min delayed) ──────────────────────────────────
+   intraday_live carries minute-level price ticks for the current session.
+   Used two ways: (1) a single forming daily candle appended to the tape so the
+   chart reaches "now" before the EOD pipeline lands, and (2) a separate
+   intraday candlestick panel (5-min bars) of today's detailed moves. Built
+   after `closes` so the canonical daily KPIs/area stay on settled EOD data. */
+const idTicks = (intradayLive || [])
+  .filter(r => r.price != null)
+  .map(r => ({ ts: r.ts, price: +r.price }));
+
+const osloParts = (iso) => {
+  const p = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Oslo',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(new Date(iso));
+  const g = t => +p.find(x => x.type === t).value;
+  return { y: g('year'), mo: g('month'), d: g('day'), h: g('hour'), mi: g('minute') };
+};
+
+/* 5-min intraday OHLC bars; time = Oslo wall-clock encoded as a UTC epoch so
+   lightweight-charts (which formats in UTC) renders the Oslo time verbatim */
+const ID_BIN = 5;
+const intradayBars = (() => {
+  if (!idTicks.length) return [];
+  const bins = new Map();
+  for (const t of idTicks) {
+    const o = osloParts(t.ts);
+    const m = o.mi - (o.mi % ID_BIN);
+    const epoch = Date.UTC(o.y, o.mo - 1, o.d, o.h, m) / 1000;
+    const b = bins.get(epoch);
+    if (!b) bins.set(epoch, { time: epoch, open: t.price, high: t.price, low: t.price, close: t.price });
+    else { if (t.price > b.high) b.high = t.price; if (t.price < b.low) b.low = t.price; b.close = t.price; }
+  }
+  return [...bins.values()].sort((a, b) => a.time - b.time);
+})();
+
+/* single forming candle for today, appended to the daily candle tape */
+const todayCandle = idTicks.length ? (() => {
+  let hi = -Infinity, lo = Infinity;
+  for (const t of idTicks) { if (t.price > hi) hi = t.price; if (t.price < lo) lo = t.price; }
+  return { time: todayOslo, open: idTicks[0].price, high: hi, low: lo,
+           close: idTicks[idTicks.length - 1].price, volume: null };
+})() : null;
+if (todayCandle && (!ohlc.length || ohlc[ohlc.length - 1].time < todayOslo)) {
+  ohlc.push(todayCandle);
+}
 
 /* newsweb publishes most messages twice (NO + EN) — collapse to one per
    (event_date, event_type) for the timeline / chart ribbons */
@@ -733,7 +796,7 @@ function nearestIdx(labels, dateStr) {
   }
 
   $('pcMeta').textContent =
-    `${dates[0]} → ${dates[dates.length - 1]} · ${dates.length} sessions · ${ohlc.length} candle days · adjusted`;
+    `${dates[0]} → ${dates[dates.length - 1]} · ${dates.length} sessions · ${ohlc.length} candle days · adjusted${todayCandle ? ' · +live today' : ''}`;
 
   /* ── markers: signals (◆ era shapes) + insiders (▲▼, size ∝ value) ── */
   const markerMeta = new Map();
@@ -988,6 +1051,76 @@ function nearestIdx(labels, dateStr) {
   applyMarkers();
   ribbon.setEvents(evtList());
   setRange(126);
+})();
+
+/* ══════════ INTRADAY SESSION — 5-min candles from intraday_live ══════════
+   Today's live (15-min delayed) ticks bucketed into 5-min OHLC bars on their
+   own intraday time axis. Empty before the session opens / on non-trading
+   days. Bar times are Oslo wall-clock encoded as UTC epochs, so reading them
+   back with getUTC* yields the Oslo time verbatim. */
+(function buildIntradayTape() {
+  const box = $('intradayChartBox'), legend = $('idLegend');
+  if (!box) return;
+  if (typeof LightweightCharts === 'undefined') {
+    box.innerHTML = '<div class="empty-note" style="margin-top:90px">CHART LIBRARY UNAVAILABLE — RELOAD</div>';
+    return;
+  }
+  if (!intradayBars.length) {
+    box.innerHTML = '<div class="empty-note" style="margin-top:90px">NO INTRADAY TICKS YET TODAY · live feed quiet (market closed or pre-open)</div>';
+    $('idMeta').textContent = 'no session data';
+    return;
+  }
+
+  const hhmm = (t) => { const d = new Date(t * 1000);
+    return String(d.getUTCHours()).padStart(2, '0') + ':' + String(d.getUTCMinutes()).padStart(2, '0'); };
+  const lastBarClose = intradayBars[intradayBars.length - 1].close;
+  const first = intradayBars[0].open;
+  const prec = lastBarClose != null && lastBarClose < 10 ? 3 : 2;
+  const minMove = prec === 3 ? 0.001 : 0.01;
+  const dayChg = first ? (lastBarClose / first - 1) * 100 : null;
+
+  const chart = LightweightCharts.createChart(box, {
+    autoSize: true,
+    layout: { background: { type: 'solid', color: 'transparent' },
+      textColor: '#5a6377', fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, attributionLogo: false },
+    grid: { vertLines: { color: 'rgba(255,255,255,0.03)' }, horzLines: { color: 'rgba(255,255,255,0.045)' } },
+    crosshair: { mode: LightweightCharts.CrosshairMode.Magnet,
+      vertLine: { color: 'rgba(79,195,247,0.38)', width: 1, style: LightweightCharts.LineStyle.Dashed, labelBackgroundColor: '#1a212d' },
+      horzLine: { color: 'rgba(79,195,247,0.38)', width: 1, style: LightweightCharts.LineStyle.Dashed, labelBackgroundColor: '#1a212d' } },
+    rightPriceScale: { borderVisible: false, scaleMargins: { top: 0.12, bottom: 0.12 } },
+    timeScale: { borderVisible: false, rightOffset: 2, minBarSpacing: 2, timeVisible: true, secondsVisible: false,
+      tickMarkFormatter: (t) => hhmm(t) },
+    localization: { priceFormatter: (v) => fmtNum(v, prec), timeFormatter: (t) => hhmm(t) },
+  });
+
+  const candle = chart.addCandlestickSeries({
+    upColor: C.green, downColor: C.red, borderUpColor: C.green, borderDownColor: C.red,
+    wickUpColor: 'rgba(67,224,151,0.75)', wickDownColor: 'rgba(240,96,96,0.75)',
+    priceLineColor: 'rgba(79,195,247,0.5)', priceLineStyle: LightweightCharts.LineStyle.Dotted,
+    priceFormat: { type: 'price', precision: prec, minMove },
+  });
+  candle.setData(intradayBars);
+
+  const baseLegend = () => {
+    const cls = lastBarClose >= first ? 'u' : 'd';
+    return `<b>Intraday</b> · ${intradayBars.length} bars · O <b>${fmtNum(first, prec)}</b> → C <b class="${cls}">${fmtNum(lastBarClose, prec)}</b> <span class="${cls}">${fmtPct(dayChg)}</span>`;
+  };
+  legend.innerHTML = baseLegend();
+
+  chart.subscribeCrosshairMove((param) => {
+    const cd = param && param.time && candle && param.seriesData.get(candle);
+    if (cd && cd.open != null) {
+      const chg = cd.open ? (cd.close / cd.open - 1) * 100 : null;
+      const cls = cd.close >= cd.open ? 'u' : 'd';
+      legend.innerHTML = `<b>${hhmm(param.time)}</b> &nbsp;O <b>${fmtNum(cd.open, prec)}</b> &nbsp;H <b>${fmtNum(cd.high, prec)}</b> &nbsp;L <b>${fmtNum(cd.low, prec)}</b> &nbsp;C <b class="${cls}">${fmtNum(cd.close, prec)}</b> <span class="${cls}">${fmtPct(chg)}</span>`;
+    } else {
+      legend.innerHTML = baseLegend();
+    }
+  });
+
+  $('idMeta').textContent =
+    `${todayOslo} · ${hhmm(intradayBars[0].time)}–${hhmm(intradayBars[intradayBars.length - 1].time)} · ${ID_BIN}-min bars · 15-min delayed`;
+  chart.timeScale().fitContent();
 })();
 
 /* ══════════ DARK-FLOW PRESSURE GAUGE (canvas, no lib) ══════════
