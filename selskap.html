@@ -218,6 +218,25 @@
   .scrollwrap { overflow-x:auto; }
   .desc-clip { max-width:340px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 
+  /* ── return-distribution section ── */
+  .dist-lede { font-family:var(--mono); font-size:11px; line-height:1.6; color:var(--text2); margin-bottom:14px; max-width:760px; }
+  .dist-hero { display:grid; grid-template-columns:repeat(auto-fit,minmax(128px,1fr)); gap:10px; }
+  .dist-stat { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:11px 13px; }
+  .dist-stat .k { font-family:var(--mono); font-size:9px; letter-spacing:.14em; text-transform:uppercase; color:var(--text3); }
+  .dist-stat .v { font-family:var(--mono); font-size:20px; font-weight:600; color:var(--text1); margin-top:4px; line-height:1.05; }
+  .dist-stat .v.pos { color:var(--green); }
+  .dist-stat .v.neg { color:var(--red); }
+  .dist-stat .v.amber { color:var(--amber); }
+  .dist-stat .sub { font-family:var(--mono); font-size:9.5px; color:var(--text3); margin-top:3px; }
+  .dist-note { font-family:var(--mono); font-size:10px; line-height:1.5; color:var(--text3); margin-top:10px; }
+  .dist-table { width:100%; border-collapse:collapse; font-family:var(--mono); font-size:11px; }
+  .dist-table th { text-align:right; padding:5px 8px; color:var(--text3); font-weight:500; letter-spacing:.08em; text-transform:uppercase; font-size:9px; border-bottom:1px solid var(--border); }
+  .dist-table th:first-child, .dist-table td:first-child { text-align:left; }
+  .dist-table td { text-align:right; padding:5px 8px; color:var(--text2); border-bottom:1px solid rgba(255,255,255,.04); }
+  .dist-table tr.best td { color:var(--text1); background:var(--amber-dim); }
+  .dist-table tr.best td:first-child::before { content:'★ '; color:var(--amber); }
+  .dist-table .muted { color:var(--text3); }
+
   footer { font-family:var(--mono); font-size:9px; letter-spacing:.1em; color:var(--text4); text-align:center; padding:30px 0 10px; }
 
   /* ── mobile / small screens ── */
@@ -399,6 +418,72 @@
         <span class="panel-meta" id="fhMeta">balance-sheet diagnostics</span>
       </div>
       <div id="fhBody"><div class="skeleton" style="height:200px"></div></div>
+    </div>
+  </div>
+
+  <!-- RETURN DISTRIBUTION -->
+  <div class="sec" id="distSec" style="display:none">
+    <div class="panel">
+      <div class="panel-head">
+        <span class="panel-title"><span class="glyph">∮</span>Return Distribution</span>
+        <span class="panel-meta" id="distMeta">intraday tape</span>
+      </div>
+      <p class="dist-lede" id="distLede"></p>
+      <div id="distHero" class="dist-hero"></div>
+    </div>
+  </div>
+  <div class="sec grid-2-w" id="distRow1" style="display:none">
+    <div class="panel">
+      <div class="panel-head">
+        <span class="panel-title"><span class="glyph">∮</span>Empirical density vs fitted models</span>
+        <span class="panel-meta">1-min log returns</span>
+      </div>
+      <div style="height:340px"><canvas id="distDensity"></canvas></div>
+      <div class="dist-note" id="distDensityNote"></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head">
+        <span class="panel-title"><span class="glyph">⤢</span>Aggregational Gaussianity</span>
+        <span class="panel-meta">excess kurtosis by horizon</span>
+      </div>
+      <div style="height:340px"><canvas id="distKurt"></canvas></div>
+      <div class="dist-note">As the holding period stretches from 1 to 60 minutes the fat tails wash out and returns drift toward the bell curve — a hallmark of genuine market data.</div>
+    </div>
+  </div>
+  <div class="sec grid-2" id="distRow2" style="display:none">
+    <div class="panel">
+      <div class="panel-head">
+        <span class="panel-title"><span class="glyph">⊿</span>Normal Q–Q</span>
+        <span class="panel-meta">quantile vs Gaussian</span>
+      </div>
+      <div style="height:300px"><canvas id="distQQ"></canvas></div>
+      <div class="dist-note">Points bowing off the 45° line in the corners are the fat tails — extreme moves arrive far more often than the bell curve allows.</div>
+    </div>
+    <div class="panel">
+      <div class="panel-head">
+        <span class="panel-title"><span class="glyph">⤓</span>Left-tail survival</span>
+        <span class="panel-meta">P(return &lt; −t), log scale</span>
+      </div>
+      <div style="height:300px"><canvas id="distTail"></canvas></div>
+      <div class="dist-note">The empirical line sitting above the Gaussian means drawdowns of a given size are more probable than the Normal predicts.</div>
+    </div>
+  </div>
+  <div class="sec grid-2" id="distRow3" style="display:none">
+    <div class="panel">
+      <div class="panel-head">
+        <span class="panel-title"><span class="glyph">⚠</span>Value-at-Risk / Expected Shortfall</span>
+        <span class="panel-meta">per 1-min return</span>
+      </div>
+      <div id="distVarTable"></div>
+      <div class="dist-note" id="distVarNote"></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head">
+        <span class="panel-title"><span class="glyph">≣</span>Goodness-of-fit scorecard</span>
+        <span class="panel-meta">ranked by AIC — lower is better</span>
+      </div>
+      <div id="distScorecard"></div>
+      <div class="dist-note">AIC/BIC use the full sample. KS &amp; Anderson–Darling are CDF-based; gen-hyp's CDF is numerically unstable, so trust its AIC over its KS.</div>
     </div>
   </div>
 
@@ -1908,6 +1993,215 @@ function buildLikert(rt) {
     ctx.strokeStyle = vb.c; ctx.lineWidth = 9; ctx.shadowColor = vb.c; ctx.shadowBlur = 11;
     ctx.beginPath(); ctx.arc(cx, cy, R, a0, a0 + (a1 - a0) * (score / 100)); ctx.stroke();
   }
+})();
+
+/* ══════════ RETURN DISTRIBUTION ══════════
+   Per-stock fit of a kitchen-sink of distributions to the pooled intraday tape.
+   Only the ~60 most-liquid names get a nightly fit; thin names show nothing.
+   The data layer (return_dist_summary / return_dist_fits) is refreshed weekly
+   by ENEXT's return_distribution.py — date-independent, so no date wiring. */
+(async function renderDistribution() {
+  const DIST_LABEL = {
+    normal:'Normal', student_t:'Student-t', laplace:'Laplace', ged:'GED',
+    nig:'NIG', gen_hyp:'Gen-hyperbolic', skew_t:'Skew-t',
+    gaussian_mix2:'2-Normal mix', alpha_stable:'α-stable',
+  };
+  const DIST_COLOR = {
+    ged:'#f5a623', student_t:'#4fc3f7', nig:'#a78bfa', gen_hyp:'#43e097',
+    skew_t:'#ff8fb3', laplace:'#d4a5ff', alpha_stable:'#77ddd4', gaussian_mix2:'#e0c060',
+  };
+  const GRID = 'rgba(255,255,255,0.04)', AXIS = '#5a6377', LEG = '#a4adbf';
+  const ax = (text) => ({ display:true, text, color:AXIS, font:{ size:10 } });
+  const tk = { color:AXIS, font:{ size:10 } };
+  const legend = { position:'bottom', labels:{ color:LEG, boxWidth:12, padding:8, font:{ size:10 } } };
+
+  const [sumRows, fitRows] = await Promise.all([
+    safeGet(`return_dist_summary?scope_id=eq.${Q}&horizon=eq.1min`),
+    safeGet(`return_dist_fits?scope_id=eq.${Q}&horizon=eq.1min&order=aic.asc`),
+  ]);
+  const s = sumRows && sumRows[0];
+  if (!s) return;                         // thin name — no fit, leave section hidden
+  const fits = fitRows || [];
+
+  ['distSec','distRow1','distRow2','distRow3'].forEach(id => { const e = $(id); if (e) e.style.display = ''; });
+  $('distMeta').textContent = `N=${Number(s.n_obs).toLocaleString()} · ${s.data_quality}`;
+
+  const bestLbl = DIST_LABEL[s.best_distribution] || s.best_distribution;
+  $('distLede').innerHTML = `What shape do <b>${esc(ticker)}</b>'s returns actually take? `
+    + `We fit a kitchen-sink of distributions to the pooled 1-minute intraday tape and let the data pick the winner — `
+    + `here the <b style="color:var(--amber)">${esc(bestLbl)}</b> wins on AIC. This is the per-stock foundation of the Slensvik model.`;
+
+  /* ── hero stats ── */
+  (function hero() {
+    const k = Number(s.excess_kurtosis), sk = Number(s.skew);
+    const xiL = s.evt_left_tail_index, xiR = s.evt_right_tail_index;
+    const rejectNormal = Number(s.jb_p) < 0.01;
+    const stat = (kk, vv, cls, sub) =>
+      `<div class="dist-stat"><div class="k">${kk}</div><div class="v ${cls||''}">${vv}</div>`
+      + (sub ? `<div class="sub">${sub}</div>` : '') + `</div>`;
+    $('distHero').innerHTML = [
+      stat('Best fit', bestLbl, 'amber', 'lowest AIC'),
+      stat('Excess kurtosis', k.toFixed(1), k > 1 ? 'neg' : '', k > 1 ? 'fat-tailed vs Normal (0)' : 'near-Gaussian'),
+      stat('Skew', (sk >= 0 ? '+' : '') + sk.toFixed(2), sk < -0.1 ? 'neg' : sk > 0.1 ? 'pos' : '', sk < 0 ? 'downside-skewed' : 'symmetric-ish'),
+      stat('Normality (JB)', rejectNormal ? 'REJECTED' : 'plausible', rejectNormal ? 'neg' : 'pos', rejectNormal ? 'p < 0.01 — not Gaussian' : 'p ≥ 0.01'),
+      stat('Left tail index', xiL ? Number(xiL).toFixed(2) : '—', 'amber', 'EVT · lower = heavier'),
+      stat('Right tail index', xiR ? Number(xiR).toFixed(2) : '—', 'amber', 'EVT · lower = heavier'),
+    ].join('');
+  })();
+
+  const C = s.charts || {};
+  const normPdf = (x, m, sd) => Math.exp(-0.5 * ((x - m) / sd) ** 2) / (sd * Math.sqrt(2 * Math.PI));
+
+  /* ── density vs fitted models ── */
+  (function density() {
+    const ctx = $('distDensity'); if (!ctx) return;
+    const hist = C.hist || { centers:[], density:[] };
+    const grid = C.grid || [];
+    const m = Number(s.mean), sd = Number(s.std);
+    const datasets = [{
+      type:'line', label:'Empirical', stepped:'middle',
+      data: hist.centers.map((x, i) => ({ x:x*100, y:hist.density[i] })),
+      borderColor:'rgba(232,238,247,0.45)', backgroundColor:'rgba(232,238,247,0.10)',
+      fill:true, pointRadius:0, borderWidth:1, order:10,
+    }, {
+      type:'line', label:'Normal (benchmark)',
+      data: grid.map(x => ({ x:x*100, y:normPdf(x, m, sd) })),
+      borderColor:'#6b7685', borderDash:[5,4], pointRadius:0, borderWidth:1.5, fill:false, order:5,
+    }];
+    const dens = C.densities || {};
+    Object.keys(dens).forEach(nm => {
+      datasets.push({
+        type:'line', label: DIST_LABEL[nm] || nm,
+        data: grid.map((x, i) => ({ x:x*100, y:dens[nm][i] })),
+        borderColor: DIST_COLOR[nm] || '#4fc3f7', pointRadius:0, borderWidth:1.8, fill:false, order:1,
+      });
+    });
+    new Chart(ctx, {
+      data:{ datasets },
+      options:{
+        responsive:true, maintainAspectRatio:false, parsing:false, normalized:true,
+        scales:{
+          x:{ type:'linear', title:ax('1-min log return (%)'),
+              min: grid.length ? grid[0]*100 : undefined, max: grid.length ? grid[grid.length-1]*100 : undefined,
+              ticks:{ ...tk, callback:v => v.toFixed(2) }, grid:{ color:GRID } },
+          y:{ title:ax('density'), ticks:tk, grid:{ color:GRID } },
+        },
+        plugins:{ legend },
+      },
+    });
+    const note = $('distDensityNote');
+    if (note) note.textContent = `The Normal (dashed) is too peaked in the middle and too thin in the wings; ${bestLbl} tracks the real shape best.`;
+  })();
+
+  /* ── aggregational Gaussianity: excess kurtosis decays with horizon ── */
+  (function kurtosis() {
+    const ctx = $('distKurt'); if (!ctx) return;
+    const kbh = (C.kurtosis_by_horizon || []).filter(r => r && r.excess_kurtosis != null);
+    if (!kbh.length) { $('distKurt').closest('.panel').style.display = 'none'; return; }
+    const pts = kbh.map(r => ({ x:r.minutes, y:r.excess_kurtosis }));
+    new Chart(ctx, {
+      data:{ datasets:[
+        { type:'line', label:'Excess kurtosis', data:pts, borderColor:'#f5a623',
+          backgroundColor:'rgba(245,166,35,0.10)', pointRadius:3, pointBackgroundColor:'#f5a623',
+          borderWidth:2, fill:true, tension:0.25 },
+        { type:'line', label:'Gaussian (0)', data: pts.map(p => ({ x:p.x, y:0 })),
+          borderColor:'#6b7685', borderDash:[5,4], pointRadius:0, borderWidth:1.5, fill:false },
+      ] },
+      options:{
+        responsive:true, maintainAspectRatio:false, parsing:false,
+        scales:{
+          x:{ type:'logarithmic', title:ax('horizon (minutes)'),
+              ticks:{ ...tk, callback:v => Number(v).toString() }, grid:{ color:GRID } },
+          y:{ title:ax('excess kurtosis'), ticks:tk, grid:{ color:GRID } },
+        },
+        plugins:{ legend },
+      },
+    });
+  })();
+
+  /* ── Normal Q–Q ── */
+  (function qq() {
+    const ctx = $('distQQ'); if (!ctx) return;
+    const q = C.qq || {}, emp = q.empirical || [], nrm = q.normal || [];
+    const n = Math.min(emp.length, nrm.length);
+    const pts = []; for (let i = 0; i < n; i++) pts.push({ x:nrm[i]*100, y:emp[i]*100 });
+    if (!pts.length) return;
+    const lo = Math.min(...pts.map(p => Math.min(p.x, p.y)));
+    const hi = Math.max(...pts.map(p => Math.max(p.x, p.y)));
+    new Chart(ctx, {
+      data:{ datasets:[
+        { type:'scatter', label:'Q–Q', data:pts, pointRadius:1.6, pointBackgroundColor:'#4fc3f7', borderColor:'#4fc3f7' },
+        { type:'line', label:'45° (Gaussian)', data:[{ x:lo, y:lo }, { x:hi, y:hi }], borderColor:'#6b7685', borderDash:[5,4], pointRadius:0, borderWidth:1.5 },
+      ] },
+      options:{
+        responsive:true, maintainAspectRatio:false, parsing:false,
+        scales:{ x:{ type:'linear', title:ax('theoretical (Normal) %'), ticks:tk, grid:{ color:GRID } },
+                 y:{ title:ax('empirical %'), ticks:tk, grid:{ color:GRID } } },
+        plugins:{ legend },
+      },
+    });
+  })();
+
+  /* ── left-tail survival ── */
+  (function tail() {
+    const ctx = $('distTail'); if (!ctx) return;
+    const sv = C.survival || {}, t = sv.t || [], emp = sv.empirical || [], nrm = sv.normal || [];
+    if (!t.length) return;
+    const FLOOR = 1e-6;
+    const mk = arr => t.map((tt, i) => ({ x:tt*100, y:Math.max(arr[i], FLOOR) }));
+    new Chart(ctx, {
+      data:{ datasets:[
+        { type:'line', label:'Empirical', data:mk(emp), borderColor:'#f5a623', pointRadius:0, borderWidth:2, fill:false },
+        { type:'line', label:'Normal', data:mk(nrm), borderColor:'#6b7685', borderDash:[5,4], pointRadius:0, borderWidth:1.5, fill:false },
+      ] },
+      options:{
+        responsive:true, maintainAspectRatio:false, parsing:false,
+        scales:{ x:{ type:'linear', title:ax('loss threshold t (%)'), ticks:tk, grid:{ color:GRID } },
+                 y:{ type:'logarithmic', title:ax('P(return < −t)'), ticks:tk, grid:{ color:GRID } } },
+        plugins:{ legend },
+      },
+    });
+  })();
+
+  /* ── VaR / ES table ── */
+  (function varEs() {
+    const el = $('distVarTable'); if (!el) return;
+    const ve = s.var_es || {};
+    const pct = v => v == null ? '—' : (v*100).toFixed(2) + '%';
+    const rows = ['0.95','0.99','0.999'].filter(l => ve[l]).map(l => {
+      const r = ve[l];
+      return `<tr><td>${(Number(l)*100).toFixed(1)}%</td><td>${pct(r.empirical_var)}</td>`
+        + `<td>${pct(r.normal_var)}</td><td>${pct(r.fit_var)}</td><td>${pct(r.empirical_es)}</td></tr>`;
+    }).join('');
+    el.innerHTML = `<table class="dist-table"><thead><tr>`
+      + `<th>Level</th><th>Empirical</th><th>Normal</th><th>Best fit</th><th>ES (emp)</th>`
+      + `</tr></thead><tbody>${rows}</tbody></table>`;
+    const note = $('distVarNote'), r999 = ve['0.999'];
+    if (note && r999) {
+      const exp = r999.expected_rate, act = r999.normal_exceed_rate;
+      const ratio = exp > 0 ? act / exp : null;
+      note.innerHTML = ratio
+        ? `At the 99.9% level the Normal model is breached <b>${ratio.toFixed(1)}×</b> as often as it should be (${(act*100).toFixed(2)}% vs ${(exp*100).toFixed(2)}% expected) — it badly understates crash risk.`
+        : '';
+    }
+  })();
+
+  /* ── goodness-of-fit scorecard ── */
+  (function scorecard() {
+    const el = $('distScorecard'); if (!el) return;
+    if (!fits.length) { el.innerHTML = '<div class="empty-note">NO FITS</div>'; return; }
+    const fmt = v => v == null ? '—' : Number(v).toLocaleString(undefined, { maximumFractionDigits:0 });
+    const f3 = v => v == null ? '—' : Number(v).toFixed(3);
+    const rows = fits.map(f =>
+      `<tr class="${f.is_best ? 'best' : ''}"><td>${DIST_LABEL[f.distribution] || f.distribution}</td>`
+      + `<td>${fmt(f.aic)}</td><td>${fmt(f.bic)}</td>`
+      + `<td class="${f.ks_stat == null ? 'muted' : ''}">${f3(f.ks_stat)}</td>`
+      + `<td class="${f.ad_stat == null ? 'muted' : ''}">${f.ad_stat == null ? '—' : Number(f.ad_stat).toFixed(1)}</td>`
+      + `<td class="muted">${f.n_params}</td></tr>`).join('');
+    el.innerHTML = `<table class="dist-table"><thead><tr>`
+      + `<th>Distribution</th><th>AIC</th><th>BIC</th><th>KS</th><th>A–D</th><th>k</th>`
+      + `</tr></thead><tbody>${rows}</tbody></table>`;
+  })();
 })();
 
 /* ══════════ LIVE HEADER POLL ══════════
