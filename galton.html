@@ -426,6 +426,98 @@
     </div>
   </div>
 
+  <!-- ════════════════ RESEARCH BACKTEST · 1995–2019 ════════════════ -->
+  <style>
+    .bt-seg { display:flex; border:1px solid var(--border2); width:max-content; }
+    .bt-seg button { font-family:var(--mono); font-size:10px; letter-spacing:.14em; text-transform:uppercase;
+      padding:6px 16px; background:transparent; color:var(--text2); border:none; border-right:1px solid var(--border2); cursor:pointer; }
+    .bt-seg button:last-child { border-right:none; }
+    .bt-seg button:hover { color:var(--amber); }
+    .bt-seg button.active { color:var(--amber); background:var(--amber-dim); }
+    table.bt { width:100%; border-collapse:collapse; font-family:var(--mono); font-size:11px; font-variant-numeric:tabular-nums; }
+    table.bt th { text-align:right; color:var(--text3); font-weight:400; font-size:9px; letter-spacing:.12em; text-transform:uppercase;
+      padding:6px 8px; border-bottom:1px solid var(--border); }
+    table.bt th:first-child, table.bt td:first-child { text-align:left; }
+    table.bt td { text-align:right; padding:7px 8px; border-bottom:1px dashed var(--border); color:var(--text2); }
+    table.bt tr:last-child td { border-bottom:none; }
+    table.bt tr.hero td { color:var(--text1); }
+    table.bt .mname { display:flex; align-items:center; gap:7px; color:var(--text1); }
+    table.bt .swatch { width:9px; height:9px; flex:none; }
+    table.bt td.best { color:var(--amber); }
+    .bt-leg { display:flex; flex-wrap:wrap; gap:6px 14px; margin-bottom:10px; font-family:var(--mono); font-size:10px; color:var(--text2); }
+    .bt-leg span { display:inline-flex; align-items:center; gap:6px; }
+    .bt-leg i { width:14px; height:3px; flex:none; }
+    .tr-row { display:grid; grid-template-columns:128px 1fr 64px; align-items:center; gap:10px; padding:7px 0; border-bottom:1px dashed var(--border); font-family:var(--mono); font-size:10.5px; }
+    .tr-row:last-child { border-bottom:none; }
+    .tr-name { display:flex; align-items:center; gap:7px; color:var(--text1); }
+    .tr-bar-wrap { position:relative; height:12px; background:var(--bg3); }
+    .tr-bar { position:absolute; right:0; top:0; height:100%; background:linear-gradient(90deg,rgba(240,96,96,0.4),rgba(240,96,96,0.85)); }
+    .tr-val { text-align:right; color:var(--red); font-variant-numeric:tabular-nums; }
+  </style>
+
+  <div class="sec" id="btSection">
+    <div class="panel">
+      <div class="sec-head"><span class="glyph">◈</span>RESEARCH BACKTEST · GENERALIZED-GALTON + CVaR<span class="desc">Walk-forward out-of-sample, 40-yr OSE panel. 260-wk train / 52-wk validate, 520-wk learning burn-in, expanding-window Galton coefficients. All methods compete under the <em style="color:var(--amber);font-style:normal">same per-week gross-leverage budget</em> — the only difference is the objective.</span><span class="meta" id="btRange">—</span></div>
+
+      <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:14px">
+        <span style="font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--text3)">UNIVERSE</span>
+        <div class="bt-seg" id="btN">
+          <button data-n="10">TOP 10</button>
+          <button data-n="30" class="active">TOP 30</button>
+          <button data-n="50">TOP 50</button>
+        </div>
+        <span class="pp-note" id="btNote" style="margin-left:auto">—</span>
+      </div>
+
+      <div class="pp-kpis" id="btKpis">
+        <div class="kpi"><div class="kpi-lbl">CVaR · 1 NOK →</div><div class="kpi-val" id="btK1">—</div><div class="kpi-sub" id="btK1Sub">over 24 years</div></div>
+        <div class="kpi"><div class="kpi-lbl">CVaR excess Sharpe</div><div class="kpi-val" id="btK2">—</div><div class="kpi-sub" id="btK2Sub">vs GMV —</div></div>
+        <div class="kpi"><div class="kpi-lbl">Worst week</div><div class="kpi-val" id="btK3">—</div><div class="kpi-sub" id="btK3Sub">vs GMV —</div></div>
+        <div class="kpi"><div class="kpi-lbl">Return skew</div><div class="kpi-val" id="btK4">—</div><div class="kpi-sub" id="btK4Sub">GMV —</div></div>
+        <div class="kpi"><div class="kpi-lbl">Max drawdown</div><div class="kpi-val" id="btK5">—</div><div class="kpi-sub" id="btK5Sub">vs GMV —</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="panel">
+      <div class="sec-head"><span class="glyph">↗</span>GROWTH OF 1 NOK · LOG SCALE<span class="desc">Compounded weekly, net of nothing (gross study). The fat-tailed CVaR model vs the Gaussian Galton GMV baseline and naïve benchmarks.</span></div>
+      <div class="bt-leg" id="btLegend"></div>
+      <div style="height:340px"><canvas id="btEquity"></canvas></div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="grid-2">
+      <div class="panel">
+        <div class="sec-head"><span class="glyph">▦</span>SCORECARD<span class="desc">Annualised, excess of the real risk-free rate</span></div>
+        <table class="bt"><thead><tr>
+          <th>Method</th><th>Ann ret</th><th>exSharpe</th><th>MaxDD</th><th>Worst wk</th><th>Skew</th><th>Kurt</th>
+        </tr></thead><tbody id="btScore"></tbody></table>
+      </div>
+      <div class="panel">
+        <div class="sec-head"><span class="glyph">△</span>EXTREME TAIL · WORST WEEK<span class="desc">The realisation CVaR is built to shrink — bars are the single worst weekly loss, 1995–2019</span></div>
+        <div id="btTail"></div>
+        <div style="font-family:var(--mono);font-size:9.5px;color:var(--text3);letter-spacing:.05em;margin-top:12px;line-height:1.6">
+          GMV minimises variance and so wins the mild 95% ES (the body); minimising fat-tailed CVaR over a t-copula of skew-t marginals specifically protects the <em style="color:var(--amber);font-style:normal">extreme</em> tail the Gaussian is blind to.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="panel">
+      <div class="sec-head"><span class="glyph">≣</span>GENERALIZED-GALTON SHRINKAGE · EXPANDING-WINDOW CONVERGENCE<span class="desc">The Fama-MacBeth slope g₁ — how much next-period moment is predicted by this-period sample moment (0 = pure shrink to cross-section, 1 = trust the sample). Classic Galton shrinks only σ and ρ; the generalized model adds skewness and tail (kurtosis) channels.</span></div>
+      <div class="bt-leg">
+        <span><i style="background:#43e097"></i>Volatility σ</span>
+        <span><i style="background:#f5a623"></i>Correlation ρ</span>
+        <span><i style="background:#4fc3f7"></i>Skewness (new)</span>
+        <span><i style="background:#b07cf0"></i>Tail / kurtosis (new)</span>
+      </div>
+      <div style="height:260px"><canvas id="btCoef"></canvas></div>
+    </div>
+  </div>
+
 </main>
 
 <script>
@@ -1177,6 +1269,171 @@ function renderPP(mode) {
   applySliders();
   // But render the LIVE numbers first
   updateWeightsRender(w_aligned, rc_aligned, Number(m.forecast_weekly_vol), true);
+})();
+</script>
+
+<!-- ════════════════ RESEARCH BACKTEST · self-contained ════════════════ -->
+<script>
+(async function btBoot(){
+  const API = 'https://api.slensvik.com';
+  const METHODS = ['cvar','cvar0','gmv','equal','valwt'];
+  const STYLE = {
+    cvar:  { c:'#f5a623', label:'Gen-Galton CVaR · +momentum', w:2.4, dash:[] },
+    cvar0: { c:'#4fc3f7', label:'Gen-Galton CVaR · risk-only', w:1.6, dash:[] },
+    gmv:   { c:'#43e097', label:'Galton GMV · Gaussian baseline', w:1.6, dash:[] },
+    equal: { c:'#7a8499', label:'Equal-weight 1/N', w:1.2, dash:[5,4] },
+    valwt: { c:'#b07cf0', label:'Value-weighted', w:1.2, dash:[5,4] },
+  };
+  const AXIS = { color:'#5a6377', font:{ family:'IBM Plex Mono', size:9 } };
+  const GRID = { color:'rgba(255,255,255,0.04)' };
+
+  let meta, metrics, coefs;
+  try {
+    [meta, metrics, coefs] = await Promise.all([
+      fetch(`${API}/galton_bt_meta`).then(r=>r.json()),
+      fetch(`${API}/galton_bt_metrics`).then(r=>r.json()),
+      fetch(`${API}/galton_bt_coefs?order=rebalance_week.asc`).then(r=>r.json()),
+    ]);
+  } catch(e){ console.error('backtest load failed', e); return; }
+
+  if (meta && meta[0]) {
+    const mt = meta[0];
+    document.getElementById('btRange').textContent =
+      `${mt.week_start} → ${mt.week_end} · ${mt.n_weeks} wks`;
+    const cfg = mt.config || {};
+    document.getElementById('btNote').textContent =
+      `α=${cfg.alpha} · γ=${cfg.gamma} · ${cfg.n_scen} scenarios · t-copula ν=${cfg.nu_cop}`;
+  }
+
+  const equityCache = {};
+  let equityChart = null;
+  const fmtPct = (v,d=2)=> v==null?'—':(Number(v)*100).toFixed(d)+'%';
+  const fmtX   = (v,d=2)=> v==null?'—':Number(v).toFixed(d);
+  const sgn    = v => (v>=0?'+':'') + v;
+
+  async function getEquity(n){
+    if (equityCache[n]) return equityCache[n];
+    const rows = await fetch(
+      `${API}/galton_bt_equity?n=eq.${n}&order=rebalance_week.asc`).then(r=>r.json());
+    const byM = {}; METHODS.forEach(m=>byM[m]={x:[],y:[]});
+    for (const r of rows) {
+      const m = r.method; if (!byM[m]) continue;
+      byM[m].x.push(r.rebalance_week); byM[m].y.push(Number(r.cum_value));
+    }
+    equityCache[n] = byM; return byM;
+  }
+
+  function renderLegend(){
+    document.getElementById('btLegend').innerHTML = METHODS.map(m=>{
+      const s = STYLE[m];
+      return `<span><i style="background:${s.c};${s.dash.length?'opacity:.8':''}"></i>${s.label}</span>`;
+    }).join('');
+  }
+
+  async function renderEquity(n){
+    const byM = await getEquity(n);
+    const labels = byM.cvar.x;
+    const datasets = METHODS.map(m=>({
+      label: STYLE[m].label, data: byM[m].y,
+      borderColor: STYLE[m].c, borderWidth: STYLE[m].w, borderDash: STYLE[m].dash,
+      pointRadius:0, tension:.12, fill:false,
+    }));
+    if (equityChart) equityChart.destroy();
+    equityChart = new Chart(document.getElementById('btEquity'), {
+      type:'line', data:{ labels, datasets },
+      options:{ responsive:true, maintainAspectRatio:false, animation:false,
+        interaction:{ mode:'index', intersect:false },
+        plugins:{ legend:{ display:false },
+          tooltip:{ callbacks:{ label:c=>`${c.dataset.label}: ${fmtX(c.parsed.y)}×` } } },
+        scales:{
+          x:{ ticks:{ ...AXIS, maxTicksLimit:12 }, grid:GRID },
+          y:{ type:'logarithmic', ticks:{ ...AXIS, callback:v=>Number(v).toFixed(v<10?1:0)+'×' }, grid:GRID } },
+      },
+    });
+  }
+
+  function renderScoreAndKpis(n){
+    const rows = metrics.filter(r=>r.n===n);
+    const by = {}; rows.forEach(r=>by[r.method]=r);
+    const order = ['cvar','cvar0','gmv','equal','valwt'];
+    // best per column (higher better for sharpe/ret/skew, less-negative for dd/worst)
+    const bestSharpe = Math.max(...rows.map(r=>r.ex_sharpe));
+    const bestWorst  = Math.max(...rows.map(r=>r.worst_week));
+    const bestDD     = Math.max(...rows.map(r=>r.max_dd));
+    document.getElementById('btScore').innerHTML = order.map(m=>{
+      const r = by[m]; if(!r) return '';
+      const s = STYLE[m];
+      const hero = (m==='cvar')?' class="hero"':'';
+      const cS = r.ex_sharpe===bestSharpe?' class="best"':'';
+      const cW = r.worst_week===bestWorst?' class="best"':'';
+      const cD = r.max_dd===bestDD?' class="best"':'';
+      return `<tr${hero}>
+        <td><span class="mname"><i class="swatch" style="background:${s.c}"></i>${s.label}</span></td>
+        <td>${fmtPct(r.ann_ret,1)}</td><td${cS}>${fmtX(r.ex_sharpe)}</td>
+        <td${cD}>${fmtPct(r.max_dd,1)}</td><td${cW}>${fmtPct(r.worst_week,1)}</td>
+        <td>${fmtX(r.skew)}</td><td>${fmtX(r.kurt,1)}</td></tr>`;
+    }).join('');
+
+    // KPIs: CVaR vs GMV
+    const cv = by['cvar'], gmv = by['gmv'];
+    const end = (equityCache[n] && equityCache[n].cvar.y.slice(-1)[0]);
+    document.getElementById('btK1').textContent = end?`${fmtX(end,1)}×`:'—';
+    document.getElementById('btK2').textContent = fmtX(cv.ex_sharpe);
+    document.getElementById('btK2Sub').textContent = `vs GMV ${fmtX(gmv.ex_sharpe)}`;
+    document.getElementById('btK3').textContent = fmtPct(cv.worst_week,1);
+    document.getElementById('btK3Sub').textContent = `vs GMV ${fmtPct(gmv.worst_week,1)}`;
+    document.getElementById('btK4').textContent = fmtX(cv.skew);
+    document.getElementById('btK4Sub').textContent = `GMV ${fmtX(gmv.skew)}`;
+    document.getElementById('btK5').textContent = fmtPct(cv.max_dd,1);
+    document.getElementById('btK5Sub').textContent = `vs GMV ${fmtPct(gmv.max_dd,1)}`;
+
+    // tail bars (worst week, scaled to the largest |worst| in this N)
+    const wmax = Math.max(...rows.map(r=>Math.abs(r.worst_week)));
+    document.getElementById('btTail').innerHTML = order.map(m=>{
+      const r = by[m]; if(!r) return '';
+      const s = STYLE[m];
+      const pct = (Math.abs(r.worst_week)/wmax*100).toFixed(1);
+      return `<div class="tr-row">
+        <span class="tr-name"><i class="swatch" style="width:9px;height:9px;background:${s.c}"></i>${m}</span>
+        <span class="tr-bar-wrap"><span class="tr-bar" style="width:${pct}%"></span></span>
+        <span class="tr-val">${fmtPct(r.worst_week,1)}</span></div>`;
+    }).join('');
+  }
+
+  // coefficient convergence (same across N — uses the full-universe FM regressions)
+  function renderCoef(){
+    const labels = coefs.map(r=>r.rebalance_week);
+    const mk = (key,c)=>({ label:key, data:coefs.map(r=>Number(r[key])),
+      borderColor:c, borderWidth:1.6, pointRadius:0, tension:.1, fill:false });
+    new Chart(document.getElementById('btCoef'), {
+      type:'line', data:{ labels, datasets:[
+        mk('g1v','#43e097'), mk('g1c','#f5a623'), mk('g1s','#4fc3f7'), mk('g1k','#b07cf0'),
+      ]},
+      options:{ responsive:true, maintainAspectRatio:false, animation:false,
+        interaction:{ mode:'index', intersect:false },
+        plugins:{ legend:{ display:false },
+          tooltip:{ callbacks:{ label:c=>`${c.dataset.label}: ${fmtX(c.parsed.y,3)}` } } },
+        scales:{ x:{ ticks:{ ...AXIS, maxTicksLimit:12 }, grid:GRID },
+          y:{ ticks:{ ...AXIS, callback:v=>Number(v).toFixed(2) }, grid:GRID } },
+      },
+    });
+  }
+
+  let curN = 30;
+  async function selectN(n){
+    curN = n;
+    document.querySelectorAll('#btN button').forEach(b=>
+      b.classList.toggle('active', Number(b.dataset.n)===n));
+    await renderEquity(n);
+    renderScoreAndKpis(n);
+  }
+  document.getElementById('btN').addEventListener('click', e=>{
+    const b = e.target.closest('button'); if(b) selectN(Number(b.dataset.n));
+  });
+
+  renderLegend();
+  renderCoef();
+  await selectN(30);
 })();
 </script>
 
