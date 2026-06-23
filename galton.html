@@ -9,6 +9,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=Syne:wght@500;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
 <link rel="stylesheet" href="assets/intel.css">
 <script src="assets/intel.js?v=20260615"></script>
 <style>
@@ -466,7 +468,10 @@
     .mg-found .row { display:grid; grid-template-columns:repeat(auto-fit,minmax(270px,1fr)); gap:18px; }
     .mg-found .blk { font-size:11px; line-height:1.65; color:var(--text2); }
     .mg-found .blk b { color:var(--text1); font-weight:500; }
-    .mg-found .eq { font-family:var(--mono); font-size:10px; color:var(--text1); display:block; margin-top:6px; background:var(--bg3); padding:5px 8px; overflow-x:auto; white-space:nowrap; }
+    .mg-found .eq { display:block; margin-top:7px; color:var(--text1); background:var(--bg3); padding:7px 10px; overflow-x:auto; }
+    .mg-found .eq .katex-display { margin:0; text-align:left; }
+    .mg-found .eq .katex-display > .katex { text-align:left; }
+    .mg-found .eq .katex { font-size:1em; }
     .mg-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(330px,1fr)); gap:14px; }
     .mg-card { border:1px solid var(--border); border-top-width:3px; background:var(--bg2); padding:15px 16px 16px; display:flex; flex-direction:column; gap:11px; }
     .mg-head { display:flex; align-items:center; gap:9px; }
@@ -474,8 +479,14 @@
     .mg-name { font-family:var(--mono); font-size:12px; color:var(--text1); letter-spacing:.01em; }
     .mg-tag { margin-left:auto; font-family:var(--mono); font-size:8px; letter-spacing:.12em; text-transform:uppercase; color:var(--text3); border:1px solid var(--border2); padding:2px 7px; white-space:nowrap; }
     .mg-desc { font-size:11px; line-height:1.6; color:var(--text2); }
-    .mg-formula { font-family:var(--mono); font-size:10px; line-height:1.75; color:var(--text1); background:var(--bg3); border-left:2px solid; padding:9px 11px; overflow-x:auto; }
+    .mg-formula { color:var(--text1); background:var(--bg3); border-left:2px solid; padding:10px 12px; overflow-x:auto; }
     .mg-formula .v { color:var(--text3); }
+    .mg-formula .kxl { margin:4px 0; }
+    .mg-formula .kxl:first-child { margin-top:0; }
+    .mg-formula .kxl:last-child { margin-bottom:0; }
+    .mg-formula .katex-display { margin:0; text-align:left; }
+    .mg-formula .katex-display > .katex { text-align:left; white-space:normal; }
+    .mg-formula .katex { font-size:1.02em; color:var(--text1); }
     .mg-svg svg { display:block; width:100%; height:auto; }
   </style>
 
@@ -512,10 +523,10 @@
         <h4>◇ Shared foundations</h4>
         <div class="row">
           <div class="blk"><b>Fama–MacBeth Galton shrinkage.</b> Each week, regress every firm's next-period moment cross-sectionally on its in-sample moment; the slope measures how much sample signal survives out-of-sample. The applied coefficient is the expanding-window mean of all prior slopes.
-            <span class="eq">OOSᵢ = g₀ + g₁·SAMPLEᵢ + εᵢ   →   ḡ = mean(g over prior windows)</span>
-            <span class="eq">σ_G = g₀ᵛ + g₁ᵛ·σ_H,   ρ_G = g₀ᶜ + g₁ᶜ·ρ_H,   Σ_G = D(σ_G)·R_G·D(σ_G)</span></div>
+            <span class="eq" data-tex="\mathrm{OOS}_i = g_0 + g_1\,\mathrm{SAMPLE}_i + \varepsilon_i \quad\Rightarrow\quad \bar g = \operatorname{mean}(g\ \text{over prior windows})"></span>
+            <span class="eq" data-tex="\sigma_G = g_0^v + g_1^v\,\sigma_H,\quad \rho_G = g_0^c + g_1^c\,\rho_H,\quad \Sigma_G = D(\sigma_G)\,R_G\,D(\sigma_G)"></span></div>
           <div class="blk"><b>Min-variance closed form &amp; the shared budget.</b> Given any covariance Σ, the lowest-variance fully-invested portfolio is analytic — most cards just feed a different Σ into it (<span style="color:var(--text3)">1 = vector of ones</span>).
-            <span class="eq">w* = Σ⁻¹·1 ⁄ (1ᵀ·Σ⁻¹·1)</span>
+            <span class="eq" data-tex="w^{*} = \dfrac{\Sigma^{-1}\mathbf{1}}{\mathbf{1}^{\top}\Sigma^{-1}\mathbf{1}}"></span>
             The optimised cards solve w = w⁺−w⁻ with Σw = 1 and Σ(w⁺+w⁻) ≤ <i>gross</i>, where <i>gross</i> = Σ|w_GMV| that week — so leverage is held equal across methods.</div>
         </div>
       </div>
@@ -1391,59 +1402,88 @@ function renderPP(mode) {
   const GAL = {
     gmv: { tag:'Conditional-vol GMV',
       desc:'The Gaussian baseline. Sample volatilities and correlations are Galton-shrunk toward the cross-section, assembled into Σ_G, and inverted for the minimum-variance portfolio. Everything else here is measured against it.',
-      formula:`σ̂ᵢ = std(rᵢ)        <span class="v">sample, ddof 1</span><br>σ_G = g₀ᵛ + g₁ᵛ·σ̂        <span class="v">Galton-shrunk</span><br>w = Σ_G⁻¹·1 ⁄ 1ᵀΣ_G⁻¹·1`,
+      formula:[
+        `\\hat\\sigma_i = \\operatorname{std}(r_i)\\quad\\textcolor{#5a6377}{\\text{sample, ddof 1}}`,
+        `\\sigma_G = g_0^v + g_1^v\\,\\hat\\sigma\\quad\\textcolor{#5a6377}{\\text{Galton-shrunk}}`,
+        `w = \\dfrac{\\Sigma_G^{-1}\\mathbf{1}}{\\mathbf{1}^{\\top}\\Sigma_G^{-1}\\mathbf{1}}`],
       svg:c=> svgWrap(`${covGrid(c,12,12)}<text x="40" y="80" fill="${MUT}" font-size="8.5" text-anchor="middle">Σ_G</text>${arrow(80,42)}${wbars([.62,.82,.55,.9,.68,.78],126,c)}<text x="172" y="80" fill="${MUT}" font-size="8.5" text-anchor="middle">w · min-variance</text>`) },
 
     gmvewma: { tag:'Conditional-vol GMV',
       desc:'Same GMV machinery, but volatility is a RiskMetrics exponentially-weighted forecast that reacts to recent shocks — recent squared returns count most, memory decaying at λ = 0.94. Correlations stay Galton-shrunk.',
-      formula:`σ̂²ₜ = λ·σ̂²ₜ₋₁ + (1−λ)·r²ₜ₋₁     <span class="v">λ = 0.94</span><br>Σ = D(σ̂)·R_G·D(σ̂)<br>w = Σ⁻¹·1 ⁄ 1ᵀΣ⁻¹·1`,
+      formula:[
+        `\\hat\\sigma_t^2 = \\lambda\\,\\hat\\sigma_{t-1}^2 + (1-\\lambda)\\,r_{t-1}^2\\quad\\textcolor{#5a6377}{\\lambda = 0.94}`,
+        `\\Sigma = D(\\hat\\sigma)\\,R_G\\,D(\\hat\\sigma)`,
+        `w = \\dfrac{\\Sigma^{-1}\\mathbf{1}}{\\mathbf{1}^{\\top}\\Sigma^{-1}\\mathbf{1}}`],
       svg:c=> svgWrap(`<polyline points="16,30 37,42 58,22 79,46 100,26 121,44 142,23 163,40 184,47 205,27 224,33" fill="none" stroke="${MUT}" stroke-width="1.1"/><text x="20" y="14" fill="${MUT}" font-size="8">returns</text>${[3,4,5,7,10,14,19,26].map((h,i)=>`<rect x="${16+i*26}" y="${80-h}" width="18" height="${h}" fill="${c}" opacity="0.7"/>`).join('')}<text x="208" y="58" fill="${MUT}" font-size="8" text-anchor="end">weight ↗ recent</text>`) },
 
     gmvgarch: { tag:'Conditional-vol GMV',
       desc:'Volatility is a GARCH(1,1) one-step-ahead forecast, fit per asset by Gaussian quasi-MLE. It captures volatility clustering — calm and turbulent regimes persist — more flexibly than EWMA’s single decay rate. (Still computing.)',
-      formula:`σ̂²ₜ = ω + α·r²ₜ₋₁ + β·σ̂²ₜ₋₁<br><span class="v">fit by QMLE,  α + β &lt; 1</span><br>w = Σ⁻¹·1 ⁄ 1ᵀΣ⁻¹·1`,
+      formula:[
+        `\\hat\\sigma_t^2 = \\omega + \\alpha\\,r_{t-1}^2 + \\beta\\,\\hat\\sigma_{t-1}^2`,
+        `\\textcolor{#5a6377}{\\text{fit by QMLE},\\ \\alpha+\\beta<1}`,
+        `w = \\dfrac{\\Sigma^{-1}\\mathbf{1}}{\\mathbf{1}^{\\top}\\Sigma^{-1}\\mathbf{1}}`],
       svg:c=> svgWrap(`<path d="M14 60 L40 58 L60 60 L80 50 L98 30 L114 18 L130 24 L150 46 L172 57 L198 59 L226 60 L226 66 L14 66 Z" fill="${c}" opacity="0.20"/><path d="M14 60 L40 58 L60 60 L80 50 L98 30 L114 18 L130 24 L150 46 L172 57 L198 59 L226 60" fill="none" stroke="${c}" stroke-width="1.5"/><polyline points="16,58 30,52 44,60 58,54 72,48 86,30 100,16 114,40 128,14 142,44 156,40 170,56 186,50 202,58 220,54" fill="none" stroke="${MUT}" stroke-width="0.9" opacity="0.85"/><text x="118" y="80" fill="${MUT}" font-size="8" text-anchor="middle">σ̂ₜ · volatility clustering</text>`) },
 
     tailinf: { tag:'Higher-moment · 2d',
       desc:'Starts from the Galton covariance, then inflates each asset’s volatility by the ratio of its skew-t expected shortfall to the Gaussian one — names with fatter, more negative tails are treated as riskier than variance alone implies, before the usual GMV solve.',
-      formula:`fᵢ = ES₅%(skew-t)ᵢ ⁄ ES₅%(𝒩)<br><span class="v">ES₅%(𝒩) = φ(z)/0.05 ≈ 2.063</span><br>Σ̃ = D(σ_G·f)·R_G·D(σ_G·f),  w = Σ̃⁻¹·1 ⁄ 1ᵀΣ̃⁻¹·1`,
+      formula:[
+        `f_i = \\dfrac{\\mathrm{ES}_{5\\%}(\\text{skew-}t)_i}{\\mathrm{ES}_{5\\%}(\\mathcal{N})}\\quad\\textcolor{#5a6377}{\\mathrm{ES}_{5\\%}(\\mathcal{N}) = \\varphi(z)/0.05 \\approx 2.063}`,
+        `\\tilde\\Sigma = D(\\sigma_G f)\\,R_G\\,D(\\sigma_G f)`,
+        `w = \\dfrac{\\tilde\\Sigma^{-1}\\mathbf{1}}{\\mathbf{1}^{\\top}\\tilde\\Sigma^{-1}\\mathbf{1}}`],
       svg:c=> svgWrap([[44,28,16],[112,24,22],[180,30,11]].map(([x,b,cap])=>`<rect x="${x}" y="${66-b}" width="34" height="${b}" fill="${c}" opacity="0.78"/><rect x="${x}" y="${66-b-cap}" width="34" height="${cap}" fill="${c}" opacity="0.30"/><path d="M${x+17} ${66-b-cap-3} v-9 m-4 4 l4 -4 l4 4" stroke="${c}" fill="none" stroke-width="1.2"/>`).join('')+`<line x1="12" y1="66" x2="228" y2="66" stroke="${AX}"/><text x="120" y="80" fill="${MUT}" font-size="8" text-anchor="middle">σ × tail factor f</text>`) },
 
     semicov: { tag:'Higher-moment · 2a',
       desc:'Estrada’s downside risk: covariance is built only from below-mean co-deviations, so the optimiser minimises downside co-movement rather than symmetric variance. Upside dispersion is no longer penalised.',
-      formula:`Σ⁻ = 1∕(T−1)·Σₜ min(rₜ−r̄,0)·min(rₜ−r̄,0)ᵀ<br>w = (Σ⁻)⁻¹·1 ⁄ 1ᵀ(Σ⁻)⁻¹·1`,
+      formula:[
+        `\\Sigma^{-} = \\dfrac{1}{T-1}\\sum_t \\min(r_t-\\bar r,0)\\,\\min(r_t-\\bar r,0)^{\\top}`,
+        `w = \\dfrac{(\\Sigma^{-})^{-1}\\mathbf{1}}{\\mathbf{1}^{\\top}(\\Sigma^{-})^{-1}\\mathbf{1}}`],
       svg:c=>{ const pts=[[28,30],[44,52],[60,38],[78,58],[94,33],[110,62],[126,44],[142,56],[158,28],[176,60],[192,46],[208,54]]; return svgWrap(`<line x1="14" y1="42" x2="226" y2="42" stroke="${MUT}" stroke-dasharray="3 3" stroke-width="0.9"/><text x="220" y="38" fill="${MUT}" font-size="8" text-anchor="end">mean</text>`+pts.map(([x,y])=>`<circle cx="${x}" cy="${y}" r="3" fill="${y>42?c:MUT}" opacity="${y>42?0.85:0.4}"/>`).join('')+`<text x="120" y="80" fill="${MUT}" font-size="8" text-anchor="middle">downside deviations only</text>`); } },
 
     mcvar: { tag:'Higher-moment · 2b',
       desc:'Minimises a Cornish-Fisher modified VaR: the Gaussian quantile is shifted by the portfolio’s own skewness and excess kurtosis, so a left-skewed, fat-tailed book is charged a deeper loss. Portfolio moments come straight from rₚ = Xw — no coskew tensor needed.',
-      formula:`z_cf = z + (z²−1)/6·S + (z³−3z)/24·K − (2z³−5z)/36·S²<br>mVaR = −z_cf·σ_p ;   minₓ mVaR(w)   <span class="v">z = Φ⁻¹(.05)</span>`,
+      formula:[
+        `z_{cf} = z + \\tfrac{z^2-1}{6}S + \\tfrac{z^3-3z}{24}K - \\tfrac{2z^3-5z}{36}S^2`,
+        `\\mathrm{mVaR} = -z_{cf}\\,\\sigma_p\\ ;\\quad \\min_w \\mathrm{mVaR}(w)\\quad\\textcolor{#5a6377}{z = \\Phi^{-1}(.05)}`],
       svg:c=> svgWrap(`<path d="M10 64 C 48 62, 64 40, 86 26 C 104 15, 132 16, 150 30 C 170 47, 192 64, 230 65 L230 66 L10 66 Z" fill="${c}" opacity="0.12"/><path d="M10 64 C 48 62, 64 40, 86 26 C 104 15, 132 16, 150 30 C 170 47, 192 64, 230 65" fill="none" stroke="${c}" stroke-width="1.5"/><line x1="58" y1="14" x2="58" y2="66" stroke="${MUT}" stroke-dasharray="3 3" stroke-width="1"/><text x="58" y="12" fill="${MUT}" font-size="8" text-anchor="middle">mVaR</text><path d="M44 50 h-16 m6 -4 l-6 4 l6 4" stroke="${c}" fill="none" stroke-width="1.2"/><text x="150" y="80" fill="${MUT}" font-size="8" text-anchor="middle">skew/kurt-shifted quantile</text>`) },
 
     hmtilt: { tag:'Higher-moment · 2c',
       desc:'A plain variance objective tilted by the portfolio’s higher moments: reward positive skewness, penalise excess kurtosis — a direct preference for lottery-like upside and thin tails, scaled by λ_s and λ_k.',
-      formula:`minₓ  wᵀΣw − λ_s·S_p + λ_k·max(K_p,0)<br><span class="v">S_p, K_p of rₚ=Xw ;  λ_s = .5,  λ_k = .1</span>`,
+      formula:[
+        `\\min_w\\ w^{\\top}\\Sigma w - \\lambda_s S_p + \\lambda_k \\max(K_p,0)`,
+        `\\textcolor{#5a6377}{S_p,\\,K_p\\ \\text{of}\\ r_p=Xw\\,;\\quad \\lambda_s = .5,\\ \\lambda_k = .1}`],
       svg:c=> svgWrap(`<path d="M16 66 C 44 66, 52 22, 84 20 C 130 17, 168 54, 224 64" fill="none" stroke="${c}" stroke-width="1.6"/><text x="70" y="14" fill="${c}" font-size="9">+ skew</text><path d="M16 64 C 92 62, 110 16, 120 15 C 130 16, 148 62, 224 64" fill="none" stroke="${MUT}" stroke-width="1.2" stroke-dasharray="4 3"/><text x="186" y="30" fill="${MUT}" font-size="9" text-anchor="end">− kurt</text>`) },
 
     cvar: { tag:'CVaR LP · headline',
       desc:'The headline model. Simulate 2 500 scenarios from Galton-shrunk skew-t marginals coupled by a t-copula, then solve the Rockafellar–Uryasev LP that minimises 95% Conditional VaR — the mean loss beyond VaR — nudged toward momentum names by γ.',
-      formula:`min₍w,ζ₎  ζ + 1∕((1−α)S)·Σₛ uₛ − γ·wᵀμ<br>s.t.  uₛ ≥ Lₛ(w) − ζ,   uₛ ≥ 0     <span class="v">α = .95</span>`,
+      formula:[
+        `\\min_{w,\\zeta}\\ \\zeta + \\dfrac{1}{(1-\\alpha)S}\\sum_s u_s - \\gamma\\,w^{\\top}\\mu`,
+        `\\text{s.t.}\\ \\ u_s \\ge L_s(w) - \\zeta,\\ \\ u_s \\ge 0\\quad\\textcolor{#5a6377}{\\alpha = .95}`],
       svg:c=> svgWrap(`<path d="M70 66 C 60 50, 50 40, 40 38 C 28 36, 20 52, 14 66 Z" fill="${c}" opacity="0.55"/>${BELL(122,c)}<line x1="70" y1="14" x2="70" y2="66" stroke="${c}" stroke-dasharray="3 3" stroke-width="1"/><text x="70" y="12" fill="${c}" font-size="8" text-anchor="middle">ζ ≈ VaR</text><text x="34" y="30" fill="${c}" font-size="8.5">CVaR</text><text x="122" y="80" fill="${MUT}" font-size="8" text-anchor="middle">mean of shaded tail · +momentum</text>`) },
 
     cvar0: { tag:'CVaR LP · risk-only',
       desc:'The same fat-tailed CVaR program with γ = 0 — pure tail-risk minimisation, no return view. It isolates what shaping the loss distribution does on its own, without the momentum tilt.',
-      formula:`min₍w,ζ₎  ζ + 1∕((1−α)S)·Σₛ uₛ<br>s.t.  uₛ ≥ Lₛ(w) − ζ,   uₛ ≥ 0     <span class="v">γ = 0</span>`,
+      formula:[
+        `\\min_{w,\\zeta}\\ \\zeta + \\dfrac{1}{(1-\\alpha)S}\\sum_s u_s`,
+        `\\text{s.t.}\\ \\ u_s \\ge L_s(w) - \\zeta,\\ \\ u_s \\ge 0\\quad\\textcolor{#5a6377}{\\gamma = 0}`],
       svg:c=> svgWrap(`<path d="M70 66 C 60 50, 50 40, 40 38 C 28 36, 20 52, 14 66 Z" fill="${c}" opacity="0.5"/>${BELL(122,c)}<line x1="70" y1="14" x2="70" y2="66" stroke="${c}" stroke-dasharray="3 3" stroke-width="1"/><text x="34" y="30" fill="${c}" font-size="8.5">CVaR</text><text x="122" y="80" fill="${MUT}" font-size="8" text-anchor="middle">tail only · no return view</text>`) },
 
     equal: { tag:'Naïve benchmark',
       desc:'The naïve benchmark that is famously hard to beat: every name gets the same weight, with no estimation at all.',
-      formula:`wᵢ = 1 ⁄ N`,
+      formula:[`w_i = \\dfrac{1}{N}`],
       svg:c=> svgWrap(wbars([.7,.7,.7,.7,.7,.7,.7],26,c,22,8,64,52)+`<text x="120" y="80" fill="${MUT}" font-size="8" text-anchor="middle">equal weights</text>`) },
 
     valwt: { tag:'Naïve benchmark',
       desc:'Cap-weighted — hold each name in proportion to its market value, like a passive index. A second do-nothing reference point.',
-      formula:`wᵢ = capᵢ ⁄ Σⱼ capⱼ`,
+      formula:[`w_i = \\dfrac{\\text{cap}_i}{\\sum_j \\text{cap}_j}`],
       svg:c=> svgWrap(wbars([.95,.7,.52,.4,.3,.22,.16],26,c,22,8,64,52)+`<text x="120" y="80" fill="${MUT}" font-size="8" text-anchor="middle">cap-weighted</text>`) },
   };
+
+  const tex = src => {
+    if (!window.katex) return src;
+    try { return katex.renderToString(src, { displayMode:true, throwOnError:false }); }
+    catch(e){ return src; }
+  };
+  const texLines = arr => arr.map(l=>`<div class="kxl">${tex(l)}</div>`).join('');
 
   function renderGallery(){
     document.getElementById('btGallery').innerHTML = ORDER.filter(k=>GAL[k]).map(k=>{
@@ -1451,10 +1491,13 @@ function renderPP(mode) {
       return `<div class="mg-card" style="border-top-color:${c}">
         <div class="mg-head"><i class="sw" style="background:${c};${dash?'opacity:.85':''}"></i><span class="mg-name">${STYLE[k].label}</span><span class="mg-tag">${m.tag}</span></div>
         <div class="mg-desc">${m.desc}</div>
-        <div class="mg-formula" style="border-left-color:${c}">${m.formula}</div>
+        <div class="mg-formula" style="border-left-color:${c}">${texLines(m.formula)}</div>
         <div class="mg-svg">${m.svg(c)}</div>
       </div>`;
     }).join('');
+    document.querySelectorAll('.mg-found .eq[data-tex]').forEach(el=>{
+      el.innerHTML = tex(el.dataset.tex);
+    });
   }
 
   let meta, metrics, coefs;
