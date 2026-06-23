@@ -453,6 +453,13 @@
     .tr-bar-wrap { position:relative; height:12px; background:var(--bg3); }
     .tr-bar { position:absolute; right:0; top:0; height:100%; background:linear-gradient(90deg,rgba(240,96,96,0.4),rgba(240,96,96,0.85)); }
     .tr-val { text-align:right; color:var(--red); font-variant-numeric:tabular-nums; }
+    .to-row { display:grid; grid-template-columns:150px 1fr 58px; align-items:center; gap:10px; padding:6px 0; border-bottom:1px dashed var(--border); font-family:var(--mono); font-size:10.5px; }
+    .to-row:last-child { border-bottom:none; }
+    .to-bar-wrap { position:relative; height:11px; background:var(--bg3); }
+    .to-bar { position:absolute; left:0; top:0; height:100%; }
+    .to-val { text-align:right; color:var(--text1); font-variant-numeric:tabular-nums; }
+    table.bt td.drag { color:var(--red); }
+    table.bt tr.dim td { color:var(--text3); }
   </style>
 
   <div class="sec" id="btSection">
@@ -470,18 +477,18 @@
       </div>
 
       <div class="pp-kpis" id="btKpis">
-        <div class="kpi"><div class="kpi-lbl">CVaR · 1 NOK →</div><div class="kpi-val" id="btK1">—</div><div class="kpi-sub" id="btK1Sub">over 24 years</div></div>
-        <div class="kpi"><div class="kpi-lbl">CVaR excess Sharpe</div><div class="kpi-val" id="btK2">—</div><div class="kpi-sub" id="btK2Sub">vs GMV —</div></div>
-        <div class="kpi"><div class="kpi-lbl">Worst week</div><div class="kpi-val" id="btK3">—</div><div class="kpi-sub" id="btK3Sub">vs GMV —</div></div>
-        <div class="kpi"><div class="kpi-lbl">Return skew</div><div class="kpi-val" id="btK4">—</div><div class="kpi-sub" id="btK4Sub">GMV —</div></div>
-        <div class="kpi"><div class="kpi-lbl">Max drawdown</div><div class="kpi-val" id="btK5">—</div><div class="kpi-sub" id="btK5Sub">vs GMV —</div></div>
+        <div class="kpi"><div class="kpi-lbl">Net-of-cost leader</div><div class="kpi-val" id="btK1" style="font-size:18px">—</div><div class="kpi-sub" id="btK1Sub">—</div></div>
+        <div class="kpi"><div class="kpi-lbl">Net Sharpe</div><div class="kpi-val" id="btK2">—</div><div class="kpi-sub" id="btK2Sub">—</div></div>
+        <div class="kpi"><div class="kpi-lbl">Worst week</div><div class="kpi-val" id="btK3">—</div><div class="kpi-sub" id="btK3Sub">—</div></div>
+        <div class="kpi"><div class="kpi-lbl">Net annual return</div><div class="kpi-val" id="btK4">—</div><div class="kpi-sub" id="btK4Sub">—</div></div>
+        <div class="kpi"><div class="kpi-lbl">Max drawdown</div><div class="kpi-val" id="btK5">—</div><div class="kpi-sub" id="btK5Sub">—</div></div>
       </div>
     </div>
   </div>
 
   <div class="sec">
     <div class="panel">
-      <div class="sec-head"><span class="glyph">↗</span>GROWTH OF 1 NOK · LOG SCALE<span class="desc">Compounded weekly, net of nothing (gross study). The fat-tailed CVaR model vs the Gaussian Galton GMV baseline and naïve benchmarks.</span></div>
+      <div class="sec-head"><span class="glyph">↗</span>GROWTH OF 1 NOK · LOG SCALE<span class="desc">Compounded weekly, gross of transaction cost (the feasibility panel below charges it). Three families compete: conditional-vol GMV (sample / EWMA / GARCH), higher-moment optimisers (semicovariance, modified-VaR, skew-kurt tilt, tail-inflated), and the fat-tailed CVaR model — against naïve 1/N and value-weighting.</span></div>
       <div class="bt-leg" id="btLegend"></div>
       <div style="height:340px"><canvas id="btEquity"></canvas></div>
     </div>
@@ -492,7 +499,7 @@
       <div class="panel">
         <div class="sec-head"><span class="glyph">▦</span>SCORECARD<span class="desc">Annualised, excess of the real risk-free rate</span></div>
         <table class="bt"><thead><tr>
-          <th>Method</th><th>Ann ret</th><th>exSharpe</th><th>MaxDD</th><th>Worst wk</th><th>Skew</th><th>Kurt</th>
+          <th>Method</th><th>Ann ret</th><th>exSharpe</th><th>Turn/wk</th><th>MaxDD</th><th>Worst wk</th><th>Skew</th><th>Kurt</th>
         </tr></thead><tbody id="btScore"></tbody></table>
       </div>
       <div class="panel">
@@ -502,6 +509,44 @@
           GMV minimises variance and so wins the mild 95% ES (the body); minimising fat-tailed CVaR over a t-copula of skew-t marginals specifically protects the <em style="color:var(--amber);font-style:normal">extreme</em> tail the Gaussian is blind to.
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- ════════════════ TRANSACTION-COST FEASIBILITY ════════════════ -->
+  <div class="sec" id="btCostSection">
+    <div class="panel">
+      <div class="sec-head"><span class="glyph">⇄</span>TRANSACTION-COST FEASIBILITY<span class="desc">A high Sharpe is only real if you can afford to trade it. One-way turnover = ½·Σ|Δwᵢ| per rebalance, drift-adjusted so pure buy-and-hold drift isn't billed. The round-trip cost is charged on the full traded notional Σ|Δw| = 2× one-way. Toggle the assumed cost and watch the leaderboard re-order.</span></div>
+      <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:4px 0 16px">
+        <span style="font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--text3)">COST PER TRADE</span>
+        <div class="bt-seg" id="btBps">
+          <button data-bps="10">10 BPS</button>
+          <button data-bps="25" class="active">25 BPS</button>
+          <button data-bps="50">50 BPS</button>
+        </div>
+        <span class="pp-note" id="btCostNote" style="margin-left:auto">—</span>
+      </div>
+      <div class="grid-2">
+        <div>
+          <table class="bt"><thead><tr>
+            <th>Method</th><th>Turn/wk</th><th>Traded/yr</th><th>Gross ret</th><th>Cost drag</th><th>Net ret</th><th>Net SR</th>
+          </tr></thead><tbody id="btCostTable"></tbody></table>
+        </div>
+        <div>
+          <div style="font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);margin-bottom:10px">One-way turnover · avg per week</div>
+          <div id="btTurnBars"></div>
+          <div style="font-family:var(--mono);font-size:9.5px;color:var(--text3);letter-spacing:.05em;margin-top:12px;line-height:1.6">
+            The CVaR LP rebalances hardest — its tail-driven corner solutions move every week. The conditional-vol GMVs (sample, EWMA, GARCH) and the tail-inflated covariance barely trade, because shrinkage keeps weights stable. That gap is what decides net-of-cost feasibility.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════ CONSTITUENT CHURN ════════════════ -->
+  <div class="sec">
+    <div class="panel">
+      <div class="sec-head"><span class="glyph">⊞</span>CONSTITUENT CHURN<span class="desc">How the top-N universe itself rotates week to week — shared by every method, driven by market-cap ranking before any optimiser runs. Names entering or leaving force trades no model can avoid.</span><span class="meta" id="btChurnKpi">—</span></div>
+      <div style="height:220px"><canvas id="btChurn"></canvas></div>
     </div>
   </div>
 
@@ -1276,14 +1321,23 @@ function renderPP(mode) {
 <script>
 (async function btBoot(){
   const API = 'https://api.slensvik.com';
-  const METHODS = ['cvar','cvar0','gmv','equal','valwt'];
+  // STYLE for every known method; the active list is derived from what the API serves,
+  // so a later method (e.g. gmvgarch from the overnight run) appears with no code change.
   const STYLE = {
-    cvar:  { c:'#f5a623', label:'Gen-Galton CVaR · +momentum', w:2.4, dash:[] },
-    cvar0: { c:'#4fc3f7', label:'Gen-Galton CVaR · risk-only', w:1.6, dash:[] },
-    gmv:   { c:'#43e097', label:'Galton GMV · Gaussian baseline', w:1.6, dash:[] },
-    equal: { c:'#7a8499', label:'Equal-weight 1/N', w:1.2, dash:[5,4] },
-    valwt: { c:'#b07cf0', label:'Value-weighted', w:1.2, dash:[5,4] },
+    gmv:      { c:'#43e097', label:'Galton GMV · sample vol', w:2.0, dash:[] },
+    gmvewma:  { c:'#ff7eb6', label:'GMV · EWMA(0.94) vol', w:2.0, dash:[] },
+    gmvgarch: { c:'#ffd166', label:'GMV · GARCH(1,1) vol', w:1.8, dash:[] },
+    tailinf:  { c:'#82aaff', label:'Tail-inflated cov (2d)', w:1.8, dash:[] },
+    semicov:  { c:'#06d6a0', label:'Semicovariance GMV (2a)', w:1.3, dash:[] },
+    mcvar:    { c:'#f78c6b', label:'Min modified-VaR · Cornish-Fisher (2b)', w:1.3, dash:[] },
+    hmtilt:   { c:'#c792ea', label:'Higher-moment tilt (2c)', w:1.3, dash:[] },
+    cvar:     { c:'#f5a623', label:'Gen-Galton CVaR · +momentum', w:2.4, dash:[] },
+    cvar0:    { c:'#4fc3f7', label:'Gen-Galton CVaR · risk-only', w:1.5, dash:[] },
+    equal:    { c:'#7a8499', label:'Equal-weight 1/N', w:1.2, dash:[5,4] },
+    valwt:    { c:'#b07cf0', label:'Value-weighted', w:1.2, dash:[5,4] },
   };
+  const ORDER = ['gmv','gmvewma','gmvgarch','tailinf','semicov','mcvar','hmtilt',
+                 'cvar','cvar0','equal','valwt'];
   const AXIS = { color:'#5a6377', font:{ family:'IBM Plex Mono', size:9 } };
   const GRID = { color:'rgba(255,255,255,0.04)' };
 
@@ -1296,6 +1350,10 @@ function renderPP(mode) {
     ]);
   } catch(e){ console.error('backtest load failed', e); return; }
 
+  // methods actually present, in our preferred order, defaulting unknown ones gracefully
+  const present = new Set(metrics.map(r=>r.method));
+  const METHODS = ORDER.filter(m=>present.has(m));
+
   if (meta && meta[0]) {
     const mt = meta[0];
     document.getElementById('btRange').textContent =
@@ -1306,10 +1364,10 @@ function renderPP(mode) {
   }
 
   const equityCache = {};
-  let equityChart = null;
+  let equityChart = null, churnChart = null;
+  let curN = 30, curBps = 25;
   const fmtPct = (v,d=2)=> v==null?'—':(Number(v)*100).toFixed(d)+'%';
   const fmtX   = (v,d=2)=> v==null?'—':Number(v).toFixed(d);
-  const sgn    = v => (v>=0?'+':'') + v;
 
   async function getEquity(n){
     if (equityCache[n]) return equityCache[n];
@@ -1332,7 +1390,7 @@ function renderPP(mode) {
 
   async function renderEquity(n){
     const byM = await getEquity(n);
-    const labels = byM.cvar.x;
+    const labels = (byM[METHODS[0]]||{x:[]}).x;
     const datasets = METHODS.map(m=>({
       label: STYLE[m].label, data: byM[m].y,
       borderColor: STYLE[m].c, borderWidth: STYLE[m].w, borderDash: STYLE[m].dash,
@@ -1355,41 +1413,45 @@ function renderPP(mode) {
   function renderScoreAndKpis(n){
     const rows = metrics.filter(r=>r.n===n);
     const by = {}; rows.forEach(r=>by[r.method]=r);
-    const order = ['cvar','cvar0','gmv','equal','valwt'];
-    // best per column (higher better for sharpe/ret/skew, less-negative for dd/worst)
     const bestSharpe = Math.max(...rows.map(r=>r.ex_sharpe));
     const bestWorst  = Math.max(...rows.map(r=>r.worst_week));
     const bestDD     = Math.max(...rows.map(r=>r.max_dd));
-    document.getElementById('btScore').innerHTML = order.map(m=>{
+    const lowTurn    = Math.min(...rows.map(r=>r.avg_turnover));
+    document.getElementById('btScore').innerHTML = METHODS.map(m=>{
       const r = by[m]; if(!r) return '';
       const s = STYLE[m];
-      const hero = (m==='cvar')?' class="hero"':'';
+      const hero = (m==='cvar'||m==='gmvewma')?' class="hero"':'';
       const cS = r.ex_sharpe===bestSharpe?' class="best"':'';
       const cW = r.worst_week===bestWorst?' class="best"':'';
       const cD = r.max_dd===bestDD?' class="best"':'';
+      const cT = r.avg_turnover===lowTurn?' class="best"':'';
       return `<tr${hero}>
         <td><span class="mname"><i class="swatch" style="background:${s.c}"></i>${s.label}</span></td>
         <td>${fmtPct(r.ann_ret,1)}</td><td${cS}>${fmtX(r.ex_sharpe)}</td>
+        <td${cT}>${fmtPct(r.avg_turnover,1)}</td>
         <td${cD}>${fmtPct(r.max_dd,1)}</td><td${cW}>${fmtPct(r.worst_week,1)}</td>
         <td>${fmtX(r.skew)}</td><td>${fmtX(r.kurt,1)}</td></tr>`;
     }).join('');
 
-    // KPIs: CVaR vs GMV
-    const cv = by['cvar'], gmv = by['gmv'];
-    const end = (equityCache[n] && equityCache[n].cvar.y.slice(-1)[0]);
-    document.getElementById('btK1').textContent = end?`${fmtX(end,1)}×`:'—';
-    document.getElementById('btK2').textContent = fmtX(cv.ex_sharpe);
-    document.getElementById('btK2Sub').textContent = `vs GMV ${fmtX(gmv.ex_sharpe)}`;
-    document.getElementById('btK3').textContent = fmtPct(cv.worst_week,1);
-    document.getElementById('btK3Sub').textContent = `vs GMV ${fmtPct(gmv.worst_week,1)}`;
-    document.getElementById('btK4').textContent = fmtX(cv.skew);
-    document.getElementById('btK4Sub').textContent = `GMV ${fmtX(gmv.skew)}`;
-    document.getElementById('btK5').textContent = fmtPct(cv.max_dd,1);
-    document.getElementById('btK5Sub').textContent = `vs GMV ${fmtPct(gmv.max_dd,1)}`;
+    // KPIs: best net-of-cost method vs the GMV baseline (computed at current bps)
+    const gmv = by['gmv'];
+    const scored = rows.map(r=>({ ...r, net:netRet(r), netSR:netSR(r) }))
+                       .sort((a,b)=>b.netSR-a.netSR);
+    const top = scored[0];
+    document.getElementById('btK1').textContent = STYLE[top.method].label.split(' ·')[0];
+    document.getElementById('btK1Sub').textContent = `net-of-cost leader @ ${curBps}bps`;
+    document.getElementById('btK2').textContent = fmtX(top.netSR);
+    document.getElementById('btK2Sub').textContent = `gross SR ${fmtX(top.ex_sharpe)}`;
+    document.getElementById('btK3').textContent = fmtPct(top.worst_week,1);
+    document.getElementById('btK3Sub').textContent = `GMV ${fmtPct(gmv.worst_week,1)}`;
+    document.getElementById('btK4').textContent = fmtPct(top.net,1);
+    document.getElementById('btK4Sub').textContent = `net annual return`;
+    document.getElementById('btK5').textContent = fmtPct(top.max_dd,1);
+    document.getElementById('btK5Sub').textContent = `max drawdown`;
 
     // tail bars (worst week, scaled to the largest |worst| in this N)
     const wmax = Math.max(...rows.map(r=>Math.abs(r.worst_week)));
-    document.getElementById('btTail').innerHTML = order.map(m=>{
+    document.getElementById('btTail').innerHTML = METHODS.map(m=>{
       const r = by[m]; if(!r) return '';
       const s = STYLE[m];
       const pct = (Math.abs(r.worst_week)/wmax*100).toFixed(1);
@@ -1400,7 +1462,84 @@ function renderPP(mode) {
     }).join('');
   }
 
-  // coefficient convergence (same across N — uses the full-universe FM regressions)
+  // ── transaction-cost model ──────────────────────────────────────────────
+  // round-trip cost is charged on full traded notional = 2 × one-way turnover.
+  const costAnn = r => (curBps/10000) * 2 * r.ann_turnover;   // annual drag (decimal)
+  const netRet  = r => r.ann_ret - costAnn(r);
+  const netSR   = r => r.ann_vol>0 ? r.ex_sharpe - costAnn(r)/r.ann_vol : r.ex_sharpe;
+  const toColor = f => f<0.33 ? '#43e097' : f<0.66 ? '#f5a623' : '#f06060';
+
+  function renderCost(n){
+    const rows = metrics.filter(r=>r.n===n);
+    const scored = rows.map(r=>({ ...r, net:netRet(r), nSR:netSR(r), drag:costAnn(r) }))
+                       .sort((a,b)=>b.nSR-a.nSR);
+    const bestNet = Math.max(...scored.map(r=>r.net));
+    const bestNSR = Math.max(...scored.map(r=>r.nSR));
+    document.getElementById('btCostTable').innerHTML = scored.map(r=>{
+      const s = STYLE[r.method];
+      const cN = r.net===bestNet?' class="best"':'';
+      const cSR= r.nSR===bestNSR?' class="best"':'';
+      return `<tr>
+        <td><span class="mname"><i class="swatch" style="background:${s.c}"></i>${r.method}</span></td>
+        <td>${fmtPct(r.avg_turnover,1)}</td>
+        <td>${fmtX(2*r.ann_turnover,1)}×</td>
+        <td>${fmtPct(r.ann_ret,1)}</td>
+        <td class="drag">−${fmtPct(r.drag,1)}</td>
+        <td${cN}>${fmtPct(r.net,1)}</td>
+        <td${cSR}>${fmtX(r.nSR)}</td></tr>`;
+    }).join('');
+
+    // turnover bars, sorted high→low
+    const turnSorted = [...rows].sort((a,b)=>b.avg_turnover-a.avg_turnover);
+    const tmax = Math.max(...turnSorted.map(r=>r.avg_turnover));
+    document.getElementById('btTurnBars').innerHTML = turnSorted.map(r=>{
+      const s = STYLE[r.method];
+      const f = r.avg_turnover/tmax;
+      return `<div class="to-row">
+        <span class="tr-name"><i class="swatch" style="width:9px;height:9px;background:${s.c}"></i>${r.method}</span>
+        <span class="to-bar-wrap"><span class="to-bar" style="width:${(f*100).toFixed(1)}%;background:${toColor(f)}"></span></span>
+        <span class="to-val">${fmtPct(r.avg_turnover,1)}</span></div>`;
+    }).join('');
+
+    // headline note: how the gross-Sharpe leader fares net of cost (Sharpe basis)
+    const grossLead = [...rows].sort((a,b)=>b.ex_sharpe-a.ex_sharpe)[0];
+    const netLead   = scored[0];   // already sorted by net Sharpe
+    document.getElementById('btCostNote').textContent =
+      grossLead.method===netLead.method
+        ? `${netLead.method} leads gross & net Sharpe @ ${curBps}bps`
+        : `gross-Sharpe leader ${grossLead.method} → net of cost the lead passes to ${netLead.method}`;
+  }
+
+  // ── constituent churn ───────────────────────────────────────────────────
+  const churnCache = {};
+  async function getChurn(n){
+    if (churnCache[n]) return churnCache[n];
+    const rows = await fetch(
+      `${API}/galton_bt_churn?n=eq.${n}&order=rebalance_week.asc`).then(r=>r.json());
+    churnCache[n] = rows; return rows;
+  }
+  async function renderChurn(n){
+    const rows = await getChurn(n);
+    const labels = rows.map(r=>r.rebalance_week);
+    const add = rows.map(r=>Number(r.n_add));
+    const avgAdd = add.slice(1).reduce((a,b)=>a+b,0)/Math.max(add.length-1,1);
+    document.getElementById('btChurnKpi').textContent =
+      `≈ ${avgAdd.toFixed(1)} of ${n} names rotate / week`;
+    if (churnChart) churnChart.destroy();
+    churnChart = new Chart(document.getElementById('btChurn'), {
+      type:'bar', data:{ labels, datasets:[{
+        label:'names entering', data:add,
+        backgroundColor:'rgba(245,166,35,0.55)', borderWidth:0, barPercentage:1, categoryPercentage:1 }]},
+      options:{ responsive:true, maintainAspectRatio:false, animation:false,
+        interaction:{ mode:'index', intersect:false },
+        plugins:{ legend:{ display:false },
+          tooltip:{ callbacks:{ label:c=>`${c.parsed.y} names entered top-${n}` } } },
+        scales:{ x:{ ticks:{ ...AXIS, maxTicksLimit:12 }, grid:GRID },
+          y:{ ticks:{ ...AXIS, precision:0 }, grid:GRID, title:{ display:true, text:'adds/wk', color:'#5a6377', font:{ family:'IBM Plex Mono', size:9 } } } },
+      },
+    });
+  }
+
   function renderCoef(){
     const labels = coefs.map(r=>r.rebalance_week);
     const mk = (key,c)=>({ label:key, data:coefs.map(r=>Number(r[key])),
@@ -1419,16 +1558,24 @@ function renderPP(mode) {
     });
   }
 
-  let curN = 30;
   async function selectN(n){
     curN = n;
     document.querySelectorAll('#btN button').forEach(b=>
       b.classList.toggle('active', Number(b.dataset.n)===n));
     await renderEquity(n);
     renderScoreAndKpis(n);
+    renderCost(n);
+    await renderChurn(n);
   }
   document.getElementById('btN').addEventListener('click', e=>{
     const b = e.target.closest('button'); if(b) selectN(Number(b.dataset.n));
+  });
+  document.getElementById('btBps').addEventListener('click', e=>{
+    const b = e.target.closest('button'); if(!b) return;
+    curBps = Number(b.dataset.bps);
+    document.querySelectorAll('#btBps button').forEach(x=>
+      x.classList.toggle('active', Number(x.dataset.bps)===curBps));
+    renderCost(curN); renderScoreAndKpis(curN);
   });
 
   renderLegend();
