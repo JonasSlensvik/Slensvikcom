@@ -70,6 +70,7 @@ header {
 }
 .logo { font-family: var(--sans); font-weight: 800; font-size: 22px; color: var(--text-bright); }
 .logo span { color: var(--ice); }
+.logo .logo-tail { color: var(--text-bright); }
 .logo-sub { font-family: var(--mono); font-size: 10px; color: var(--text-dim); letter-spacing: 2px; text-transform: uppercase; margin-top: 2px; }
 .header-right { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 header [data-intel-nav] { order: 3; flex-basis: 100%; }
@@ -124,6 +125,21 @@ header [data-intel-nav] .site-nav { justify-content: flex-end; }
 .deck-sub { font-family: var(--mono); font-size: 9px; letter-spacing: .14em; text-transform: uppercase; color: var(--text4); margin-top: 8px; }
 .deck-status { position: absolute; top: 12px; right: 14px; z-index: 3; display: flex; gap: 8px; align-items: center; }
 .deck-hint { position: absolute; bottom: 10px; left: 14px; z-index: 3; font-family: var(--mono); font-size: 9px; letter-spacing: .12em; color: var(--text4); text-transform: uppercase; }
+.deck-mode {
+  position: absolute; bottom: 8px; right: 12px; z-index: 4;
+  display: flex; gap: 2px; align-items: center;
+  background: rgba(13,18,28,0.72); border: 1px solid var(--border2);
+  border-radius: 5px; padding: 2px;
+}
+.deck-mode .dm-lbl { font-family: var(--mono); font-size: 8px; letter-spacing: .14em; color: var(--text4); padding: 0 5px; text-transform: uppercase; }
+.deck-mode button {
+  background: none; border: 0; cursor: pointer; border-radius: 3px;
+  font-family: var(--mono); font-size: 8.5px; letter-spacing: .1em; color: var(--text4);
+  padding: 3px 7px; text-transform: uppercase;
+}
+.deck-mode button:hover { color: var(--text2); }
+.deck-mode button.dm-on { color: var(--text1); background: rgba(79,195,247,0.14); }
+#deckCanvas:focus-visible { outline: 1px solid rgba(79,195,247,0.5); outline-offset: -1px; }
 .deck-flyout {
   position: absolute; z-index: 5; pointer-events: none; display: none;
   background: rgba(17,22,31,0.94); border: 1px solid var(--border2); border-radius: var(--radius);
@@ -139,8 +155,31 @@ header [data-intel-nav] .site-nav { justify-content: flex-end; }
   z-index: 3; pointer-events: none; text-align: center; display: none;
   font-family: var(--mono); font-size: 10px; letter-spacing: .18em; color: var(--text3); text-transform: uppercase;
 }
-@media (max-width: 768px) { .deck { height: 330px; } }
-@media (max-width: 480px) { .deck { height: 290px; } .deck-hint { display: none; } }
+@media (max-width: 768px) { .deck { height: 340px; } }
+@media (max-width: 860px) {
+  /* the nav rail scrolls at this width (intel.css) — anchor it left so the
+     first links aren't clipped off-screen */
+  header [data-intel-nav] .site-nav { justify-content: flex-start; }
+}
+@media (max-width: 480px) {
+  header { padding: 14px 0 12px; gap: 10px; }
+  .logo { font-size: 18px; }
+  .logo .logo-tail { display: none; }   /* Syne-800 is wide; the sub-line keeps the context */
+  .logo-sub { font-size: 8.5px; letter-spacing: 1.4px; }
+  .header-right { gap: 8px; }
+  .btn-sm, .fx-toggle { font-size: 10px; padding: 6px 10px; }
+  .deck { height: 320px; }
+  .deck-hint { display: none; }
+  .deck-center { max-width: 230px; }
+  .deck-stats { font-size: 10.5px; }
+  .deck-stats .deck-sep { margin: 0 5px; }
+  #deckRibbon { display: none; }   /* the core stays airy on small screens */
+  .deck-sub { font-size: 8px; letter-spacing: .1em; }
+  .deck-status { top: 8px; right: 10px; }
+  .deck-mode { bottom: 6px; right: 8px; }
+  .deck-mode .dm-lbl { display: none; }
+  .deck-flyout { font-size: 9px; max-width: 220px; white-space: normal; }
+}
 
 /* ── KPI strip extras (intel.css .kpi-strip is the base) ─────────────────── */
 .kpi-strip { margin-bottom: 22px; }
@@ -397,6 +436,12 @@ tbody tr:last-child td { border-bottom: none; }
 .period-toggle button.m-active { background: var(--amber-dim); color: var(--amber); border-color: var(--amber); }
 .ctl-dot { color: var(--text-dim); font-size: 9px; letter-spacing: .06em; }
 .view-toggles { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+@media (max-width: 480px) {
+  /* flex-shrink:0 above keeps the rail rigid on desktop; on phones let it
+     shrink so its own flex-wrap can break the buttons into rows */
+  .period-toggle { flex-shrink: 1; min-width: 0; gap: 4px; }
+  .period-toggle button { padding: 4px 8px; letter-spacing: .5px; }
+}
 .view-btn { padding: 4px 10px; font-family: var(--mono); font-size: 10px; letter-spacing: 1px; border: 1px solid var(--border); background: var(--bg3); color: var(--text-dim); cursor: pointer; border-radius: 4px; white-space: nowrap; transition: all .15s; }
 .view-btn.v-active { background: var(--green-dim); color: var(--green); border-color: var(--green); }
 #tapeBox { position: relative; height: 460px; }
@@ -575,7 +620,7 @@ input[type=range].wi-slider::-moz-range-thumb {
 
   <header>
     <div>
-      <div class="logo">SLENS<span>VIK</span> / MISSION CONTROL</div>
+      <div class="logo">SLENS<span>VIK</span><span class="logo-tail"> / MISSION CONTROL</span></div>
       <div class="logo-sub">The portfolio as a living system</div>
     </div>
     <div data-intel-nav></div>
@@ -598,7 +643,13 @@ input[type=range].wi-slider::-moz-range-thumb {
       <div class="deck-sub" id="deckSub">—</div>
     </div>
     <div class="deck-status" id="deckStatus"></div>
-    <div class="deck-hint" id="deckHint">orbit = weight rank · size = value · colour = day P&amp;L · pulse = dark flow</div>
+    <div class="deck-hint" id="deckHint">orbit = weight rank · size = value · colour = <span id="deckHintMode">day p&amp;l</span> · pulse = dark flow · moon = ex-div · halo = event soon</div>
+    <div class="deck-mode" role="group" aria-label="Body colour mode">
+      <span class="dm-lbl">colour</span>
+      <button id="dm_day" class="dm-on" onclick="setDeckMode('day')">day</button>
+      <button id="dm_total" onclick="setDeckMode('total')">total</button>
+      <button id="dm_dark" onclick="setDeckMode('dark')">dark</button>
+    </div>
     <div class="deck-empty" id="deckEmpty">No positions yet — add your first transaction to light the deck</div>
     <div class="deck-flyout" id="deckFlyout"></div>
   </section>
@@ -1817,8 +1868,43 @@ async function mergeLiveTicks(isins) {
    rAF pauses when the tab is hidden; prefers-reduced-motion renders a single
    static frame; the DECK button freezes/unfreezes motion (persisted). */
 const DECK_REDUCE = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+const DECK_COARSE = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
 let deckFxOn = true;
 try { deckFxOn = localStorage.getItem('ambientFx') !== '0' && !DECK_REDUCE; } catch(e) {}
+
+/* Body colour modes: DAY = today's move, TOTAL = P&L since cost (±30% ramp),
+   DARK = dark-flow share on the ice ramp. Persisted like the FX toggle. */
+const DECK_MODE_LABEL = { day: 'day p&l', total: 'total p&l', dark: 'dark flow' };
+let deckMode = 'day';
+try { const _dm = localStorage.getItem('deckMode'); if (DECK_MODE_LABEL[_dm]) deckMode = _dm; } catch(e) {}
+
+function deckIceColor(darkPct) {
+  const t = Math.round(Math.max(0, Math.min(1, (darkPct || 0) / 12)) * 12) / 12;
+  const n = [44, 60, 84], g = [79, 195, 247];
+  const mix = i => Math.round(n[i] + (g[i] - n[i]) * t);
+  return `rgb(${mix(0)},${mix(1)},${mix(2)})`;
+}
+// Quantised (sprite-cache-friendly) colour for a deck row under the active mode.
+function deckBodyColor(b) {
+  if (deckMode === 'total' && b.totPct != null) return tmColor(Math.round(b.totPct / 10 * 4) / 4);
+  if (deckMode === 'dark') return deckIceColor(b.darkPct);
+  return tmColor(Math.round((b.dayPct || 0) * 4) / 4);
+}
+function syncDeckModeUI() {
+  for (const k of Object.keys(DECK_MODE_LABEL)) {
+    const btn = document.getElementById('dm_' + k);
+    if (btn) btn.classList.toggle('dm-on', k === deckMode);
+  }
+  const lbl = document.getElementById('deckHintMode');
+  if (lbl) lbl.textContent = DECK_MODE_LABEL[deckMode];
+}
+function setDeckMode(m) {
+  if (!DECK_MODE_LABEL[m]) return;
+  deckMode = m;
+  try { localStorage.setItem('deckMode', m); } catch(e) {}
+  syncDeckModeUI();
+  renderDeck();
+}
 
 function hash01(s) {
   let h = 2166136261;
@@ -1856,7 +1942,29 @@ function makeDeck(canvas, opts = {}) {
   let bodies = [], W = 0, H = 0, raf = 0, hoverIdx = -1;
   let inView = true, lastDraw = 0;
   let coreSprite = null, coreR = 0;   // cached core-glow sprite (rebuilt on resize)
+  let coreTint = 0;                   // -1 book down · 0 flat · +1 up (recolours the core)
+  let stars = null, starsFar = null;  // pre-rendered starfield layers (rebuilt on resize)
+  let meteor = null, nextMeteorAt = performance.now() + 6000 + Math.random() * 18000;
   const t0 = performance.now();
+
+  // Starfield layer: drawn once offscreen at device resolution; twinkle comes
+  // from counter-phased globalAlpha on the two layers, not per-star work.
+  function makeStarLayer(density, bright) {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const c = document.createElement('canvas');
+    c.width = Math.max(2, Math.round(W * dpr)); c.height = Math.max(2, Math.round(H * dpr));
+    const g = c.getContext('2d');
+    const n = Math.round(W * H / density);
+    for (let i = 0; i < n; i++) {
+      const a = bright ? 0.45 + Math.random() * 0.4 : 0.15 + Math.random() * 0.22;
+      g.fillStyle = `rgba(190,208,255,${a.toFixed(2)})`;
+      g.beginPath();
+      g.arc(Math.random() * c.width, Math.random() * c.height,
+            (0.4 + Math.random() * (bright ? 1.0 : 0.55)) * dpr, 0, Math.PI * 2);
+      g.fill();
+    }
+    return c;
+  }
 
   function resize() {
     const r = canvas.getBoundingClientRect();
@@ -1865,6 +1973,7 @@ function makeDeck(canvas, opts = {}) {
     canvas.width = W * dpr; canvas.height = H * dpr;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     coreSprite = null;                        // geometry changed — rebuild core glow
+    stars = starsFar = null;                  //   …and the starfield
     if (!raf) drawFrame(performance.now());   // keep static decks fresh
   }
 
@@ -1875,7 +1984,7 @@ function makeDeck(canvas, opts = {}) {
       const h = hash01(b.isin || b.tk || String(rank));
       // Quantise dayPct to 0.25% buckets so the sprite cache stays small;
       // visually indistinguishable from the continuous ramp.
-      const col = ghost ? 'rgb(70,82,104)' : tmColor(Math.round((b.dayPct || 0) * 4) / 4);
+      const col = ghost ? 'rgb(70,82,104)' : (b.col || tmColor(Math.round((b.dayPct || 0) * 4) / 4));
       return {
         ...b, rank, col,
         a0: h * Math.PI * 2,
@@ -1902,12 +2011,23 @@ function makeDeck(canvas, opts = {}) {
     c.width = c.height = Math.max(2, Math.ceil(innerR * 2));
     const g = c.getContext('2d');
     const cg = g.createRadialGradient(innerR, innerR, 0, innerR, innerR, innerR * 0.96);
-    cg.addColorStop(0, ghost ? 'rgba(79,195,247,0.07)' : 'rgba(245,166,35,0.085)');
-    cg.addColorStop(0.55, ghost ? 'rgba(79,195,247,0.03)' : 'rgba(245,166,35,0.035)');
+    // the sun catches the book's mood: amber flat, green-shifted up, red-shifted down
+    const base = ghost ? '79,195,247'
+               : coreTint > 0 ? '116,214,150'
+               : coreTint < 0 ? '236,116,104' : '245,166,35';
+    cg.addColorStop(0, `rgba(${base},${ghost ? 0.07 : 0.085})`);
+    cg.addColorStop(0.55, `rgba(${base},${ghost ? 0.03 : 0.035})`);
     cg.addColorStop(1, 'rgba(0,0,0,0)');
     g.fillStyle = cg;
     g.fillRect(0, 0, c.width, c.height);
     return c;
+  }
+  function setCoreTint(t) {
+    const v = t > 0 ? 1 : t < 0 ? -1 : 0;
+    if (v === coreTint) return;
+    coreTint = v;
+    coreSprite = null;
+    if (!raf) drawFrame(performance.now());
   }
 
   function drawFrame(now) {
@@ -1917,9 +2037,20 @@ function makeDeck(canvas, opts = {}) {
     const n = bodies.length;
     ctx.clearRect(0, 0, W, H);
 
-    // core glow (the portfolio heart — DOM overlay carries the numbers)
+    // starfield backdrop — two static layers, counter-phased alpha = twinkle
+    if (!stars) { stars = makeStarLayer(9000, true); starsFar = makeStarLayer(2600, false); }
+    const dim = ghost ? 0.55 : 1;
+    ctx.globalAlpha = dim * (0.55 + 0.25 * Math.sin(s * 0.35));
+    ctx.drawImage(starsFar, 0, 0, W, H);
+    ctx.globalAlpha = dim * (0.75 + 0.25 * Math.sin(1.7 + s * 0.23));
+    ctx.drawImage(stars, 0, 0, W, H);
+    ctx.globalAlpha = 1;
+
+    // core glow (the portfolio heart — DOM overlay carries the numbers), breathing
     if (!coreSprite || Math.abs(coreR - innerR) > 1) { coreSprite = makeCoreSprite(innerR); coreR = innerR; }
+    ctx.globalAlpha = 0.85 + 0.15 * Math.sin(s * 0.5);
     ctx.drawImage(coreSprite, cx - innerR, cy - innerR, innerR * 2, innerR * 2);
+    ctx.globalAlpha = 1;
 
     // orbit rings
     for (let i = 0; i < n; i++) {
@@ -1942,6 +2073,21 @@ function makeDeck(canvas, opts = {}) {
       const y = cy + Math.sin(ang) * r * squash;
       b.x = x; b.y = y;
       const col = b.col;
+
+      // comet trail along the orbit, behind the direction of travel;
+      // length scales with today's move so the big movers streak
+      const tl = ghost ? 0.22 : 0.16 + Math.min(0.8, Math.abs(b.dayPct || 0) * 0.18);
+      const tw = Math.min(3, 1 + b.R * 0.14);
+      for (let k = 0; k < 3; k++) {
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, r, r * squash, 0, ang - tl * (k + 1) / 3, ang - tl * k / 3 - 0.015);
+        ctx.strokeStyle = col;
+        ctx.globalAlpha = (ghost ? 0.10 : 0.26) * (1 - k / 3);
+        ctx.lineWidth = tw * (1 - k * 0.28);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+
       const pulse = 0.5 + 0.5 * Math.sin(s * b.pulseW + b.ph);
       const glowA = ghost ? 0.10 : 0.16 + 0.30 * pulse * Math.max(b.darkAmp, 0.12);
       const gR = b.R * (2.3 + 0.5 * pulse * b.darkAmp);
@@ -1957,9 +2103,60 @@ function makeDeck(canvas, opts = {}) {
       ctx.lineWidth = i === hoverIdx ? 1.5 : 1;
       ctx.stroke();
 
-      if (!ghost && W > 560 && (b.R >= 7 || i === hoverIdx)) {
+      // dashed halo — an event (earnings, CMD, …) inside the next fortnight
+      if (b.evtDate) {
+        ctx.setLineDash([3, 4]);
+        ctx.beginPath();
+        ctx.arc(x, y, b.R + 5.5 + 1.2 * Math.sin(s * 2 + b.ph), 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(255,205,107,0.5)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+
+      // amber moon — a dividend ex-date is coming for this holding
+      if (b.divDate) {
+        const ma = b.ph + s * 1.5;
+        const mx = x + Math.cos(ma) * (b.R + 7), my = y + Math.sin(ma) * (b.R + 7) * 0.8;
+        ctx.globalAlpha = 0.25;
+        ctx.drawImage(glowSprite('rgb(245,166,35)'), mx - 6, my - 6, 12, 12);
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = '#f5a623';
+        ctx.beginPath(); ctx.arc(mx, my, 2.1, 0, Math.PI * 2); ctx.fill();
+      }
+
+      if (!ghost && (b.R >= (W > 560 ? 7 : 10) || i === hoverIdx)) {
         ctx.fillStyle = i === hoverIdx ? 'rgba(232,238,247,0.95)' : 'rgba(164,173,191,0.66)';
         ctx.fillText(b.tk || '', x, y + b.R + 14);
+      }
+    }
+
+    // occasional shooting star — pure theatre, skipped whenever motion is off
+    if (deckFxOn && !DECK_REDUCE && !ghost) {
+      if (!meteor && now >= nextMeteorAt) {
+        const fromLeft = Math.random() < 0.5;
+        meteor = {
+          t: now, dur: 700 + Math.random() * 500,
+          x0: fromLeft ? -30 : W + 30, y0: Math.random() * H * 0.5,
+          dx: (fromLeft ? 1 : -1) * W * (0.45 + Math.random() * 0.3),
+          dy: H * (0.15 + Math.random() * 0.25),
+        };
+      }
+      if (meteor) {
+        const p = (now - meteor.t) / meteor.dur;
+        if (p >= 1) {
+          meteor = null;
+          nextMeteorAt = now + 14000 + Math.random() * 30000;
+        } else {
+          const hx = meteor.x0 + meteor.dx * p, hy = meteor.y0 + meteor.dy * p;
+          const nl = Math.hypot(meteor.dx, meteor.dy) || 1;
+          const tx2 = hx - meteor.dx / nl * 60, ty2 = hy - meteor.dy / nl * 60;
+          const mg = ctx.createLinearGradient(hx, hy, tx2, ty2);
+          mg.addColorStop(0, `rgba(220,235,255,${(0.65 * Math.sin(Math.PI * p)).toFixed(3)})`);
+          mg.addColorStop(1, 'rgba(220,235,255,0)');
+          ctx.strokeStyle = mg; ctx.lineWidth = 1.2;
+          ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(tx2, ty2); ctx.stroke();
+        }
       }
     }
   }
@@ -1985,7 +2182,7 @@ function makeDeck(canvas, opts = {}) {
     for (let i = 0; i < bodies.length; i++) {
       const b = bodies[i];
       const d = Math.hypot(px - b.x, py - b.y);
-      if (d < b.R + 7 && d < bd) { bd = d; best = i; }
+      if (d < b.R + (DECK_COARSE ? 14 : 7) && d < bd) { bd = d; best = i; }
     }
     return best;
   }
@@ -2002,7 +2199,7 @@ function makeDeck(canvas, opts = {}) {
     }, { rootMargin: '80px' }).observe(canvas);
   }
   start();
-  return { setBodies, resize, start, stop, hitTest, setHover,
+  return { setBodies, resize, start, stop, hitTest, setHover, setCoreTint,
            get bodies() { return bodies; }, get running() { return !!raf; } };
 }
 
@@ -2020,28 +2217,65 @@ function initDecks() {
     // hover flyout + click → company dossier
     const fly = document.getElementById('deckFlyout');
     const sec = document.getElementById('deckSection');
+    const showFly = (i) => {
+      const b = heroDeck.bodies[i];
+      const cls = (b.dayPct || 0) > 0 ? 'up' : (b.dayPct || 0) < 0 ? 'dn' : '';
+      const totCls = (b.totPct || 0) > 0 ? 'up' : (b.totPct || 0) < 0 ? 'dn' : '';
+      const extra = [
+        b.totPct != null ? `<span class="${totCls}">${fmtPct(b.totPct)}</span> since cost` : '',
+        b.divDate ? `◐ ex-div ${b.divDate}` : '',
+        b.evtDate ? `◌ ${(b.evtTitle || 'event').slice(0, 26)} ${b.evtDate}` : '',
+      ].filter(Boolean).join(' · ');
+      fly.innerHTML = `<span class="fo-tk">${b.tk}</span> &nbsp;<span class="${cls}">${fmtPct(b.dayPct)}</span><br>
+        ${fmtNOK(b.value)} · ${(b.weight * 100).toFixed(1)}% of book${extra ? `<br><span class="fo-sub">${extra}</span>` : ''}<br>
+        <span class="fo-sub">dark ${b.darkPct != null ? (+b.darkPct).toFixed(1) : '—'}% · ${DECK_COARSE ? 'tap again' : 'click'} for dossier</span>`;
+      fly.style.display = 'block';
+      fly.style.left = Math.max(4, Math.min(b.x + 18, sec.clientWidth - 230)) + 'px';
+      fly.style.top  = Math.max(8, b.y - 14) + 'px';
+    };
     heroCv.addEventListener('mousemove', (e) => {
       const r = heroCv.getBoundingClientRect();
       const i = heroDeck.hitTest(e.clientX - r.left, e.clientY - r.top);
       heroDeck.setHover(i);
       if (i < 0 || heroDeck.bodies[i].ghost) { fly.style.display = 'none'; heroCv.style.cursor = ''; return; }
-      const b = heroDeck.bodies[i];
-      const cls = (b.dayPct || 0) > 0 ? 'up' : (b.dayPct || 0) < 0 ? 'dn' : '';
-      fly.innerHTML = `<span class="fo-tk">${b.tk}</span> &nbsp;<span class="${cls}">${fmtPct(b.dayPct)}</span><br>
-        ${fmtNOK(b.value)} · ${(b.weight * 100).toFixed(1)}% of book<br>
-        <span class="fo-sub">dark ${b.darkPct != null ? (+b.darkPct).toFixed(1) : '—'}% · click for dossier</span>`;
-      fly.style.display = 'block';
-      fly.style.left = Math.min(b.x + 18, sec.clientWidth - 210) + 'px';
-      fly.style.top  = Math.max(8, b.y - 14) + 'px';
+      showFly(i);
       heroCv.style.cursor = 'pointer';
     });
     heroCv.addEventListener('mouseleave', () => { heroDeck.setHover(-1); fly.style.display = 'none'; heroCv.style.cursor = ''; });
+    // keyboard: focus the deck, arrows cycle holdings, Enter opens the dossier
+    heroCv.tabIndex = 0;
+    heroCv.setAttribute('aria-label', 'Holdings orbit map — arrow keys cycle holdings, Enter opens the company dossier');
+    let kbIdx = -1;
+    heroCv.addEventListener('keydown', (e) => {
+      const n = heroDeck.bodies.length;
+      if (!n || heroDeck.bodies[0].ghost) return;
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') kbIdx = (kbIdx + 1) % n;
+      else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') kbIdx = (kbIdx - 1 + n) % n;
+      else if (e.key === 'Enter' && kbIdx >= 0) { location.href = INTEL.selskapHref(heroDeck.bodies[kbIdx].isin); return; }
+      else if (e.key === 'Escape') { kbIdx = -1; heroDeck.setHover(-1); fly.style.display = 'none'; return; }
+      else return;
+      e.preventDefault();
+      heroDeck.setHover(kbIdx);
+      showFly(kbIdx);
+    });
+    heroCv.addEventListener('blur', () => { kbIdx = -1; heroDeck.setHover(-1); fly.style.display = 'none'; });
+    // touch: first tap selects (flyout), a second tap on the same body opens
+    // the dossier — a bare hover target doesn't exist on phones
+    let tapIdx = -1;
     heroCv.addEventListener('click', (e) => {
       const r = heroCv.getBoundingClientRect();
       const i = heroDeck.hitTest(e.clientX - r.left, e.clientY - r.top);
-      if (i >= 0 && !String(heroDeck.bodies[i].isin).startsWith('ghost-')) {
-        location.href = INTEL.selskapHref(heroDeck.bodies[i].isin);
+      if (i < 0 || String(heroDeck.bodies[i].isin).startsWith('ghost-')) {
+        if (DECK_COARSE) { tapIdx = -1; heroDeck.setHover(-1); fly.style.display = 'none'; }
+        return;
       }
+      if (DECK_COARSE && i !== tapIdx) {
+        tapIdx = i;
+        heroDeck.setHover(i);
+        showFly(i);
+        return;
+      }
+      location.href = INTEL.selskapHref(heroDeck.bodies[i].isin);
     });
   }
   document.addEventListener('visibilitychange', () => {
@@ -2050,6 +2284,7 @@ function initDecks() {
     else decks.forEach(d => d.start());
   });
   updateFxToggle();
+  syncDeckModeUI();   // reflect the persisted colour mode without forcing an early render
 }
 
 function updateFxToggle() {
@@ -2080,17 +2315,30 @@ function renderDeck() {
   const hintEl = document.getElementById('deckHint');
 
   const rows = [];
+  const today = new Date().toISOString().slice(0, 10);
+  const evHorizon = new Date(Date.now() + 14 * 864e5).toISOString().slice(0, 10);
   for (const [isin, p] of positions) {
     const md = marketData[isin] || {};
     const price = md.latestPrice;
     if (!price) continue;
     const value = p.netQty * price;
-    rows.push({
+    const evs = (md.events || [])
+      .filter(e => e.event_date && e.event_date >= today)
+      .sort((a, b) => a.event_date.localeCompare(b.event_date));
+    const nextDiv = evs.find(e => e.event_type === 'EX_DATE');
+    const nextEvt = evs.find(e => e.event_type !== 'EX_DATE' && e.event_date <= evHorizon);
+    const row = {
       isin, tk: ticker(isin), value,
       weight: t.totalValue ? value / t.totalValue : 0,
       dayPct: holdingDayPct(isin),
       darkPct: md.intel?.dark_pct ?? md.darkPct,
-    });
+      totPct: p.avgCost > 0 ? (price / p.avgCost - 1) * 100 : null,
+      divDate: nextDiv ? nextDiv.event_date : null,
+      evtDate: nextEvt ? nextEvt.event_date : null,
+      evtTitle: nextEvt ? (nextEvt.title || '') : '',
+    };
+    row.col = deckBodyColor(row);
+    rows.push(row);
   }
   rows.sort((a, b) => b.value - a.value);
 
@@ -2115,6 +2363,9 @@ function renderDeck() {
   totEl.innerHTML = t.totalRetPct != null
     ? `<span class="${t.totalReturn > 0 ? 'up' : t.totalReturn < 0 ? 'dn' : ''}">${fmtPct(t.totalRetPct)} total return</span>`
     : '<span style="color:var(--text4)">—</span>';
+
+  // the core catches the book's mood (only when a day basis exists)
+  heroDeck.setCoreTint(day.prev > 0 ? Math.sign(day.pnl || 0) : 0);
 
   // status pill + sub-line
   const st = document.getElementById('deckStatus');
