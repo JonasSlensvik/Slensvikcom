@@ -1231,6 +1231,7 @@ async function loadData() {
 
     fetchNews();   // independent of market data — runs in parallel with it
     await fetchMarketData(isins);
+    await fetchDeckTicks(isins);   // today's ticks for the deck ribbon
     renderViewToggles();
     renderKPIs();
     renderDeck();
@@ -2001,9 +2002,13 @@ function makeDeck(canvas, opts = {}) {
 
   function geom() {
     const cx = W / 2, cy = H / 2;
-    const maxR = Math.min(W, H) / 2 - 26;
-    const innerR = Math.min(Math.max(Math.min(W, H) * 0.30, 96), maxR * 0.62);
-    return { cx, cy, maxR, innerR, squash: 0.62 };
+    // vertical budget from the height (with room for a body + label below the
+    // lowest orbit); horizontal stretched into the width so wide decks fill
+    // their rectangle — the squash now emerges from the box's own aspect
+    const maxRy = H / 2 - 40;
+    const maxRx = Math.max(maxRy, Math.min(W / 2 - 60, maxRy * 3.2));
+    const innerRy = Math.min(Math.max(H * 0.28, 64), maxRy * 0.62);
+    return { cx, cy, maxRx, maxRy, innerRx: maxRx * (innerRy / maxRy), innerRy };
   }
 
   function makeCoreSprite(innerR) {
@@ -2033,7 +2038,7 @@ function makeDeck(canvas, opts = {}) {
   function drawFrame(now) {
     if (W < 80 || H < 80) return; // canvas hidden/unsized (auth gate) — resize() redraws later
     const s = deckFxOn && !DECK_REDUCE ? (now - t0) / 1000 : 13.7;
-    const { cx, cy, maxR, innerR, squash } = geom();
+    const { cx, cy, maxRx, maxRy, innerRx, innerRy } = geom();
     const n = bodies.length;
     ctx.clearRect(0, 0, W, H);
 
@@ -2047,16 +2052,17 @@ function makeDeck(canvas, opts = {}) {
     ctx.globalAlpha = 1;
 
     // core glow (the portfolio heart — DOM overlay carries the numbers), breathing
-    if (!coreSprite || Math.abs(coreR - innerR) > 1) { coreSprite = makeCoreSprite(innerR); coreR = innerR; }
+    if (!coreSprite || Math.abs(coreR - innerRy) > 1) { coreSprite = makeCoreSprite(innerRy); coreR = innerRy; }
     ctx.globalAlpha = 0.85 + 0.15 * Math.sin(s * 0.5);
-    ctx.drawImage(coreSprite, cx - innerR, cy - innerR, innerR * 2, innerR * 2);
+    ctx.drawImage(coreSprite, cx - innerRx, cy - innerRy, innerRx * 2, innerRy * 2);
     ctx.globalAlpha = 1;
 
     // orbit rings
+    const orbitRx = i => n === 1 ? (innerRx + maxRx) / 2 : innerRx + (maxRx - innerRx) * (i / (n - 1));
+    const orbitRy = i => n === 1 ? (innerRy + maxRy) / 2 : innerRy + (maxRy - innerRy) * (i / (n - 1));
     for (let i = 0; i < n; i++) {
-      const r = n === 1 ? (innerR + maxR) / 2 : innerR + (maxR - innerR) * (i / (n - 1));
       ctx.beginPath();
-      ctx.ellipse(cx, cy, r, r * squash, 0, 0, Math.PI * 2);
+      ctx.ellipse(cx, cy, orbitRx(i), orbitRy(i), 0, 0, Math.PI * 2);
       ctx.strokeStyle = i === hoverIdx ? 'rgba(255,255,255,0.13)' : 'rgba(255,255,255,0.05)';
       ctx.lineWidth = 1;
       ctx.stroke();
@@ -2067,10 +2073,10 @@ function makeDeck(canvas, opts = {}) {
     ctx.textAlign = 'center';
     for (let i = 0; i < n; i++) {
       const b = bodies[i];
-      const r = n === 1 ? (innerR + maxR) / 2 : innerR + (maxR - innerR) * (i / (n - 1));
+      const rx = orbitRx(i), ry = orbitRy(i);
       const ang = b.a0 + s * b.omega;
-      const x = cx + Math.cos(ang) * r;
-      const y = cy + Math.sin(ang) * r * squash;
+      const x = cx + Math.cos(ang) * rx;
+      const y = cy + Math.sin(ang) * ry;
       b.x = x; b.y = y;
       const col = b.col;
 
@@ -2080,7 +2086,7 @@ function makeDeck(canvas, opts = {}) {
       const tw = Math.min(3, 1 + b.R * 0.14);
       for (let k = 0; k < 3; k++) {
         ctx.beginPath();
-        ctx.ellipse(cx, cy, r, r * squash, 0, ang - tl * (k + 1) / 3, ang - tl * k / 3 - 0.015);
+        ctx.ellipse(cx, cy, rx, ry, 0, ang - tl * (k + 1) / 3, ang - tl * k / 3 - 0.015);
         ctx.strokeStyle = col;
         ctx.globalAlpha = (ghost ? 0.10 : 0.26) * (1 - k / 3);
         ctx.lineWidth = tw * (1 - k * 0.28);
@@ -2125,9 +2131,12 @@ function makeDeck(canvas, opts = {}) {
         ctx.beginPath(); ctx.arc(mx, my, 2.1, 0, Math.PI * 2); ctx.fill();
       }
 
-      if (!ghost && (b.R >= (W > 560 ? 7 : 10) || i === hoverIdx)) {
+      // skip labels that would land on the centre overlay text (narrow decks)
+      const ly = y + b.R + 14;
+      const onOverlay = W <= 560 && Math.abs(x - cx) < 120 && Math.abs(ly - cy) < 80;
+      if (!ghost && !onOverlay && (b.R >= (W > 560 ? 7 : 10) || i === hoverIdx)) {
         ctx.fillStyle = i === hoverIdx ? 'rgba(232,238,247,0.95)' : 'rgba(164,173,191,0.66)';
-        ctx.fillText(b.tk || '', x, y + b.R + 14);
+        ctx.fillText(b.tk || '', x, ly);
       }
     }
 
@@ -2305,8 +2314,66 @@ function holdingDayPct(isin) {
   return holdingDayChange(isin);
 }
 
+/* ── deck ribbon: today's portfolio value at 3-minute fidelity ────────────
+   Same feed the equity tape's 5D mode merges (api.intraday_live via the
+   iMac), bucketed to 3 minutes, forward-filled from prev close per ISIN,
+   seeded with the day-open basis and tipped with the freshest live value. */
+let deckTickData = null, deckTicksAt = 0;   // isin → [{dt, price}], today only
+async function fetchDeckTicks(isins) {
+  if (!isins.length) { deckTickData = {}; return; }
+  const todayOslo = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Oslo' }).format(new Date());
+  try {
+    const rows = await GET_ALL('intraday_live',
+      `isin=in.(${isins.join(',')})&ts=gte.${todayOslo}T00:00:00&select=isin,ts,price&order=ts.asc`, 2000);
+    deckTickData = {};
+    for (const r of rows) {
+      if (r.price == null) continue;
+      (deckTickData[r.isin] ||= []).push({ dt: osloMinuteDt(r.ts), price: +r.price });
+    }
+    deckTicksAt = Date.now();
+  } catch(e) { console.warn('deck tick fetch failed', e); }
+}
+const bucket3m = dt => dt.slice(0, 14) + String(Math.floor(+dt.slice(14, 16) / 3) * 3).padStart(2, '0');
+
+function buildDeckRibbonSeries(t, day) {
+  const todayOslo = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Oslo' }).format(new Date());
+  const isins = [...positions.keys()];
+  // today's ticks per ISIN: whichever cache (5D tape's or the deck's) has more
+  const srcFor = isin => {
+    const a = (intradayData[isin] || []).filter(r => r.dt.slice(0, 10) === todayOslo);
+    const b = (deckTickData && deckTickData[isin]) || [];
+    return b.length >= a.length ? b : a;
+  };
+  const tickAt = {}, bucketSet = new Set();
+  for (const isin of isins) {
+    const m = new Map();
+    for (const r of srcFor(isin)) {
+      const bkt = bucket3m(r.dt);
+      m.set(bkt, r.price);            // last tick in the bucket wins
+      bucketSet.add(bkt);
+    }
+    tickAt[isin] = m;
+  }
+  const buckets = [...bucketSet].sort();
+  if (!buckets.length) return [];
+  const last = {};
+  for (const isin of isins) last[isin] = marketData[isin]?.prevClose ?? null;
+  const pts = [];
+  if (day.prev > 0) pts.push(day.prev);            // day-open basis
+  for (const bkt of buckets) {
+    let total = 0;
+    for (const isin of isins) {
+      const p = tickAt[isin].get(bkt);
+      if (p != null) last[isin] = p;
+      if (last[isin] != null) total += (positions.get(isin)?.netQty || 0) * last[isin];
+    }
+    if (total > 0) pts.push(total);
+  }
+  if (t.totalValue > 0) pts.push(t.totalValue);    // fresh tip — latest_price beats the 15-min-delayed feed
+  return pts;
+}
+
 /* ── deck data + centre overlay ──────────────────────────────────────────── */
-let deckRibbonPts = [];   // intra-session samples of total value
 function renderDeck() {
   if (!heroDeck) return;
   const t = portfolioTotals();
@@ -2380,23 +2447,15 @@ function renderDeck() {
     sub.textContent = `${rows.length} holdings · last close`;
   }
 
-  // ribbon: seed with day-open (prev-close basis) then sample current value
-  if (t.totalValue > 0) {
-    if (!deckRibbonPts.length && day.prev > 0) deckRibbonPts.push(day.prev);
-    const last = deckRibbonPts[deckRibbonPts.length - 1];
-    if (last !== t.totalValue) deckRibbonPts.push(t.totalValue);
-    if (deckRibbonPts.length > 400) deckRibbonPts = deckRibbonPts.slice(-400);
-  }
-  drawDeckRibbon();
+  drawDeckRibbon(buildDeckRibbonSeries(t, day));
 }
 
-function drawDeckRibbon() {
+function drawDeckRibbon(pts) {
   const cv = document.getElementById('deckRibbon');
   if (!cv) return;
   const ctx = cv.getContext('2d');
   const W = cv.width, H = cv.height;
   ctx.clearRect(0, 0, W, H);
-  const pts = deckRibbonPts;
   if (pts.length < 2) {   // flat placeholder line
     ctx.strokeStyle = 'rgba(90,99,119,0.5)';
     ctx.setLineDash([3, 4]);
@@ -3363,6 +3422,8 @@ async function refreshLive() {
       `isin=in.(${isins.join(',')})&select=isin,price,fidelity,day_change_pct,prev_close,as_of`);
     applyLatestPrices(livePrices);
     if (chartPeriod === '5D' && Object.keys(intradayData).length) await mergeLiveTicks(isins);
+    // ~3-min cadence for the deck ribbon — matches the feed's useful granularity
+    if (Date.now() - deckTicksAt > 170000) await fetchDeckTicks(isins);
     renderKPIs();
     renderDeck();
     updateDeskValues();
