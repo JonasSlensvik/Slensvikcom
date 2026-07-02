@@ -10,7 +10,7 @@ backend architecture, scheduled jobs, DB access, and working agreements.
 ## Pages
 
 - `index.html` — landing.
-- `markedsradar.html` — dark-flow conviction shortlist (`api.conviction`). Do **not** edit
+- `radar.html (formerly markedsradar.html)` — dark-flow conviction shortlist (`api.conviction`). Do **not** edit
   this file with `sed` — it wiped the file once; use the Edit tool.
 - `portfolio.html` — personal portfolio tracker; 5D chart merges `api.intraday_live` for
   minute-level live resolution during Oslo market hours.

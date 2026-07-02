@@ -1,0 +1,3804 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Radar · Slensvik</title>
+<meta name="description" content="Catalyst horizon for Oslo Børs — precursor evidence (insider flow, dark pools, whale prints, smart-money signals) accumulating ahead of scheduled corporate events, from the Euronext trade tape.">
+<link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=Syne:wght@400;600;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+<link rel="stylesheet" href="assets/intel.css">
+<script src="assets/intel.js?v=20260615"></script>
+
+<style>
+/* ─── Variables ──────────────────────────────────────────────────────────
+   Canonical tokens live in assets/intel.css. This block maps this page's
+   legacy names onto the shared system. */
+:root {
+  --bg:           var(--bg0);
+  --border-glow:  var(--border3);
+  --text:         var(--text2);
+  --text-dim:     var(--text3);
+  --text-bright:  var(--text1);
+  --amber-glow:   rgba(245,166,35,0.12);
+  --ice-glow:     rgba(79,195,247,0.10);
+  --gold:         var(--amber);
+  --body:         var(--mono);
+}
+
+/* ─── Reset & Base ──────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--body);
+  font-size: 13px;
+  line-height: 1.5;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Subtle scan-line texture */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(255,255,255,0.012) 2px,
+    rgba(255,255,255,0.012) 4px
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ─── Layout ────────────────────────────────────────────────────────────── */
+.page { max-width: 1440px; margin: 0 auto; padding: 0 24px 64px; position: relative; z-index: 1; }
+
+/* ─── Header ────────────────────────────────────────────────────────────── */
+header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding: 40px 0 32px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 28px;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.logo-block { display: flex; flex-direction: column; gap: 4px; }
+.logo {
+  font-family: var(--sans);
+  font-weight: 800;
+  font-size: 28px;
+  letter-spacing: -0.5px;
+  color: var(--text-bright);
+}
+.logo span { color: var(--ice); }
+.logo-sub {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+.header-meta { display: flex; gap: 24px; align-items: flex-end; flex-wrap: wrap; }
+.meta-pill {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 4px 10px;
+  letter-spacing: 1px;
+  font-variant-numeric: tabular-nums;
+}
+.meta-pill.live { border-color: var(--green); color: var(--green); }
+.meta-pill.live::before {
+  content: '● ';
+  animation: pulse 2s infinite;
+}
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+/* ─── Date selector ─────────────────────────────────────────────────────── */
+.date-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 28px;
+  flex-wrap: wrap;
+}
+.date-bar label { font-family: var(--mono); font-size: 11px; color: var(--text-dim); letter-spacing: 1px; }
+.date-bar select, .date-bar input {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-family: var(--mono);
+  font-size: 12px;
+  cursor: pointer;
+}
+.date-bar select:focus, .date-bar input:focus { outline: none; border-color: var(--ice); }
+.btn {
+  background: var(--ice-dim);
+  border: 1px solid var(--ice);
+  color: var(--ice);
+  padding: 6px 16px;
+  border-radius: 4px;
+  font-family: var(--mono);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+  letter-spacing: 1px;
+}
+.btn:hover { background: var(--ice); color: var(--bg); }
+
+/* ─── Section headers ───────────────────────────────────────────────────── */
+.section { margin-bottom: 40px; }
+.section-head {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.section-head.collapsible { cursor: pointer; user-select: none; }
+.section-head.collapsible:hover .section-title { color: var(--ice); transition: color 0.15s; }
+.section-title {
+  font-family: var(--mono);
+  font-weight: 500;
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-bright);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.section-title::first-letter {
+  color: var(--amber);     /* the glyph prefix burns amber, Bloomberg-style */
+  margin-right: 8px;
+}
+.section-desc {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.section-count {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--amber);
+  margin-left: auto;
+  white-space: nowrap;
+}
+.section-chevron {
+  font-size: 11px;
+  color: var(--text-dim);
+  transition: transform 0.2s;
+  flex-shrink: 0;
+  margin-left: 6px;
+}
+.section.collapsed .section-chevron { transform: rotate(-90deg); }
+.section.collapsed .section-body { display: none; }
+
+/* ═══ Catalyst Horizon hero ════════════════════════════════════════════════ */
+.hero {
+  position: relative;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: linear-gradient(160deg, #070b14 0%, #0a101c 55%, #060a12 100%);
+  overflow: hidden;
+  margin-bottom: 36px;
+}
+.hero-inner { position: relative; padding: 24px 26px 16px; }
+.hero-top {
+  display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.hero-eyebrow {
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.28em;
+  text-transform: uppercase; color: var(--amber);
+}
+.hero-eyebrow .dot { color: var(--green); animation: pulse 2s infinite; }
+.hero-date { font-family: var(--mono); font-size: 11px; color: var(--text-dim); letter-spacing: 1px; }
+.hero-fx-toggle {
+  margin-left: auto; font-family: var(--mono); font-size: 10px; letter-spacing: 1px;
+  color: var(--text-dim); background: transparent; border: 1px solid var(--border);
+  border-radius: 4px; padding: 3px 9px; cursor: pointer; transition: all 0.15s;
+}
+.hero-fx-toggle:hover { color: var(--ice); border-color: var(--ice-dim); }
+.hero-lede {
+  font-family: var(--sans); font-weight: 600;
+  font-size: clamp(18px, 2.2vw, 25px); line-height: 1.32;
+  color: var(--text-bright); letter-spacing: -0.3px;
+  max-width: 64ch; margin-bottom: 14px;
+}
+.hero-lede b { color: var(--ice); font-weight: 600; }
+.hero-lede .up { color: var(--green); } .hero-lede .dn { color: var(--red); }
+.hero-lede .warn { color: var(--amber); }
+
+/* the horizon canvas itself */
+.hz-wrap { position: relative; margin: 2px 0 0; }
+#horizonCanvas {
+  display: block; width: 100%;
+  height: clamp(264px, 34vh, 360px);
+  cursor: crosshair;
+}
+.hz-tip {
+  position: absolute; z-index: 6; pointer-events: none; display: none;
+  min-width: 220px; max-width: 300px;
+  background: rgba(9,14,23,0.97);
+  border: 1px solid var(--border-glow); border-radius: 6px;
+  padding: 10px 12px;
+  font-family: var(--mono); font-size: 11px; color: var(--text);
+  box-shadow: 0 10px 32px rgba(0,0,0,0.55);
+}
+.hz-tip .tt-tkr { font-size: 13px; font-weight: 600; color: var(--text-bright); letter-spacing: 0.04em; }
+.hz-tip .tt-co  { font-size: 10px; color: var(--text-dim); margin-bottom: 6px;
+                  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hz-tip .tt-row { display: flex; justify-content: space-between; gap: 14px; padding: 2px 0; }
+.hz-tip .tt-k   { color: var(--text-dim); letter-spacing: 0.08em; }
+.hz-tip .tt-hint { margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--border);
+                   font-size: 9px; letter-spacing: 0.1em; color: var(--text-dim); }
+.hz-empty {
+  position: absolute; inset: 0; z-index: 4;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--mono); font-size: 12px; color: var(--text-dim);
+  letter-spacing: 1px; text-align: center; padding: 0 24px;
+}
+.hz-legend {
+  display: flex; flex-wrap: wrap; gap: 18px; align-items: center;
+  font-family: var(--mono); font-size: 10px; color: var(--text-dim);
+  letter-spacing: 0.08em;
+  padding: 8px 2px 14px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 16px;
+}
+.hz-legend .sw {
+  display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+  margin-right: 6px; vertical-align: middle;
+}
+.hz-legend .dim { margin-left: auto; opacity: 0.8; }
+
+/* hero KPI ticks */
+.hero-ticks { display: flex; flex-wrap: wrap; gap: 26px; padding-bottom: 8px; }
+.hero-tick { display: flex; flex-direction: column; gap: 2px; }
+.hero-tick-label { font-family: var(--mono); font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--text-dim); }
+.hero-tick-value { font-family: var(--mono); font-size: 20px; font-weight: 600; color: var(--text-bright); font-variant-numeric: tabular-nums; }
+.hero-tick-value.up { color: var(--green); } .hero-tick-value.dn { color: var(--red); }
+.hero-tick-value.warn { color: var(--amber); }
+.hero-tick-sub { font-family: var(--mono); font-size: 10px; color: var(--text-dim); }
+
+/* ─── Catalyst Setup Cards ──────────────────────────────────────────────── */
+.catalyst-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(420px, 100%), 1fr));
+  gap: 16px;
+  padding: 4px 0;
+}
+.cat-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  transition: border-color .2s, box-shadow .2s;
+  cursor: pointer;
+  scroll-margin-top: 90px;
+}
+.cat-card:hover { border-color: var(--border-glow); box-shadow: 0 0 20px rgba(30,58,95,0.5); }
+.cat-card.bearish { border-left: 3px solid var(--red); }
+.cat-card.bullish { border-left: 3px solid var(--green); }
+.cat-card.neutral { border-left: 3px solid var(--amber); }
+.cat-card.bearish:hover { box-shadow: 0 0 24px rgba(240,96,96,0.15); }
+.cat-card.bullish:hover { box-shadow: 0 0 24px rgba(67,224,151,0.15); }
+.cat-card.cat-hit { animation: catHit 1.8s ease; }
+@keyframes catHit {
+  0%   { box-shadow: 0 0 0 2px var(--amber), 0 0 40px rgba(245,166,35,0.45); }
+  100% { box-shadow: none; }
+}
+
+.cat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px 10px;
+  border-bottom: 1px solid var(--border);
+}
+.cat-ticker {
+  font-family: var(--mono);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-bright);
+  letter-spacing: 1px;
+}
+.cat-company {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-left: 8px;
+}
+.cat-dir {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 1px;
+  padding: 3px 8px;
+  border-radius: 3px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.cat-dir.bearish { background: var(--red-dim); color: var(--red); }
+.cat-dir.bullish { background: var(--green-dim); color: var(--green); }
+.cat-dir.neutral { background: var(--amber-dim); color: var(--amber); }
+
+.cat-panels {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+}
+.cat-panel { padding: 14px 16px; }
+.cat-panel + .cat-panel { border-left: 1px solid var(--border); }
+.cat-panel-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.cat-type {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--text-bright);
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cat-date {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-bottom: 10px;
+}
+.cat-sig-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--border);
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-bright);
+}
+.cat-sig-row:last-child { border-bottom: none; }
+.cat-sig-row .cat-date { margin-bottom: 0; margin-left: auto; }
+.cat-countdown {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+  margin-top: 6px;
+}
+.cat-countdown.imminent { background: var(--red-dim); color: var(--red); animation: pulse 2s infinite; }
+.cat-countdown.soon     { background: var(--amber-dim); color: var(--amber); }
+.cat-countdown.upcoming { background: var(--ice-dim); color: var(--ice); }
+.cat-score {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-dim);
+  padding: 0 16px 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.cat-score-bar {
+  flex: 1;
+  height: 2px;
+  background: var(--border);
+  border-radius: 1px;
+  overflow: hidden;
+}
+.cat-score-fill { height: 100%; border-radius: 1px; }
+
+/* ═══ Market State strip ═══════════════════════════════════════════════════ */
+.mstrip {
+  display: grid;
+  grid-template-columns: 1.15fr 1fr 1fr;
+  gap: 12px;
+  align-items: start;
+}
+@media (max-width: 1080px) { .mstrip { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 720px)  { .mstrip { grid-template-columns: 1fr; } }
+/* page-local panel: NO backdrop-filter (these repeat — keep compositing cheap) */
+.mr-panel {
+  background: rgba(11,18,30,0.74);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px 14px 13px;
+}
+.mr-span3 { grid-column: 1 / -1; }
+@media (max-width: 720px) { .mr-span3 { grid-column: span 1; } }
+.mr-panel-title {
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--text-bright); margin-bottom: 10px; display: flex; align-items: center; gap: 8px;
+}
+.mr-panel-title .g { color: var(--amber); }
+.mr-panel-title .meta { margin-left: auto; color: var(--text-dim); font-size: 10px; letter-spacing: 1px; }
+
+/* breadth bar */
+.breadth-wrap { margin-bottom: 12px; }
+.breadth-bar { display: flex; height: 26px; border-radius: 4px; overflow: hidden; border: 1px solid var(--border); }
+.breadth-seg { display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: 11px; font-weight: 600; color: var(--bg); min-width: 28px; }
+.breadth-seg.adv { background: var(--green); }
+.breadth-seg.unch { background: var(--text-dim); }
+.breadth-seg.dec { background: var(--red); }
+.breadth-legend { display: flex; justify-content: space-between; margin-top: 6px; font-family: var(--mono); font-size: 10px; color: var(--text-dim); }
+.breadth-legend .up { color: var(--green); } .breadth-legend .dn { color: var(--red); }
+
+/* mini stat rows inside panels */
+.dash-stat-row { display: flex; align-items: baseline; justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed var(--border); }
+.dash-stat-row:last-child { border-bottom: none; }
+.dash-stat-label { font-size: 12px; color: var(--text-dim); }
+.dash-stat-val { font-family: var(--mono); font-size: 13px; font-weight: 600; color: var(--text-bright); font-variant-numeric: tabular-nums; }
+.dash-stat-val.up { color: var(--green); } .dash-stat-val.dn { color: var(--red); } .dash-stat-val.warn { color: var(--amber); }
+
+/* mover / leader list rows */
+.mlist { display: flex; flex-direction: column; }
+.mrow {
+  display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: center;
+  padding: 5px 0; border-bottom: 1px dashed var(--border); cursor: pointer;
+}
+.mrow:last-child { border-bottom: none; }
+.mrow:hover .mrow-tkr { color: var(--ice); }
+.mrow-tkr { font-family: var(--mono); font-size: 13px; font-weight: 600; color: var(--text-bright); }
+.mrow-name { font-size: 10.5px; color: var(--text-dim); max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mrow-num { font-family: var(--mono); font-size: 12px; text-align: right; font-variant-numeric: tabular-nums; color: var(--text); }
+.mrow-num.up { color: var(--green); } .mrow-num.dn { color: var(--red); } .mrow-num.warn { color: var(--amber); }
+.mrow-badge { font-family: var(--mono); font-size: 9px; padding: 1px 5px; border-radius: 3px; border: 1px solid var(--border); color: var(--text-dim); }
+
+/* insider feed */
+.feed { display: flex; flex-direction: column; gap: 0; max-height: 248px; overflow-y: auto; }
+.feed-row { display: flex; gap: 9px; padding: 6px 0; border-bottom: 1px dashed var(--border); cursor: pointer; }
+.feed-row:last-child { border-bottom: none; }
+.feed-row:hover .feed-issuer { color: var(--ice); }
+.feed-glyph { color: var(--amber); font-size: 13px; flex-shrink: 0; line-height: 1.5; }
+.feed-main { min-width: 0; }
+.feed-issuer { font-family: var(--mono); font-size: 12px; font-weight: 600; color: var(--text-bright); }
+.feed-title { font-size: 11px; color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 320px; }
+.feed-date { font-family: var(--mono); font-size: 10px; color: var(--text-dim); margin-left: auto; flex-shrink: 0; }
+
+/* intraday activity sparkbars */
+.act-spark { display: flex; align-items: flex-end; gap: 1px; height: 56px; margin-top: 4px; }
+.act-bar { flex: 1; background: var(--ice-dim); border-radius: 1px 1px 0 0; min-height: 1px; transition: background 0.15s; }
+.act-bar.peak { background: var(--amber); }
+.act-axis { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 9px; color: var(--text-dim); margin-top: 4px; }
+
+/* ── Radar Intelligence (graded book) ─────────────────────────────────── */
+.ir-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 16px; }
+.ir-kpi { background: rgba(13,20,32,.92); border: 1px solid var(--border); border-radius: 7px; padding: 11px 13px; }
+.ir-kpi .lbl { font-size: 8.5px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--text-dim); margin-bottom: 5px; }
+.ir-kpi .val { font-size: 17px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--text-bright); }
+.ir-kpi .val.pos { color: var(--green, #43e097); } .ir-kpi .val.neg { color: var(--red, #f06060); }
+.ir-kpi .sub { font-size: 9px; color: var(--text-dim); margin-top: 3px; }
+.ir-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; margin-bottom: 14px; }
+@media (max-width: 900px) { .ir-grid { grid-template-columns: 1fr; } }
+.ir-sub { font-size: 9px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--text-dim); margin-bottom: 8px; }
+.ir-league-row { display: grid; grid-template-columns: 128px 1fr 96px; gap: 10px; align-items: center; margin-bottom: 7px; font-size: 10.5px; }
+.ir-bar-track { position: relative; height: 12px; background: rgba(255,255,255,.05); border-radius: 3px; overflow: hidden; }
+.ir-bar-track::after { content: ''; position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; background: rgba(255,255,255,.14); }
+.ir-bar { position: absolute; top: 0; bottom: 0; opacity: .85; }
+.ir-reads { border-left: 2px solid var(--ice); padding: 4px 0 4px 14px; margin: 6px 0 12px; }
+.ir-read { font-size: 11.5px; line-height: 1.75; }
+.ir-read b { color: var(--ice); font-weight: 600; }
+.ir-note { font-size: 9px; color: var(--text-dim); letter-spacing: .05em; line-height: 1.6; }
+
+/* ─── Today's Book / Conviction Shortlist ─────────────────────────────── */
+.conviction-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+}
+@media (max-width: 760px) { .conviction-grid { grid-template-columns: 1fr; } }
+.conviction-col {
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.012);
+  padding: 14px 14px 12px;
+}
+.conv-col-head {
+  display: flex; align-items: center; gap: 10px;
+  padding-bottom: 10px; margin-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em;
+  font-variant-numeric: tabular-nums;
+}
+.conv-col-arrow      { font-size: 13px; line-height: 1; }
+.conv-col-arrow.long { color: var(--green, #4ade80); }
+.conv-col-arrow.short{ color: var(--red,   #f87171); }
+.conv-col-label      { color: var(--text-bright); font-weight: 500; }
+.conv-col-count      { margin-left: auto; color: var(--text-dim); font-size: 10px; }
+.conv-list           { display: flex; flex-direction: column; gap: 8px; }
+.conv-empty {
+  color: var(--text-dim); font-family: var(--mono);
+  font-size: 10px; letter-spacing: 0.12em;
+  text-align: center; padding: 28px 8px;
+}
+.conv-card {
+  position: relative;
+  border: 1px solid var(--border);
+  background: var(--bg2, #0d1218);
+  padding: 11px 12px 10px;
+  cursor: pointer; transition: all 0.15s;
+}
+.conv-card.long  { border-left: 2px solid var(--green, #4ade80); }
+.conv-card.short { border-left: 2px solid var(--red,   #f87171); }
+.conv-card:hover { background: var(--bg3); border-color: rgba(255,255,255,0.12); }
+.conv-row1 {
+  display: flex; align-items: baseline; gap: 10px;
+}
+.conv-arrow      { font-size: 11px; line-height: 1; }
+.conv-arrow.long { color: var(--green, #4ade80); }
+.conv-arrow.short{ color: var(--red,   #f87171); }
+.conv-ticker {
+  font-family: var(--mono); font-size: 13px; font-weight: 500;
+  color: var(--text-bright); letter-spacing: 0.04em;
+}
+.conv-name {
+  font-family: var(--sans); font-size: 11px; color: var(--text-dim);
+  flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.conv-score {
+  font-family: var(--mono); font-size: 20px; font-weight: 500;
+  color: var(--amber); letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.conv-bar {
+  height: 2px; background: var(--bg3); margin: 7px 0 9px;
+  overflow: hidden;
+}
+.conv-bar-fill       { height: 100%; transition: width 0.4s; }
+.conv-bar-fill.long  { background: linear-gradient(90deg, var(--green, #4ade80), #86efac); }
+.conv-bar-fill.short { background: linear-gradient(90deg, var(--red,   #f87171), #fda4af); }
+.conv-signals { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 9px; }
+.conv-chip {
+  font-family: var(--mono); font-size: 9px; letter-spacing: 0.08em;
+  color: var(--text); background: var(--bg3);
+  border: 1px solid var(--border);
+  padding: 2px 6px;
+  display: inline-flex; align-items: center; gap: 5px;
+}
+.conv-chip .g           { color: var(--amber); font-size: 10px; }
+.conv-chip.event        { border-color: rgba(245,166,35,0.32); color: var(--amber); }
+.conv-chip.event .g     { color: var(--amber); }
+.conv-footer {
+  display: flex; gap: 14px; flex-wrap: wrap;
+  font-family: var(--mono); font-size: 10px;
+  color: var(--text-dim); letter-spacing: 0.06em;
+  border-top: 1px solid var(--border); padding-top: 8px;
+  font-variant-numeric: tabular-nums;
+}
+.conv-footer strong { color: var(--text-bright); font-weight: 500; }
+.conv-footer .up    { color: var(--green, #4ade80); }
+.conv-footer .dn    { color: var(--red,   #f87171); }
+.conv-chip.si       { border-color: rgba(245,166,35,0.32); color: var(--amber); }
+.conv-chip.si.high  { background: rgba(245,166,35,0.10); }
+.conv-chip.si .g    { color: var(--amber); }
+.conv-chip.dark.up        { border-color: rgba(74,222,128,0.40); color: var(--green, #4ade80); }
+.conv-chip.dark.dn        { border-color: rgba(248,113,113,0.40); color: var(--red, #f87171); }
+.conv-chip.dark .g        { color: inherit; }
+.conv-chip.dark.confirmed { background: rgba(245,166,35,0.10); border-color: var(--amber); }
+
+/* ─── Book KPI strip ────────────────────────────────────────────────────── */
+.book-kpis {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
+  margin-bottom: 14px;
+}
+@media (max-width: 760px) { .book-kpis { grid-template-columns: repeat(2, 1fr); } }
+.book-kpi {
+  border: 1px solid var(--border); padding: 10px 12px;
+  background: var(--bg2);
+}
+.book-kpi-label {
+  font-family: var(--mono); font-size: 9px; letter-spacing: 0.18em;
+  text-transform: uppercase; color: var(--text-dim);
+  margin-bottom: 5px;
+}
+.book-kpi-value {
+  font-family: var(--mono); font-size: 19px; font-weight: 500;
+  color: var(--text-bright); letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.book-kpi-sub {
+  font-family: var(--mono); font-size: 9px; color: var(--text-dim);
+  margin-top: 2px; letter-spacing: 0.06em;
+}
+
+/* ─── Track Record table ─────────────────────────────────────────────── */
+.perf-table {
+  width: 100%; border-collapse: collapse;
+  font-family: var(--mono); font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.perf-table th {
+  text-align: right; padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--text-dim); font-weight: 500;
+}
+.perf-table th:first-child { text-align: left; }
+.perf-table td {
+  text-align: right; padding: 9px 10px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+}
+.perf-table td:first-child { text-align: left; color: var(--text-bright); }
+.perf-table tr:last-child td { border-bottom: none; }
+.perf-table .pos { color: var(--green, #4ade80); }
+.perf-table .neg { color: var(--red,   #f87171); }
+.perf-empty {
+  color: var(--text-dim); font-family: var(--mono);
+  font-size: 11px; letter-spacing: 0.06em;
+  text-align: center; padding: 28px 8px;
+}
+
+/* ─── Company Deep Dive ─────────────────────────────────────────────────── */
+#companyDeepDive {
+  border: 1px solid var(--border-glow);
+  border-radius: 8px;
+  padding: 24px;
+  background: var(--bg2);
+  margin-bottom: 40px;
+  position: relative;
+  scroll-margin-top: 24px;
+}
+.dive-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+.dive-ticker {
+  font-family: var(--mono);
+  font-size: 34px;
+  font-weight: 700;
+  color: var(--ice);
+  line-height: 1;
+  letter-spacing: -1px;
+}
+.dive-name {
+  font-size: 15px;
+  color: var(--text-bright);
+  font-weight: 500;
+  margin-top: 4px;
+}
+.dive-badge {
+  font-family: var(--mono);
+  font-size: 10px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 2px 8px;
+  color: var(--text-dim);
+  letter-spacing: 1px;
+}
+.dive-hdr-right {
+  margin-left: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+.dive-mcap {
+  font-family: var(--mono);
+  font-size: 15px;
+  color: var(--amber);
+}
+.dive-mcap-sub { font-size: 11px; color: var(--text-dim); }
+.dive-metrics {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+}
+.dive-metric {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 10px 16px;
+  min-width: 88px;
+}
+.dive-metric-label {
+  font-size: 10px;
+  font-family: var(--mono);
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 4px;
+}
+.dive-metric-value {
+  font-size: 18px;
+  font-family: var(--mono);
+  color: var(--text-bright);
+}
+.dive-bottom {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 16px;
+  margin-top: 20px;
+}
+@media (max-width: 960px) { .dive-bottom { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 600px) { .dive-bottom { grid-template-columns: 1fr; } }
+.dive-panel {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 14px;
+  overflow: hidden;
+}
+.dive-panel-title {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 10px;
+}
+.dive-flow-legend {
+  display: flex;
+  gap: 20px;
+  padding: 10px 0 0;
+  font-size: 12px;
+  color: var(--text-dim);
+  flex-wrap: wrap;
+}
+/* dossier hand-off — dossier.html owns history/events/filings for the name */
+.dossier-cta {
+  display: flex; flex-direction: column; gap: 10px;
+  justify-content: center; align-items: flex-start;
+}
+.dossier-cta p { font-size: 12px; color: var(--text-dim); line-height: 1.55; }
+.dossier-link {
+  font-family: var(--mono); font-size: 12px; letter-spacing: 1px;
+  color: var(--ice); border: 1px solid var(--ice-dim);
+  padding: 10px 16px; border-radius: 4px; text-decoration: none;
+  transition: all 0.15s;
+}
+.dossier-link:hover { background: var(--ice-dim); }
+
+/* ─── Drill-down intel strip ─────────────────────────────────────────────── */
+.dive-intel { display: flex; flex-wrap: wrap; gap: 10px; margin: 0 0 22px; }
+.intel-chip {
+  display: flex; flex-direction: column; gap: 3px;
+  background: var(--bg3); border: 1px solid var(--border);
+  border-left: 2px solid var(--border); border-radius: 4px;
+  padding: 9px 14px; min-width: 104px;
+}
+.intel-chip.pos  { border-left-color: var(--green); }
+.intel-chip.neg  { border-left-color: var(--red); }
+.intel-chip.warn { border-left-color: var(--amber); }
+.intel-chip.dark { border-left-color: var(--purple); }
+.intel-chip.ice  { border-left-color: var(--ice); }
+.intel-chip .intel-k { font-family: var(--mono); font-size: 9px; letter-spacing: 1px; color: var(--text-dim); text-transform: uppercase; }
+.intel-chip .intel-v { font-family: var(--mono); font-size: 16px; font-weight: 700; color: var(--text-bright); line-height: 1.1; }
+.intel-chip .intel-sub { font-size: 9px; color: var(--text-dim); }
+.dive-syn {
+  font-size: 13px; line-height: 1.65; color: var(--text-bright);
+  background: var(--bg3); border: 1px solid var(--border); border-radius: 6px;
+  padding: 14px 18px; margin-bottom: 22px;
+}
+.dive-syn .hl-pos  { color: var(--green); font-weight: 600; }
+.dive-syn .hl-neg  { color: var(--red); font-weight: 600; }
+.dive-syn .hl-warn { color: var(--amber); font-weight: 600; }
+.dive-syn .hl-dark { color: var(--purple); font-weight: 600; }
+.dive-syn .hl-ice  { color: var(--ice); font-weight: 600; }
+.si-bar { height: 5px; border-radius: 3px; background: var(--bg2); overflow: hidden; margin-top: 6px; }
+.si-bar > span { display: block; height: 100%; background: var(--amber); }
+
+/* ─── Tables ────────────────────────────────────────────────────────────── */
+.table-wrap { overflow-x: auto; border-radius: 6px; border: 1px solid var(--border); }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+thead tr { background: var(--bg3); }
+th {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  padding: 10px 14px;
+  text-align: left;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--border);
+}
+th.r { text-align: right; }
+td {
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  white-space: nowrap;
+}
+td.r { text-align: right; font-family: var(--mono); font-size: 12px; }
+td.mono { font-family: var(--mono); font-size: 12px; }
+tbody tr:last-child td { border-bottom: none; }
+tbody tr {
+  cursor: pointer;
+  transition: background 0.12s;
+}
+tbody tr:hover { background: var(--bg3); }
+tbody tr.selected { background: var(--ice-dim); }
+
+/* ─── Badges (page tweaks on top of shared intel.css badges) ───────────── */
+.badge {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 3px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  font-weight: 500;
+}
+.badge-amber  { background: var(--amber-dim); color: var(--amber); border: 1px solid var(--amber-dim); }
+.badge-ice    { background: var(--ice-dim); color: var(--ice); border: 1px solid var(--ice-dim); }
+.badge-green  { background: var(--green-dim); color: var(--green); }
+.badge-red    { background: var(--red-dim); color: var(--red); }
+.badge-purple { background: #2d1f5e; color: var(--purple); }
+.badge-dim    { background: var(--bg3); color: var(--text-dim); }
+.live-pill { display: inline-block; margin-left: 6px; padding: 1px 5px; border-radius: 3px;
+             font-family: var(--mono); font-size: 8px; letter-spacing: 0.12em; font-weight: 600;
+             color: var(--green); background: rgba(67,224,151,0.12); border: 1px solid rgba(67,224,151,0.35);
+             vertical-align: middle; animation: livePillPulse 2s infinite; }
+@keyframes livePillPulse { 0%,100% { opacity: 1; } 50% { opacity: 0.55; } }
+.evt-btn { background: var(--bg2); color: var(--text-dim); border: 1px solid var(--border); padding: 4px 10px; border-radius: 4px; cursor: pointer; font-family: var(--mono); font-size: 11px; transition: all 0.15s; }
+.evt-btn:hover  { border-color: var(--ice); color: var(--text); }
+.evt-btn.active { background: var(--ice-dim); color: var(--ice); border-color: var(--ice); }
+.prox-IMMINENT    { color: #f06060; font-weight: 600; }
+.prox-UPCOMING    { color: var(--amber); }
+.prox-JUST_PASSED { color: var(--text-dim); font-style: italic; }
+
+/* ─── Bar fills ─────────────────────────────────────────────────────────── */
+.bar-wrap { display: flex; align-items: center; gap: 8px; }
+.bar-track { flex: 1; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; min-width: 60px; }
+.bar-fill  { height: 100%; border-radius: 2px; }
+.bar-ice   { background: var(--ice); }
+.bar-amber { background: var(--amber); }
+.bar-green { background: var(--green); }
+.bar-pct   { font-family: var(--mono); font-size: 11px; color: var(--text-dim); width: 42px; text-align: right; }
+
+/* ─── Chart containers ──────────────────────────────────────────────────── */
+.chart-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 32px;
+}
+@media (max-width: 900px) { .chart-grid { grid-template-columns: 1fr; } }
+.chart-box {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 20px;
+}
+.chart-box.full { grid-column: 1 / -1; }
+.chart-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 16px;
+}
+.chart-container { position: relative; height: 220px; }
+.chart-container.tall { height: 300px; }
+
+/* ─── Whale alert cards ─────────────────────────────────────────────────── */
+.whale-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr)); gap: 12px; }
+.whale-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 16px;
+  border-left: 3px solid var(--amber);
+  transition: border-color 0.2s, background 0.2s;
+  animation: fadeIn 0.4s ease both;
+}
+.whale-card:hover { background: var(--bg3); border-left-color: var(--gold); }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.whale-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+.whale-isin { font-family: var(--mono); font-size: 14px; color: var(--text-bright); }
+.whale-venue { font-family: var(--mono); font-size: 11px; color: var(--text-dim); }
+.whale-notional { font-family: var(--mono); font-size: 18px; color: var(--amber); margin-bottom: 6px; }
+.whale-meta { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+
+/* ─── Signal cards ──────────────────────────────────────────────────────── */
+.signal-list { display: flex; flex-direction: column; gap: 8px; }
+.signal-row {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  transition: background 0.12s;
+  animation: fadeIn 0.3s ease both;
+  cursor: pointer;
+}
+.signal-row:hover { background: var(--bg3); }
+.signal-icon { font-size: 18px; flex-shrink: 0; }
+.signal-body { flex: 1; }
+.signal-type { font-family: var(--mono); font-size: 11px; color: var(--amber); letter-spacing: 1px; margin-bottom: 2px; }
+.signal-desc { font-size: 12px; color: var(--text); }
+.signal-isin { font-family: var(--mono); font-size: 13px; color: var(--text-bright); }
+.signal-strength { font-family: var(--mono); font-size: 10px; }
+.signal-strength.STRONG { color: var(--amber); }
+.signal-strength.MODERATE { color: var(--text-dim); }
+
+.drill-close {
+  margin-left: auto;
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  padding: 4px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 12px;
+  transition: all 0.12s;
+}
+.drill-close:hover { border-color: var(--red); color: var(--red); }
+
+/* ─── Loader / error ───────────────────────────────────────────────────── */
+.loader { text-align: center; padding: 48px; font-family: var(--mono); color: var(--text-dim); letter-spacing: 2px; animation: pulse 1.5s infinite; }
+.error-msg { color: var(--red); font-family: var(--mono); font-size: 12px; padding: 16px; background: var(--red-dim); border-radius: 4px; }
+
+/* ─── Split layout ──────────────────────────────────────────────────────── */
+.split { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+@media (max-width: 800px) { .split { grid-template-columns: 1fr; } }
+
+/* ─── Scrollbar ─────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-glow); }
+
+/* ─── Advanced section divider ───────────────────────────────────────────── */
+.adv-divider { display: flex; align-items: center; gap: 16px; margin: 44px 0 24px; }
+.adv-divider-line { flex: 1; height: 1px; background: linear-gradient(90deg, transparent, var(--border) 40%, var(--border)); }
+.adv-divider-line:last-child { background: linear-gradient(90deg, var(--border), var(--border) 60%, transparent); }
+.adv-divider-label { font-family: var(--mono); font-size: 10px; letter-spacing: 2px; color: var(--text-dim); white-space: nowrap; }
+
+/* ─── Mobile / small screens ─────────────────────────────────────────────── */
+@media (max-width: 600px) {
+  .page { padding: 0 14px 56px; }
+  header { padding: 24px 0 20px; margin-bottom: 22px; }
+  .logo { font-size: 22px; }
+  .header-meta { gap: 10px; }
+  .date-bar { margin-bottom: 22px; }
+  .date-bar input#isinSearch { width: 130px !important; }
+  .feed-title { max-width: 200px; }
+  #horizonCanvas { height: 230px; }
+  .hz-legend .dim { display: none; }
+}
+
+/* ── Return Distribution section ─────────────────────────────────────────── */
+.mr-span2 { grid-column: span 2; }
+@media (max-width: 720px) { .mr-span2 { grid-column: span 1; } }
+.dist-strip { margin-top: 12px; }
+.dist-hero {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px;
+}
+.dist-stat {
+  background: rgba(11,18,30,0.74); border: 1px solid var(--border);
+  border-radius: 6px; padding: 11px 13px;
+}
+.dist-stat .k {
+  font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--text-dim);
+}
+.dist-stat .v {
+  font-family: var(--mono); font-size: 21px; font-weight: 600;
+  color: var(--text-bright); margin-top: 4px; line-height: 1.05;
+}
+.dist-stat .v.pos { color: #43e097; }
+.dist-stat .v.neg { color: #f06060; }
+.dist-stat .v.amber { color: var(--amber); }
+.dist-stat .sub { font-family: var(--mono); font-size: 10px; color: var(--text-dim); margin-top: 3px; }
+.dist-note {
+  font-family: var(--mono); font-size: 10.5px; line-height: 1.5;
+  color: var(--text-dim); margin-top: 10px;
+}
+.dist-table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 11px; }
+.dist-table th {
+  text-align: right; padding: 5px 8px; color: var(--text-dim);
+  font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; font-size: 9.5px;
+  border-bottom: 1px solid var(--border);
+}
+.dist-table th:first-child, .dist-table td:first-child { text-align: left; }
+.dist-table td { text-align: right; padding: 5px 8px; color: var(--text); border-bottom: 1px solid rgba(255,255,255,0.04); }
+.dist-table tr.best td { color: var(--text-bright); background: var(--amber-glow); }
+.dist-table tr.best td:first-child::before { content: '★ '; color: var(--amber); }
+.dist-table .muted { color: var(--text-dim); }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- ── Header ──────────────────────────────────────────────────────────── -->
+  <header>
+    <div class="logo-block">
+      <div class="logo">Slensvik<span>radar</span></div>
+      <div class="logo-sub">Catalyst Intelligence · XOSL / MERK</div>
+    </div>
+    <div data-intel-nav></div>
+    <div class="header-meta">
+      <div class="meta-pill live" id="statusPill">T-1 DATA</div>
+      <div class="meta-pill" id="tradeDatePill">—</div>
+      <div class="meta-pill" id="totalTradesPill">— TRADES</div>
+    </div>
+  </header>
+
+  <!-- ── Date selector / ISIN jump ───────────────────────────────────────── -->
+  <div class="date-bar">
+    <label>VIEWING DATE</label>
+    <select id="dateSelect"></select>
+    <button class="btn" onclick="loadDate()">LOAD</button>
+    <label style="margin-left:16px">JUMP TO ISIN</label>
+    <input type="text" id="isinSearch" placeholder="ISIN or ticker, e.g. EQNR" style="width:180px">
+    <button class="btn" onclick="searchISIN()">FIND</button>
+  </div>
+
+  <!-- ── HERO · Catalyst Horizon ─────────────────────────────────────────── -->
+  <section class="hero" id="sec-horizon">
+    <div class="hero-inner">
+      <div class="hero-top">
+        <span class="hero-eyebrow"><span class="dot">●</span> Catalyst Horizon</span>
+        <span class="hero-date" id="heroDate">—</span>
+        <button class="hero-fx-toggle" id="fxToggle" onclick="toggleAmbient()">◉ FX</button>
+      </div>
+      <div class="hero-lede" id="heroLede">Reading the tape…</div>
+
+      <div class="hz-wrap" id="hzWrap">
+        <canvas id="horizonCanvas"></canvas>
+        <div class="hz-tip" id="horizonTip"></div>
+        <div class="hz-empty" id="horizonEmpty" style="display:none"></div>
+      </div>
+      <div class="hz-legend">
+        <span><i class="sw" style="background:var(--green)"></i>ACCUMULATION</span>
+        <span><i class="sw" style="background:var(--red)"></i>DISTRIBUTION</span>
+        <span><i class="sw" style="background:var(--ice)"></i>NEUTRAL</span>
+        <span><i class="sw" style="background:var(--amber);border-radius:1px"></i>TODAY</span>
+        <span class="dim">size = catalyst score · pulse = event ≤ 5 days · click a node to open its setup</span>
+      </div>
+
+      <div class="hero-ticks" id="heroTicks"></div>
+    </div>
+  </section>
+
+  <!-- ── Catalyst setups (the seven-evidence cards) ──────────────────────── -->
+  <div class="section" id="sec-catalysts">
+    <div class="section-head">
+      <div class="section-title">◆ Catalyst Setups</div>
+      <div class="section-desc">Precursor evidence — insiders, dark flow, signals, whales, volume, trend, shorts — fused per scheduled event inside 35 days. Click a card to drill.</div>
+      <div class="section-count" id="catalystCount">—</div>
+    </div>
+    <div class="section-body">
+      <div class="catalyst-grid" id="catalystGrid">
+        <div class="skeleton" style="height:230px;border-radius:8px"></div>
+        <div class="skeleton" style="height:230px;border-radius:8px"></div>
+        <div class="skeleton" style="height:230px;border-radius:8px"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Market state strip ──────────────────────────────────────────────── -->
+  <div class="section" id="sec-market">
+    <div class="section-head">
+      <div class="section-title">⊞ Market State</div>
+      <div class="section-desc">The whole tape at a glance — breadth, microstructure, leaders, insider filings.</div>
+      <div class="section-count" id="marketTodayCount">—</div>
+    </div>
+    <div class="section-body">
+      <div class="mstrip">
+
+        <div class="mr-panel">
+          <div class="mr-panel-title"><span class="g">⊞</span> Breadth &amp; Flow</div>
+          <div class="breadth-wrap" id="breadthWrap"><div class="skeleton" style="height:26px"></div></div>
+          <div id="dashStats"></div>
+        </div>
+
+        <div class="mr-panel">
+          <div class="mr-panel-title"><span class="g">⊟</span> Tape Microstructure <span class="meta">market-wide</span></div>
+          <div id="kpiGrid"><div class="conv-empty">LOADING …</div></div>
+        </div>
+
+        <div class="mr-panel">
+          <div class="mr-panel-title"><span class="g">◐</span> Insider Activity <span class="meta" id="insiderMeta">—</span></div>
+          <div class="feed" id="insiderFeed"><div class="conv-empty">LOADING …</div></div>
+        </div>
+
+        <div class="mr-panel">
+          <div class="mr-panel-title"><span class="g">▲</span> Top Movers <span class="meta">vs prior close</span></div>
+          <div class="mlist" id="moversList"></div>
+        </div>
+
+        <div class="mr-panel">
+          <div class="mr-panel-title"><span class="g">■</span> Most Active <span class="meta">turnover</span></div>
+          <div class="mlist" id="activeList"></div>
+        </div>
+
+        <div class="mr-panel">
+          <div class="mr-panel-title"><span class="g">◍</span> Dark-Flow Leaders <span class="meta">% of volume</span></div>
+          <div class="mlist" id="darkLeadersList"></div>
+        </div>
+
+        <div class="mr-panel mr-span3">
+          <div class="mr-panel-title"><span class="g">∿</span> Intraday Activity <span class="meta">notional / minute · Oslo</span></div>
+          <div class="act-spark" id="actSpark"></div>
+          <div class="act-axis"><span>07:00</span><span id="actPeakLabel">—</span><span>16:30</span></div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Return Distribution (Slensvik model, Phase 1) ────────────────────── -->
+  <div class="section" id="sec-distribution">
+    <div class="section-head">
+      <div class="section-title">∮ Return Distribution</div>
+      <div class="section-desc">What shape do market returns actually take? We fit a kitchen-sink of distributions to the pooled intraday tape and let the data pick the winner — the foundation of the Slensvik model.</div>
+      <div class="section-count" id="distCount">—</div>
+    </div>
+    <div class="section-body">
+      <div class="dist-hero" id="distHero"></div>
+      <div class="mstrip dist-strip">
+
+        <div class="mr-panel mr-span3">
+          <div class="mr-panel-title"><span class="g">∮</span> Empirical density vs fitted models <span class="meta">pooled 1-min log returns · Oslo session</span></div>
+          <div class="chart-container" style="height:360px"><canvas id="distDensity"></canvas></div>
+          <div class="dist-note" id="distDensityNote"></div>
+        </div>
+
+        <div class="mr-panel">
+          <div class="mr-panel-title"><span class="g">⊿</span> Normal Q–Q <span class="meta">quantile vs Gaussian</span></div>
+          <div class="chart-container" style="height:300px"><canvas id="distQQ"></canvas></div>
+          <div class="dist-note">Points bowing off the 45° line in the corners are the fat tails — extreme moves arrive far more often than the bell curve allows.</div>
+        </div>
+
+        <div class="mr-panel">
+          <div class="mr-panel-title"><span class="g">⤓</span> Left-tail survival <span class="meta">P(return &lt; −t), log scale</span></div>
+          <div class="chart-container" style="height:300px"><canvas id="distTail"></canvas></div>
+          <div class="dist-note">The empirical line sitting above the Gaussian means crashes of a given size are more probable than the Normal predicts.</div>
+        </div>
+
+        <div class="mr-panel">
+          <div class="mr-panel-title"><span class="g">⚠</span> Value-at-Risk / Expected Shortfall <span class="meta">per 1-min return</span></div>
+          <div id="distVarTable"></div>
+          <div class="dist-note" id="distVarNote"></div>
+        </div>
+
+        <div class="mr-panel mr-span2">
+          <div class="mr-panel-title"><span class="g">≣</span> Goodness-of-fit scorecard <span class="meta">ranked by AIC — lower is better</span></div>
+          <div id="distScorecard"></div>
+          <div class="dist-note">AIC/BIC use the full sample. KS &amp; Anderson–Darling are CDF-based diagnostics; gen-hyp's CDF is numerically unstable, so trust its AIC over its KS.</div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Today's Book (conviction shortlist) ──────────────────────────────── -->
+  <div class="section" id="sec-conviction">
+    <div class="section-head">
+      <div class="section-title">▣ Today's Book</div>
+      <div class="section-desc">Ranked by signal stack × direction × persistence × event proximity. Click any card to drill.</div>
+      <div class="section-count" id="convictionCount">—</div>
+    </div>
+    <div class="section-body">
+      <div class="book-kpis" id="bookKpis"></div>
+      <div class="conviction-grid">
+        <div class="conviction-col">
+          <div class="conv-col-head">
+            <span class="conv-col-arrow long">▲</span>
+            <span class="conv-col-label">LONG CONVICTION</span>
+            <span class="conv-col-count" id="longCount">—</span>
+          </div>
+          <div class="conv-list" id="longList"><div class="conv-empty">LOADING …</div></div>
+        </div>
+        <div class="conviction-col">
+          <div class="conv-col-head">
+            <span class="conv-col-arrow short">▼</span>
+            <span class="conv-col-label">SHORT CONVICTION</span>
+            <span class="conv-col-count" id="shortCount">—</span>
+          </div>
+          <div class="conv-list" id="shortList"><div class="conv-empty">LOADING …</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Radar Intelligence — the graded book ─────────────────────────────── -->
+  <div class="section" id="sec-intel-report">
+    <div class="section-head">
+      <div class="section-title">◎ Radar Intelligence</div>
+      <div class="section-desc">Every daily top-10 call regraded against what the market then did — dividend-adjusted excess return vs the cap-weighted index.</div>
+      <div class="section-count" id="irCount">—</div>
+    </div>
+    <div class="section-body">
+      <div class="ir-kpis" id="irKpis"></div>
+      <div class="ir-grid">
+        <div>
+          <div class="ir-sub">Book scorecard · top-10 per side · excess vs market</div>
+          <div class="table-wrap"><table class="perf-table"><thead><tr>
+            <th>Side</th><th>Calls</th><th>+1d hit</th><th>+5d hit</th><th>+5d med</th><th>+10d hit</th><th>+10d med</th>
+          </tr></thead><tbody id="irScore"><tr><td colspan="7" class="perf-empty">LOADING …</td></tr></tbody></table></div>
+          <div class="ir-sub" style="margin-top:16px">Best ◈ and worst ◇ graded calls (+10d excess)</div>
+          <div id="irCalls" style="font-size:10.5px; line-height:2.1">—</div>
+        </div>
+        <div>
+          <div class="ir-sub">Signal league · median market-adjusted move 10d after first firing</div>
+          <div id="irLeague">—</div>
+        </div>
+      </div>
+      <div class="ir-reads" id="irReads"></div>
+      <div class="ir-note" id="irNote"></div>
+    </div>
+  </div>
+
+  <!-- ── Company Deep Dive ─────────────────────────────────────────────────── -->
+  <div id="companyDeepDive" style="display:none">
+    <div class="dive-header">
+      <div>
+        <div class="dive-ticker" id="diveTicker">—</div>
+        <div class="dive-name" id="diveName">—</div>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <span class="dive-badge" id="diveVenueBadge">—</span>
+          <span class="dive-badge" id="diveISINBadge">—</span>
+        </div>
+      </div>
+      <div class="dive-hdr-right">
+        <div class="dive-mcap" id="diveMcap">—</div>
+        <div class="dive-mcap-sub" id="diveMcapSub"></div>
+      </div>
+      <button class="drill-close" onclick="closeDrill()">✕ CLOSE</button>
+    </div>
+
+    <div class="dive-syn" id="diveSyn" style="display:none"></div>
+    <div class="dive-intel" id="diveIntel"></div>
+
+    <div class="dive-metrics" id="diveMetrics"></div>
+
+    <div class="chart-box full">
+      <div class="chart-label">◍ Dark Flow Impact — Individual Trades vs VWAP</div>
+      <div class="chart-container" style="height:380px"><canvas id="darkFlowChart"></canvas></div>
+      <div class="dive-flow-legend">
+        <span>⚫ Dark trade (size = notional)</span>
+        <span style="color:rgba(79,195,247,0.55)">● Lit trade</span>
+        <span style="color:var(--amber)">— Modal price</span>
+        <span id="darkFlowStats" style="margin-left:auto;color:var(--text)"></span>
+      </div>
+    </div>
+
+    <div class="dive-bottom">
+      <div class="chart-box">
+        <div class="chart-label">Today — Intraday Volume Profile</div>
+        <div class="chart-container"><canvas id="drillIntraday"></canvas></div>
+      </div>
+      <div class="chart-box">
+        <div class="chart-label">Participant Classification Mix</div>
+        <div class="chart-container"><canvas id="drillMix"></canvas></div>
+      </div>
+      <div class="chart-box">
+        <div class="chart-label">Dark Pool vs Lit vs LIS</div>
+        <div class="chart-container"><canvas id="drillDark"></canvas></div>
+      </div>
+    </div>
+
+    <div class="dive-panel dossier-cta" style="margin-top:16px">
+      <div class="dive-panel-title">Full Company Dossier</div>
+      <p>Price history, corporate events, insider filings, short interest and signal history for this name live on its dossier page.</p>
+      <a class="dossier-link" id="diveDossierLink" href="dossier.html">OPEN FULL DOSSIER ↗</a>
+    </div>
+  </div>
+
+  <!-- ── Advanced · Microstructure & Expert Tools ───────────────────────── -->
+  <div class="adv-divider">
+    <span class="adv-divider-line"></span>
+    <span class="adv-divider-label">⊞ ADVANCED · MICROSTRUCTURE &amp; EXPERT TOOLS</span>
+    <span class="adv-divider-line"></span>
+  </div>
+
+  <!-- ── Signal Track Record ──────────────────────────────────────────────── -->
+  <div class="section collapsed" id="sec-track-record">
+    <div class="section-head collapsible" onclick="toggleSection('sec-track-record')">
+      <div class="section-title">▢ Signal Track Record</div>
+      <div class="section-desc">Per-signal-type hit rate and average return at T+1 / T+5 / T+20.</div>
+      <div class="section-count" id="trackRecordCount">—</div>
+      <span class="section-chevron">▾</span>
+    </div>
+    <div class="section-body">
+      <div class="table-wrap">
+        <table class="perf-table"><thead><tr>
+          <th>Signal</th>
+          <th>Fired</th>
+          <th>Strong</th>
+          <th>Mod</th>
+          <th>T+1 Obs</th>
+          <th>T+1 Hit</th>
+          <th>T+1 Avg</th>
+          <th>T+5 Obs</th>
+          <th>T+5 Hit</th>
+          <th>T+5 Avg</th>
+          <th>T+20 Obs</th>
+          <th>T+20 Hit</th>
+          <th>T+20 Avg</th>
+        </tr></thead>
+        <tbody id="trackRecordBody"><tr><td colspan="13" class="perf-empty">EXPAND TO LOAD</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Smart Money Signals ─────────────────────────────────────────────── -->
+  <div class="section collapsed" id="sec-signals">
+    <div class="section-head collapsible" onclick="toggleSection('sec-signals')">
+      <div class="section-title">╳ Smart Money Signals</div>
+      <div class="section-desc">Cross-sectionally ranked patterns — dark accumulation / distribution, EOD sweeps, ceiling &amp; floor breaks.</div>
+      <div class="section-count" id="signalCount">—</div>
+      <span class="section-chevron">▾</span>
+    </div>
+    <div class="section-body">
+      <div class="signal-list" id="signalList"><div class="loader">EXPAND TO LOAD</div></div>
+    </div>
+  </div>
+
+  <!-- ── Whale Alerts ────────────────────────────────────────────────────── -->
+  <div class="section collapsed" id="sec-whales">
+    <div class="section-head collapsible" onclick="toggleSection('sec-whales')">
+      <div class="section-title">■ Large Prints</div>
+      <div class="section-desc">Single trades exceeding NOK 5M, dark-pool large prints, OTC reports.</div>
+      <div class="section-count" id="whaleCount">—</div>
+      <span class="section-chevron">▾</span>
+    </div>
+    <div class="section-body">
+      <div class="whale-grid" id="whaleGrid"><div class="loader">EXPAND TO LOAD</div></div>
+    </div>
+  </div>
+
+  <!-- ── Corporate Events Calendar ────────────────────────────────────────── -->
+  <div class="section collapsed" id="sec-events">
+    <div class="section-head collapsible" onclick="toggleSection('sec-events')">
+      <div class="section-title">▌ Corporate Events</div>
+      <div class="section-desc">Upcoming and recent regulatory announcements — results, dividends, profit warnings. Signals near events are highlighted.</div>
+      <div class="section-count" id="eventsCount">—</div>
+      <span class="section-chevron">▾</span>
+    </div>
+    <div class="section-body">
+      <div style="display:flex;gap:8px;padding:0 0 12px 0;flex-wrap:wrap" id="eventFilters">
+        <button onclick="filterEvents('ALL')"           class="evt-btn active" data-f="ALL">ALL</button>
+        <button onclick="filterEvents('AGM')"           class="evt-btn" data-f="AGM">Ⅱ AGM</button>
+        <button onclick="filterEvents('EARNINGS_CALL')" class="evt-btn" data-f="EARNINGS_CALL">◴ EARNINGS</button>
+        <button onclick="filterEvents('RESULTS')"       class="evt-btn" data-f="RESULTS">▢ RESULTS</button>
+        <button onclick="filterEvents('EX_DATE')"       class="evt-btn" data-f="EX_DATE">◇ EX DATE</button>
+        <button onclick="filterEvents('WARNING')"       class="evt-btn" data-f="WARNING">△ WARNING</button>
+        <button onclick="filterEvents('INSIDER')"       class="evt-btn" data-f="INSIDER">◐ INSIDER</button>
+        <button onclick="filterEvents('PLACEMENT')"     class="evt-btn" data-f="PLACEMENT">▦ PLACEMENT</button>
+        <button onclick="filterEvents('DELISTING')"     class="evt-btn" data-f="DELISTING">⊘ DELISTING</button>
+        <button onclick="filterEvents('IPO')"           class="evt-btn" data-f="IPO">▴ IPO</button>
+      </div>
+      <div class="table-wrap">
+        <table id="eventsTable"><thead><tr>
+          <th>DATE</th><th>TYPE</th><th>ISSUER</th><th>TITLE</th>
+          <th class="r">DAYS</th><th>SIGNAL PROXIMITY</th>
+        </tr></thead>
+        <tbody id="eventsBody"><tr><td colspan="6" class="loader">EXPAND TO LOAD</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Signal × Event Proximity ──────────────────────────────────────────── -->
+  <div class="section collapsed" id="sec-proximity">
+    <div class="section-head collapsible" onclick="toggleSection('sec-proximity')">
+      <div class="section-title">≡ Signal × Event Proximity</div>
+      <div class="section-desc">Signals within 30 days of a corporate event — the informed-trading fingerprint.</div>
+      <div class="section-count" id="proximityCount">—</div>
+      <span class="section-chevron">▾</span>
+    </div>
+    <div class="section-body">
+      <div class="table-wrap">
+        <table><thead><tr>
+          <th>SIGNAL DATE</th><th>ISIN</th><th>SIGNAL</th><th>STRENGTH</th>
+          <th>EVENT TYPE</th><th>EVENT DATE</th><th class="r">DAYS TO EVENT</th>
+          <th>PROXIMITY</th><th class="r">T+1</th><th class="r">T+5</th><th class="r">T+20</th>
+        </tr></thead>
+        <tbody id="proximityBody"><tr><td colspan="11" class="loader">EXPAND TO LOAD</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ISIN Summary table ──────────────────────────────────────────────── -->
+  <div class="section collapsed" id="sec-isin">
+    <div class="section-head collapsible" onclick="toggleSection('sec-isin')">
+      <div class="section-title">▣ ISIN Intelligence</div>
+      <div class="section-desc">Per-ticker microstructure metrics — click any row to open Company Deep Dive.</div>
+      <div class="section-count" id="isinCount">—</div>
+      <span class="section-chevron">▾</span>
+    </div>
+    <div class="section-body">
+      <div class="table-wrap">
+        <table id="summaryTable"><thead><tr>
+          <th>ISIN</th><th>VENUE</th><th class="r">TRADES</th><th class="r">EST. ADV</th>
+          <th class="r">AVG SIZE</th><th>ALGO %</th><th>DARK %</th>
+          <th class="r">GINI</th><th class="r">PUB LAG</th><th>OPEN AUC</th><th>CLOSE AUC</th>
+        </tr></thead>
+        <tbody id="summaryBody"><tr><td colspan="11" class="loader">LOADING …</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Market Charts ──────────────────────────────────────────────────── -->
+  <div class="section collapsed" id="sec-charts">
+    <div class="section-head collapsible" onclick="toggleSection('sec-charts')">
+      <div class="section-title">▢ Market Charts</div>
+      <div class="section-desc">Aggregate microstructure — algo vs human composition, dark pool distribution by ISIN, intraday volume profile.</div>
+      <span class="section-chevron">▾</span>
+    </div>
+    <div class="section-body">
+      <div class="chart-grid">
+        <div class="chart-box">
+          <div class="chart-label">Algo vs Human vs Auction — Market Wide</div>
+          <div class="chart-container"><canvas id="algoDonut"></canvas></div>
+        </div>
+        <div class="chart-box">
+          <div class="chart-label">Dark Pool % — Top 20 ISINs by Volume</div>
+          <div class="chart-container"><canvas id="darkBar"></canvas></div>
+        </div>
+        <div class="chart-box full">
+          <div class="chart-label">Intraday Volume Profile — <span id="intradayLabel">Market Aggregate</span></div>
+          <div class="chart-container tall"><canvas id="intradayChart"></canvas></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Latency Fingerprinting ──────────────────────────────────────────── -->
+  <div class="section collapsed" id="sec-latency">
+    <div class="section-head collapsible" onclick="toggleSection('sec-latency')">
+      <div class="section-title">∿ Latency Fingerprinting</div>
+      <div class="section-desc">Publication lag from trade event to tape — sub-10ms = HFT / co-located; &gt;500ms = manual/human flow.</div>
+      <span class="section-chevron">▾</span>
+    </div>
+    <div class="section-body">
+      <div class="split">
+        <div class="table-wrap">
+          <table id="latencyTable"><thead><tr>
+            <th>ISIN</th><th class="r">AVG LAG</th><th class="r">MIN LAG</th>
+            <th>HFT &lt;10ms</th><th>ALGO 10–500ms</th><th>HUMAN &gt;500ms</th>
+          </tr></thead>
+          <tbody id="latencyBody"><tr><td colspan="6" class="loader">EXPAND TO LOAD</td></tr></tbody>
+          </table>
+        </div>
+        <div class="chart-box" style="height:fit-content">
+          <div class="chart-label">Speed Tier Distribution — Aggregate</div>
+          <div class="chart-container"><canvas id="latencyDonut"></canvas></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Execution Chains ────────────────────────────────────────────────── -->
+  <div class="section collapsed" id="sec-chains">
+    <div class="section-head collapsible" onclick="toggleSection('sec-chains')">
+      <div class="section-title">▤ Execution Chains</div>
+      <div class="section-desc">Multi-leg executions reconstructed from shared execution IDs — institutional order slicing.</div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <div class="section-count" id="chainCount">—</div>
+        <button onclick="event.stopPropagation();loadChains()" style="background:var(--ice-dim);color:var(--text);border:none;padding:4px 12px;border-radius:4px;cursor:pointer;font-family:var(--mono);font-size:11px">LOAD</button>
+      </div>
+      <span class="section-chevron">▾</span>
+    </div>
+    <div class="section-body">
+      <div class="table-wrap" id="chainWrap" style="display:none">
+        <table id="chainTable"><thead><tr>
+          <th>ISIN</th><th>VENUE</th><th class="r">LEGS</th><th class="r">TOTAL QTY</th>
+          <th class="r">NOTIONAL</th><th class="r">DURATION</th><th class="r">AVG INTERVAL</th>
+          <th>TYPE</th><th>CLASSES</th>
+        </tr></thead>
+        <tbody id="chainBody">
+          <tr><td colspan="9" style="color:var(--text-dim);font-family:var(--mono);font-size:12px;padding:16px">Click LOAD to fetch execution chains for this date.</td></tr>
+        </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Trend Monitoring ───────────────────────────────────────────────── -->
+  <div class="section collapsed" id="sec-trends">
+    <div class="section-head collapsible" onclick="toggleSection('sec-trends')">
+      <div class="section-title">∆ Trend Monitoring</div>
+      <div class="section-desc">30-day sparklines for dark pool activity and volume. Z-score &gt; 2σ = statistically unusual versus the ISIN's own baseline.</div>
+      <div class="section-count" id="trendCount">—</div>
+      <span class="section-chevron">▾</span>
+    </div>
+    <div class="section-body">
+      <div style="display:flex;gap:6px;padding:0 0 10px 0;flex-wrap:wrap" id="trendSortBar">
+        <span style="font-family:var(--mono);font-size:10px;color:var(--text-dim);align-self:center;letter-spacing:1px">SORT:</span>
+        <button class="evt-btn active" data-tsort="adv" onclick="sortTrends('adv',this)">Vol spike</button>
+        <button class="evt-btn"        data-tsort="darkdelta" onclick="sortTrends('darkdelta',this)">Dark% rising</button>
+        <button class="evt-btn"        data-tsort="darklatest" onclick="sortTrends('darklatest',this)">Dark% highest</button>
+        <button class="evt-btn"        data-tsort="gini" onclick="sortTrends('gini',this)">Gini high</button>
+      </div>
+      <div class="table-wrap">
+        <table id="trendTable"><thead><tr>
+          <th>ISIN</th><th>VENUE</th>
+          <th>DARK% — 30D</th><th class="r">DARK Δ</th>
+          <th class="r">VOL Z</th><th>VOL — 30D</th>
+          <th class="r">GINI</th><th class="r">ALGO%</th>
+        </tr></thead>
+        <tbody id="trendBody"><tr><td colspan="8" class="loader">EXPAND TO LOAD</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /page -->
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════════════
+   CONFIG — set your PostgREST endpoint here
+═══════════════════════════════════════════════════════════════════════════ */
+const API_URL = 'https://api.slensvik.com'
+
+const API = (table, params = '') =>
+  fetch(`${API_URL}/${table}?${params}`, {
+    headers: { 'Accept': 'application/json' }
+  }).then(r => { if (!r.ok) throw new Error(`${r.status} on ${table}`); return r.json(); });
+
+
+/* ─── ISIN → Ticker / Name lookup (DNB SI register) ──────────────────────── */
+const ISIN_MAP={'NO0010859580':{t:'ABS',n:'ARCTIC BIOSCIENCE AS'},'NO0012861683':{t:'AIX',n:'AYFIE INTERNATIONAL AS'},'SE0015193412':{t:'AKOBO',n:'AKOBO MINERALS AB (PUB)'},'NO0010829765':{t:'ANDF',n:'ANDFJORD SALMON GROUP AS'},'NO0010950249':{t:'BCS',n:'BERGEN CARBON SOLUTIONS AS'},'BMG1466R1732':{t:'BORR',n:'BORR DRILLING LIMITED'},'NO0013036814':{t:'BRUT',n:'BRUTON LIMITED'},'NO0010078850':{t:'CAMBI',n:'CAMBI ASA'},'NO0010015175':{t:'CYVIZ',n:'CYVIZ AS'},'NO0013711739':{t:'DDRIL',n:'DOLPHIN DRILLING AS'},'NO0010963275':{t:'DSRT',n:'DESERT CONTROL AS'},'NO0010955917':{t:'DVD',n:'DEEP VALUE DRILLER AS'},'NO0013601245':{t:'EAM',n:'EAM SOLAR AS'},'NO0010911902':{t:'ELIMP',n:'ELEKTROIMPORTØREN AS'},'NO0010907744':{t:'GEM',n:'GREEN MINERALS AS'},'NO0011013765':{t:'GIGA',n:'GIGANTE SALMON AS'},'NO0010931918':{t:'HAV',n:'HAV GROUP ASA'},'NO0013696799':{t:'HKY',n:'HAVILA KYSTRUTEN AS'},'NO0010859648':{t:'HUDL',n:'HUDDLESTOCK FINTECH'},'NO0010536048':{t:'INDCT',n:'INDUCT'},'NO0010762792':{t:'INSTA',n:'INSTABANK'},'NO0010724701':{t:'ISLAX',n:'ICELANDIC SALMON'},'NO0010815103':{t:'KRAB',n:'KRAFT BANK ASA'},'NO0010921299':{t:'LOKO',n:'LOKOTECH GROUP AS'},'NO0010405780':{t:'LYTIX',n:'LYTIX BIOPHARMA AS'},'NO0010974983':{t:'MAS',n:'MÅSØVAL AS'},'NO0012928805':{t:'NOAP',n:'NORDIC AQUA PARTNERS AS'},'NO0010360019':{t:'NORAM',n:'NORAM DRILLING AS'},'NO0011002651':{t:'NORDH',n:'NORDHEALTH AS A-AKSJER'},'NO0010969108':{t:'NTI',n:'NORSK TITANIUM AS'},'NO0010894512':{t:'OMDA',n:'OMDA AS'},'NO0010893902':{t:'PROXI',n:'PROXIMAR SEAFOOD AS'},'KYG812291253':{t:'SEA1',n:'Sea1 Offshore Inc.'},'NO0010811961':{t:'SOFTX',n:'SOFTOX SOLUTIONS'},'NO0012780958':{t:'STST',n:'STAINLESS TANKERS ASA'},'BMG730931091':{t:'VTURA',n:'VENTURA OFFSHORE HOLDING LTD.'},'NO0010768096':{t:'WEST',n:'WESTERN BULK CHARTERING AS'},'NO0010895782':{t:'XPLRA',n:'XPLORA TECHNOLOGIES'},'CA98936C8584':{t:'ZENA',n:'ZENITH ENERGY'},'NO0010607971':{t:'ALNG',n:'AWILCO LNG'},'NO0012953720':{t:'HUNT',n:'HUNTER GROUP'},'NO0013683409':{t:'NOFIN',n:'NORDIC FINANCIALS ASA'},'NO0012885252':{t:'NORSE',n:'NORSE ATLANTIC ASA'},'NO0010550056':{t:'NORTH',n:'NORTH ENERGY'},'NO0010713571':{t:'STECH',n:'SOILTECH ASA'},'BMG9156K1018':{t:'2020',n:'2020 BULKERS'},'NO0003021909':{t:'ABG',n:'ABG SUNDAL COLLIER HOLDING'},'NO0010715394':{t:'ABL',n:'ABL GROUP ASA'},'NO0010840515':{t:'ACR',n:'AXACTOR ASA'},'NO0003078107':{t:'AFG',n:'AF GRUPPEN'},'NO0003572802':{t:'AFK',n:'ARENDALS FOSSEKOMPANI'},'NO0010872468':{t:'AGLX',n:'AGILYX ASA'},'NO0010215684':{t:'AKAST',n:'AKASTOR'},'NO0010886625':{t:'AKBM',n:'AKER BIOMARINE ASA'},'NO0010234552':{t:'AKER',n:'AKER'},'NO0010921232':{t:'AKH',n:'AKER HORIZONS ASA'},'NO0010345853':{t:'AKRBP',n:'AKER BP'},'NO0010716582':{t:'AKSO',n:'AKER SOLUTIONS'},'NO0003097503':{t:'AKVA',n:'AKVA GROUP'},'NO0013683821':{t:'APR',n:'APPEAR ASA'},'BMG0451H2087':{t:'ARCH',n:'ARCHER'},'NO0013682948':{t:'ARR',n:'ARRIBATEC GROUP ASA'},'NO0013464750':{t:'ASA',n:'ATLANTIC SAPPHIRE'},'NO0004822503':{t:'ATEA',n:'ATEA'},'NO0010073489':{t:'AUSS',n:'AUSTEVOLL SEAFOOD'},'BMG0670A1099':{t:'AUTO',n:'AUTOSTORE HOLDINGS LTD.'},'NO0010014632':{t:'AZT',n:'ARCTICZYMES TECHNOLOGIES'},'NO0010633951':{t:'B2I',n:'B2 Impact ASA'},'FO0000000179':{t:'BAKKA',n:'BAKKAFROST'},'NO0010890965':{t:'BEWI',n:'BEWI'},'NO0012706763':{t:'BIEN',n:'BIEN SPAREBANK ASA'},'NO0010379266':{t:'BNOR',n:'BLUENORD ASA'},'NO0003110603':{t:'BONHR',n:'BONHEUR'},'NO0010360266':{t:'BOUV',n:'BOUVET'},'NO0010657505':{t:'BRG',n:'BORREGAARD'},'BMG0702P1086':{t:'BWE',n:'BW ENERGY LIMITED'},'SGXZ69436764':{t:'BWLPG',n:'BW LPG'},'BMG1738J1247':{t:'BWO',n:'BW OFFSHORE LIMITED'},'DK0061412772':{t:'CADLR',n:'CADELER A/S'},'NO0010923121':{t:'CAPSL',n:'CAPSOL TECHNOLOGIES ASA'},'NO0013219535':{t:'CAVEN',n:'CAVENDISH HYDROGEN ASA'},'NO0010876642':{t:'CLOUD',n:'CLOUDBERRY CLEAN ENERGY ASA'},'BE0003816338':{t:'CMBTO',n:'CMB.TECH NV'},'SE0014731154':{t:'CONTX',n:'CONTEXTVISION'},'NO0013033795':{t:'CRNA',n:'CIRCIO HOLDING ASA'},'NO0012697095':{t:'DELIA',n:'DELLIA GROUP'},'NO0013647693':{t:'DFENS',n:'FJORD DEFENCE GROUP ASA'},'NO0010161896':{t:'DNB',n:'DNB BANK ASA'},'NO0003921009':{t:'DNO',n:'DNO'},'NO0012851874':{t:'DOFG',n:'DOF GROUP ASA'},'NO0010263023':{t:'EIOF',n:'EIDESVIK OFFSHORE'},'NO0010722283':{t:'ELABS',n:'ELLIPTIC LABORATORIES ASA'},'NO0010816093':{t:'ELK',n:'ELKEM'},'NO0010815673':{t:'ELMRA',n:'ELMERA GROUP ASA'},'NO0011002586':{t:'ELO',n:'ELOPAK ASA'},'NO0010358484':{t:'EMGS',n:'ELECTROMAGNETIC GEOSERVICES'},'NO0012555459':{t:'ENDUR',n:'ENDÚR'},'CY0101162119':{t:'ENH',n:'SED ENERGY HOLDINGS PLC'},'NO0013186460':{t:'ENSU',n:'ENSURGE MICROPOWER ASA'},'NO0010716418':{t:'ENTRA',n:'ENTRA'},'NL0015000GX8':{t:'ENVIP',n:'ENVIPCO HOLDING N.V.'},'NO0010735343':{t:'EPR',n:'EUROPRIS'},'NO0010096985':{t:'EQNR',n:'EQUINOR'},'NO0010708605':{t:'EQVA',n:'EQVA ASA'},'CY0200352116':{t:'FRO',n:'FRONTLINE PLC'},'NO0010748866':{t:'GENT',n:'GENTIAN DIAGNOSTICS ASA'},'NO0010582521':{t:'GJF',n:'GJENSIDIGE FORSIKRING'},'NO0004913609':{t:'GOD',n:'GOODTECH'},'NO0010365521':{t:'GSF',n:'GRIEG SEAFOOD'},'SGXZ53070850':{t:'HAFNI',n:'HAFNIA LIMITED'},'NO0011082075':{t:'HAUTO',n:'HOEGH AUTOLINERS ASA'},'NO0010257728':{t:'HAVI',n:'HAVILA SHIPPING'},'NO0010029804':{t:'HELG',n:'SPAREBANK 1 HELGELAND'},'NO0013401380':{t:'HERMA',n:'HERMANA HOLDING ASA'},'NO0003067902':{t:'HEX',n:'HEXAGON COMPOSITES'},'NO0010904923':{t:'HPUR',n:'HEXAGON PURUS ASA'},'BMG4660A1036':{t:'HSHP',n:'HIMALAYA SHIPPING LTD'},'NO0010892359':{t:'HYPRO',n:'HYDROGENPRO ASA'},'NO0013536078':{t:'IDEX',n:'IDEX BIOMETRICS'},'NO0010001118':{t:'ITERA',n:'ITERA'},'NO0013461350':{t:'IWS',n:'INTEGRATED WIND SOLUTIONS ASA'},'BMG5137R1088':{t:'JIN',n:'JINHUI SHIPPING AND TRANSPORTATION'},'NO0010833262':{t:'KCC',n:'KLAVENESS COMBINATION CARRIERS'},'NO0010743545':{t:'KID',n:'KID'},'NO0003079709':{t:'KIT',n:'KITRON'},'NO0013711721':{t:'KMCP',n:'KMC PROPERTIES ASA'},'NO0003033102':{t:'KOA',n:'KONGSBERG AUTOMOTIVE'},'NO0013536151':{t:'KOG',n:'KONGSBERG GRUPPEN'},'NO0011016040':{t:'KOMPL',n:'KOMPLETT ASA'},'NO0013355859':{t:'LIFE',n:'LIFECARE ASA'},'NO0010894231':{t:'LINK',n:'LINK MOBILITY GROUP HOLDING'},'NO0003096208':{t:'LSG',n:'LERØY SEAFOOD GROUP'},'NO0010159684':{t:'MEDI',n:'MEDISTIM'},'NO0010187032':{t:'MGN',n:'MAGNORA'},'NO0006390301':{t:'MING',n:'SPAREBANK 1 SMN'},'NO0012483207':{t:'MORG',n:'SPAREBANKEN MØRE'},'NO0013325506':{t:'MORLD',n:'MORELD ASA'},'NO0003054108':{t:'MOWI',n:'MOWI'},'NO0010791353':{t:'MPCC',n:'MPC CONTAINER SHIPS'},'NO0010734338':{t:'MULTI',n:'MULTICONSULT'},'DK0060520450':{t:'NAPA',n:'NAPATECH'},'NO0010196140':{t:'NAS',n:'NORWEGIAN AIR SHUTTLE'},'NO0010205966':{t:'NAVA',n:'NAVAMEDIC'},'NO0010081235':{t:'NEL',n:'NEL'},'NO0010629108':{t:'NEXT',n:'NEXT BIOMETRICS GROUP'},'NO0005052605':{t:'NHY',n:'NORSK HYDRO'},'NO0003049405':{t:'NKR',n:'NEKKAR'},'NO0003055501':{t:'NOD',n:'NORDIC SEMICONDUCTOR'},'BMG6682J1036':{t:'NOL',n:'NORTHERN OCEAN LTD.'},'NO0013162693':{t:'NOM',n:'NORDIC MINING'},'NO0006000801':{t:'NONG',n:'SPAREBANK 1 NORD-NORGE'},'NO0010856511':{t:'NORBT',n:'NORBIT'},'NO0013052209':{t:'NORCO',n:'NORCONSULT ASA'},'NO0003679102':{t:'NRC',n:'NRC GROUP'},'NO0010861115':{t:'NSKOG',n:'NORSKE SKOG'},'NO0010714785':{t:'NYKD',n:'NYKODE THERAPEUTICS ASA'},'NO0003399909':{t:'ODF',n:'ODFJELL SER. A'},'NO0003399917':{t:'ODFB',n:'ODFJELL SER. B'},'BMG671801022':{t:'ODL',n:'ODFJELL DRILLING'},'MHY641771016':{t:'OET',n:'OKEANIS ECO TANKERS'},'NO0010816895':{t:'OKEA',n:'OKEA'},'NO0013711713':{t:'ONCIN',n:'ONCOINVENT ASA'},'NO0003733800':{t:'ORK',n:'ORKLA'},'NO0010040611':{t:'OTEC',n:'OTELLO CORPORATION'},'BMG6716L1081':{t:'OTL',n:'ODFJELL TECHNOLOGY LTD'},'NO0013721613':{t:'OTOVO',n:'OTOVO ASA'},'NO0010397581':{t:'PARB',n:'PARETO BANK'},'NO0010405640':{t:'PCIB',n:'PCI BIOTECH HOLDING'},'NO0010564701':{t:'PEN',n:'PANORO ENERGY'},'NO0010840507':{t:'PEXIP',n:'PEXIP HOLDING'},'NO0010000045':{t:'PHO',n:'PHOTOCURE'},'BMG6904D1083':{t:'PLSV',n:'PARATUS ENERGY SERVICES LTD.'},'NO0012535832':{t:'PLT',n:'POLIGHT'},'NO0012942525':{t:'PNOR',n:'PETRONOR E&amp;P ASA'},'NO0010209331':{t:'PROT',n:'PROTECTOR FORSIKRING'},'NO0010861990':{t:'PRS',n:'PROSAFE'},'NO0013178616':{t:'PUBLI',n:'PUBLIC PROPERTY INVEST ASA'},'CA74836K1003':{t:'QEC',n:'QUESTERRE ENERGY CORPORATION'},'NO0010907389':{t:'RANA',n:'RANA GRUBER ASA'},'NO0003117202':{t:'REACH',n:'REACH SUBSEA'},'NO0010112675':{t:'RECSI',n:'REC SILICON'},'NO0006390400':{t:'RING',n:'SPAREBANK 1 RINGERIKE HADELAND'},'NO0006001007':{t:'ROGS',n:'ROGALAND SPAREBANK'},'NO0010572589':{t:'SAGA',n:'SAGA PURE'},'NO0010310956':{t:'SALM',n:'SALMAR'},'NO0010892094':{t:'SALME',n:'SALMON EVOLUTION ASA'},'NO0010863285':{t:'SATS',n:'SATS'},'NO0010631567':{t:'SB1NO',n:'SPAREBANK 1 SØR-NORGE ASA'},'NO0006000900':{t:'SBNOR',n:'SPAREBANKEN NORGE'},'NO0010612450':{t:'SBO',n:'SELVAAG BOLIG'},'NO0003053308':{t:'SCANA',n:'SCANA'},'NO0010715139':{t:'SCATC',n:'SCATEC ASA'},'CY0101550917':{t:'SDSD',n:'S.D. STANDARD ETC PLC'},'NO0006001809':{t:'SKUE',n:'SKUE SPAREBANK'},'NO0011012502':{t:'SMOP',n:'SMARTOPTICS GROUP ASA'},'BMG850801025':{t:'SNI',n:'STOLT-NIELSEN'},'NO0010691660':{t:'SNOR',n:'SPAREBANK 1 NORDMØRE'},'NO0013573014':{t:'SNTIA',n:'SENTIA ASA'},'NO0010285562':{t:'SOAG',n:'SPAREBANK 1 ØSTFOLD AKERSHUS'},'NO0003080608':{t:'SOFF',n:'SOLSTAD OFFSHORE'},'NO0013135368':{t:'SOMA',n:'SOLSTAD MARITIME ASA'},'NO0006222009':{t:'SPOG',n:'SPAREBANKEN ØST'},'NO0010751910':{t:'SPOL',n:'SPAREBANK 1 ØSTLANDET'},'NO0003053605':{t:'STB',n:'STOREBRAND'},'NO0010098247':{t:'STRO',n:'STRONGPOINT'},'LU0075646355':{t:'SUBC',n:'SUBSEA 7'},'CH0496451508':{t:'SWON',n:'SOFTWAREONE HOLDING'},'NO0012916131':{t:'TECH',n:'TECHSTEP'},'NO0010063308':{t:'TEL',n:'TELENOR'},'NO0003078800':{t:'TGS',n:'TGS ASA'},'NO0012470089':{t:'TOM',n:'TOMRA SYSTEMS'},'NO0010597883':{t:'TRMED',n:'THOR MEDICAL ASA'},'NO0011202772':{t:'VAR',n:'VÅR ENERGI ASA'},'NO0005806802':{t:'VEI',n:'VEIDEKKE'},'NO0010736879':{t:'VEND',n:'VEND MARKETPLACES ASA'},'NO0010734122':{t:'VISTN',n:'VISTIN PHARMA'},'NO0010708068':{t:'VOW',n:'VOW'},'NO0010571680':{t:'WAWI',n:'WALLENIUS WILHELMSEN'},'NO0010609662':{t:'WSTEP',n:'WEBSTEP'},'NO0010571698':{t:'WWI',n:'WILH. WILHELMSEN HOLDING SER. A'},'NO0010576010':{t:'WWIB',n:'WILH. WILHELMSEN HOLDING SER. B'},'NO0010208051':{t:'YAR',n:'YARA INTERNATIONAL'},'NO0010708910':{t:'ZAL',n:'ZALARIS'},'NO0010713936':{t:'ZAP',n:'ZAPTEC ASA'},'NO0013524942':{t:'ZLNA',n:'ZELLUNA'}};
+
+const isinInfo = isin => ISIN_MAP[isin] || { t: isin.slice(-6), n: '—' };
+const isinTicker = isin => (ISIN_MAP[isin] || {}).t || isin.slice(-6);
+const isinName   = isin => (ISIN_MAP[isin] || {}).n || '';
+
+// Convert UTC timestamp from PostgreSQL to Oslo local time HH:MM
+// Pipeline ingests UTC CSV timestamps as naive into a PG TIMESTAMPTZ session
+// in Oslo TZ, so every stored time has a "+02" offset that's a lie — the
+// wall-clock value is actually UTC. To recover the real moment, strip the
+// trailing offset and reparse as UTC. JS Date then renders correctly when
+// asked for Europe/Oslo.
+const dbTimeToDate = ts => {
+  if (!ts) return null;
+  const m = ts.search(/[+-]\d{2}:?\d{2}$|Z$/);
+  return new Date((m > 0 ? ts.slice(0, m) : ts) + 'Z');
+};
+// minute_bucket is a TIME (no date / no TZ). Same "stored UTC labelled
+// Oslo" trick — combine with the day and treat as UTC.
+const bucketToDate = (bucket, dateStr) => {
+  if (!bucket || !dateStr) return null;
+  return new Date(dateStr + 'T' + bucket.slice(0,8) + 'Z');
+};
+const toOsloHHMM = ts => {
+  if (!ts) return '00:00';
+  const d = dbTimeToDate(ts);
+  return d ? d.toLocaleTimeString('no-NO', {
+    timeZone: 'Europe/Oslo',
+    hour: '2-digit', minute: '2-digit', hour12: false,
+  }) : ts.slice(11,16);
+};
+
+// Enrich ISIN map from instruments table (async, fills in after page load)
+async function loadInstruments() {
+  try {
+    const rows = await APIall('instruments', 'select=isin,ticker,name');
+    rows.forEach(r => {
+      if (r.ticker) {
+        if (!ISIN_MAP[r.isin]) ISIN_MAP[r.isin] = { t: r.ticker, n: r.name || '' };
+        else { ISIN_MAP[r.isin].t = r.ticker; if (r.name) ISIN_MAP[r.isin].n = r.name; }
+      }
+    });
+  } catch(e) { console.warn('Could not load instruments:', e); }
+}
+
+/* ─── Render a compact ISIN cell: shows ticker bold + name dim ─────────────── */
+/* Ticker links to the company dossier (dossier.html); stopPropagation inside
+   tkLink keeps the row's own drill-down onclick working. */
+const isinCell = isin => {
+  const info = ISIN_MAP[isin];
+  if (info) return `<div style="font-family:var(--mono);font-size:13px;font-weight:600;color:var(--text-bright)">${INTEL.tkLink(isin, info.t)}</div><div style="font-size:11px;color:var(--text-dim);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${info.n}">${info.n}</div>`;
+  return `<div style="font-family:var(--mono);font-size:12px">${INTEL.tkLink(isin, isin)}</div>`;
+};
+
+/* ─── Chart.js global defaults (shared system) ──────────────────────────── */
+INTEL.chartDefaults();
+Chart.defaults.font.size = 11;
+
+/* ─── State ─────────────────────────────────────────────────────────────── */
+let currentDate = null;
+let allSummary = [];
+let allIntraday = [];
+let allDark = [];
+let allLatency = [];
+let drillChart1 = null, drillChart2 = null, drillChart3 = null;
+let algoDonutChart = null, darkBarChart = null, intradayChartInst = null, latencyDonutChart = null;
+
+/* ─── Dark microstructure read (v2) ─────────────────────────────────────────
+ * Euronext dark prints come in two flavours and must be read differently:
+ *   • Mid-Point Match (mechanism 3) executes AT the lit mid by rule → price
+ *     carries no side. We read these as intensity + realized forward-drift.
+ *   • Negotiated / LIS (mechanism 4) can print off-mid; a print dealt clearly
+ *     away from the lit ref reveals an aggressor (above = buyer, below = seller).
+ * Direction comes from off-mid blocks first (evidence BLOCK), mid-point forward
+ * impact as a soft secondary (evidence IMPACT), else honestly NEUTRAL.       */
+function darkRead(d) {
+  d = d || {};
+  const bias = (d.dark_side_bias && d.dark_side_bias !== 'NEUTRAL') ? d.dark_side_bias : null;
+  const ev = d.dark_evidence || (bias ? 'BLOCK' : 'NONE');
+  const confirmed = d.bias_confirmed === true;
+  const impact = d.dark_impact_bps != null ? Number(d.dark_impact_bps) : null;
+  const midTr = Number(d.mid_trades || 0);
+  const blockPrints = Number(d.dark_trades_classified || 0);
+  const worked = d.worked_order === true;
+  const arrow = bias === 'BUY' ? '▲' : bias === 'SELL' ? '▼' : '◇';
+  const tone  = bias === 'BUY' ? 'pos' : bias === 'SELL' ? 'neg' : 'dark';
+  const color = bias === 'BUY' ? 'var(--green)' : bias === 'SELL' ? 'var(--red)' : 'var(--text-dim)';
+  let word, prov;
+  if (!bias) {
+    word = midTr ? '◇ At mid' : '◇ No flow';
+    prov = midTr ? `${midTr} mid-point print${midTr !== 1 ? 's' : ''} (at mid, side-agnostic)` : 'no dark prints';
+  } else if (ev === 'IMPACT') {
+    word = `${arrow} ${bias === 'BUY' ? 'Buy' : 'Sell'} lean`;
+    prov = `mid-point drift${impact != null ? ` ${impact >= 0 ? '+' : ''}${impact.toFixed(0)}bps` : ''} (no off-mid blocks)`;
+  } else {
+    word = `${arrow} ${bias === 'BUY' ? 'Buy' : 'Sell'}-side blocks`;
+    prov = `${blockPrints} off-mid negotiated print${blockPrints !== 1 ? 's' : ''}`;
+  }
+  return { bias, ev, confirmed, impact, midTr, blockPrints, worked, arrow, tone, color, word, prov };
+}
+
+/* ─── Formatters ────────────────────────────────────────────────────────── */
+const fmt = {
+  num:  v => v == null ? '—' : Number(v).toLocaleString('nb-NO'),
+  nok:  v => v == null ? '—' : `NOK ${(v/1e6).toFixed(2)}M`,
+  pct:  v => v == null ? '—' : `${Number(v).toFixed(1)}%`,
+  ms:   v => v == null ? '—' : `${Number(v).toFixed(1)}ms`,
+  dec:  v => v == null ? '—' : Number(v).toFixed(3),
+  time: v => v ? v.slice(0,5) : '—',
+};
+
+/* ─── Today's Book / Conviction Shortlist ──────────────────────────────── */
+const CONV_GLYPH = {
+  DARK_ACCUMULATION: '◍',  DARK_DISTRIBUTION: '◍',  DARK_BLOCK: '◍',
+  EOD_SWEEP:         '╳',  LARGE_NOTIONAL:    '■',
+  CEILING_BREAK:     '▲',  FLOOR_BREAK:       '▼',
+};
+const EVT_GLYPH = {
+  RESULTS:'▢', EARNINGS_CALL:'◴', AGM:'Ⅱ', EX_DATE:'◇',
+  WARNING:'△', INSIDER:'◐', PLACEMENT:'▦', DELISTING:'⊘',
+  IPO:'▴', PROSPECTUS:'▤', REGULATED:'▣', PRESS_RELEASE:'≡',
+};
+
+function renderConvictionCard(r, side) {
+  const ticker = isinTicker(r.isin) || r.isin.slice(-6);
+  const name   = isinName(r.isin) || '';
+  const arrow  = side === 'long' ? '▲' : '▼';
+  const sigChips = (r.signal_types || []).map(t =>
+    `<span class="conv-chip"><span class="g">${CONV_GLYPH[t] || '▢'}</span>${t.replace(/_/g,' ')}</span>`
+  ).join('');
+  const evChip = r.next_event_date
+    ? `<span class="conv-chip event"><span class="g">${EVT_GLYPH[r.next_event_type]||'▌'}</span>${r.next_event_type} in ${r.days_to_event}d</span>`
+    : '';
+  const siPct = r.short_pct != null ? Number(r.short_pct) : null;
+  const siChip = (siPct != null && siPct >= 0.5)
+    ? `<span class="conv-chip si ${siPct >= 3 ? 'high' : ''}"><span class="g">⊖</span>SI ${siPct.toFixed(2)}%</span>`
+    : '';
+  // Impact-confirmed dark flow: net buyer/seller-initiated dark volume over the
+  // window that *predicted* subsequent price drift (informed-money marker).
+  const ndir = Number(r.net_dark_dir || 0);
+  const darkDir = ndir > 0 ? 'BUY' : ndir < 0 ? 'SELL' : null;
+  const darkChip = (Number(r.confirmed_days || 0) > 0 && darkDir)
+    ? `<span class="conv-chip dark ${darkDir === 'BUY' ? 'up' : 'dn'} confirmed" title="Impact-confirmed dark flow on ${r.confirmed_days} day(s)"><span class="g">◧</span>DARK ${darkDir} ✓${r.confirmed_days}d</span>`
+    : '';
+  const move = (r.day_close != null && r.modal_price != null && Number(r.modal_price) > 0)
+    ? ((Number(r.day_close) - Number(r.modal_price)) / Number(r.modal_price) * 100)
+    : null;
+  const moveCls = move == null ? '' : move >= 0 ? 'up' : 'dn';
+  const moveStr = move == null ? '' : `<span class="${moveCls}">${move >= 0 ? '+' : ''}${move.toFixed(1)}%</span>`;
+  const wall = r.modal_price ? `<span>WALL <strong>${Number(r.modal_price).toFixed(2)}</strong></span>` : '';
+  const vw   = r.vwap        ? `<span>VWAP <strong>${Number(r.vwap).toFixed(2)}</strong></span>`         : '';
+  const darkPct = r.dark_pct != null ? `<span>DARK <strong>${Number(r.dark_pct).toFixed(0)}%</strong></span>` : '';
+  // Fundamentals overlay: analyst consensus + balance-sheet health (leverage,
+  // FCF). Price for upside prefers the last close, then the volume wall.
+  const fprice = r.day_close != null ? Number(r.day_close)
+    : (r.modal_price != null ? Number(r.modal_price) : null);
+  const finRow = (_convFin[r.isin] || [])[0];
+  const fundChips = [
+    INTEL.analystChip(_convCons[r.isin], fprice),
+    INTEL.leverageChip(finRow),
+    INTEL.fcfChip(finRow),
+  ].filter(Boolean).join('');
+  const fundRow = fundChips
+    ? `<div class="conv-signals" style="margin-top:5px">${fundChips}</div>` : '';
+  return `
+    <div class="conv-card ${side}" onclick="drillIntoISIN('${r.isin}','${r.venue}')">
+      <div class="conv-row1">
+        <span class="conv-arrow ${side}">${arrow}</span>
+        <span class="conv-ticker">${INTEL.tkLink(r.isin, ticker)}</span>
+        <span class="conv-name">${name}</span>
+        <span class="conv-score">${r.conviction}</span>
+      </div>
+      <div class="conv-bar"><div class="conv-bar-fill ${side}" style="width:${r.conviction}%"></div></div>
+      <div class="conv-signals">${sigChips}${evChip}${siChip}${darkChip}</div>
+      ${fundRow}
+      <div class="conv-footer">${wall}${vw}${darkPct}${moveStr}</div>
+    </div>`;
+}
+
+function renderBookKpis(longs, shorts) {
+  const all = [...longs, ...shorts];
+  const avgConv = all.length ? Math.round(all.reduce((s,r) => s + (r.conviction||0), 0) / all.length) : null;
+  const sigCounts = {};
+  for (const r of all) for (const t of (r.signal_types || []))
+    sigCounts[t] = (sigCounts[t] || 0) + 1;
+  const topSig = Object.entries(sigCounts).sort((a,b) => b[1] - a[1])[0];
+  const kpi = (label, value, sub) => `
+    <div class="book-kpi">
+      <div class="book-kpi-label">${label}</div>
+      <div class="book-kpi-value">${value}</div>
+      <div class="book-kpi-sub">${sub || ''}</div>
+    </div>`;
+  document.getElementById('bookKpis').innerHTML =
+    kpi('LONG SIGNALS',  longs.length,  longs.length  ? 'top conviction ' + longs[0].conviction  : 'none today') +
+    kpi('SHORT SIGNALS', shorts.length, shorts.length ? 'top conviction ' + shorts[0].conviction : 'none today') +
+    kpi('AVG CONVICTION', avgConv != null ? avgConv : '—', `across ${all.length} names`) +
+    kpi('TOP SIGNAL', topSig ? topSig[0].replace(/_/g,' ') : '—', topSig ? `${topSig[1]}× fired` : '');
+}
+
+// Fundamentals lookups for conviction cards (filled per load): analyst
+// consensus + latest-annual financials keyed by ISIN.
+let _convCons = {}, _convFin = {};
+
+async function loadConviction() {
+  try {
+    const data = await API('conviction', 'order=conviction.desc&limit=40');
+    const longs  = data.filter(r => r.side === 'LONG' ).slice(0, 10);
+    const shorts = data.filter(r => r.side === 'SHORT').slice(0, 10);
+    document.getElementById('longCount').textContent  = longs.length;
+    document.getElementById('shortCount').textContent = shorts.length;
+    document.getElementById('convictionCount').textContent = `${longs.length}L · ${shorts.length}S`;
+
+    // Enrich with analyst consensus + balance-sheet health for the shortlist.
+    const shown = [...longs, ...shorts].map(r => r.isin);
+    _convCons = {}; _convFin = {};
+    if (shown.length) {
+      const inList = `(${shown.join(',')})`;
+      const [cons, fin] = await Promise.all([
+        API('analyst_consensus', `isin=in.${inList}`).catch(() => []),
+        API('financials_key', `isin=in.${inList}&freq=eq.annual&order=period_end.desc`).catch(() => []),
+      ]);
+      for (const c of (cons || [])) _convCons[c.isin] = c;
+      for (const f of (fin  || [])) (_convFin[f.isin] = _convFin[f.isin] || []).push(f);
+    }
+
+    renderBookKpis(longs, shorts);
+    document.getElementById('longList').innerHTML  = longs.length
+      ? longs.map(r => renderConvictionCard(r, 'long')).join('')
+      : '<div class="conv-empty">NO LONG CANDIDATES</div>';
+    document.getElementById('shortList').innerHTML = shorts.length
+      ? shorts.map(r => renderConvictionCard(r, 'short')).join('')
+      : '<div class="conv-empty">NO SHORT CANDIDATES</div>';
+  } catch(e) {
+    console.error('Conviction load failed:', e);
+    document.getElementById('longList').innerHTML  = '<div class="conv-empty">DATA UNAVAILABLE</div>';
+    document.getElementById('shortList').innerHTML = '<div class="conv-empty">DATA UNAVAILABLE</div>';
+  }
+}
+
+async function loadTrackRecord() {
+  try {
+    const data = await API('signal_performance', 'order=total_fired.desc');
+    const tbody = document.getElementById('trackRecordBody');
+    document.getElementById('trackRecordCount').textContent =
+      `${data.length} TYPES · ${data.reduce((s,r) => s + (r.total_fired||0), 0)} TOTAL`;
+    if (!data.length) {
+      tbody.innerHTML = '<tr><td colspan="13" class="perf-empty">No signals yet.</td></tr>';
+      return;
+    }
+    const cell = (v, suffix='') => v == null ? '—' :
+      `<span class="${Number(v) > 0 ? 'pos' : Number(v) < 0 ? 'neg' : ''}">${Number(v).toFixed(2)}${suffix}</span>`;
+    tbody.innerHTML = data.map(r => `
+      <tr>
+        <td>${r.signal_type.replace(/_/g,' ')}</td>
+        <td>${r.total_fired}</td>
+        <td>${r.strong_count}</td>
+        <td>${r.moderate_count}</td>
+        <td>${r.t1_observed || 0}</td>
+        <td>${r.t1_hit_rate_pct != null ? Number(r.t1_hit_rate_pct).toFixed(0)+'%' : '—'}</td>
+        <td>${cell(r.t1_avg_dir_return_pct, '%')}</td>
+        <td>${r.t5_observed || 0}</td>
+        <td>${r.t5_hit_rate_pct != null ? Number(r.t5_hit_rate_pct).toFixed(0)+'%' : '—'}</td>
+        <td>${cell(r.t5_avg_dir_return_pct, '%')}</td>
+        <td>${r.t20_observed || 0}</td>
+        <td>${r.t20_hit_rate_pct != null ? Number(r.t20_hit_rate_pct).toFixed(0)+'%' : '—'}</td>
+        <td>${cell(r.t20_avg_dir_return_pct, '%')}</td>
+      </tr>`).join('');
+  } catch(e) {
+    console.error('Track record failed:', e);
+    document.getElementById('trackRecordBody').innerHTML =
+      '<tr><td colspan="13" class="perf-empty">DATA UNAVAILABLE</td></tr>';
+  }
+}
+
+/* ═══ Radar Intelligence — graded book + signal league ════════════════════ */
+async function loadIntelReport() {
+  try {
+    const [calls, league] = await Promise.all([
+      API('radar_calls', 'select=call_date,isin,side,conviction,x1,x5,x10&order=call_date'),
+      API('radar_league', 'order=med_x10_bps.desc'),
+    ]);
+    if (!calls.length) { document.getElementById('irCount').textContent = 'NO DATA YET'; return; }
+
+    const days = new Set(calls.map(c => c.call_date));
+    const agg = side => {
+      const rows = calls.filter(c => c.side === side);
+      const h = k => {
+        const v = rows.map(r => r[k]).filter(x => x != null).map(Number);
+        if (!v.length) return { n: 0, hit: null, med: null };
+        const hits = v.filter(x => side === 'LONG' ? x > 0 : x < 0).length;
+        const s = [...v].sort((a, b) => a - b);
+        return { n: v.length, hit: hits / v.length * 100, med: s[Math.floor(s.length / 2)] * 10000 };
+      };
+      return { n: rows.length, x1: h('x1'), x5: h('x5'), x10: h('x10') };
+    };
+    const L = agg('LONG'), S = agg('SHORT');
+    document.getElementById('irCount').textContent = `${days.size} DAYS · ${calls.length} CALLS GRADED`;
+
+    const pct = v => v == null ? '—' : v.toFixed(0) + '%';
+    const kpi = (lbl, val, sub, cls = '') =>
+      `<div class="ir-kpi"><div class="lbl">${lbl}</div><div class="val ${cls}">${val}</div><div class="sub">${sub}</div></div>`;
+    // "best" = strongest on BOTH mean and median (min of the two) — a high
+    // median with a collapsed mean signals an ugly left tail, not an edge
+    const robust = [...league].sort((a, b) =>
+      Math.min(Number(b.avg_x10_bps), Number(b.med_x10_bps)) -
+      Math.min(Number(a.avg_x10_bps), Number(a.med_x10_bps)));
+    const top = robust[0];
+    document.getElementById('irKpis').innerHTML =
+      kpi('DAYS GRADED', days.size, `${calls.length} top-10 book calls`) +
+      kpi('LONG HIT +10D', pct(L.x10.hit), `${L.x10.n} calls graded`, L.x10.hit >= 55 ? 'pos' : L.x10.hit <= 45 ? 'neg' : '') +
+      kpi('SHORT HIT +10D', pct(S.x10.hit), `${S.x10.n} calls graded`, S.x10.hit >= 55 ? 'pos' : S.x10.hit <= 45 ? 'neg' : '') +
+      kpi('BEST SIGNAL', top ? top.signal_type.replace(/_/g, ' ') : '—',
+          top ? `+${Number(top.med_x10_bps).toFixed(0)} bps med +10d · n=${top.n10}` : '');
+
+    const bps = v => v == null ? '—' :
+      `<span class="${v > 0 ? 'pos' : v < 0 ? 'neg' : ''}">${v > 0 ? '+' : ''}${v.toFixed(0)}</span>`;
+    const row = (name, a) => `<tr><td>${name}</td><td>${a.n}</td><td>${pct(a.x1.hit)}</td>
+      <td>${pct(a.x5.hit)}</td><td>${bps(a.x5.med)}</td><td>${pct(a.x10.hit)}</td><td>${bps(a.x10.med)}</td></tr>`;
+    document.getElementById('irScore').innerHTML = row('▲ LONG', L) + row('▼ SHORT', S);
+
+    const graded = calls.filter(c => c.x10 != null)
+      .map(c => ({ ...c, sgn: (c.side === 'LONG' ? 1 : -1) * c.x10 }))
+      .sort((a, b) => b.sgn - a.sgn);
+    const chip = c => `${INTEL.tkLink(c.isin, isinTicker(c.isin))}
+      <span class="${c.x10 > 0 ? 'pos' : 'neg'}">${(c.x10 * 100).toFixed(1)}%</span>
+      <span style="color:var(--text-dim)">${c.side.toLowerCase()} @ conviction ${c.conviction} · ${c.call_date}</span>`;
+    document.getElementById('irCalls').innerHTML =
+      graded.slice(0, 2).map(c => '◈ ' + chip(c)).join('<br>') + '<br>' +
+      graded.slice(-2).reverse().map(c => '◇ ' + chip(c)).join('<br>');
+
+    const maxAbs = Math.max(...league.map(r => Math.abs(r.med_x10_bps || 0)), 1);
+    document.getElementById('irLeague').innerHTML = league.map(r => {
+      const v = Number(r.med_x10_bps || 0);
+      const w = Math.abs(v) / maxAbs * 50;
+      const bar = v >= 0
+        ? `<div class="ir-bar" style="left:50%;width:${w}%;background:var(--green,#43e097)"></div>`
+        : `<div class="ir-bar" style="right:50%;width:${w}%;background:var(--red,#f06060)"></div>`;
+      return `<div class="ir-league-row"><span>${r.signal_type.replace(/_/g, ' ')}</span>
+        <div class="ir-bar-track">${bar}</div>
+        <span style="text-align:right">${v > 0 ? '+' : ''}${v.toFixed(0)} bps · n=${r.n10}</span></div>`;
+    }).join('');
+
+    // Auto-generated reads — derived from the live numbers, honest by design.
+    const reads = [];
+    if (S.x10.n >= 20 && S.x10.hit < 35)
+      reads.push(`<b>Short flags have been inverse indicators:</b> only ${pct(S.x10.hit)} of SHORT calls
+        beat the market down over 10 days — flagged names typically <i>rebounded</i>. Read the short
+        column as capitulation / mean-reversion candidates, not as shorts.`);
+    if (L.x10.n >= 20)
+      reads.push(`<b>Long flags lean right, but modestly:</b> ${pct(L.x10.hit)} hit at 10 days,
+        median ${L.x10.med > 0 ? '+' : ''}${L.x10.med.toFixed(0)} bps — a thin edge where fat-tailed
+        winners (and their hangovers) dominate the averages.`);
+    const db = league.find(r => r.signal_type === 'DARK_BLOCK');
+    if (db && Number(db.med_x10_bps) > 150)
+      reads.push(`<b>The strongest drift sits in DARK BLOCK</b> (+${Number(db.med_x10_bps).toFixed(0)} bps
+        median, ${Number(db.up10_pct).toFixed(0)}% up at 10d) — a signal the conviction score currently
+        treats as direction-neutral. Worth a weighting review.`);
+    document.getElementById('irReads').innerHTML = reads.map(r => `<div class="ir-read">${r}</div>`).join('');
+
+    document.getElementById('irNote').textContent =
+      `Method: the daily book is reconstructed as-of each historical date from stored signals (identical scoring), ` +
+      `then graded on dividend-adjusted closes vs the cap-weighted market index. Overlapping 14-day windows mean ` +
+      `calls are not independent, and ${days.size} trading days is a small sample — sample-gated evidence, not proof.`;
+  } catch (e) {
+    console.error('intel report failed', e);
+    document.getElementById('irCount').textContent = 'DATA UNAVAILABLE';
+  }
+}
+
+/* ═══ Market Pulse hero + Market Today dashboard ═══════════════════════════ */
+let marketMovers = [];
+let marketPulse  = null;
+
+const nf0 = v => v == null ? '—' : Number(v).toLocaleString('nb-NO', { maximumFractionDigits: 0 });
+const bnok = v => v == null ? '—' : (v / 1e9).toFixed(2);
+const mnok = v => v == null ? '—' : (v / 1e6).toFixed(0);
+const signed = v => (v >= 0 ? '+' : '') + Number(v).toFixed(2);
+const fmtNok = v => v == null ? '—' : v >= 1e9 ? `NOK ${(v/1e9).toFixed(2)}B` : v >= 1e6 ? `NOK ${(v/1e6).toFixed(0)}M` : `NOK ${(v/1e3).toFixed(0)}K`;
+
+async function loadMarketPulse() {
+  try {
+    const [pulseRows, movers] = await Promise.all([
+      API('market_pulse', ''),
+      API('movers', 'limit=300'),
+    ]);
+    marketPulse  = pulseRows[0] || null;
+    marketMovers = movers || [];
+    if (!marketPulse) return;
+    document.getElementById('heroDate').textContent =
+      `${marketPulse.trade_date} · T-1 settled`;
+    renderHeroLede(marketPulse);
+    renderHeroTicks(marketPulse);
+    renderDashboard(marketPulse, marketMovers);
+  } catch (e) {
+    console.error('Market pulse failed:', e);
+    document.getElementById('heroLede').textContent = 'Market data temporarily unavailable.';
+  }
+}
+
+function renderHeroLede(p) {
+  const adv = p.advancers || 0, dec = p.decliners || 0, tot = p.total_names || 0;
+  const turnB = bnok(p.total_turnover);
+  const tchg = p.turnover_chg_pct;
+  const lean = adv > dec * 1.1 ? 'Buyers led' : dec > adv * 1.1 ? 'Sellers pressed' : 'A balanced tape';
+  const leadNums = adv >= dec
+    ? `<span class="up">${adv}</span> up vs <span class="dn">${dec}</span> down`
+    : `<span class="dn">${dec}</span> down vs <span class="up">${adv}</span> up`;
+  const turnVerb = tchg == null ? 'turnover NOK ' + turnB + 'bn'
+    : `turnover ${tchg >= 0 ? 'rose' : 'eased'} <b>${signed(tchg)}%</b> to NOK ${turnB}bn`;
+  let s = `${lean} on the Oslo tape — ${leadNums} as ${turnVerb}.`;
+  if (p.dark_unusual && p.market_dark_pct_avg > 0) {
+    const ratio = (p.market_dark_pct / p.market_dark_pct_avg).toFixed(1);
+    s += ` Dark trading spiked to <span class="warn">${p.market_dark_pct}%</span> of shares — <span class="warn">${ratio}×</span> the recent norm.`;
+  }
+  document.getElementById('heroLede').innerHTML = s;
+}
+
+function renderHeroTicks(p) {
+  const tick = (label, value, cls, sub) => `
+    <div class="hero-tick">
+      <div class="hero-tick-label">${label}</div>
+      <div class="hero-tick-value ${cls || ''}">${value}</div>
+      <div class="hero-tick-sub">${sub || ''}</div>
+    </div>`;
+  const tchg = p.turnover_chg_pct;
+  document.getElementById('heroTicks').innerHTML =
+    tick('Turnover', `${bnok(p.total_turnover)}<span style="font-size:12px">bn</span>`,
+         tchg >= 0 ? 'up' : 'dn', tchg == null ? 'NOK' : `${signed(tchg)}% vs prior`) +
+    tick('Breadth', `${p.advancers}<span style="font-size:12px;color:var(--text-dim)">/${p.total_names}</span>`,
+         (p.pct_advancers >= 50 ? 'up' : 'dn'), `${p.pct_advancers}% advancing`) +
+    tick('Dark Vol', `${p.market_dark_pct}<span style="font-size:12px">%</span>`,
+         p.dark_unusual ? 'warn' : '', `avg ${p.market_dark_pct_avg}%`) +
+    tick('Insiders', `${p.insiders_today}`, p.insiders_today > 0 ? 'warn' : '', `${p.insiders_7d} this week`) +
+    tick('Events ≤14d', `${p.events_14d}`, '', 'results · agm · ex-div') +
+    tick('Signals', `${p.signals_today}`, '', 'smart-money fires');
+}
+
+function renderDashboard(p, movers) {
+  document.getElementById('marketTodayCount').textContent = `${p.total_names} NAMES`;
+
+  // Breadth bar
+  const tot = p.total_names || 1;
+  const aw = (p.advancers / tot * 100).toFixed(1);
+  const uw = (p.unchanged / tot * 100).toFixed(1);
+  const dw = (p.decliners / tot * 100).toFixed(1);
+  document.getElementById('breadthWrap').innerHTML = `
+    <div class="breadth-bar">
+      <div class="breadth-seg adv" style="width:${aw}%" title="${p.advancers} advancing">${p.advancers}</div>
+      <div class="breadth-seg unch" style="width:${uw}%" title="${p.unchanged} unchanged"></div>
+      <div class="breadth-seg dec" style="width:${dw}%" title="${p.decliners} declining">${p.decliners}</div>
+    </div>
+    <div class="breadth-legend"><span class="up">▲ ${p.advancers} advancing</span><span>${p.unchanged} flat</span><span class="dn">${p.decliners} declining ▼</span></div>`;
+
+  const row = (label, val, cls) => `<div class="dash-stat-row"><span class="dash-stat-label">${label}</span><span class="dash-stat-val ${cls || ''}">${val}</span></div>`;
+  document.getElementById('dashStats').innerHTML =
+    row('Total turnover', `NOK ${bnok(p.total_turnover)}bn`, p.turnover_chg_pct >= 0 ? 'up' : 'dn') +
+    row('vs prior session', p.turnover_chg_pct == null ? '—' : `${signed(p.turnover_chg_pct)}%`, p.turnover_chg_pct >= 0 ? 'up' : 'dn') +
+    row('Market dark share', `${p.market_dark_pct}%`, p.dark_unusual ? 'warn' : '') +
+    row('Trades printed', nf0(p.total_trades)) +
+    row('Smart-money signals', nf0(p.signals_today)) +
+    row('Events next 14 days', nf0(p.events_14d));
+
+  // Top movers: 4 up + 4 down, liquidity-gated
+  const liquid = movers.filter(m => (m.turnover || 0) >= 1e6 && m.change_pct != null);
+  const ups = [...liquid].sort((a, b) => b.change_pct - a.change_pct).slice(0, 4);
+  const dns = [...liquid].sort((a, b) => a.change_pct - b.change_pct).slice(0, 4);
+  const moverRow = m => `
+    <div class="mrow" onclick="drillIntoISIN('${m.isin}','${m.venue || 'XOSL'}')">
+      <div><div class="mrow-tkr">${INTEL.tkLink(m.isin, m.ticker || isinTicker(m.isin))}</div><div class="mrow-name">${m.name || ''}</div></div>
+      <div class="mrow-num ${m.change_pct >= 0 ? 'up' : 'dn'}">${signed(m.change_pct)}%</div>
+      <div class="mrow-num" style="color:var(--text-dim)">${mnok(m.turnover)}M</div>
+    </div>`;
+  document.getElementById('moversList').innerHTML = ups.map(moverRow).join('') + dns.map(moverRow).join('');
+
+  // Most active by turnover (movers already sorted desc)
+  document.getElementById('activeList').innerHTML = movers.slice(0, 7).map(m => `
+    <div class="mrow" onclick="drillIntoISIN('${m.isin}','${m.venue || 'XOSL'}')">
+      <div><div class="mrow-tkr">${INTEL.tkLink(m.isin, m.ticker || isinTicker(m.isin))}</div><div class="mrow-name">${m.name || ''}</div></div>
+      <div class="mrow-num ${(m.change_pct || 0) >= 0 ? 'up' : 'dn'}">${signed(m.change_pct || 0)}%</div>
+      <div class="mrow-num" style="color:var(--text-bright)">${mnok(m.turnover)}M</div>
+    </div>`).join('');
+
+  // Dark-flow leaders: highest dark_pct among names with real trading
+  const dark = movers.filter(m => (m.total_trades || 0) >= 20 && m.dark_pct != null)
+    .sort((a, b) => b.dark_pct - a.dark_pct).slice(0, 7);
+  document.getElementById('darkLeadersList').innerHTML = dark.map(m => {
+    const dr = darkRead(m);
+    // BLOCK bias is directional (off-mid prints); IMPACT is a soft mid-point
+    // drift lean shown in parentheses; NEUTRAL shows a dash.
+    const b = dr.bias
+      ? `<span class="mrow-badge" style="color:${dr.color}" title="${dr.prov}">${dr.ev === 'IMPACT' ? '(' + dr.bias + ')' : dr.bias}${dr.confirmed ? '✓' : ''}</span>`
+      : `<span class="mrow-badge">—</span>`;
+    return `
+    <div class="mrow" onclick="drillIntoISIN('${m.isin}','${m.venue || 'XOSL'}')">
+      <div><div class="mrow-tkr">${INTEL.tkLink(m.isin, m.ticker || isinTicker(m.isin))}</div><div class="mrow-name">${m.name || ''}</div></div>
+      <div class="mrow-num warn">${Number(m.dark_pct).toFixed(1)}%</div>
+      ${b}
+    </div>`;
+  }).join('');
+
+  loadInsiderFeed();
+  loadActivitySpark();
+}
+
+async function loadInsiderFeed() {
+  try {
+    const data = await API('corporate_events',
+      `event_type=eq.INSIDER&order=event_date.desc&limit=14`);
+    document.getElementById('insiderMeta').textContent = `${data.length} recent`;
+    if (!data.length) { document.getElementById('insiderFeed').innerHTML = '<div class="conv-empty">No filings.</div>'; return; }
+    document.getElementById('insiderFeed').innerHTML = data.map(e => `
+      <div class="feed-row" onclick="drillIntoISIN('${e.isin}','XOSL')">
+        <span class="feed-glyph">◐</span>
+        <div class="feed-main">
+          <div class="feed-issuer">${INTEL.tkLink(e.isin, e.issuer || isinName(e.isin) || e.isin)}</div>
+          <div class="feed-title" title="${(e.title || '').replace(/"/g, '&quot;')}">${e.title || 'Mandatory notification of trade'}</div>
+        </div>
+        <span class="feed-date">${e.event_date}</span>
+      </div>`).join('');
+  } catch (e) {
+    console.error('Insider feed failed:', e);
+    document.getElementById('insiderFeed').innerHTML = '<div class="conv-empty">DATA UNAVAILABLE</div>';
+  }
+}
+
+async function loadActivitySpark() {
+  try {
+    const data = await API('market_intraday', 'limit=600');
+    if (!data.length) return;
+    // Downsample to ~46 buckets for a clean sparkline.
+    const N = 46, step = Math.ceil(data.length / N);
+    const buckets = [];
+    for (let i = 0; i < data.length; i += step) {
+      const slice = data.slice(i, i + step);
+      buckets.push({
+        notional: slice.reduce((s, r) => s + Number(r.notional || 0), 0),
+        bucket: slice[0].minute_bucket,
+      });
+    }
+    const max = Math.max(...buckets.map(b => b.notional)) || 1;
+    const peakIdx = buckets.reduce((mi, b, i, a) => b.notional > a[mi].notional ? i : mi, 0);
+    document.getElementById('actSpark').innerHTML = buckets.map((b, i) => {
+      const h = Math.max(2, b.notional / max * 100);
+      const t = toOsloHHMM(marketPulse.trade_date + 'T' + b.bucket);
+      return `<div class="act-bar ${i === peakIdx ? 'peak' : ''}" style="height:${h}%" title="${t} · NOK ${mnok(b.notional)}M"></div>`;
+    }).join('');
+    const peakT = toOsloHHMM(marketPulse.trade_date + 'T' + buckets[peakIdx].bucket);
+    document.getElementById('actPeakLabel').innerHTML = `peak <span style="color:var(--amber)">${peakT}</span>`;
+  } catch (e) {
+    console.error('Activity spark failed:', e);
+  }
+}
+
+/* ═══ Catalyst Horizon — the hero scatter ══════════════════════════════════
+   Each upcoming catalyst is a node: x = days-to-event (0…35, near = left),
+   y = catalyst score (high = top), radius scales with score, colour encodes
+   direction. Nodes ≤5 days pulse. Hover shows a tooltip; click opens the
+   setup's drill-down. The "FX" toggle controls the pulse animation. */
+let _horizon = null;        // { canvas, ctx, w, h, nodes, raf, hover }
+let _catalystSetups = [];   // catalyst_radar rows backing the scatter
+let fxOn = true;            // pulse animation on/off (FX toggle)
+
+const HZ_PAD = { l: 42, r: 16, t: 16, b: 26 };
+const HZ_MAXDAYS = 35;
+const DIR_RGB = { up: '67,224,151', dn: '240,96,96', flat: '79,195,247' };
+const dirKey = d => d > 0.1 ? 'up' : d < -0.1 ? 'dn' : 'flat';
+const dirWord = d => d > 0.1 ? '↑ Accumulation' : d < -0.1 ? '↓ Distribution' : '◆ Watch';
+
+function hzLayout() {
+  if (!_horizon) return;
+  const c = _horizon.canvas;
+  const rect = c.getBoundingClientRect();
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  c.width = rect.width * dpr; c.height = rect.height * dpr;
+  _horizon.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  _horizon.w = rect.width; _horizon.h = rect.height;
+  const plotW = _horizon.w - HZ_PAD.l - HZ_PAD.r;
+  const plotH = _horizon.h - HZ_PAD.t - HZ_PAD.b;
+  const xOf = days => HZ_PAD.l + Math.min(Math.max(days, 0), HZ_MAXDAYS) / HZ_MAXDAYS * plotW;
+  const yOf = score => HZ_PAD.t + (1 - Math.min(Math.max(score, 0), 100) / 100) * plotH;
+  _horizon.nodes = _catalystSetups.map(r => ({
+    r,
+    x: xOf(r.days_to_event),
+    y: yOf(r.catalyst_score || 0),
+    rad: 5 + Math.min(r.catalyst_score || 0, 100) / 100 * 15,
+    rgb: DIR_RGB[dirKey(r.direction_score || 0)],
+    imminent: (r.days_to_event ?? 99) <= 5,
+    ticker: r.ticker || isinTicker(r.isin || '') || (r.isin || '').slice(-4),
+  }));
+}
+
+function hzDraw(ts) {
+  if (!_horizon) return;
+  const { ctx, w, h, nodes, hover } = _horizon;
+  ctx.clearRect(0, 0, w, h);
+  const plotW = w - HZ_PAD.l - HZ_PAD.r;
+  const plotH = h - HZ_PAD.t - HZ_PAD.b;
+
+  // horizontal score gridlines
+  ctx.font = '9px IBM Plex Mono, monospace';
+  ctx.textBaseline = 'middle'; ctx.textAlign = 'right';
+  [0, 25, 50, 75, 100].forEach(s => {
+    const y = HZ_PAD.t + (1 - s / 100) * plotH;
+    ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+    ctx.beginPath(); ctx.moveTo(HZ_PAD.l, y); ctx.lineTo(w - HZ_PAD.r, y); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.30)';
+    ctx.fillText(s, HZ_PAD.l - 6, y);
+  });
+
+  // x-axis day ticks + "today" marker
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  [0, 7, 14, 21, 28, 35].forEach(d => {
+    const x = HZ_PAD.l + d / HZ_MAXDAYS * plotW;
+    if (d === 0) {
+      ctx.strokeStyle = 'rgba(245,166,35,0.30)';
+      ctx.beginPath(); ctx.moveTo(x, HZ_PAD.t); ctx.lineTo(x, h - HZ_PAD.b); ctx.stroke();
+    }
+    ctx.fillStyle = d === 0 ? 'rgba(245,166,35,0.85)' : 'rgba(255,255,255,0.30)';
+    ctx.fillText(d === 0 ? 'today' : d + 'd', x, h - HZ_PAD.b + 6);
+  });
+
+  // nodes
+  const pulse = fxOn ? 0.5 + 0.5 * Math.sin((ts || 0) / 360) : 0;
+  nodes.forEach(n => {
+    if (n.imminent && fxOn) {
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, n.rad + 3 + pulse * 8, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(${n.rgb},${0.16 * (1 - pulse)})`;
+      ctx.fill();
+    }
+    const isHover = hover && hover === n;
+    if (isHover) {
+      ctx.beginPath(); ctx.arc(n.x, n.y, n.rad + 4, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(${n.rgb},0.9)`; ctx.lineWidth = 1.5; ctx.stroke();
+    }
+    ctx.beginPath(); ctx.arc(n.x, n.y, n.rad, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(${n.rgb},${isHover ? 0.95 : 0.78})`; ctx.fill();
+    ctx.lineWidth = 1; ctx.strokeStyle = `rgba(${n.rgb},1)`; ctx.stroke();
+    // label larger / hovered nodes with the ticker
+    if (n.rad >= 11 || isHover) {
+      ctx.font = '10px IBM Plex Mono, monospace';
+      ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      ctx.fillStyle = 'rgba(232,238,247,0.92)';
+      ctx.fillText(n.ticker, n.x + n.rad + 4, n.y);
+    }
+  });
+
+  if (fxOn) _horizon.raf = requestAnimationFrame(hzDraw);
+}
+
+function hzStart() { if (_horizon && !_horizon.raf) _horizon.raf = requestAnimationFrame(hzDraw); }
+function hzStop() { if (_horizon && _horizon.raf) { cancelAnimationFrame(_horizon.raf); _horizon.raf = null; } }
+
+function hzPick(e) {
+  const rect = _horizon.canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+  let best = null, bestD = Infinity;
+  for (const n of _horizon.nodes) {
+    const d = Math.hypot(mx - n.x, my - n.y);
+    if (d <= n.rad + 4 && d < bestD) { best = n; bestD = d; }
+  }
+  return best;
+}
+
+function hzMove(e) {
+  const n = hzPick(e);
+  _horizon.canvas.style.cursor = n ? 'pointer' : 'default';
+  const tip = document.getElementById('horizonTip');
+  if (n) {
+    _horizon.hover = n;
+    const r = n.r;
+    const dte = r.days_to_event === 0 ? 'today' : r.days_to_event === 1 ? 'tomorrow' : `in ${r.days_to_event} days`;
+    tip.innerHTML =
+        `<div class="tt-tkr">${n.ticker}</div>`
+      + `<div class="tt-co">${r.issuer || isinName(r.isin || '') || ''}</div>`
+      + `<div class="tt-row"><span class="tt-k">CATALYST</span><span>${r.catalyst_score || 0}</span></div>`
+      + `<div class="tt-row"><span class="tt-k">DIRECTION</span><span>${dirWord(r.direction_score || 0)}</span></div>`
+      + `<div class="tt-row"><span class="tt-k">EVENT</span><span>${r.event_type} ${dte}</span></div>`
+      + `<div class="tt-hint">CLICK TO OPEN SETUP</div>`;
+    tip.style.display = 'block';
+    const wrapRect = _horizon.canvas.getBoundingClientRect();
+    let lx = n.x + 14, ty = n.y - 8;
+    if (lx > wrapRect.width - 232) lx = n.x - 232;
+    if (lx < 0) lx = 4;
+    tip.style.left = lx + 'px'; tip.style.top = ty + 'px';
+  } else {
+    _horizon.hover = null;
+    tip.style.display = 'none';
+  }
+  if (!fxOn) hzDraw(0);
+}
+
+function hzClick() {
+  const n = _horizon && _horizon.hover;
+  if (n && n.r.isin) drillIntoISIN(n.r.isin, 'XOSL');
+}
+
+function renderHorizon(setups) {
+  _catalystSetups = (setups || []).filter(r => r.days_to_event != null);
+  const canvas = document.getElementById('horizonCanvas');
+  const empty  = document.getElementById('horizonEmpty');
+  if (!canvas) return;
+  if (!_catalystSetups.length) {
+    if (empty) { empty.style.display = 'flex'; empty.textContent = 'No scheduled catalysts inside the 35-day horizon yet.'; }
+    canvas.style.display = 'none';
+    return;
+  }
+  if (empty) empty.style.display = 'none';
+  canvas.style.display = 'block';
+  if (!_horizon) {
+    _horizon = { canvas, ctx: canvas.getContext('2d'), raf: null, hover: null };
+    new ResizeObserver(() => { hzLayout(); if (!fxOn) hzDraw(0); }).observe(canvas);
+    canvas.addEventListener('mousemove', hzMove);
+    canvas.addEventListener('mouseleave', () => {
+      _horizon.hover = null;
+      document.getElementById('horizonTip').style.display = 'none';
+      if (!fxOn) hzDraw(0);
+    });
+    canvas.addEventListener('click', hzClick);
+  }
+  hzLayout();
+  hzStop();
+  if (fxOn) hzStart(); else hzDraw(0);
+}
+
+function updateFxToggle() {
+  const b = document.getElementById('fxToggle');
+  if (b) b.innerHTML = fxOn ? '◉ FX' : '⊘ FX';
+}
+function toggleAmbient() {
+  fxOn = !fxOn;
+  localStorage.setItem('mr_fx', fxOn ? '1' : '0');
+  updateFxToggle();
+  if (_horizon) { if (fxOn) hzStart(); else { hzStop(); hzDraw(0); } }
+}
+function initFx() {
+  const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const saved = localStorage.getItem('mr_fx');
+  fxOn = saved == null ? !reduce : saved === '1';
+  updateFxToggle();
+}
+
+/* ─── Return Distribution (Slensvik model, Phase 1) ─────────────────────── */
+const DIST_LABEL = {
+  normal: 'Normal', student_t: 'Student-t', laplace: 'Laplace', ged: 'GED',
+  nig: 'NIG', gen_hyp: 'Gen-hyperbolic', skew_t: 'Skew-t',
+  gaussian_mix2: '2-Normal mix', alpha_stable: 'α-stable',
+};
+const DIST_COLOR = {
+  ged: '#f5a623', student_t: '#4fc3f7', nig: '#a78bfa', gen_hyp: '#43e097',
+  skew_t: '#ff8fb3', laplace: '#d4a5ff', alpha_stable: '#77ddd4', gaussian_mix2: '#e0c060',
+};
+let distCharts = {};
+
+async function loadDistribution() {
+  let sum, fits;
+  try {
+    const [s, f] = await Promise.all([
+      API('return_dist_summary', 'scope_id=eq.MARKET&horizon=eq.1min'),
+      API('return_dist_fits', 'scope_id=eq.MARKET&horizon=eq.1min&order=aic.asc'),
+    ]);
+    sum = s && s[0]; fits = f || [];
+  } catch (e) { return; }
+  if (!sum) return;
+
+  const cnt = document.getElementById('distCount');
+  if (cnt) cnt.textContent = `N=${Number(sum.n_obs).toLocaleString()}`;
+
+  renderDistHero(sum);
+  renderDistDensity(sum);
+  renderDistQQ(sum);
+  renderDistTail(sum);
+  renderDistVar(sum);
+  renderDistScorecard(fits);
+}
+
+function renderDistHero(s) {
+  const el = document.getElementById('distHero'); if (!el) return;
+  const k = Number(s.excess_kurtosis), sk = Number(s.skew);
+  const xiL = s.evt_left_tail_index, xiR = s.evt_right_tail_index;
+  const rejectNormal = Number(s.jb_p) < 0.01;
+  const stat = (kk, vv, cls, sub) =>
+    `<div class="dist-stat"><div class="k">${kk}</div><div class="v ${cls||''}">${vv}</div>`
+    + (sub ? `<div class="sub">${sub}</div>` : '') + `</div>`;
+  el.innerHTML = [
+    stat('Best fit', DIST_LABEL[s.best_distribution] || s.best_distribution, 'amber', 'lowest AIC'),
+    stat('Excess kurtosis', k.toFixed(1), k > 1 ? 'neg' : '', k > 1 ? 'fat-tailed vs Normal (0)' : 'near-Gaussian'),
+    stat('Skew', (sk >= 0 ? '+' : '') + sk.toFixed(2), sk < -0.1 ? 'neg' : sk > 0.1 ? 'pos' : '', sk < 0 ? 'downside-skewed' : 'symmetric-ish'),
+    stat('Normality (JB)', rejectNormal ? 'REJECTED' : 'plausible', rejectNormal ? 'neg' : 'pos', rejectNormal ? 'p < 0.01 — not Gaussian' : 'p ≥ 0.01'),
+    stat('Left tail index', xiL ? Number(xiL).toFixed(2) : '—', 'amber', 'EVT · lower = heavier'),
+    stat('Right tail index', xiR ? Number(xiR).toFixed(2) : '—', 'amber', 'EVT · lower = heavier'),
+  ].join('');
+}
+
+function normPdf(x, m, s) { return Math.exp(-0.5 * ((x - m) / s) ** 2) / (s * Math.sqrt(2 * Math.PI)); }
+
+function renderDistDensity(s) {
+  const ctx = document.getElementById('distDensity'); if (!ctx) return;
+  if (distCharts.density) distCharts.density.destroy();
+  const c = s.charts || {};
+  const hist = c.hist || { centers: [], density: [] };
+  const grid = c.grid || [];
+  const m = Number(s.mean), sd = Number(s.std);
+  const toPct = v => v * 100;
+  const datasets = [{
+    type: 'line', label: 'Empirical', stepped: 'middle',
+    data: hist.centers.map((x, i) => ({ x: toPct(x), y: hist.density[i] })),
+    borderColor: 'rgba(232,238,247,0.45)', backgroundColor: 'rgba(232,238,247,0.10)',
+    fill: true, pointRadius: 0, borderWidth: 1, order: 10,
+  }];
+  // Gaussian benchmark (always shown for contrast)
+  datasets.push({
+    type: 'line', label: 'Normal (benchmark)',
+    data: grid.map(x => ({ x: toPct(x), y: normPdf(x, m, sd) })),
+    borderColor: '#6b7685', borderDash: [5, 4], pointRadius: 0, borderWidth: 1.5, fill: false, order: 5,
+  });
+  // top fitted densities
+  const dens = c.densities || {};
+  Object.keys(dens).forEach(name => {
+    datasets.push({
+      type: 'line', label: DIST_LABEL[name] || name,
+      data: grid.map((x, i) => ({ x: toPct(x), y: dens[name][i] })),
+      borderColor: DIST_COLOR[name] || '#4fc3f7', pointRadius: 0, borderWidth: 1.8, fill: false, order: 1,
+    });
+  });
+  distCharts.density = new Chart(ctx, {
+    data: { datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      parsing: false, normalized: true,
+      scales: {
+        x: { type: 'linear', title: { display: true, text: '1-min log return (%)', color: '#6b7685', font: { size: 10 } },
+             min: grid.length ? grid[0] * 100 : undefined, max: grid.length ? grid[grid.length - 1] * 100 : undefined,
+             ticks: { color: '#6b7685', font: { size: 10 }, callback: v => v.toFixed(2) }, grid: { color: 'rgba(255,255,255,0.04)' } },
+        y: { title: { display: true, text: 'density', color: '#6b7685', font: { size: 10 } },
+             ticks: { color: '#6b7685', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
+      },
+      plugins: { legend: { position: 'bottom', labels: { color: '#c8d2e0', boxWidth: 12, padding: 8, font: { size: 10 } } } },
+    },
+  });
+  const note = document.getElementById('distDensityNote');
+  if (note) note.textContent = `The Normal (dashed) is too peaked in the middle and too thin in the wings; ${DIST_LABEL[s.best_distribution] || s.best_distribution} tracks the real shape best.`;
+}
+
+function renderDistQQ(s) {
+  const ctx = document.getElementById('distQQ'); if (!ctx) return;
+  if (distCharts.qq) distCharts.qq.destroy();
+  const qq = (s.charts || {}).qq || {};
+  const emp = qq.empirical || [], nrm = qq.normal || [];
+  const n = Math.min(emp.length, nrm.length);
+  const pts = []; for (let i = 0; i < n; i++) pts.push({ x: nrm[i] * 100, y: emp[i] * 100 });
+  const lo = Math.min(...pts.map(p => Math.min(p.x, p.y)));
+  const hi = Math.max(...pts.map(p => Math.max(p.x, p.y)));
+  distCharts.qq = new Chart(ctx, {
+    data: { datasets: [
+      { type: 'scatter', label: 'Q–Q', data: pts, pointRadius: 1.6, pointBackgroundColor: '#4fc3f7', borderColor: '#4fc3f7' },
+      { type: 'line', label: '45° (Gaussian)', data: [{ x: lo, y: lo }, { x: hi, y: hi }], borderColor: '#6b7685', borderDash: [5, 4], pointRadius: 0, borderWidth: 1.5 },
+    ] },
+    options: {
+      responsive: true, maintainAspectRatio: false, parsing: false,
+      scales: {
+        x: { type: 'linear', title: { display: true, text: 'theoretical (Normal) %', color: '#6b7685', font: { size: 10 } }, ticks: { color: '#6b7685', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
+        y: { title: { display: true, text: 'empirical %', color: '#6b7685', font: { size: 10 } }, ticks: { color: '#6b7685', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
+      },
+      plugins: { legend: { position: 'bottom', labels: { color: '#c8d2e0', boxWidth: 12, padding: 8, font: { size: 10 } } } },
+    },
+  });
+}
+
+function renderDistTail(s) {
+  const ctx = document.getElementById('distTail'); if (!ctx) return;
+  if (distCharts.tail) distCharts.tail.destroy();
+  const sv = (s.charts || {}).survival || {};
+  const t = sv.t || [], emp = sv.empirical || [], nrm = sv.normal || [];
+  const FLOOR = 1e-6;
+  const mk = arr => t.map((tt, i) => ({ x: tt * 100, y: Math.max(arr[i], FLOOR) }));
+  distCharts.tail = new Chart(ctx, {
+    data: { datasets: [
+      { type: 'line', label: 'Empirical', data: mk(emp), borderColor: '#f5a623', pointRadius: 0, borderWidth: 2, fill: false },
+      { type: 'line', label: 'Normal', data: mk(nrm), borderColor: '#6b7685', borderDash: [5, 4], pointRadius: 0, borderWidth: 1.5, fill: false },
+    ] },
+    options: {
+      responsive: true, maintainAspectRatio: false, parsing: false,
+      scales: {
+        x: { type: 'linear', title: { display: true, text: 'loss threshold t (%)', color: '#6b7685', font: { size: 10 } }, ticks: { color: '#6b7685', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
+        y: { type: 'logarithmic', title: { display: true, text: 'P(return < −t)', color: '#6b7685', font: { size: 10 } }, ticks: { color: '#6b7685', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
+      },
+      plugins: { legend: { position: 'bottom', labels: { color: '#c8d2e0', boxWidth: 12, padding: 8, font: { size: 10 } } } },
+    },
+  });
+}
+
+function renderDistVar(s) {
+  const el = document.getElementById('distVarTable'); if (!el) return;
+  const ve = s.var_es || {};
+  const pct = v => v == null ? '—' : (v * 100).toFixed(2) + '%';
+  const rows = ['0.95', '0.99', '0.999'].filter(l => ve[l]).map(l => {
+    const r = ve[l];
+    return `<tr><td>${(Number(l) * 100).toFixed(1)}%</td>`
+      + `<td>${pct(r.empirical_var)}</td><td>${pct(r.normal_var)}</td>`
+      + `<td>${pct(r.fit_var)}</td><td>${pct(r.empirical_es)}</td></tr>`;
+  }).join('');
+  el.innerHTML = `<table class="dist-table"><thead><tr>`
+    + `<th>Level</th><th>Empirical</th><th>Normal</th><th>Best fit</th><th>ES (emp)</th>`
+    + `</tr></thead><tbody>${rows}</tbody></table>`;
+  // Normal-underestimation callout from the 0.999 backtest
+  const note = document.getElementById('distVarNote');
+  const r999 = ve['0.999'];
+  if (note && r999) {
+    const exp = r999.expected_rate, act = r999.normal_exceed_rate;
+    const ratio = exp > 0 ? (act / exp) : null;
+    note.innerHTML = ratio
+      ? `At the 99.9% level the Normal model is breached <b>${ratio.toFixed(1)}×</b> as often as it should be (${(act * 100).toFixed(2)}% vs ${(exp * 100).toFixed(2)}% expected) — it badly understates crash risk.`
+      : '';
+  }
+}
+
+function renderDistScorecard(fits) {
+  const el = document.getElementById('distScorecard'); if (!el) return;
+  if (!fits.length) { el.innerHTML = '<div class="conv-empty">NO FITS</div>'; return; }
+  const fmt = v => v == null ? '—' : Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 });
+  const f4 = v => v == null ? '—' : Number(v).toFixed(3);
+  const rows = fits.map(f => {
+    return `<tr class="${f.is_best ? 'best' : ''}"><td>${DIST_LABEL[f.distribution] || f.distribution}</td>`
+      + `<td>${fmt(f.aic)}</td><td>${fmt(f.bic)}</td>`
+      + `<td class="${f.ks_stat == null ? 'muted' : ''}">${f4(f.ks_stat)}</td>`
+      + `<td class="${f.ad_stat == null ? 'muted' : ''}">${f.ad_stat == null ? '—' : Number(f.ad_stat).toFixed(1)}</td>`
+      + `<td class="muted">${f.n_params}</td></tr>`;
+  }).join('');
+  el.innerHTML = `<table class="dist-table"><thead><tr>`
+    + `<th>Distribution</th><th>AIC</th><th>BIC</th><th>KS</th><th>A–D</th><th>k</th>`
+    + `</tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+/* ─── Init: load instruments + available dates ─────────────────────────── */
+async function init() {
+  restoreSectionStates();
+  initFx();
+  loadMarketPulse();  // hero + Market Today dashboard (always latest day)
+  loadDistribution(); // return-distribution section (latest fit, date-independent)
+  try {
+    await loadInstruments();  // Enrich ISIN map from instruments table
+
+    // latency table: one row per ISIN per date — paginate to get all dates
+    const dates = await APIall('latency',
+      'select=trade_date&order=trade_date.desc');
+    const unique = [...new Set(dates.map(r => r.trade_date))].sort((a,b) => b.localeCompare(a));
+    const sel = document.getElementById('dateSelect');
+    sel.innerHTML = '';   // clear any existing options
+    unique.forEach(d => {
+      const opt = document.createElement('option');
+      opt.value = d; opt.textContent = d;
+      sel.appendChild(opt);
+    });
+    if (unique.length) { currentDate = unique[0]; await loadDate(); }
+    else { showError('No data found. Run the pipeline first.'); }
+  } catch(e) { showError('Could not connect to API. Check your PostgREST endpoint. ' + e.message); }
+}
+
+async function loadDate() {
+  currentDate = document.getElementById('dateSelect').value;
+  document.getElementById('tradeDatePill').textContent = currentDate;
+  closeDrill();
+  await Promise.all([
+    loadConviction(), loadTrackRecord(), loadIntelReport(),
+    loadKPIs(), loadWhales(), loadSignals(),
+    loadSummaryTable(), loadLatency(), loadIntraday(),
+    loadCatalystAlerts(), loadCorporateEvents(), loadSignalProximity(), loadTrends()
+  ]);
+  // Reset chains to unloaded state on date change
+  document.getElementById('chainWrap').style.display = 'none';
+  document.getElementById('chainCount').textContent = '—';
+  document.getElementById('chainBody').innerHTML =
+    '<tr><td colspan="9" style="color:var(--text-dim);font-family:var(--mono);font-size:12px;padding:16px">Click LOAD to fetch execution chains for this date.</td></tr>';
+}
+
+/* ─── KPIs ──────────────────────────────────────────────────────────────── */
+async function loadKPIs() {
+  const el = document.getElementById('kpiGrid');
+  // Anchor to the same complete-session day as the hero/dashboard. market_pulse
+  // is loaded in parallel; fall back to the latest daily_summary date so the
+  // panel is never blank just because daily_close ran a day ahead of the tape.
+  let d = marketPulse && marketPulse.trade_date;
+  if (!d) {
+    const latest = await API('daily_summary', 'select=trade_date&order=trade_date.desc&limit=1');
+    d = latest.length ? latest[0].trade_date : currentDate;
+  }
+  const data = await API('daily_summary',
+    `trade_date=eq.${d}&select=total_trades,adv_estimate,algo_ratio_pct,dark_pct,gini,avg_pub_lag_ms`);
+  if (!data.length) { if (el) el.innerHTML = `<div class="conv-empty">No microstructure for ${d}</div>`; return; }
+
+  const totTrades = data.reduce((s,r) => s + (r.total_trades||0), 0);
+  const totADV    = data.reduce((s,r) => s + (r.adv_estimate||0), 0);
+  const avgAlgo   = (data.reduce((s,r) => s + (r.algo_ratio_pct||0), 0) / data.length).toFixed(1);
+  const avgDark   = (data.reduce((s,r) => s + (r.dark_pct||0), 0) / data.length).toFixed(1);
+  const avgGini   = (data.reduce((s,r) => s + (r.gini||0), 0) / data.length).toFixed(3);
+  const avgLag    = (data.reduce((s,r) => s + (r.avg_pub_lag_ms||0), 0) / data.length).toFixed(0);
+
+  document.getElementById('totalTradesPill').textContent =
+    `${(totTrades/1000).toFixed(0)}K TRADES`;
+
+  const row = (label, val, cls) => `
+    <div class="dash-stat-row">
+      <span class="dash-stat-label">${label}</span>
+      <span class="dash-stat-val ${cls || ''}">${val}</span>
+    </div>`;
+  if (el) el.innerHTML =
+    row('Total trades', `${(totTrades/1000).toFixed(1)}K`) +
+    row('Est. day value', `NOK ${(totADV/1e9).toFixed(2)}B`) +
+    row('Avg algo ratio', `${avgAlgo}%`, 'warn') +
+    row('Avg dark pool', `${avgDark}%`) +
+    row('ISINs active', `${data.length}`) +
+    row('Trade-size Gini', avgGini) +
+    row('Avg publish lag', `${avgLag} ms`);
+}
+
+/* ─── Whales ────────────────────────────────────────────────────────────── */
+async function loadWhales() {
+  const data = await API('whale_alerts',
+    `trade_date=eq.${currentDate}&order=notional.desc.nullslast&limit=50`);
+  document.getElementById('whaleCount').textContent = `${data.length} EVENTS`;
+
+  if (!data.length) {
+    document.getElementById('whaleGrid').innerHTML =
+      '<div style="color:var(--text-dim);font-family:var(--mono);font-size:12px;padding:16px">No whale events detected for this date.</div>';
+    return;
+  }
+
+  const SIGNAL_ICONS = {
+    LARGE_NOK: '■', LARGE_EUR: '■', DARK_POOL_LARGE: '◍', OTC_PRINT: '⊗',
+    // legacy / now-dead alert types kept for back-compat
+    BLOCK_TRADE: '■', NEGOTIATED_OTC: '◇', DEFERRED_PRINT: '◑',
+  };
+
+  document.getElementById('whaleGrid').innerHTML = data.map(r => {
+    const notional = r.notional ? `NOK ${(r.notional/1e6).toFixed(2)}M`
+      : r.price && r.quantity ? `NOK ${(r.price*r.quantity/1e6).toFixed(2)}M` : '—';
+    const alerts = [r.size_alert, r.block_alert, r.otc_alert, r.dark_alert, r.deferral_alert]
+      .filter(Boolean);
+    const time = r.trading_time ? toOsloHHMM(r.trading_time) : '—';
+    return `
+      <div class="whale-card">
+        <div class="whale-top">
+          <div>
+            <div class="whale-isin">${INTEL.tkLink(r.isin, isinTicker(r.isin))} <span style="font-size:11px;color:var(--text-dim)">${isinName(r.isin)}</span></div>
+            <div class="whale-venue">${r.venue} · ${time}</div>
+          </div>
+          <div>${r.participant_class === 'ALGO' || r.algo_ind === 'ALGO'
+            ? '<span class="badge badge-amber">ALGO</span>'
+            : '<span class="badge badge-dim">HUMAN</span>'}</div>
+        </div>
+        <div class="whale-notional">${notional}</div>
+        <div style="font-size:12px;color:var(--text-dim)">
+          ${r.quantity ? fmt.num(r.quantity) + ' shares' : ''} @ ${r.price ? 'NOK '+Number(r.price).toFixed(2) : '—'}
+        </div>
+        <div class="whale-meta">
+          ${alerts.map(a => `<span class="badge badge-amber">${SIGNAL_ICONS[a]||''} ${a}</span>`).join('')}
+          ${r.market_mechanism ? `<span class="badge badge-ice">MECH ${r.market_mechanism}</span>` : ''}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+/* ─── Smart Money Signals ───────────────────────────────────────────────── */
+async function loadSignals() {
+  const data = await API('smart_signals',
+    `trade_date=eq.${currentDate}&order=notional.desc.nullslast`);
+  document.getElementById('signalCount').textContent = `${data.length} SIGNALS`;
+
+  const ICONS = {
+    DARK_ACCUMULATION:  '◍',
+    DARK_DISTRIBUTION:  '◍',
+    DARK_BLOCK:         '◍',
+    EOD_SWEEP:          '╳',
+    LARGE_NOTIONAL:     '■',
+    CEILING_BREAK:      '▲',
+    FLOOR_BREAK:        '▼',
+    // legacy
+    DEFERRED_LARGE_PRINT: '◑',
+    ALGO_DOMINANCE:       '◴',
+    BURST_STORM:          '╳',
+  };
+
+  document.getElementById('signalList').innerHTML = !data.length
+    ? '<div style="color:var(--text-dim);font-family:var(--mono);font-size:12px;padding:16px">No smart money signals detected for this date.</div>'
+    : data.map((r, i) => `
+      <div class="signal-row" style="animation-delay:${i*0.05}s" onclick="drillIntoISIN('${r.isin}','${r.venue}')">
+        <div class="signal-icon">${ICONS[r.signal_type] || '▢'}</div>
+        <div class="signal-body">
+          <div class="signal-type">${r.signal_type}</div>
+          <div class="signal-desc">${r.signal_desc || '—'}</div>
+        </div>
+        <div style="text-align:right">
+          <div class="signal-isin">${INTEL.tkLink(r.isin, isinTicker(r.isin))}</div><div style="font-size:11px;color:var(--text-dim)">${isinName(r.isin)}</div>
+          <div class="signal-strength ${r.strength}">${r.strength || ''}</div>
+          ${r.notional ? `<div style="font-family:var(--mono);font-size:11px;color:var(--amber)">NOK ${(r.notional/1e6).toFixed(1)}M</div>` : ''}
+        </div>
+      </div>`).join('');
+}
+
+/* ─── Summary Table + Algo/Dark charts ─────────────────────────────────── */
+async function loadSummaryTable() {
+  allSummary = await API('daily_summary',
+    `trade_date=eq.${currentDate}&order=adv_estimate.desc.nullslast`);
+  allDark = await API('dark_flow_summary',
+    `trade_date=eq.${currentDate}&order=total_volume.desc.nullslast`);
+
+  document.getElementById('isinCount').textContent = `${allSummary.length} ISINs`;
+  renderSummaryTable(allSummary);
+  renderAlgoDonut(allSummary);
+  renderDarkBar(allDark);
+}
+
+function renderSummaryTable(data) {
+  document.getElementById('summaryBody').innerHTML = data.map(r => {
+    const algoPct = r.algo_ratio_pct || 0;
+    const darkPct = r.dark_pct || 0;
+    const openAuc = r.open_auction_notional ? fmt.nok(r.open_auction_notional) : '—';
+    const closeAuc = r.close_auction_notional ? fmt.nok(r.close_auction_notional) : '—';
+    return `
+      <tr onclick="drillIntoISIN('${r.isin}','${r.venue}')">
+        <td>${isinCell(r.isin)}</td>
+        <td><span class="badge ${r.venue==='XOSL'?'badge-ice':'badge-amber'}">${r.venue}</span></td>
+        <td class="r">${fmt.num(r.total_trades)}</td>
+        <td class="r">${fmt.nok(r.adv_estimate)}</td>
+        <td class="r">${fmt.num(r.avg_trade_size)}</td>
+        <td>
+          <div class="bar-wrap">
+            <div class="bar-track"><div class="bar-fill bar-amber" style="width:${Math.min(algoPct,100)}%"></div></div>
+            <div class="bar-pct">${fmt.pct(algoPct)}</div>
+          </div>
+        </td>
+        <td>
+          <div class="bar-wrap">
+            <div class="bar-track"><div class="bar-fill bar-purple" style="width:${Math.min(darkPct,100)}%;background:var(--purple)"></div></div>
+            <div class="bar-pct">${fmt.pct(darkPct)}</div>
+          </div>
+        </td>
+        <td class="r">${fmt.dec(r.gini)}</td>
+        <td class="r">${fmt.ms(r.avg_pub_lag_ms)}</td>
+        <td class="r" style="color:var(--green)">${openAuc}</td>
+        <td class="r" style="color:var(--ice)">${closeAuc}</td>
+      </tr>`;
+  }).join('');
+}
+
+function renderAlgoDonut(data) {
+  const totalAlgo    = data.reduce((s,r) => s + (r.algo_flag||0), 0);
+  const totalBurst   = data.reduce((s,r) => s + (r.burst_algo||0), 0);
+  const totalAuction = data.reduce((s,r) => s + (r.auction||0), 0);
+  const totalHuman   = data.reduce((s,r) => s + (r.human||0), 0);
+
+  if (algoDonutChart) algoDonutChart.destroy();
+  algoDonutChart = new Chart(document.getElementById('algoDonut'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Flagged Algo', 'Burst Algo', 'Auction', 'Human'],
+      datasets: [{
+        data: [totalAlgo, totalBurst, totalAuction, totalHuman],
+        backgroundColor: ['#f5a623', '#a78bfa', '#4fc3f7', '#43e097'],
+        borderWidth: 0,
+        hoverOffset: 8,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom', labels: { padding: 16, usePointStyle: true } },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${fmt.num(ctx.parsed)} trades` } }
+      },
+      cutout: '62%',
+    }
+  });
+}
+
+function renderDarkBar(data) {
+  // Sort by total volume (lit+dark+lis) to get the most active ISINs
+  const top20 = data
+    .map(r => ({ ...r, _vol: (r.lit_volume||0) + (r.dark_volume||0) + (r.lis_volume||0) }))
+    .sort((a, b) => b._vol - a._vol)
+    .slice(0, 20);
+
+  // On XOSL/MERK, raw dark volumes are close to zero for most stocks.
+  // Show dark_pct as a horizontal bar — this is the meaningful signal.
+  if (darkBarChart) darkBarChart.destroy();
+  darkBarChart = new Chart(document.getElementById('darkBar'), {
+    type: 'bar',
+    data: {
+      labels: top20.map(r => isinTicker(r.isin)),
+      datasets: [{
+        label: 'Dark Pool %',
+        data: top20.map(r => r.dark_pct || 0),
+        backgroundColor: top20.map(r => (r.dark_pct||0) > 10 ? '#a78bfa' : '#4fc3f7'),
+        borderWidth: 0,
+        borderRadius: 3,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      indexAxis: 'y',
+      scales: {
+        x: {
+          min: 0, max: 100,
+          ticks: { callback: v => v + '%' },
+          grid: { color: 'rgba(255,255,255,0.04)' }
+        },
+        y: { ticks: { font: { family: "'IBM Plex Mono', monospace", size: 11 } } }
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: {
+          title: ctx => {
+            const r = top20[ctx[0].dataIndex];
+            return isinName(r.isin) || isinTicker(r.isin);
+          },
+          label: ctx => {
+            const r = top20[ctx.dataIndex];
+            const pct = (r.dark_pct||0).toFixed(1);
+            const vol = ((r.dark_volume||0)/1e6).toFixed(2);
+            return ` Dark: ${pct}%  (${vol}M shares)`;
+          }
+        }}
+      }
+    }
+  });
+}
+
+/* ─── Paginated API fetch (bypasses PostgREST default row cap) ──────────── */
+async function APIall(table, params, pageSize = 1000) {
+  let rows = [], offset = 0;
+  while (true) {
+    const page = await API(table, `${params}&limit=${pageSize}&offset=${offset}`);
+    rows = rows.concat(page);
+    if (page.length < pageSize) break;   // last page
+    offset += pageSize;
+  }
+  return rows;
+}
+
+/* ─── Intraday Aggregate Chart ──────────────────────────────────────────── */
+async function loadIntraday() {
+  // PostgREST may limit rows; paginate to get all ~24k minute-bucket rows
+  allIntraday = await APIall('intraday',
+    `trade_date=eq.${currentDate}&order=minute_bucket.asc`);
+  renderIntradayAggregate();
+}
+
+function renderIntradayAggregate() {
+  document.getElementById('intradayLabel').textContent = 'Market Aggregate';
+  const buckets = {};
+  allIntraday.forEach(r => {
+    if (!buckets[r.minute_bucket]) buckets[r.minute_bucket] = { algo: 0, human: 0, auction: 0 };
+    buckets[r.minute_bucket].algo    += r.algo_volume || 0;
+    buckets[r.minute_bucket].human   += r.human_volume || 0;
+    buckets[r.minute_bucket].auction += r.auction_volume || 0;
+  });
+  const labels = Object.keys(buckets).sort();
+  renderIntradayChart('intradayChart', labels,
+    labels.map(l => buckets[l].algo),
+    labels.map(l => buckets[l].human),
+    labels.map(l => buckets[l].auction));
+}
+
+function renderIntradayChart(canvasId, labels, algoData, humanData, auctionData) {
+  const existing = Chart.getChart(canvasId);
+  if (existing) existing.destroy();
+  // labels arrive as raw minute_bucket strings ("HH:MM:SS") — convert to
+  // proper Date objects so the x-axis can be a real time scale in Oslo TZ.
+  const dates = labels.map(l => bucketToDate(l, currentDate));
+  const toPair = (vals) => dates.map((x, i) => ({ x, y: vals[i] || 0 }));
+  new Chart(document.getElementById(canvasId), {
+    type: 'bar',
+    data: {
+      datasets: [
+        { label: 'Auction', data: toPair(auctionData), backgroundColor: '#4fc3f7', stack: 'v', borderWidth: 0 },
+        { label: 'Algo',    data: toPair(algoData),    backgroundColor: '#f5a623', stack: 'v', borderWidth: 0 },
+        { label: 'Human',   data: toPair(humanData),   backgroundColor: '#43e097', stack: 'v', borderWidth: 0 },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      animation: { duration: 400 },
+      scales: {
+        x: {
+          type: 'time',
+          stacked: true,
+          time: {
+            unit: 'minute', stepSize: 30,
+            tooltipFormat: 'HH:mm',
+            displayFormats: { minute: 'HH:mm', hour: 'HH:mm' },
+          },
+          adapters: { date: { zone: 'Europe/Oslo' } },
+          ticks: { maxRotation: 0, source: 'auto', autoSkip: true, maxTicksLimit: 24 },
+          grid: { color: 'rgba(255,255,255,0.03)' },
+        },
+        y: { stacked: true, ticks: { callback: v => (v/1e3).toFixed(0)+'K' } }
+      },
+      plugins: {
+        legend: { position: 'bottom', labels: { usePointStyle: true, padding: 12 } },
+        tooltip: {
+          callbacks: {
+            title: items => {
+              const t = items[0]?.parsed?.x;
+              return t == null ? '' : new Date(t).toLocaleTimeString('no-NO', {
+                timeZone: 'Europe/Oslo',
+                hour: '2-digit', minute: '2-digit', hour12: false,
+              });
+            },
+          },
+        },
+      },
+    }
+  });
+}
+
+/* ─── Latency table + chart ─────────────────────────────────────────────── */
+async function loadLatency() {
+  allLatency = await API('latency',
+    `trade_date=eq.${currentDate}&order=trade_count.desc&limit=50`);
+
+  document.getElementById('latencyBody').innerHTML = allLatency.slice(0,30).map(r => {
+    const total = (r.hft_count||0) + (r.algo_dma_count||0) + (r.human_count||0);
+    const hftPct = total ? ((r.hft_count||0)/total*100).toFixed(0) : 0;
+    const algoPct = total ? ((r.algo_dma_count||0)/total*100).toFixed(0) : 0;
+    const humPct = total ? ((r.human_count||0)/total*100).toFixed(0) : 0;
+    return `
+      <tr>
+        <td>${isinCell(r.isin)}</td>
+        <td class="r">${fmt.ms(r.avg_lag_ms)}</td>
+        <td class="r">${fmt.ms(r.min_lag_ms)}</td>
+        <td>
+          <div class="bar-wrap">
+            <div class="bar-track"><div class="bar-fill bar-amber" style="width:${hftPct}%"></div></div>
+            <div class="bar-pct">${hftPct}%</div>
+          </div>
+        </td>
+        <td>
+          <div class="bar-wrap">
+            <div class="bar-track"><div class="bar-fill bar-ice" style="width:${algoPct}%"></div></div>
+            <div class="bar-pct">${algoPct}%</div>
+          </div>
+        </td>
+        <td>
+          <div class="bar-wrap">
+            <div class="bar-track"><div class="bar-fill bar-green" style="width:${humPct}%"></div></div>
+            <div class="bar-pct">${humPct}%</div>
+          </div>
+        </td>
+      </tr>`;
+  }).join('');
+
+  // Aggregate speed tier donut
+  const totHFT  = allLatency.reduce((s,r) => s + (r.hft_count||0), 0);
+  const totAlgo = allLatency.reduce((s,r) => s + (r.algo_dma_count||0), 0);
+  const totHum  = allLatency.reduce((s,r) => s + (r.human_count||0), 0);
+  if (latencyDonutChart) latencyDonutChart.destroy();
+  latencyDonutChart = new Chart(document.getElementById('latencyDonut'), {
+    type: 'doughnut',
+    data: {
+      labels: ['HFT < 10ms', 'Algo DMA 10–500ms', 'Human > 500ms'],
+      datasets: [{ data: [totHFT, totAlgo, totHum],
+        backgroundColor: ['#f5a623','#4fc3f7','#43e097'], borderWidth: 0 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '58%',
+      plugins: {
+        legend: { position: 'bottom', labels: { padding: 12, usePointStyle: true } },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${fmt.num(ctx.parsed)}` } }
+      }
+    }
+  });
+}
+
+/* ─── Execution Chains ──────────────────────────────────────────────────── */
+async function loadChains() {
+  document.getElementById('chainCount').textContent = 'LOADING …';
+  document.getElementById('chainWrap').style.display = 'block';
+  const data = await API('chains',
+    `trade_date=eq.${currentDate}&order=total_notional.desc.nullslast`);
+  document.getElementById('chainCount').textContent = `${data.length} CHAINS`;
+
+  const TYPE_BADGE = {
+    RAPID_SLICER: 'badge-amber', SLICER: 'badge-amber',
+    BURST_EXEC: 'badge-purple', MULTI_LEG: 'badge-ice',
+  };
+
+  document.getElementById('chainBody').innerHTML = !data.length
+    ? '<tr><td colspan="9" style="color:var(--text-dim);font-family:var(--mono);font-size:12px;padding:16px">No multi-leg chains detected. Only single-execution trades found.</td></tr>'
+    : data.map(r => `
+      <tr>
+        <td>${isinCell(r.isin)}</td>
+        <td><span class="badge ${r.venue==='XOSL'?'badge-ice':'badge-amber'}">${r.venue}</span></td>
+        <td class="r">${r.leg_count}</td>
+        <td class="r">${fmt.num(Math.round(r.total_qty))}</td>
+        <td class="r">${r.total_notional ? fmt.nok(r.total_notional) : '—'}</td>
+        <td class="r">${r.duration_ms != null ? (r.duration_ms/1000).toFixed(1)+'s' : '—'}</td>
+        <td class="r">${r.avg_interval_ms != null ? r.avg_interval_ms+'ms' : '—'}</td>
+        <td><span class="badge ${TYPE_BADGE[r.chain_type]||'badge-dim'}">${r.chain_type||'—'}</span></td>
+        <td style="font-size:11px;color:var(--text-dim)">${r.classes||'—'}</td>
+      </tr>`).join('');
+}
+
+/* ─── Company Deep Dive ─────────────────────────────────────────────────── */
+async function drillIntoISIN(isin, venue) {
+  // The in-page deep dive is retired: its renderers rotted when the company
+  // dossier became its own page, leaving a near-empty black section (the
+  // "black page" bug). Every drill now lands on the real dossier.
+  if (isin && isin !== 'null' && isin !== 'undefined') {
+    location.href = INTEL.selskapHref(isin);
+    return;
+  }
+  return; // no ISIN mapped for this row — keep the user where they are
+
+  /* eslint-disable no-unreachable */
+  const deepDive = document.getElementById('companyDeepDive');
+  deepDive.style.display = 'block';
+  deepDive.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  // Highlight row in ISIN table
+  document.querySelectorAll('#summaryBody tr').forEach(tr => tr.classList.remove('selected'));
+  const selRow = [...document.querySelectorAll('#summaryBody tr')].find(tr => tr.textContent.includes(isin));
+  if (selRow) selRow.classList.add('selected');
+
+  // Header — populate immediately from cache
+  const info = ISIN_MAP[isin] || {};
+  const mv = marketMovers.find(m => m.isin === isin) || {};
+  document.getElementById('diveTicker').textContent = mv.ticker || info.t || isin.slice(-6);
+  document.getElementById('diveName').textContent   = mv.name || info.n || '—';
+  document.getElementById('diveVenueBadge').textContent = venue;
+  document.getElementById('diveISINBadge').innerHTML =
+    `<a class="tk-link" href="${INTEL.dossierHref(isin)}" title="Open company dossier" style="color:inherit">${isin} ↗</a>`;
+
+  // Real price + market cap from daily_close (via movers cache)
+  const close = mv.close != null ? Number(mv.close) : null;
+  const chgPct = mv.change_pct != null ? Number(mv.change_pct) : null;
+  const mcap = mv.market_cap != null ? Number(mv.market_cap) : null;
+  if (close != null) {
+    document.getElementById('diveMcap').textContent = `NOK ${close.toFixed(2)}`;
+    const chgColor = chgPct == null ? 'var(--text-dim)' : chgPct >= 0 ? 'var(--green)' : 'var(--red)';
+    const mcapStr = mcap ? (mcap >= 1e9 ? `${(mcap/1e9).toFixed(1)}B` : `${(mcap/1e6).toFixed(0)}M`) + ' mcap' : '';
+    document.getElementById('diveMcapSub').innerHTML =
+      (chgPct != null ? `<span style="color:${chgColor}">${chgPct >= 0 ? '+' : ''}${chgPct.toFixed(2)}% today</span>` : '')
+      + (mcapStr ? ` &nbsp;· NOK ${mcapStr}` : '');
+  } else {
+    document.getElementById('diveMcap').textContent = '—';
+    document.getElementById('diveMcapSub').textContent = '';
+  }
+
+  // Synthesized intel strip + narrative (from movers cache; SI fetched below)
+  renderDiveIntel(mv, null);
+
+  // Metrics strip from already-loaded day data
+  const summary = allSummary.find(r => r.isin === isin && r.venue === venue) || {};
+  const dark    = allDark.find(r => r.isin === isin && r.venue === venue) || {};
+  const dr = darkRead(dark);
+  const biasStr   = `<span style="color:${dr.color}">${dr.word}${dr.confirmed ? ' ✓' : ''}</span>`
+                  + ` <span style="color:var(--text-dim);font-size:9px">${dr.prov}</span>`;
+  document.getElementById('diveMetrics').innerHTML = [
+    ['Dark Pool',  fmt.pct(summary.dark_pct)],
+    ['Gini',       fmt.dec(summary.gini)],
+    ['Algo',       fmt.pct(summary.algo_ratio_pct)],
+    ['Pub Lag',    fmt.ms(summary.avg_pub_lag_ms)],
+    ['Trades',     fmt.num(summary.total_trades)],
+    ['Est. ADV',   fmt.nok(summary.adv_estimate)],
+    ['Vol. wall',  dark.modal_price ? parseFloat(dark.modal_price).toFixed(2) : '—'],
+    ['Dark bias',  biasStr],
+  ].map(([l, v]) => `
+    <div class="dive-metric">
+      <div class="dive-metric-label">${l}</div>
+      <div class="dive-metric-value">${v}</div>
+    </div>`).join('');
+
+  // Link the dossier CTA to this name's full company page
+  const dossierLink = document.getElementById('diveDossierLink');
+  if (dossierLink) dossierLink.href = INTEL.selskapHref(isin);
+
+  // Fetch everything else in parallel
+  const [intradayRows, impactRows, siRows, signalRows, livePriceRows] = await Promise.all([
+    API('intraday',       `trade_date=eq.${currentDate}&isin=eq.${isin}&venue=eq.${venue}&order=minute_bucket.asc&limit=500`),
+    API('trade_impact',   `trade_date=eq.${currentDate}&isin=eq.${isin}&venue=eq.${venue}&order=trading_time.asc&limit=5000`),
+    API('short_interest', `isin=eq.${isin}&order=position_date.desc&limit=1`),
+    API('smart_signals',  `isin=eq.${isin}&order=trade_date.desc&limit=10`),
+    API('latest_price',   `isin=eq.${isin}&select=price,fidelity,day_change_pct`),
+  ]);
+
+  // Best-available header price: today's 15-min-delayed quote overrides the
+  // daily close until the EOD pipeline reconciles it back to canonical.
+  const lp = livePriceRows && livePriceRows[0];
+  if (lp && lp.fidelity === 'live' && lp.price != null) {
+    const lpx = Number(lp.price), lchg = lp.day_change_pct != null ? Number(lp.day_change_pct) : null;
+    document.getElementById('diveMcap').textContent = `NOK ${lpx.toFixed(2)}`;
+    const lchgColor = lchg == null ? 'var(--text-dim)' : lchg >= 0 ? 'var(--green)' : 'var(--red)';
+    const mcapStr = mcap ? (mcap >= 1e9 ? `${(mcap/1e9).toFixed(1)}B` : `${(mcap/1e6).toFixed(0)}M`) + ' mcap' : '';
+    document.getElementById('diveMcapSub').innerHTML =
+      (lchg != null ? `<span style="color:${lchgColor}">${lchg >= 0 ? '+' : ''}${lchg.toFixed(2)}% today</span>` : '')
+      + ` <span class="live-pill" title="15-min delayed live quote">LIVE</span>`
+      + (mcapStr ? ` &nbsp;· NOK ${mcapStr}` : '');
+  }
+
+  // Re-render intel strip now that short interest is in
+  renderDiveIntel(mv, siRows[0] || null);
+
+  // Intraday volume chart
+  document.getElementById('intradayLabel').textContent = (info.t || isinTicker(isin)) + ' — Intraday';
+  const ilabels = intradayRows.map(r => r.minute_bucket);
+  renderIntradayChart('drillIntraday', ilabels,
+    intradayRows.map(r => r.algo_volume||0),
+    intradayRows.map(r => r.human_volume||0),
+    intradayRows.map(r => r.auction_volume||0));
+
+  // Participant mix donut
+  if (drillChart2) drillChart2.destroy();
+  drillChart2 = new Chart(document.getElementById('drillMix'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Flagged Algo', 'Burst Algo', 'Auction', 'Human'],
+      datasets: [{ data: [summary.algo_flag||0, summary.burst_algo||0, summary.auction||0, summary.human||0],
+        backgroundColor: ['#f5a623','#a78bfa','#4fc3f7','#43e097'], borderWidth: 0 }]
+    },
+    options: { responsive: true, maintainAspectRatio: false, cutout: '58%',
+      plugins: { legend: { position: 'bottom', labels: { padding: 10, usePointStyle: true } } } }
+  });
+
+  // Dark breakdown bar + side bias
+  if (drillChart3) drillChart3.destroy();
+  const impactBps = dr.impact;
+  // Only off-mid negotiated blocks carry a side; mid-point volume sits at the mid
+  // and is shown as a single side-agnostic bar, not split into buy/sell.
+  const midPointVol = Math.max((dark.dark_volume||0) - (dark.dark_volume_at_ask||0) - (dark.dark_volume_at_bid||0), 0);
+  const biasLabel = dr.bias
+    ? `${dr.word}${dr.confirmed ? ' (impact-confirmed)' : ' (unconfirmed)'}`
+    : (dr.midTr ? '◇ Mid-point flow (at mid, side-agnostic)' : '◇ No directional dark flow');
+  drillChart3 = new Chart(document.getElementById('drillDark'), {
+    type: 'bar',
+    data: {
+      labels: ['Lit (CLOB)', 'Mid-point (at mid)', 'Large-in-Scale', 'Off-mid block buy', 'Off-mid block sell'],
+      datasets: [{
+        label: 'Volume (shares)',
+        data: [dark.lit_volume||0, midPointVol, dark.lis_volume||0, dark.dark_volume_at_ask||0, dark.dark_volume_at_bid||0],
+        backgroundColor: ['#4fc3f7','#a78bfa','#f5a623','#43e097','#f06060'],
+        borderWidth: 0, borderRadius: 3,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, indexAxis: 'y',
+      plugins: {
+        legend: { display: false },
+        title: { display: true, text: `Dark: ${(dark.dark_pct||0).toFixed(1)}% — ${biasLabel}`
+            + (impactBps != null ? ` — 5m fwd drift ${impactBps >= 0 ? '+' : ''}${impactBps.toFixed(1)}bps` : ''),
+          color: '#e8eef7', font: { size: 12 } }
+      },
+      scales: { x: { ticks: { callback: v => (v/1e3).toFixed(0)+'K' } } }
+    }
+  });
+
+  loadDarkFlowChart(isin, venue, intradayRows, impactRows, dark);
+}
+
+/* ─── Deep Dive helpers ─────────────────────────────────────────────────── */
+
+const EVENT_LABEL = {
+  RESULTS: 'Q-results', EARNINGS_CALL: 'earnings call', WARNING: 'profit warning',
+  AGM: 'AGM', EX_DATE: 'ex-dividend', INSIDER: 'insider filing',
+};
+
+function renderDiveIntel(mv, si) {
+  const intel = document.getElementById('diveIntel');
+  const synEl = document.getElementById('diveSyn');
+  if (!mv || mv.isin == null) { intel.innerHTML = ''; synEl.style.display = 'none'; return; }
+
+  const chg   = mv.change_pct != null ? Number(mv.change_pct) : null;
+  const conv  = mv.conviction != null ? Number(mv.conviction) : null;
+  const side  = mv.conviction_side;
+  const bias  = mv.dark_side_bias;
+  const confirmed = mv.bias_confirmed === true;
+  const dte   = mv.days_to_event != null ? Number(mv.days_to_event) : null;
+  const evt   = mv.next_event_type;
+  const ins7  = Number(mv.insider_7d || 0);
+  const darkP = mv.dark_pct != null ? Number(mv.dark_pct) : null;
+  const shortP = si && si.short_pct != null ? Number(si.short_pct) : null;
+  const chips = [];
+
+  // Price / change
+  if (chg != null) {
+    const cls = chg >= 0 ? 'pos' : 'neg';
+    chips.push(`<div class="intel-chip ${cls}"><div class="intel-k">Day move</div>`
+      + `<div class="intel-v">${chg >= 0 ? '+' : ''}${chg.toFixed(2)}%</div>`
+      + `<div class="intel-sub">${mv.close != null ? 'NOK ' + Number(mv.close).toFixed(2) : ''}</div></div>`);
+  }
+  // Conviction
+  if (conv != null && side) {
+    const cls = side === 'LONG' ? 'pos' : side === 'SHORT' ? 'neg' : 'ice';
+    chips.push(`<div class="intel-chip ${cls}"><div class="intel-k">Conviction</div>`
+      + `<div class="intel-v">${side === 'LONG' ? '▲' : side === 'SHORT' ? '▼' : '◇'} ${conv}</div>`
+      + `<div class="intel-sub">${side.toLowerCase()} bias</div></div>`);
+  }
+  // Dark flow bias
+  if (darkP != null) {
+    const dr = darkRead(mv);
+    chips.push(`<div class="intel-chip ${dr.tone}"><div class="intel-k">Dark flow</div>`
+      + `<div class="intel-v">${dr.word}${dr.confirmed ? ' ✓' : ''}</div>`
+      + `<div class="intel-sub" title="${dr.prov}">${darkP.toFixed(1)}% of volume</div></div>`);
+  }
+  // Next event countdown
+  if (dte != null && evt) {
+    const cls = dte <= 7 ? 'warn' : 'ice';
+    chips.push(`<div class="intel-chip ${cls}"><div class="intel-k">Next event</div>`
+      + `<div class="intel-v">${dte === 0 ? 'Today' : dte + 'd'}</div>`
+      + `<div class="intel-sub">${EVENT_LABEL[evt] || evt.toLowerCase()}</div></div>`);
+  }
+  // Short interest
+  if (shortP != null) {
+    const cls = shortP >= 3 ? 'warn' : 'ice';
+    const pct = Math.min(shortP / 10 * 100, 100);
+    chips.push(`<div class="intel-chip ${cls}"><div class="intel-k">Short interest</div>`
+      + `<div class="intel-v">⊖ ${shortP.toFixed(2)}%</div>`
+      + `<div class="si-bar"><span style="width:${pct}%"></span></div></div>`);
+  }
+  // Insider filings
+  if (ins7 > 0) {
+    chips.push(`<div class="intel-chip warn"><div class="intel-k">Insiders 7d</div>`
+      + `<div class="intel-v">${ins7}</div>`
+      + `<div class="intel-sub">primary filings</div></div>`);
+  }
+  intel.innerHTML = chips.join('');
+
+  // Narrative synthesis
+  const t = mv.ticker || mv.name || 'The stock';
+  const parts = [];
+  if (chg != null) {
+    const dir = chg >= 0 ? 'rose' : 'fell';
+    const cls = chg >= 0 ? 'hl-pos' : 'hl-neg';
+    parts.push(`<strong>${t}</strong> ${dir} <span class="${cls}">${chg >= 0 ? '+' : ''}${chg.toFixed(2)}%</span>`
+      + (mv.turnover ? ` on <span class="hl-ice">${fmtNok(mv.turnover)}</span> turnover` : '') + '.');
+  }
+  if (dte != null && evt) {
+    const ev = EVENT_LABEL[evt] || evt.toLowerCase();
+    parts.push(`<span class="${dte <= 7 ? 'hl-warn' : 'hl-ice'}">${ev === 'Q-results' ? 'Q-results' : ev.charAt(0).toUpperCase() + ev.slice(1)} ${dte === 0 ? 'is today' : 'in ' + dte + (dte === 1 ? ' day' : ' days')}</span>.`);
+  }
+  if (darkP != null && bias && bias !== 'NEUTRAL') {
+    const dr = darkRead(mv);
+    const lean = bias === 'BUY' ? 'buying' : 'selling';
+    const src = dr.ev === 'IMPACT'
+      ? `inferred from mid-point forward drift${dr.impact != null ? ` (${dr.impact >= 0 ? '+' : ''}${dr.impact.toFixed(0)}bps)` : ''}`
+      : `from ${dr.blockPrints} off-mid block print${dr.blockPrints !== 1 ? 's' : ''}`;
+    parts.push(`Dark flow leans <span class="hl-dark">${lean}</span> ${src}${dr.confirmed ? ', impact-confirmed' : ' (unconfirmed)'}, at ${darkP.toFixed(1)}% of volume.`);
+  } else if (darkP != null && darkP >= 10) {
+    parts.push(`Dark trading is elevated at <span class="hl-dark">${darkP.toFixed(1)}%</span> of volume, but prints sit at the mid — no directional lean.`);
+  }
+  if (shortP != null && shortP >= 1) {
+    parts.push(`Short interest sits at <span class="hl-warn">${shortP.toFixed(2)}%</span>.`);
+  }
+  if (ins7 > 0) {
+    parts.push(`<span class="hl-warn">${ins7}</span> insider filing${ins7 > 1 ? 's' : ''} in the past week.`);
+  }
+  if (conv != null && side && side !== 'NEUTRAL') {
+    parts.push(`Net signal read: <span class="${side === 'LONG' ? 'hl-pos' : 'hl-neg'}">${side} conviction ${conv}/100</span>.`);
+  }
+  if (parts.length) { synEl.innerHTML = parts.join(' '); synEl.style.display = 'block'; }
+  else synEl.style.display = 'none';
+}
+
+/* ─── Collapse toggle ───────────────────────────────────────────────────── */
+function toggleSection(id) {
+  const sec = document.getElementById(id);
+  if (!sec) return;
+  sec.classList.toggle('collapsed');
+  try {
+    const states = JSON.parse(localStorage.getItem('mrkSectionStates') || '{}');
+    states[id] = sec.classList.contains('collapsed');
+    localStorage.setItem('mrkSectionStates', JSON.stringify(states));
+  } catch(e) {}
+}
+
+function restoreSectionStates() {
+  try {
+    const states = JSON.parse(localStorage.getItem('mrkSectionStates') || '{}');
+    Object.entries(states).forEach(([id, collapsed]) => {
+      const sec = document.getElementById(id);
+      if (!sec) return;
+      if (collapsed) sec.classList.add('collapsed');
+      else sec.classList.remove('collapsed');
+    });
+  } catch(e) {}
+}
+
+/* ─── Dark Flow Impact Chart ────────────────────────────────────────────── */
+let darkFlowChartInst = null;
+
+async function loadDarkFlowChart(isin, venue, cachedIntraday, cachedImpact, cachedDark) {
+  // Use pre-fetched data from drillIntoISIN when available, otherwise fetch
+  const [intradayRows, darkSummary, impactRows] = cachedIntraday
+    ? [cachedIntraday, [cachedDark], cachedImpact]
+    : await Promise.all([
+        API('intraday',     `trade_date=eq.${currentDate}&isin=eq.${isin}&venue=eq.${venue}&order=minute_bucket.asc&limit=500`),
+        API('dark_flow_summary', `trade_date=eq.${currentDate}&isin=eq.${isin}&venue=eq.${venue}&limit=1`),
+        API('trade_impact', `trade_date=eq.${currentDate}&isin=eq.${isin}&venue=eq.${venue}&order=trading_time.asc&limit=5000`)
+      ]);
+
+  const dark = Array.isArray(darkSummary) ? (darkSummary[0] || {}) : (darkSummary || {});
+  const modalPrice = dark.modal_price;
+
+  // Price line from intraday VWAP
+  const pricePoints = intradayRows
+    .filter(r => r.vwap)
+    .map(r => ({ x: bucketToDate(r.minute_bucket, currentDate), y: parseFloat(r.vwap) }));
+
+  // Dark trades as bubble dataset
+  const darkTrades = impactRows
+    .filter(r => r.is_dark && r.price)
+    .map(r => ({
+      x: dbTimeToDate(r.trading_time),
+      y: parseFloat(r.price),
+      r: Math.min(Math.max(Math.sqrt((r.notional||0) / 50000), 3), 25),
+      notional: r.notional,
+      qty: r.quantity,
+      impact: r.price_impact_bps,
+    }));
+
+  // Lit trades (small dots)
+  const litTrades = impactRows
+    .filter(r => !r.is_dark && r.price)
+    .slice(0, 2000)  // cap for performance
+    .map(r => ({
+      x: dbTimeToDate(r.trading_time),
+      y: parseFloat(r.price),
+      r: 2,
+    }));
+
+  // Modal price line (the "wall") — span the whole session
+  const modalLine = modalPrice && pricePoints.length
+    ? [{x: pricePoints[0].x, y: parseFloat(modalPrice)},
+       {x: pricePoints[pricePoints.length - 1].x, y: parseFloat(modalPrice)}]
+    : [];
+
+  if (darkFlowChartInst) darkFlowChartInst.destroy();
+  darkFlowChartInst = new Chart(document.getElementById('darkFlowChart'), {
+    type: 'bubble',
+    data: {
+      datasets: [
+        {
+          label: 'VWAP Price',
+          type: 'line',
+          data: pricePoints,
+          borderColor: '#4fc3f7',
+          borderWidth: 1.5,
+          pointRadius: 0,
+          tension: 0.3,
+          fill: false,
+          order: 3,
+        },
+        {
+          label: `Modal price ${modalPrice ? parseFloat(modalPrice).toFixed(2) : ''}`,
+          type: 'line',
+          data: modalLine,
+          borderColor: '#f5a623',
+          borderWidth: 1,
+          borderDash: [6, 3],
+          pointRadius: 0,
+          fill: false,
+          order: 4,
+        },
+        {
+          label: 'Dark trades',
+          type: 'bubble',
+          data: darkTrades,
+          backgroundColor: 'rgba(167,139,250,0.7)',
+          borderColor: '#a78bfa',
+          borderWidth: 1,
+          order: 1,
+        },
+        {
+          label: 'Lit trades',
+          type: 'bubble',
+          data: litTrades,
+          backgroundColor: 'rgba(79,195,247,0.15)',
+          borderColor: 'rgba(79,195,247,0.3)',
+          borderWidth: 0,
+          order: 2,
+        },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      animation: false,
+      scales: {
+        x: {
+          type: 'time',
+          time: {
+            unit: 'minute',
+            stepSize: 30,
+            tooltipFormat: 'HH:mm',
+            displayFormats: { minute: 'HH:mm', hour: 'HH:mm' },
+          },
+          adapters: { date: { zone: 'Europe/Oslo' } },
+          ticks: { maxRotation: 0, source: 'auto', autoSkip: true, maxTicksLimit: 24 },
+          grid: { color: 'rgba(255,255,255,0.03)' },
+        },
+        y: {
+          ticks: { callback: v => v.toFixed(2) },
+          grid: { color: 'rgba(255,255,255,0.04)' }
+        }
+      },
+      plugins: {
+        legend: { position: 'bottom', labels: { usePointStyle: true, padding: 12 } },
+        tooltip: {
+          callbacks: {
+            title: items => {
+              const t = items[0]?.parsed?.x;
+              return t == null ? '' : new Date(t).toLocaleTimeString('no-NO', {
+                timeZone: 'Europe/Oslo',
+                hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
+              });
+            },
+            label: ctx => {
+              if (ctx.datasetIndex === 2) {
+                const d = ctx.raw;
+                return [
+                  ` Price: ${d.y.toFixed(2)}`,
+                  ` Notional: ${d.notional ? 'NOK ' + (d.notional/1e6).toFixed(2) + 'M' : '—'}`,
+                  ` Impact: ${d.impact != null ? d.impact.toFixed(1) + 'bps' : '—'}`,
+                ];
+              }
+              return ` ${ctx.dataset.label}: ${ctx.raw.y?.toFixed?.(2) ?? ctx.raw.y}`;
+            }
+          }
+        }
+      }
+    }
+  });
+
+  const dr = darkRead(dark);
+  const biasGlyph = dr.bias
+    ? `${dr.word}${dr.confirmed ? ' ✓' : ''}`
+    : (dr.midTr ? '◇ At mid' : '◇ Neutral');
+  document.getElementById('darkFlowStats').innerHTML =
+    `Dark: ${(dark.dark_pct||0).toFixed(1)}% · <span style="color:${dr.color}" title="${dr.prov}">${biasGlyph}</span> · Vol. wall: ${modalPrice ? parseFloat(modalPrice).toFixed(2) : '—'} · ${darkTrades.length} dark trades`;
+}
+
+/* ─── Corporate Events Calendar ─────────────────────────────────────────── */
+let allEvents = [];
+let currentEventFilter = 'ALL';
+
+async function loadCorporateEvents() {
+  try {
+    // Always anchor to today — corporate events are a calendar, not tied to selected trade date
+    const from = new Date();
+    from.setDate(from.getDate() - 7);
+    const to = new Date();
+    to.setDate(to.getDate() + 30);
+    const fromStr = from.toISOString().slice(0,10);
+    const toStr   = to.toISOString().slice(0,10);
+
+    allEvents = await APIall('corporate_events',
+      `event_date=gte.${fromStr}&event_date=lte.${toStr}&order=event_date.asc`);
+    document.getElementById('eventsCount').textContent = `${allEvents.length} events`;
+    renderEvents(allEvents);
+  } catch(e) {
+    document.getElementById('eventsBody').innerHTML =
+      `<tr><td colspan="6" style="color:var(--text-dim);font-family:var(--mono);font-size:12px;padding:16px">
+        Corporate events not yet available — run the corporate_events_scraper workflow first.
+      </td></tr>`;
+    document.getElementById('eventsCount').textContent = 'not ready';
+  }
+}
+
+function filterEvents(type) {
+  currentEventFilter = type;
+  document.querySelectorAll('.evt-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.f === type);
+  });
+  const filtered = type === 'ALL' ? allEvents : allEvents.filter(e => e.event_type === type);
+  renderEvents(filtered);
+}
+
+function renderEvents(data) {
+  const today = new Date().toISOString().slice(0,10);
+  const TYPE_ICON = {
+    RESULTS:       '▢',  EX_DATE:       '◇',  WARNING:       '△',
+    INSIDER:       '◐',  AGM:           'Ⅱ',  EARNINGS_CALL: '◴',
+    REGULATED:     '▣',  PRESS_RELEASE: '≡',  PLACEMENT:     '▦',
+    DELISTING:     '⊘',  IPO:           '▴',  PROSPECTUS:    '▤',
+    SUSPENSION:    '⊘',
+  };
+  const TYPE_COLOR = {
+    RESULTS:       'badge-ice',    EX_DATE:      'badge-purple', WARNING:   'badge-red',
+    INSIDER:       'badge-dim',    AGM:          'badge-amber',  EARNINGS_CALL: 'badge-ice',
+    REGULATED:     'badge-dim',    PRESS_RELEASE:'badge-dim',    PLACEMENT: 'badge-amber',
+    DELISTING:     'badge-red',    IPO:          'badge-green',  PROSPECTUS:'badge-dim',
+    SUSPENSION:    'badge-red',
+  };
+
+  document.getElementById('eventsBody').innerHTML = !data.length
+    ? `<tr><td colspan="6" style="color:var(--text-dim);font-size:12px;padding:16px;font-family:var(--mono)">No events in this window.</td></tr>`
+    : data.map(e => {
+        const days = Math.round((new Date(e.event_date) - new Date(today)) / 86400000);
+        const daysStr = days === 0 ? 'TODAY' : days > 0 ? `+${days}d` : `${days}d`;
+        const daysColor = days === 0 ? 'color:#f06060;font-weight:600' :
+                          days > 0 && days <= 5 ? 'color:var(--amber)' :
+                          days < 0 ? 'color:var(--text-dim)' : '';
+        const dividendInfo = e.dividend_amount
+          ? `<span style="color:var(--amber);margin-left:8px">${e.dividend_ccy||''} ${e.dividend_amount}</span>` : '';
+        const isin = e.isin || '';
+        return `<tr style="cursor:${isin?'pointer':'default'}" onclick="${isin?`drillIntoISIN('${isin}','XOSL')`:''}">
+          <td style="font-family:var(--mono);font-size:11px">${e.event_date}</td>
+          <td><span class="badge ${TYPE_COLOR[e.event_type]||'badge-dim'}">${TYPE_ICON[e.event_type]||''}${e.event_type}</span></td>
+          <td>${isin ? INTEL.tkLink(isin, e.issuer||isinName(isin)||isin) : (e.issuer||'—')}</td>
+          <td style="font-size:12px">${e.title||'—'}${dividendInfo}</td>
+          <td class="r" style="${daysColor};font-family:var(--mono)">${daysStr}</td>
+          <td id="evt-prox-${e.id}">—</td>
+        </tr>`;
+      }).join('');
+
+  // Async: check if any events have nearby signals
+  checkEventProximity(data);
+}
+
+async function checkEventProximity(events) {
+  // For each event with an ISIN, check if there's a smart signal within 7 days
+  const isins = [...new Set(events.filter(e => e.isin).map(e => e.isin))];
+  if (!isins.length) return;
+  try {
+    const signals = await API('smart_signals',
+      `isin=in.(${isins.join(',')})&order=trade_date.desc&limit=200`);
+    events.forEach(e => {
+      if (!e.isin || !e.id) return;
+      const nearby = signals.find(s =>
+        s.isin === e.isin &&
+        Math.abs(new Date(e.event_date) - new Date(s.trade_date)) / 86400000 <= 7
+      );
+      const el = document.getElementById(`evt-prox-${e.id}`);
+      if (el && nearby) {
+        el.innerHTML = `<span class="badge badge-purple">◍ ${nearby.signal_type}</span>`;
+      } else if (el) {
+        el.textContent = '—';
+      }
+    });
+  } catch(e) { /* silent fail */ }
+}
+
+/* ─── Signal × Event Proximity ─────────────────────────────────────────── */
+async function loadSignalProximity() {
+  try {
+    const data = await APIall('signal_event_proximity',
+      'order=trade_date.desc');
+    document.getElementById('proximityCount').textContent =
+      `${data.length} signal-event pairs`;
+
+    const RET_COLOR = v => {
+      if (v == null) return '';
+      return v > 2 ? 'color:var(--green)' : v < -2 ? 'color:#f06060' : '';
+    };
+    const fmt_ret = v => v == null ? '—' :
+      `<span style="${RET_COLOR(v)}">${v > 0 ? '+':''}${v.toFixed(2)}%</span>`;
+
+    document.getElementById('proximityBody').innerHTML = !data.length
+      ? `<tr><td colspan="11" style="color:var(--text-dim);font-size:12px;padding:16px;font-family:var(--mono)">
+           No signal-event pairs found yet. Accumulates as signals and events build up.
+         </td></tr>`
+      : data.slice(0, 100).map(r => `
+          <tr>
+            <td style="font-family:var(--mono);font-size:11px">${r.trade_date}</td>
+            <td>${isinCell(r.isin)}</td>
+            <td style="font-size:11px">${r.signal_type}</td>
+            <td><span class="badge ${r.strength==='STRONG'?'badge-purple':'badge-ice'}">${r.strength||'—'}</span></td>
+            <td><span class="badge badge-ice">${r.event_type}</span></td>
+            <td style="font-family:var(--mono);font-size:11px">${r.event_date}</td>
+            <td class="r prox-${r.proximity}" style="font-family:var(--mono)">${r.days_to_event > 0 ? '+':''}${r.days_to_event}d</td>
+            <td class="prox-${r.proximity}">${r.proximity||'—'}</td>
+            <td class="r">${fmt_ret(r.return_t1_pct)}</td>
+            <td class="r">${fmt_ret(r.return_t5_pct)}</td>
+            <td class="r">${fmt_ret(r.return_t20_pct)}</td>
+          </tr>`).join('');
+  } catch(e) {
+    document.getElementById('proximityBody').innerHTML =
+      `<tr><td colspan="11" style="color:var(--text-dim);font-size:12px;padding:16px;font-family:var(--mono)">
+        Proximity view not yet initialised — run create_trend_view in Database Maintenance workflow.
+      </td></tr>`;
+  }
+}
+
+/* ─── Catalyst Alerts ───────────────────────────────────────────────────────
+   Powered by api.catalyst_radar: one row per (isin, scheduled event ≤35d)
+   with seven precursor components (insider, dark flow, signals, whales,
+   volume, trend, short) fused into catalyst_score 0–100 + direction. */
+async function loadCatalystAlerts() {
+  try {
+    const rows = await APIall('catalyst_radar',
+      `order=catalyst_score.desc.nullslast&limit=60`);
+
+    // One card per ISIN — keep its highest-scored upcoming event
+    const byIsin = new Map();
+    for (const r of rows) {
+      const prev = byIsin.get(r.isin);
+      if (!prev || (r.catalyst_score || 0) > (prev.catalyst_score || 0)) byIsin.set(r.isin, r);
+    }
+    const cards = [...byIsin.values()]
+      .sort((a,b) => (b.catalyst_score||0) - (a.catalyst_score||0))
+      .slice(0, 24);
+
+    document.getElementById('catalystCount').textContent =
+      cards.length ? `${cards.length} setup${cards.length > 1 ? 's' : ''}` : 'no setups';
+
+    document.getElementById('catalystGrid').innerHTML = !cards.length
+      ? `<div style="font-family:var(--mono);font-size:12px;color:var(--text-dim);padding:32px;text-align:center">
+           No scheduled events inside the 35-day horizon — nothing to score yet.
+         </div>`
+      : cards.map(renderCatalystCard).join('');
+
+    renderHorizon(cards);
+
+  } catch(e) {
+    document.getElementById('catalystGrid').innerHTML =
+      `<div style="font-family:var(--mono);font-size:12px;color:var(--text-dim);padding:32px;text-align:center">
+         Catalyst engine unavailable (${e.message}). Check api.catalyst_radar.
+       </div>`;
+    renderHorizon([]);
+  }
+}
+
+function renderCatalystCard(r) {
+  const isin      = r.isin || '';
+  const ticker    = r.ticker || isinTicker(isin) || (r.issuer||'').split(' ')[0] || isin.slice(-4) || '—';
+  const company   = r.issuer || isin || '';
+  const daysUntil = r.days_to_event;
+  const score     = r.catalyst_score || 0;
+  const dirScore  = r.direction_score || 0;
+  const fmtDate   = d => new Date(d).toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+  const fmtM      = v => v == null ? '—' : Math.abs(v) >= 1e6 ? (v/1e6).toFixed(1)+'M' : Math.abs(v) >= 1e3 ? (v/1e3).toFixed(0)+'k' : String(Math.round(v));
+
+  const dir       = dirScore > 0.1 ? 'bullish' : dirScore < -0.1 ? 'bearish' : 'neutral';
+  const dirLabel  = dir === 'bearish' ? '↓ DISTRIBUTION' : dir === 'bullish' ? '↑ ACCUMULATION' : '◆ WATCH';
+
+  const urgency   = daysUntil <= 5 ? 'imminent' : daysUntil <= 14 ? 'soon' : 'upcoming';
+  const urgLabel  = urgency === 'imminent' ? `<span style="color:var(--red)">▼ ${daysUntil}d — IMMINENT</span>`
+                  : urgency === 'soon'     ? `<span style="color:var(--amber)">◆ in ${daysUntil} days</span>`
+                  :                          `🔵 in ${daysUntil} days`;
+
+  const scoreColor= score >= 60 ? 'var(--red)' : score >= 30 ? 'var(--amber)' : 'var(--ice)';
+
+  const EVT_ICON  = { RESULTS:'▢', EARNINGS_CALL:'◴', AGM:'Ⅱ', EX_DATE:'◇',
+                      WARNING:'△', INSIDER:'◐', PLACEMENT:'▦', DELISTING:'⊘',
+                      IPO:'▴', PROSPECTUS:'▤', REGULATED:'▣', PRESS_RELEASE:'≡' };
+
+  // Seven precursor components: [label, normalized 0–1, detail string]
+  const comps = [
+    ['INSIDER', r.s_insider, r.insider_trades_30d
+        ? `${r.insider_net_value_30d > 0 ? '+' : ''}${fmtM(r.insider_net_value_30d)} net · ${r.insider_trades_30d} trades${r.insider_top_role ? ' · ' + r.insider_top_role : ''}`
+        : 'no trades 30d'],
+    ['DARK FLOW', r.s_dark, r.dark_pct != null
+        ? `${Number(r.dark_pct).toFixed(0)}% dark · ${r.dark_pct_vs_5d_norm > 0 ? '+' : ''}${Number(r.dark_pct_vs_5d_norm || 0).toFixed(1)}pp vs norm · ${r.dark_side_bias && r.dark_side_bias !== 'NEUTRAL' ? (r.dark_side_bias === 'BUY' ? 'buy' : 'sell') + ' lean' + (r.bias_confirmed ? ' ✓' : '') : 'at mid'}`
+        : '—'],
+    ['SIGNALS', r.s_signal, r.sig_count_14d
+        ? `${r.sig_count_14d} fired 14d · ${(r.sig_types || []).slice(0,2).join(', ')}${r.sig_hit_rate_t5 ? ` · ${Number(r.sig_hit_rate_t5).toFixed(0)}% hit` : ''}`
+        : 'none 14d'],
+    ['WHALES', r.s_whale, r.whale_14d
+        ? `${r.whale_14d} prints · ${fmtM(r.whale_notional_14d)} NOK${r.whale_dark_14d ? ` · ${r.whale_dark_14d} dark` : ''}`
+        : 'none 14d'],
+    ['VOLUME', r.s_volume, r.adv_zscore != null
+        ? `ADV z ${Number(r.adv_zscore).toFixed(1)}σ` : '—'],
+    ['TREND', r.s_trend, r.excess_ret_10s_pct != null
+        ? `${r.excess_ret_10s_pct > 0 ? '+' : ''}${Number(r.excess_ret_10s_pct).toFixed(1)}% vs market 10s` : '—'],
+    ['SHORT', r.s_short, r.short_pct != null
+        ? `${Number(r.short_pct).toFixed(1)}% short${r.short_pct_chg ? ` · ${r.short_pct_chg > 0 ? '+' : ''}${Number(r.short_pct_chg).toFixed(2)}pp` : ''}`
+        : 'not on list'],
+  ];
+
+  const compRows = comps.map(([label, s, detail]) => {
+    const w   = Math.round(Math.min(1, Math.max(0, s || 0)) * 100);
+    const hot = w >= 50;
+    return `<div class="cat-sig-row" style="${w === 0 ? 'opacity:.45' : ''}">
+      <span style="min-width:74px">${label}</span>
+      <span class="cat-score-bar" style="flex:0 0 64px">
+        <span class="cat-score-fill" style="display:block;height:100%;width:${w}%;background:${hot ? scoreColor : 'var(--ice)'}"></span>
+      </span>
+      <span class="cat-date" style="flex:1;text-align:right">${detail}</span>
+    </div>`;
+  }).join('');
+
+  return `
+  <div class="cat-card ${dir}" onclick="${isin ? `drillIntoISIN('${isin}','XOSL')` : ''}">
+    <div class="cat-header">
+      <div>
+        <span class="cat-ticker">${INTEL.tkLink(isin, ticker)}</span>
+        <span class="cat-company">${company}</span>
+      </div>
+      <span class="cat-dir ${dir}">${dirLabel}</span>
+    </div>
+
+    <div class="cat-panels">
+      <div class="cat-panel" style="flex:1">
+        <div class="cat-panel-label">Precursor Evidence · 14d window</div>
+        ${compRows}
+      </div>
+      <div class="cat-panel">
+        <div class="cat-panel-label">Upcoming Event</div>
+        <div class="cat-type">${EVT_ICON[r.event_type] || '▣'} ${r.event_type}</div>
+        <div class="cat-date">${fmtDate(r.event_date)}</div>
+        <div class="cat-countdown ${urgency}">${urgLabel}</div>
+      </div>
+    </div>
+
+    <div class="cat-score">
+      <span>CATALYST</span>
+      <div class="cat-score-bar">
+        <div class="cat-score-fill" style="width:${score}%;background:${scoreColor}"></div>
+      </div>
+      <span style="color:${scoreColor};min-width:28px;text-align:right">${score}</span>
+    </div>
+  </div>`;
+}
+
+/* ─── Trend Monitoring ──────────────────────────────────────────────────── */
+let _trendData = [], _sparkMap = {};
+
+function sparkSVG(values, { w=80, h=30, color='#4fc3f7' } = {}) {
+  const v = (values || []).filter(x => x != null && isFinite(x) && x >= 0);
+  if (v.length < 2) return `<svg width="${w}" height="${h}" style="display:inline-block;vertical-align:middle"><line x1="2" y1="${h/2}" x2="${w-2}" y2="${h/2}" stroke="rgba(255,255,255,0.10)" stroke-width="1"/></svg>`;
+  const mn = Math.min(...v), mx = Math.max(...v), rng = mx - mn || 1;
+  const pts = v.map((val, i) => {
+    const x = 2 + (i / (v.length - 1)) * (w - 4);
+    const y = (h - 3) - ((val - mn) / rng) * (h - 6) + 1;
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(' ');
+  // Dot on last value
+  const lx = (w - 2).toFixed(1);
+  const ly = ((h - 3) - ((v[v.length-1] - mn) / rng) * (h - 6) + 1).toFixed(1);
+  return `<svg width="${w}" height="${h}" style="display:inline-block;vertical-align:middle">
+    <polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" opacity="0.8"/>
+    <circle cx="${lx}" cy="${ly}" r="2" fill="${color}"/>
+  </svg>`;
+}
+
+function renderTrendBody() {
+  const DC = v => v == null ? '' : v > 5 ? 'color:var(--red)' : v > 2 ? 'color:var(--amber)' : v < -2 ? 'color:var(--green)' : '';
+  if (!_trendData.length) {
+    document.getElementById('trendBody').innerHTML =
+      `<tr><td colspan="8" style="color:var(--text-dim);font-family:var(--mono);font-size:12px;padding:16px">
+         Accumulating data — trend analysis improves with each trading day.
+       </td></tr>`;
+    return;
+  }
+  document.getElementById('trendBody').innerHTML = _trendData.slice(0, 100).map(r => {
+    const sp       = _sparkMap[r.isin] || [];
+    const darkVals = sp.map(d => d.dark_pct).filter(x => x != null);
+    const advVals  = sp.map(d => (d.dark_volume||0) + (d.lit_volume||0)).filter(x => x > 0);
+    const dColor   = r.dark_pct_delta > 2 ? '#f5a623' : r.dark_pct_delta < -2 ? '#43e097' : '#4fc3f7';
+    const vColor   = r.adv_zscore > 2 ? '#f06060' : r.adv_zscore < -2 ? '#43e097' : '#4fc3f7';
+    const giniD    = r.latest_gini != null && r.avg_gini != null ? ((r.latest_gini - r.avg_gini) * 100) : null;
+    const algoD    = r.latest_algo_pct != null && r.avg_algo_pct != null ? (r.latest_algo_pct - r.avg_algo_pct) : null;
+    const latDark  = r.latest_dark_pct != null ? `<span style="font-family:var(--mono);font-size:10px;color:var(--text-dim)">${r.latest_dark_pct}%</span>` : '';
+    return `<tr onclick="drillIntoISIN('${r.isin}','${r.venue||'XOSL'}')" style="cursor:pointer">
+      <td>${isinCell(r.isin)}</td>
+      <td><span class="badge ${r.venue==='XOSL'?'badge-ice':'badge-amber'}">${r.venue||'—'}</span></td>
+      <td style="padding:3px 8px;white-space:nowrap">${sparkSVG(darkVals,{color:dColor})} ${latDark}</td>
+      <td class="r" style="${DC(r.dark_pct_delta)}">${r.dark_pct_delta != null ? (r.dark_pct_delta>0?'+':'')+r.dark_pct_delta+'pp' : '—'}</td>
+      <td class="r" style="${DC(r.adv_zscore)}">${r.adv_zscore != null ? (r.adv_zscore>0?'+':'')+r.adv_zscore+'σ' : '—'}</td>
+      <td style="padding:3px 8px">${sparkSVG(advVals,{color:vColor})}</td>
+      <td class="r" style="${DC(giniD)}">${r.latest_gini != null ? r.latest_gini.toFixed(3) : '—'}</td>
+      <td class="r" style="${DC(algoD)}">${r.latest_algo_pct != null ? r.latest_algo_pct+'%' : '—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+function sortTrends(key, btn) {
+  document.querySelectorAll('#trendSortBar .evt-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const n = v => v ?? -Infinity;
+  const sorters = {
+    adv:        (a,b) => n(b.adv_zscore)    - n(a.adv_zscore),
+    darkdelta:  (a,b) => n(b.dark_pct_delta) - n(a.dark_pct_delta),
+    darklatest: (a,b) => n(b.latest_dark_pct)- n(a.latest_dark_pct),
+    gini:       (a,b) => n(b.latest_gini)   - n(a.latest_gini),
+  };
+  _trendData.sort(sorters[key] || sorters.adv);
+  renderTrendBody();
+}
+
+async function loadTrends() {
+  try {
+    const since30 = new Date(Date.now() - 30 * 864e5).toISOString().slice(0,10);
+    const [trends, sparkRaw] = await Promise.all([
+      APIall('isin_trends', 'order=adv_zscore.desc.nullslast'),
+      APIall('dark_flow_summary',
+        `trade_date=gte.${since30}&select=isin,trade_date,dark_pct,dark_volume,lit_volume&order=isin.asc,trade_date.asc`),
+    ]);
+
+    document.getElementById('trendCount').textContent =
+      `${trends.length} ISINs · 30d sparklines`;
+
+    // Build sparkline map
+    _sparkMap = {};
+    for (const r of sparkRaw) {
+      (_sparkMap[r.isin] = _sparkMap[r.isin] || []).push(r);
+    }
+
+    _trendData = trends;
+    renderTrendBody();
+  } catch(e) {
+    document.getElementById('trendCount').textContent = 'not ready';
+    document.getElementById('trendBody').innerHTML =
+      `<tr><td colspan="8" style="color:var(--text-dim);font-size:12px;padding:16px;font-family:var(--mono)">
+        Trend view not initialised. Run <strong>create_trend_view</strong> in the Database Maintenance workflow, then reload.
+      </td></tr>`;
+  }
+}
+
+
+function closeDrill() {
+  document.getElementById('companyDeepDive').style.display = 'none';
+  document.querySelectorAll('#summaryBody tr').forEach(tr => tr.classList.remove('selected'));
+  document.getElementById('intradayLabel').textContent = 'Market Aggregate';
+  renderIntradayAggregate();
+}
+
+function searchISIN() {
+  const q = document.getElementById('isinSearch').value.trim().toUpperCase();
+  if (!q) return;
+  // Accept both ISIN and ticker
+  const match = allSummary.find(r =>
+    r.isin === q ||
+    (ISIN_MAP[r.isin] && ISIN_MAP[r.isin].t.toUpperCase() === q)
+  );
+  if (match) drillIntoISIN(match.isin, match.venue);
+  else alert(`"${q}" not found in ${currentDate} data.`);
+}
+
+function showError(msg) {
+  document.getElementById('kpiGrid').innerHTML = `<div class="error-msg">${msg}</div>`;
+}
+
+/* ─── Boot ──────────────────────────────────────────────────────────────── */
+init();
+</script>
+</body>
+</html>

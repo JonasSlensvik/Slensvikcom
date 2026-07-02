@@ -1616,7 +1616,7 @@ function renderHoldings() {
       : '';
     const suggest = autoSuggestion(md, p);
 
-    return `<tr onclick="window.open('markedsradar.html','_blank')">
+    return `<tr onclick="window.open('radar.html','_blank')">
       <td>
         <div class="ticker-badge">${INTEL.tkLink(isin, ticker(isin))}</div>
         <div class="name-small">${p.name || isin.slice(-6)}</div>
@@ -2485,7 +2485,7 @@ function drawDeckRibbon(pts) {
    The portfolio value curve as a real tape: pan/zoom + crosshair, cost-basis
    line, OSEBX-proxy benchmark overlay, drawdown pane, BUY/SELL transaction
    markers, dividend ex-date markers, upcoming-event ribbons (custom series
-   primitive, ported from selskap.html), and the 5D mode with the live iMac
+   primitive, ported from dossier.html), and the 5D mode with the live iMac
    intraday merge. ALL SERIES MATH IS PORTED VERBATIM from the legacy
    Chart.js renderChart() — only the presentation layer changed. */
 const PALETTE = ['#4fc3f7','#f5a623','#43e097','#a78bfa','#f06060','#ffcd6b',

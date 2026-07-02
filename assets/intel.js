@@ -12,7 +12,7 @@
      INTEL.fmtPct(v, dp=2)      signed percent '+1.23%' / '−0.45%', '—' null
      INTEL.fmtNOK(v, dp=0)      'NOK 12 345', '—' for null
      INTEL.fmtCompact(v)        1 234 → '1.2k', 3 400 000 → '3.4M'
-     INTEL.selskapHref(isin)    'selskap.html?isin=NO0010096985'
+     INTEL.dossierHref(isin)    'dossier.html?isin=NO0010096985'
      INTEL.tkLink(isin, label)  '<a class="tk-link" …>label</a>' — ticker
                                 cross-link to the company dossier page;
                                 stops propagation so row onclick still works
@@ -99,13 +99,14 @@
   };
 
   /* ── company dossier cross-links ── */
-  const selskapHref = (isin) => 'selskap.html?isin=' + encodeURIComponent(isin || '');
+  const dossierHref = (isin) => 'dossier.html?isin=' + encodeURIComponent(isin || '');
+  const selskapHref = dossierHref;   // deprecated alias — old callers keep working
 
   // Inline anchor for ticker cells living inside clickable rows: stops
   // propagation so the row's own onclick (drill-down etc.) is not triggered.
   const tkLink = (isin, label) =>
     isin
-      ? `<a class="tk-link" href="${selskapHref(isin)}" title="Åpne selskapsside" onclick="event.stopPropagation()">${label}</a>`
+      ? `<a class="tk-link" href="${dossierHref(isin)}" title="Open company dossier" onclick="event.stopPropagation()">${label}</a>`
       : (label || '—');
 
   /* ── shared Chart.js defaults ── */
@@ -252,10 +253,10 @@
   /* ═══ ⌘K COMMAND PALETTE ═══════════════════════════════════════════════ */
 
   const K_PAGES = [
-    { kind: 'page', glyph: '▣', tick: 'RADAR',       name: 'Markedsradar — dark-flow conviction radar', href: 'markedsradar.html' },
+    { kind: 'page', glyph: '▣', tick: 'RADAR',       name: 'Radar — dark-flow conviction shortlist',    href: 'radar.html' },
     { kind: 'page', glyph: '▤', tick: 'PORTFOLIO',   name: 'Portfolio tracker — holdings & signals',    href: 'portfolio.html' },
     { kind: 'page', glyph: '◆', tick: 'GALTON',      name: 'Galton strategy — weekly long/short book',  href: 'galton.html' },
-    { kind: 'page', glyph: '◈', tick: 'SELSKAP',     name: 'Company intelligence dossier',              href: 'selskap.html' },
+    { kind: 'page', glyph: '◈', tick: 'DOSSIER',     name: 'Company intelligence dossier',              href: 'dossier.html' },
     { kind: 'page', glyph: '⧉', tick: 'MARKETMAKER', name: 'Deribit options market maker',              href: 'marketmaker.html' },
     { kind: 'page', glyph: '▥', tick: 'FASTRENTE',   name: 'Fixed-rate mortgage strategy',              href: 'fastrente.html' },
     { kind: 'page', glyph: '◇', tick: 'TERMINAL',    name: 'Front page — instrument gateway',           href: 'index.html' },
@@ -273,7 +274,7 @@
     const rows = await safeGet('instruments?select=isin,ticker,name&order=ticker.asc&limit=1000');
     kTickers = (rows || []).filter(r => r.ticker).map(r => ({
       kind: 'ticker', glyph: '◎', tick: r.ticker, name: r.name || '', isin: r.isin,
-      href: selskapHref(r.isin),
+      href: dossierHref(r.isin),
     }));
     try { sessionStorage.setItem('intel_k_tickers_v1', JSON.stringify(kTickers)); } catch (e) {}
     return kTickers;
@@ -428,11 +429,11 @@
   /* ── site nav ── */
   const NAV_PAGES = [
     { href: 'index.html',        label: 'Terminal' },
-    { href: 'markedsradar.html', label: 'Radar' },
+    { href: 'radar.html',        label: 'Radar' },
     { href: 'portfolio.html',    label: 'Portfolio' },
     { href: 'galton.html',       label: 'Galton' },
     { href: 'marketmaker.html',  label: 'MarketMaker' },
-    { href: 'selskap.html',      label: 'Selskap' },
+    { href: 'dossier.html',     label: 'Dossier' },
     { href: 'fastrente.html',    label: 'Fastrente' },
   ];
 
@@ -479,9 +480,9 @@
   }
 
   /* ═══ FUNDAMENTALS: analyst consensus + balance-sheet health ═══════════
-     Shared so portfolio, markedsradar and selskap all read the yfinance
+     Shared so portfolio, radar and dossier all read the yfinance
      fundamentals (api.analyst_consensus / api.financials_key) the same way
-     and render identical chips. Scoring mirrors the selskap dossier. */
+     and render identical chips. Scoring mirrors the company dossier. */
 
   const REC_LABEL = { strong_buy: 'STR BUY', buy: 'BUY', hold: 'HOLD',
                       sell: 'SELL', strong_sell: 'STR SELL' };
@@ -614,7 +615,7 @@
 
   // injectNav is exposed so pages that render their shell via JS (fastrente)
   // can re-run nav injection after the [data-intel-nav] mount appears.
-  window.INTEL = { API, safeGet, fmtNum, fmtPct, fmtNOK, fmtCompact, selskapHref,
+  window.INTEL = { API, safeGet, fmtNum, fmtPct, fmtNOK, fmtCompact, dossierHref, selskapHref,
                    tkLink, chartDefaults, injectNav, liveNumber, openPalette,
                    toggleDensity, mood,
                    analystRead, finHealth, healthBand,

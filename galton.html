@@ -793,7 +793,7 @@ function updateWeightsRender(weights, rcMap, sigmaPort, isLive) {
     const liveRow = isLive ? liveW.find(x => x.ticker === r.ticker) : null;
     const newBadge = liveRow && liveRow.is_new_this_week ? '<span class="w-new">NEW</span>' : '';
     const rowIsin = (liveRow && liveRow.isin) || (isinByTicker && isinByTicker[r.ticker]) || null;
-    const tkCell  = INTEL.tkLink(rowIsin, r.ticker);   // → selskap.html?isin=…
+    const tkCell  = INTEL.tkLink(rowIsin, r.ticker);   // → dossier.html?isin=…
     // Markedsradar overlay
     let mrCell = '<span class="w-mr none">—</span>';
     const conv = convictionByIsin[liveRow ? liveRow.isin : null];
