@@ -483,6 +483,25 @@ header {
 .act-bar.peak { background: var(--amber); }
 .act-axis { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 9px; color: var(--text-dim); margin-top: 4px; }
 
+/* ── Radar Intelligence (graded book) ─────────────────────────────────── */
+.ir-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 16px; }
+.ir-kpi { background: rgba(13,20,32,.92); border: 1px solid var(--border); border-radius: 7px; padding: 11px 13px; }
+.ir-kpi .lbl { font-size: 8.5px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--text-dim); margin-bottom: 5px; }
+.ir-kpi .val { font-size: 17px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--text-bright); }
+.ir-kpi .val.pos { color: var(--green, #43e097); } .ir-kpi .val.neg { color: var(--red, #f06060); }
+.ir-kpi .sub { font-size: 9px; color: var(--text-dim); margin-top: 3px; }
+.ir-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; margin-bottom: 14px; }
+@media (max-width: 900px) { .ir-grid { grid-template-columns: 1fr; } }
+.ir-sub { font-size: 9px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--text-dim); margin-bottom: 8px; }
+.ir-league-row { display: grid; grid-template-columns: 128px 1fr 96px; gap: 10px; align-items: center; margin-bottom: 7px; font-size: 10.5px; }
+.ir-bar-track { position: relative; height: 12px; background: rgba(255,255,255,.05); border-radius: 3px; overflow: hidden; }
+.ir-bar-track::after { content: ''; position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; background: rgba(255,255,255,.14); }
+.ir-bar { position: absolute; top: 0; bottom: 0; opacity: .85; }
+.ir-reads { border-left: 2px solid var(--ice); padding: 4px 0 4px 14px; margin: 6px 0 12px; }
+.ir-read { font-size: 11.5px; line-height: 1.75; }
+.ir-read b { color: var(--ice); font-weight: 600; }
+.ir-note { font-size: 9px; color: var(--text-dim); letter-spacing: .05em; line-height: 1.6; }
+
 /* ─── Today's Book / Conviction Shortlist ─────────────────────────────── */
 .conviction-grid {
   display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
@@ -1205,6 +1224,34 @@ tbody tr.selected { background: var(--ice-dim); }
     </div>
   </div>
 
+  <!-- ── Radar Intelligence — the graded book ─────────────────────────────── -->
+  <div class="section" id="sec-intel-report">
+    <div class="section-head">
+      <div class="section-title">◎ Radar Intelligence</div>
+      <div class="section-desc">Every daily top-10 call regraded against what the market then did — dividend-adjusted excess return vs the cap-weighted index.</div>
+      <div class="section-count" id="irCount">—</div>
+    </div>
+    <div class="section-body">
+      <div class="ir-kpis" id="irKpis"></div>
+      <div class="ir-grid">
+        <div>
+          <div class="ir-sub">Book scorecard · top-10 per side · excess vs market</div>
+          <div class="table-wrap"><table class="perf-table"><thead><tr>
+            <th>Side</th><th>Calls</th><th>+1d hit</th><th>+5d hit</th><th>+5d med</th><th>+10d hit</th><th>+10d med</th>
+          </tr></thead><tbody id="irScore"><tr><td colspan="7" class="perf-empty">LOADING …</td></tr></tbody></table></div>
+          <div class="ir-sub" style="margin-top:16px">Best ◈ and worst ◇ graded calls (+10d excess)</div>
+          <div id="irCalls" style="font-size:10.5px; line-height:2.1">—</div>
+        </div>
+        <div>
+          <div class="ir-sub">Signal league · median market-adjusted move 10d after first firing</div>
+          <div id="irLeague">—</div>
+        </div>
+      </div>
+      <div class="ir-reads" id="irReads"></div>
+      <div class="ir-note" id="irNote"></div>
+    </div>
+  </div>
+
   <!-- ── Company Deep Dive ─────────────────────────────────────────────────── -->
   <div id="companyDeepDive" style="display:none">
     <div class="dive-header">
@@ -1790,6 +1837,101 @@ async function loadTrackRecord() {
     console.error('Track record failed:', e);
     document.getElementById('trackRecordBody').innerHTML =
       '<tr><td colspan="13" class="perf-empty">DATA UNAVAILABLE</td></tr>';
+  }
+}
+
+/* ═══ Radar Intelligence — graded book + signal league ════════════════════ */
+async function loadIntelReport() {
+  try {
+    const [calls, league] = await Promise.all([
+      API('radar_calls', 'select=call_date,isin,side,conviction,x1,x5,x10&order=call_date'),
+      API('radar_league', 'order=med_x10_bps.desc'),
+    ]);
+    if (!calls.length) { document.getElementById('irCount').textContent = 'NO DATA YET'; return; }
+
+    const days = new Set(calls.map(c => c.call_date));
+    const agg = side => {
+      const rows = calls.filter(c => c.side === side);
+      const h = k => {
+        const v = rows.map(r => r[k]).filter(x => x != null).map(Number);
+        if (!v.length) return { n: 0, hit: null, med: null };
+        const hits = v.filter(x => side === 'LONG' ? x > 0 : x < 0).length;
+        const s = [...v].sort((a, b) => a - b);
+        return { n: v.length, hit: hits / v.length * 100, med: s[Math.floor(s.length / 2)] * 10000 };
+      };
+      return { n: rows.length, x1: h('x1'), x5: h('x5'), x10: h('x10') };
+    };
+    const L = agg('LONG'), S = agg('SHORT');
+    document.getElementById('irCount').textContent = `${days.size} DAYS · ${calls.length} CALLS GRADED`;
+
+    const pct = v => v == null ? '—' : v.toFixed(0) + '%';
+    const kpi = (lbl, val, sub, cls = '') =>
+      `<div class="ir-kpi"><div class="lbl">${lbl}</div><div class="val ${cls}">${val}</div><div class="sub">${sub}</div></div>`;
+    // "best" = strongest on BOTH mean and median (min of the two) — a high
+    // median with a collapsed mean signals an ugly left tail, not an edge
+    const robust = [...league].sort((a, b) =>
+      Math.min(Number(b.avg_x10_bps), Number(b.med_x10_bps)) -
+      Math.min(Number(a.avg_x10_bps), Number(a.med_x10_bps)));
+    const top = robust[0];
+    document.getElementById('irKpis').innerHTML =
+      kpi('DAYS GRADED', days.size, `${calls.length} top-10 book calls`) +
+      kpi('LONG HIT +10D', pct(L.x10.hit), `${L.x10.n} calls graded`, L.x10.hit >= 55 ? 'pos' : L.x10.hit <= 45 ? 'neg' : '') +
+      kpi('SHORT HIT +10D', pct(S.x10.hit), `${S.x10.n} calls graded`, S.x10.hit >= 55 ? 'pos' : S.x10.hit <= 45 ? 'neg' : '') +
+      kpi('BEST SIGNAL', top ? top.signal_type.replace(/_/g, ' ') : '—',
+          top ? `+${Number(top.med_x10_bps).toFixed(0)} bps med +10d · n=${top.n10}` : '');
+
+    const bps = v => v == null ? '—' :
+      `<span class="${v > 0 ? 'pos' : v < 0 ? 'neg' : ''}">${v > 0 ? '+' : ''}${v.toFixed(0)}</span>`;
+    const row = (name, a) => `<tr><td>${name}</td><td>${a.n}</td><td>${pct(a.x1.hit)}</td>
+      <td>${pct(a.x5.hit)}</td><td>${bps(a.x5.med)}</td><td>${pct(a.x10.hit)}</td><td>${bps(a.x10.med)}</td></tr>`;
+    document.getElementById('irScore').innerHTML = row('▲ LONG', L) + row('▼ SHORT', S);
+
+    const graded = calls.filter(c => c.x10 != null)
+      .map(c => ({ ...c, sgn: (c.side === 'LONG' ? 1 : -1) * c.x10 }))
+      .sort((a, b) => b.sgn - a.sgn);
+    const chip = c => `${INTEL.tkLink(c.isin, isinTicker(c.isin))}
+      <span class="${c.x10 > 0 ? 'pos' : 'neg'}">${(c.x10 * 100).toFixed(1)}%</span>
+      <span style="color:var(--text-dim)">${c.side.toLowerCase()} @ conviction ${c.conviction} · ${c.call_date}</span>`;
+    document.getElementById('irCalls').innerHTML =
+      graded.slice(0, 2).map(c => '◈ ' + chip(c)).join('<br>') + '<br>' +
+      graded.slice(-2).reverse().map(c => '◇ ' + chip(c)).join('<br>');
+
+    const maxAbs = Math.max(...league.map(r => Math.abs(r.med_x10_bps || 0)), 1);
+    document.getElementById('irLeague').innerHTML = league.map(r => {
+      const v = Number(r.med_x10_bps || 0);
+      const w = Math.abs(v) / maxAbs * 50;
+      const bar = v >= 0
+        ? `<div class="ir-bar" style="left:50%;width:${w}%;background:var(--green,#43e097)"></div>`
+        : `<div class="ir-bar" style="right:50%;width:${w}%;background:var(--red,#f06060)"></div>`;
+      return `<div class="ir-league-row"><span>${r.signal_type.replace(/_/g, ' ')}</span>
+        <div class="ir-bar-track">${bar}</div>
+        <span style="text-align:right">${v > 0 ? '+' : ''}${v.toFixed(0)} bps · n=${r.n10}</span></div>`;
+    }).join('');
+
+    // Auto-generated reads — derived from the live numbers, honest by design.
+    const reads = [];
+    if (S.x10.n >= 20 && S.x10.hit < 35)
+      reads.push(`<b>Short flags have been inverse indicators:</b> only ${pct(S.x10.hit)} of SHORT calls
+        beat the market down over 10 days — flagged names typically <i>rebounded</i>. Read the short
+        column as capitulation / mean-reversion candidates, not as shorts.`);
+    if (L.x10.n >= 20)
+      reads.push(`<b>Long flags lean right, but modestly:</b> ${pct(L.x10.hit)} hit at 10 days,
+        median ${L.x10.med > 0 ? '+' : ''}${L.x10.med.toFixed(0)} bps — a thin edge where fat-tailed
+        winners (and their hangovers) dominate the averages.`);
+    const db = league.find(r => r.signal_type === 'DARK_BLOCK');
+    if (db && Number(db.med_x10_bps) > 150)
+      reads.push(`<b>The strongest drift sits in DARK BLOCK</b> (+${Number(db.med_x10_bps).toFixed(0)} bps
+        median, ${Number(db.up10_pct).toFixed(0)}% up at 10d) — a signal the conviction score currently
+        treats as direction-neutral. Worth a weighting review.`);
+    document.getElementById('irReads').innerHTML = reads.map(r => `<div class="ir-read">${r}</div>`).join('');
+
+    document.getElementById('irNote').textContent =
+      `Method: the daily book is reconstructed as-of each historical date from stored signals (identical scoring), ` +
+      `then graded on dividend-adjusted closes vs the cap-weighted market index. Overlapping 14-day windows mean ` +
+      `calls are not independent, and ${days.size} trading days is a small sample — sample-gated evidence, not proof.`;
+  } catch (e) {
+    console.error('intel report failed', e);
+    document.getElementById('irCount').textContent = 'DATA UNAVAILABLE';
   }
 }
 
@@ -2388,7 +2530,7 @@ async function loadDate() {
   document.getElementById('tradeDatePill').textContent = currentDate;
   closeDrill();
   await Promise.all([
-    loadConviction(), loadTrackRecord(),
+    loadConviction(), loadTrackRecord(), loadIntelReport(),
     loadKPIs(), loadWhales(), loadSignals(),
     loadSummaryTable(), loadLatency(), loadIntraday(),
     loadCatalystAlerts(), loadCorporateEvents(), loadSignalProximity(), loadTrends()
