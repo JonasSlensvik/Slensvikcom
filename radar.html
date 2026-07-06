@@ -1926,9 +1926,11 @@ async function loadIntelReport() {
     document.getElementById('irReads').innerHTML = reads.map(r => `<div class="ir-read">${r}</div>`).join('');
 
     document.getElementById('irNote').textContent =
-      `Method: the daily book is reconstructed as-of each historical date from stored signals (identical scoring), ` +
-      `then graded on dividend-adjusted closes vs the cap-weighted market index. Overlapping 14-day windows mean ` +
-      `calls are not independent, and ${days.size} trading days is a small sample — sample-gated evidence, not proof.`;
+      `Method: the daily book is reconstructed as-of each historical date with the CURRENT (v2) scoring — ` +
+      `dark-block direction credit, insider windows, short-interest deltas — then graded on dividend-adjusted ` +
+      `closes vs the cap-weighted market index. Caveats: v2's weights were motivated by this very sample, so ` +
+      `history here is in-sample validation, not proof; overlapping 14-day windows mean calls are not ` +
+      `independent; ${days.size} trading days is a small sample. The honest test is forward performance.`;
   } catch (e) {
     console.error('intel report failed', e);
     document.getElementById('irCount').textContent = 'DATA UNAVAILABLE';
