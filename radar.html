@@ -188,300 +188,114 @@ header {
 .section.collapsed .section-chevron { transform: rotate(-90deg); }
 .section.collapsed .section-body { display: none; }
 
-/* ═══ Catalyst Horizon hero ════════════════════════════════════════════════ */
-.hero {
-  position: relative;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: linear-gradient(160deg, #070b14 0%, #0a101c 55%, #060a12 100%);
+
+/* ═══ ORBITAL CATALYST RADAR (hero) ════════════════════════════════════════ */
+.orbital {
+  position: relative; height: 560px; margin-bottom: 44px;
+  border: 1px solid var(--border); border-radius: 10px;
+  background:
+    radial-gradient(ellipse 75% 95% at 50% 50%, rgba(15,22,34,0.6), rgba(4,7,14,0.95)),
+    var(--bg, #050810);
   overflow: hidden;
-  margin-bottom: 36px;
 }
-.hero-inner { position: relative; padding: 24px 26px 16px; }
-.hero-top {
-  display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap;
-  margin-bottom: 12px;
+#orbCanvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.orb-center {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%);
+  z-index: 3; pointer-events: none; text-align: center;
 }
-.hero-eyebrow {
-  font-family: var(--mono); font-size: 11px; letter-spacing: 0.28em;
-  text-transform: uppercase; color: var(--amber);
+.orb-now { font-family: var(--mono); font-size: 9px; letter-spacing: .34em; color: var(--amber); text-transform: uppercase; }
+.orb-date { font-family: var(--mono); font-size: 11px; color: var(--text-dim); margin-top: 4px; letter-spacing: .1em; }
+.orb-counts { font-family: var(--mono); font-size: 12px; margin-top: 6px; font-variant-numeric: tabular-nums; }
+.orb-counts .L { color: var(--green, #43e097); } .orb-counts .S { color: var(--red, #f06060); }
+.orb-hint {
+  position: absolute; bottom: 10px; left: 14px; z-index: 3;
+  font-family: var(--mono); font-size: 9px; letter-spacing: .12em; color: var(--text-dim); text-transform: uppercase;
 }
-.hero-eyebrow .dot { color: var(--green); animation: pulse 2s infinite; }
-.hero-date { font-family: var(--mono); font-size: 11px; color: var(--text-dim); letter-spacing: 1px; }
-.hero-fx-toggle {
-  margin-left: auto; font-family: var(--mono); font-size: 10px; letter-spacing: 1px;
-  color: var(--text-dim); background: transparent; border: 1px solid var(--border);
-  border-radius: 4px; padding: 3px 9px; cursor: pointer; transition: all 0.15s;
+.orb-status { position: absolute; top: 12px; right: 14px; z-index: 3; display: flex; gap: 8px; }
+.orb-flyout {
+  position: absolute; z-index: 5; pointer-events: none; display: none;
+  background: rgba(13,18,28,0.95); border: 1px solid var(--border-bright, var(--border));
+  border-radius: 7px; padding: 10px 13px;
+  font-family: var(--mono); font-size: 10px; color: var(--text); line-height: 1.75; white-space: nowrap;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.5);
 }
-.hero-fx-toggle:hover { color: var(--ice); border-color: var(--ice-dim); }
-.hero-lede {
-  font-family: var(--sans); font-weight: 600;
-  font-size: clamp(18px, 2.2vw, 25px); line-height: 1.32;
-  color: var(--text-bright); letter-spacing: -0.3px;
-  max-width: 64ch; margin-bottom: 14px;
-}
-.hero-lede b { color: var(--ice); font-weight: 600; }
-.hero-lede .up { color: var(--green); } .hero-lede .dn { color: var(--red); }
-.hero-lede .warn { color: var(--amber); }
+.orb-flyout .tk { font-size: 13px; font-weight: 600; color: var(--text-bright); letter-spacing: .06em; }
+.orb-flyout .up { color: var(--green, #43e097); } .orb-flyout .dn { color: var(--red, #f06060); }
+.orb-flyout .dim { color: var(--text-dim); font-size: 9px; }
+@media (max-width: 768px) { .orbital { height: 420px; } .orb-hint { display: none; } }
 
-/* the horizon canvas itself */
-.hz-wrap { position: relative; margin: 2px 0 0; }
-#horizonCanvas {
-  display: block; width: 100%;
-  height: clamp(264px, 34vh, 360px);
-  cursor: crosshair;
-}
-.hz-tip {
-  position: absolute; z-index: 6; pointer-events: none; display: none;
-  min-width: 220px; max-width: 300px;
-  background: rgba(9,14,23,0.97);
-  border: 1px solid var(--border-glow); border-radius: 6px;
-  padding: 10px 12px;
-  font-family: var(--mono); font-size: 11px; color: var(--text);
-  box-shadow: 0 10px 32px rgba(0,0,0,0.55);
-}
-.hz-tip .tt-tkr { font-size: 13px; font-weight: 600; color: var(--text-bright); letter-spacing: 0.04em; }
-.hz-tip .tt-co  { font-size: 10px; color: var(--text-dim); margin-bottom: 6px;
-                  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.hz-tip .tt-row { display: flex; justify-content: space-between; gap: 14px; padding: 2px 0; }
-.hz-tip .tt-k   { color: var(--text-dim); letter-spacing: 0.08em; }
-.hz-tip .tt-hint { margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--border);
-                   font-size: 9px; letter-spacing: 0.1em; color: var(--text-dim); }
-.hz-empty {
-  position: absolute; inset: 0; z-index: 4;
-  display: flex; align-items: center; justify-content: center;
-  font-family: var(--mono); font-size: 12px; color: var(--text-dim);
-  letter-spacing: 1px; text-align: center; padding: 0 24px;
-}
-.hz-legend {
-  display: flex; flex-wrap: wrap; gap: 18px; align-items: center;
-  font-family: var(--mono); font-size: 10px; color: var(--text-dim);
-  letter-spacing: 0.08em;
-  padding: 8px 2px 14px;
-  border-bottom: 1px solid var(--border);
-  margin-bottom: 16px;
-}
-.hz-legend .sw {
-  display: inline-block; width: 8px; height: 8px; border-radius: 50%;
-  margin-right: 6px; vertical-align: middle;
-}
-.hz-legend .dim { margin-left: auto; opacity: 0.8; }
+/* ═══ MARKET INTELLIGENCE ══════════════════════════════════════════════════ */
+.mi-grid { display: grid; grid-template-columns: 1.5fr 1fr; gap: 22px; }
+@media (max-width: 900px) { .mi-grid { grid-template-columns: 1fr; } }
+.mi-band-box { position: relative; border: 1px solid var(--border); border-radius: 8px; background: rgba(10,15,24,.65); padding: 14px 14px 8px; }
+.mi-band-head { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 9px; letter-spacing: .14em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 8px; }
+#miBand { width: 100%; height: 190px; display: block; }
+.mi-headline { font-family: var(--sans, inherit); font-size: 19px; font-weight: 600; color: var(--text-bright); line-height: 1.45; margin: 2px 0 14px; }
+.mi-headline .up { color: var(--green, #43e097); } .mi-headline .dn { color: var(--red, #f06060); } .mi-headline .am { color: var(--amber); }
+.mi-tiles { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.mi-tile { border: 1px solid var(--border); border-radius: 7px; background: rgba(13,20,32,.8); padding: 11px 13px; }
+.mi-tile .lbl { font-family: var(--mono); font-size: 8.5px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--text-dim); margin-bottom: 5px; }
+.mi-tile .val { font-family: var(--mono); font-size: 17px; font-weight: 600; color: var(--text-bright); font-variant-numeric: tabular-nums; }
+.mi-tile .val.up { color: var(--green,#43e097); } .mi-tile .val.dn { color: var(--red,#f06060); } .mi-tile .val.am { color: var(--amber); }
+.mi-tile .sub { font-family: var(--mono); font-size: 9px; color: var(--text-dim); margin-top: 3px; }
+.mi-breadth { position: relative; height: 10px; border-radius: 5px; overflow: hidden; background: var(--bg3, #1a212d); margin-top: 7px; display: flex; }
+.mi-breadth .a { background: var(--green, #43e097); opacity: .75; } .mi-breadth .d { background: var(--red, #f06060); opacity: .75; } .mi-breadth .u { background: rgba(255,255,255,.13); }
+.mi-leaders { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin-top: 18px; }
+.mi-lead { border: 1px solid var(--border); border-left: 2px solid var(--amber); border-radius: 6px; padding: 9px 12px; font-family: var(--mono); font-size: 10.5px; }
+.mi-lead .who { color: var(--text-bright); font-weight: 600; }
+.mi-lead .what { color: var(--text-dim); font-size: 8.5px; letter-spacing: 1px; text-transform: uppercase; }
 
-/* hero KPI ticks */
-.hero-ticks { display: flex; flex-wrap: wrap; gap: 26px; padding-bottom: 8px; }
-.hero-tick { display: flex; flex-direction: column; gap: 2px; }
-.hero-tick-label { font-family: var(--mono); font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--text-dim); }
-.hero-tick-value { font-family: var(--mono); font-size: 20px; font-weight: 600; color: var(--text-bright); font-variant-numeric: tabular-nums; }
-.hero-tick-value.up { color: var(--green); } .hero-tick-value.dn { color: var(--red); }
-.hero-tick-value.warn { color: var(--amber); }
-.hero-tick-sub { font-family: var(--mono); font-size: 10px; color: var(--text-dim); }
-
-/* ─── Catalyst Setup Cards ──────────────────────────────────────────────── */
-.catalyst-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(420px, 100%), 1fr));
-  gap: 16px;
-  padding: 4px 0;
+/* ═══ WATCHTOWER ═══════════════════════════════════════════════════════════ */
+.wt-filters { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+.wt-filter {
+  font-family: var(--mono); font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase;
+  border: 1px solid var(--border); background: transparent; color: var(--text-dim);
+  border-radius: 5px; padding: 5px 11px; cursor: pointer;
 }
-.cat-card {
-  background: var(--bg2);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  overflow: hidden;
-  transition: border-color .2s, box-shadow .2s;
-  cursor: pointer;
-  scroll-margin-top: 90px;
-}
-.cat-card:hover { border-color: var(--border-glow); box-shadow: 0 0 20px rgba(30,58,95,0.5); }
-.cat-card.bearish { border-left: 3px solid var(--red); }
-.cat-card.bullish { border-left: 3px solid var(--green); }
-.cat-card.neutral { border-left: 3px solid var(--amber); }
-.cat-card.bearish:hover { box-shadow: 0 0 24px rgba(240,96,96,0.15); }
-.cat-card.bullish:hover { box-shadow: 0 0 24px rgba(67,224,151,0.15); }
-.cat-card.cat-hit { animation: catHit 1.8s ease; }
-@keyframes catHit {
-  0%   { box-shadow: 0 0 0 2px var(--amber), 0 0 40px rgba(245,166,35,0.45); }
-  100% { box-shadow: none; }
-}
-
-.cat-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 16px 10px;
-  border-bottom: 1px solid var(--border);
-}
-.cat-ticker {
-  font-family: var(--mono);
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--text-bright);
-  letter-spacing: 1px;
-}
-.cat-company {
-  font-size: 12px;
-  color: var(--text-dim);
-  margin-left: 8px;
-}
-.cat-dir {
-  font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 1px;
-  padding: 3px 8px;
-  border-radius: 3px;
-  font-weight: 600;
+.wt-filter:hover { color: var(--text-bright); }
+.wt-filter.on { color: var(--ice); border-color: var(--ice-dim, var(--ice)); background: rgba(79,195,247,.08); }
+.wt-wrap { overflow-x: auto; }
+table.wt { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 11px; }
+.wt th {
+  text-align: left; font-size: 8.5px; letter-spacing: 1.2px; text-transform: uppercase;
+  color: var(--text-dim); font-weight: 500; padding: 7px 10px; border-bottom: 1px solid var(--border);
   white-space: nowrap;
 }
-.cat-dir.bearish { background: var(--red-dim); color: var(--red); }
-.cat-dir.bullish { background: var(--green-dim); color: var(--green); }
-.cat-dir.neutral { background: var(--amber-dim); color: var(--amber); }
+.wt td { padding: 8px 10px; border-bottom: 1px solid rgba(255,255,255,0.04); white-space: nowrap; vertical-align: middle; }
+.wt tbody tr { cursor: pointer; }
+.wt tbody tr:hover { background: rgba(79,195,247,0.045); }
+.wt .tkr { font-weight: 600; color: var(--text-bright); letter-spacing: .05em; }
+.wt .nm { color: var(--text-dim); font-size: 9px; max-width: 150px; overflow: hidden; text-overflow: ellipsis; display: block; }
+.wt .num { font-variant-numeric: tabular-nums; }
+.wt .up { color: var(--green, #43e097); } .wt .dn { color: var(--red, #f06060); } .wt .dim { color: var(--text-dim); }
+.wt-spark { width: 92px; height: 26px; display: block; }
+.wt-verdict { font-size: 9px; letter-spacing: .08em; border-radius: 4px; padding: 2.5px 7px; font-weight: 600; }
+.wt-verdict.L { background: rgba(67,224,151,.12); color: var(--green, #43e097); }
+.wt-verdict.S { background: rgba(240,96,96,.12); color: var(--red, #f06060); }
+.wt-verdict.N { background: rgba(255,255,255,.05); color: var(--text-dim); font-weight: 400; }
+.wt .glyphs { letter-spacing: 3px; color: var(--ice); font-size: 12px; }
+.wt .evt { color: var(--amber); }
+.wt-more { text-align: center; margin-top: 12px; }
 
-.cat-panels {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0;
+/* ─── Footer ─────────────────────────────────────────────────────────────── */
+.radar-footer {
+  margin-top: 52px; padding: 18px 0 8px; border-top: 1px solid var(--border);
+  font-family: var(--mono); font-size: 9px; letter-spacing: .12em; color: var(--text-dim);
+  display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; text-transform: uppercase;
 }
-.cat-panel { padding: 14px 16px; }
-.cat-panel + .cat-panel { border-left: 1px solid var(--border); }
-.cat-panel-label {
-  font-family: var(--mono);
-  font-size: 9px;
-  letter-spacing: 2px;
-  color: var(--text-dim);
-  text-transform: uppercase;
-  margin-bottom: 8px;
+@media (max-width: 860px) {
+  /* the shared nav becomes a scroll rail: give it its own constrained row */
+  header { flex-wrap: wrap; }
+  header [data-intel-nav] { min-width: 0; flex: 1 1 100%; order: 3; }
+  header [data-intel-nav] .site-nav { justify-content: flex-start; }
 }
-.cat-type {
-  font-family: var(--mono);
-  font-size: 13px;
-  color: var(--text-bright);
-  margin-bottom: 4px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+@media (max-width: 600px) {
+  .mi-tiles { grid-template-columns: 1fr 1fr; }
+  .mi-headline { font-size: 16px; }
+  .section-head { flex-wrap: wrap; row-gap: 4px; }
+  .section-desc { min-width: 0; }
+  .section-count { margin-left: 0; }
 }
-.cat-date {
-  font-family: var(--mono);
-  font-size: 11px;
-  color: var(--text-dim);
-  margin-bottom: 10px;
-}
-.cat-sig-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 4px 0;
-  border-bottom: 1px solid var(--border);
-  font-family: var(--mono);
-  font-size: 11px;
-  color: var(--text-bright);
-}
-.cat-sig-row:last-child { border-bottom: none; }
-.cat-sig-row .cat-date { margin-bottom: 0; margin-left: auto; }
-.cat-countdown {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
-  border-radius: 4px;
-  font-family: var(--mono);
-  font-size: 12px;
-  font-weight: 600;
-  margin-top: 6px;
-}
-.cat-countdown.imminent { background: var(--red-dim); color: var(--red); animation: pulse 2s infinite; }
-.cat-countdown.soon     { background: var(--amber-dim); color: var(--amber); }
-.cat-countdown.upcoming { background: var(--ice-dim); color: var(--ice); }
-.cat-score {
-  font-family: var(--mono);
-  font-size: 10px;
-  color: var(--text-dim);
-  padding: 0 16px 10px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.cat-score-bar {
-  flex: 1;
-  height: 2px;
-  background: var(--border);
-  border-radius: 1px;
-  overflow: hidden;
-}
-.cat-score-fill { height: 100%; border-radius: 1px; }
-
-/* ═══ Market State strip ═══════════════════════════════════════════════════ */
-.mstrip {
-  display: grid;
-  grid-template-columns: 1.15fr 1fr 1fr;
-  gap: 12px;
-  align-items: start;
-}
-@media (max-width: 1080px) { .mstrip { grid-template-columns: 1fr 1fr; } }
-@media (max-width: 720px)  { .mstrip { grid-template-columns: 1fr; } }
-/* page-local panel: NO backdrop-filter (these repeat — keep compositing cheap) */
-.mr-panel {
-  background: rgba(11,18,30,0.74);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 12px 14px 13px;
-}
-.mr-span3 { grid-column: 1 / -1; }
-@media (max-width: 720px) { .mr-span3 { grid-column: span 1; } }
-.mr-panel-title {
-  font-family: var(--mono); font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase;
-  color: var(--text-bright); margin-bottom: 10px; display: flex; align-items: center; gap: 8px;
-}
-.mr-panel-title .g { color: var(--amber); }
-.mr-panel-title .meta { margin-left: auto; color: var(--text-dim); font-size: 10px; letter-spacing: 1px; }
-
-/* breadth bar */
-.breadth-wrap { margin-bottom: 12px; }
-.breadth-bar { display: flex; height: 26px; border-radius: 4px; overflow: hidden; border: 1px solid var(--border); }
-.breadth-seg { display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: 11px; font-weight: 600; color: var(--bg); min-width: 28px; }
-.breadth-seg.adv { background: var(--green); }
-.breadth-seg.unch { background: var(--text-dim); }
-.breadth-seg.dec { background: var(--red); }
-.breadth-legend { display: flex; justify-content: space-between; margin-top: 6px; font-family: var(--mono); font-size: 10px; color: var(--text-dim); }
-.breadth-legend .up { color: var(--green); } .breadth-legend .dn { color: var(--red); }
-
-/* mini stat rows inside panels */
-.dash-stat-row { display: flex; align-items: baseline; justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed var(--border); }
-.dash-stat-row:last-child { border-bottom: none; }
-.dash-stat-label { font-size: 12px; color: var(--text-dim); }
-.dash-stat-val { font-family: var(--mono); font-size: 13px; font-weight: 600; color: var(--text-bright); font-variant-numeric: tabular-nums; }
-.dash-stat-val.up { color: var(--green); } .dash-stat-val.dn { color: var(--red); } .dash-stat-val.warn { color: var(--amber); }
-
-/* mover / leader list rows */
-.mlist { display: flex; flex-direction: column; }
-.mrow {
-  display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: center;
-  padding: 5px 0; border-bottom: 1px dashed var(--border); cursor: pointer;
-}
-.mrow:last-child { border-bottom: none; }
-.mrow:hover .mrow-tkr { color: var(--ice); }
-.mrow-tkr { font-family: var(--mono); font-size: 13px; font-weight: 600; color: var(--text-bright); }
-.mrow-name { font-size: 10.5px; color: var(--text-dim); max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.mrow-num { font-family: var(--mono); font-size: 12px; text-align: right; font-variant-numeric: tabular-nums; color: var(--text); }
-.mrow-num.up { color: var(--green); } .mrow-num.dn { color: var(--red); } .mrow-num.warn { color: var(--amber); }
-.mrow-badge { font-family: var(--mono); font-size: 9px; padding: 1px 5px; border-radius: 3px; border: 1px solid var(--border); color: var(--text-dim); }
-
-/* insider feed */
-.feed { display: flex; flex-direction: column; gap: 0; max-height: 248px; overflow-y: auto; }
-.feed-row { display: flex; gap: 9px; padding: 6px 0; border-bottom: 1px dashed var(--border); cursor: pointer; }
-.feed-row:last-child { border-bottom: none; }
-.feed-row:hover .feed-issuer { color: var(--ice); }
-.feed-glyph { color: var(--amber); font-size: 13px; flex-shrink: 0; line-height: 1.5; }
-.feed-main { min-width: 0; }
-.feed-issuer { font-family: var(--mono); font-size: 12px; font-weight: 600; color: var(--text-bright); }
-.feed-title { font-size: 11px; color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 320px; }
-.feed-date { font-family: var(--mono); font-size: 10px; color: var(--text-dim); margin-left: auto; flex-shrink: 0; }
-
-/* intraday activity sparkbars */
-.act-spark { display: flex; align-items: flex-end; gap: 1px; height: 56px; margin-top: 4px; }
-.act-bar { flex: 1; background: var(--ice-dim); border-radius: 1px 1px 0 0; min-height: 1px; transition: background 0.15s; }
-.act-bar.peak { background: var(--amber); }
-.act-axis { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 9px; color: var(--text-dim); margin-top: 4px; }
 
 /* ── Radar Intelligence (graded book) ─────────────────────────────────── */
 .ir-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 16px; }
@@ -648,384 +462,6 @@ header {
   text-align: center; padding: 28px 8px;
 }
 
-/* ─── Company Deep Dive ─────────────────────────────────────────────────── */
-#companyDeepDive {
-  border: 1px solid var(--border-glow);
-  border-radius: 8px;
-  padding: 24px;
-  background: var(--bg2);
-  margin-bottom: 40px;
-  position: relative;
-  scroll-margin-top: 24px;
-}
-.dive-header {
-  display: flex;
-  align-items: flex-start;
-  gap: 20px;
-  margin-bottom: 20px;
-  flex-wrap: wrap;
-}
-.dive-ticker {
-  font-family: var(--mono);
-  font-size: 34px;
-  font-weight: 700;
-  color: var(--ice);
-  line-height: 1;
-  letter-spacing: -1px;
-}
-.dive-name {
-  font-size: 15px;
-  color: var(--text-bright);
-  font-weight: 500;
-  margin-top: 4px;
-}
-.dive-badge {
-  font-family: var(--mono);
-  font-size: 10px;
-  background: var(--bg3);
-  border: 1px solid var(--border);
-  border-radius: 3px;
-  padding: 2px 8px;
-  color: var(--text-dim);
-  letter-spacing: 1px;
-}
-.dive-hdr-right {
-  margin-left: auto;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 4px;
-}
-.dive-mcap {
-  font-family: var(--mono);
-  font-size: 15px;
-  color: var(--amber);
-}
-.dive-mcap-sub { font-size: 11px; color: var(--text-dim); }
-.dive-metrics {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin-bottom: 24px;
-}
-.dive-metric {
-  background: var(--bg3);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 10px 16px;
-  min-width: 88px;
-}
-.dive-metric-label {
-  font-size: 10px;
-  font-family: var(--mono);
-  color: var(--text-dim);
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  margin-bottom: 4px;
-}
-.dive-metric-value {
-  font-size: 18px;
-  font-family: var(--mono);
-  color: var(--text-bright);
-}
-.dive-bottom {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 16px;
-  margin-top: 20px;
-}
-@media (max-width: 960px) { .dive-bottom { grid-template-columns: 1fr 1fr; } }
-@media (max-width: 600px) { .dive-bottom { grid-template-columns: 1fr; } }
-.dive-panel {
-  background: var(--bg3);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 14px;
-  overflow: hidden;
-}
-.dive-panel-title {
-  font-family: var(--mono);
-  font-size: 10px;
-  color: var(--text-dim);
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  margin-bottom: 10px;
-}
-.dive-flow-legend {
-  display: flex;
-  gap: 20px;
-  padding: 10px 0 0;
-  font-size: 12px;
-  color: var(--text-dim);
-  flex-wrap: wrap;
-}
-/* dossier hand-off — dossier.html owns history/events/filings for the name */
-.dossier-cta {
-  display: flex; flex-direction: column; gap: 10px;
-  justify-content: center; align-items: flex-start;
-}
-.dossier-cta p { font-size: 12px; color: var(--text-dim); line-height: 1.55; }
-.dossier-link {
-  font-family: var(--mono); font-size: 12px; letter-spacing: 1px;
-  color: var(--ice); border: 1px solid var(--ice-dim);
-  padding: 10px 16px; border-radius: 4px; text-decoration: none;
-  transition: all 0.15s;
-}
-.dossier-link:hover { background: var(--ice-dim); }
-
-/* ─── Drill-down intel strip ─────────────────────────────────────────────── */
-.dive-intel { display: flex; flex-wrap: wrap; gap: 10px; margin: 0 0 22px; }
-.intel-chip {
-  display: flex; flex-direction: column; gap: 3px;
-  background: var(--bg3); border: 1px solid var(--border);
-  border-left: 2px solid var(--border); border-radius: 4px;
-  padding: 9px 14px; min-width: 104px;
-}
-.intel-chip.pos  { border-left-color: var(--green); }
-.intel-chip.neg  { border-left-color: var(--red); }
-.intel-chip.warn { border-left-color: var(--amber); }
-.intel-chip.dark { border-left-color: var(--purple); }
-.intel-chip.ice  { border-left-color: var(--ice); }
-.intel-chip .intel-k { font-family: var(--mono); font-size: 9px; letter-spacing: 1px; color: var(--text-dim); text-transform: uppercase; }
-.intel-chip .intel-v { font-family: var(--mono); font-size: 16px; font-weight: 700; color: var(--text-bright); line-height: 1.1; }
-.intel-chip .intel-sub { font-size: 9px; color: var(--text-dim); }
-.dive-syn {
-  font-size: 13px; line-height: 1.65; color: var(--text-bright);
-  background: var(--bg3); border: 1px solid var(--border); border-radius: 6px;
-  padding: 14px 18px; margin-bottom: 22px;
-}
-.dive-syn .hl-pos  { color: var(--green); font-weight: 600; }
-.dive-syn .hl-neg  { color: var(--red); font-weight: 600; }
-.dive-syn .hl-warn { color: var(--amber); font-weight: 600; }
-.dive-syn .hl-dark { color: var(--purple); font-weight: 600; }
-.dive-syn .hl-ice  { color: var(--ice); font-weight: 600; }
-.si-bar { height: 5px; border-radius: 3px; background: var(--bg2); overflow: hidden; margin-top: 6px; }
-.si-bar > span { display: block; height: 100%; background: var(--amber); }
-
-/* ─── Tables ────────────────────────────────────────────────────────────── */
-.table-wrap { overflow-x: auto; border-radius: 6px; border: 1px solid var(--border); }
-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-thead tr { background: var(--bg3); }
-th {
-  font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 1.5px;
-  text-transform: uppercase;
-  color: var(--text-dim);
-  padding: 10px 14px;
-  text-align: left;
-  white-space: nowrap;
-  border-bottom: 1px solid var(--border);
-}
-th.r { text-align: right; }
-td {
-  padding: 9px 14px;
-  border-bottom: 1px solid var(--border);
-  color: var(--text);
-  white-space: nowrap;
-}
-td.r { text-align: right; font-family: var(--mono); font-size: 12px; }
-td.mono { font-family: var(--mono); font-size: 12px; }
-tbody tr:last-child td { border-bottom: none; }
-tbody tr {
-  cursor: pointer;
-  transition: background 0.12s;
-}
-tbody tr:hover { background: var(--bg3); }
-tbody tr.selected { background: var(--ice-dim); }
-
-/* ─── Badges (page tweaks on top of shared intel.css badges) ───────────── */
-.badge {
-  display: inline-block;
-  padding: 2px 7px;
-  border-radius: 3px;
-  font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 0.5px;
-  font-weight: 500;
-}
-.badge-amber  { background: var(--amber-dim); color: var(--amber); border: 1px solid var(--amber-dim); }
-.badge-ice    { background: var(--ice-dim); color: var(--ice); border: 1px solid var(--ice-dim); }
-.badge-green  { background: var(--green-dim); color: var(--green); }
-.badge-red    { background: var(--red-dim); color: var(--red); }
-.badge-purple { background: #2d1f5e; color: var(--purple); }
-.badge-dim    { background: var(--bg3); color: var(--text-dim); }
-.live-pill { display: inline-block; margin-left: 6px; padding: 1px 5px; border-radius: 3px;
-             font-family: var(--mono); font-size: 8px; letter-spacing: 0.12em; font-weight: 600;
-             color: var(--green); background: rgba(67,224,151,0.12); border: 1px solid rgba(67,224,151,0.35);
-             vertical-align: middle; animation: livePillPulse 2s infinite; }
-@keyframes livePillPulse { 0%,100% { opacity: 1; } 50% { opacity: 0.55; } }
-.evt-btn { background: var(--bg2); color: var(--text-dim); border: 1px solid var(--border); padding: 4px 10px; border-radius: 4px; cursor: pointer; font-family: var(--mono); font-size: 11px; transition: all 0.15s; }
-.evt-btn:hover  { border-color: var(--ice); color: var(--text); }
-.evt-btn.active { background: var(--ice-dim); color: var(--ice); border-color: var(--ice); }
-.prox-IMMINENT    { color: #f06060; font-weight: 600; }
-.prox-UPCOMING    { color: var(--amber); }
-.prox-JUST_PASSED { color: var(--text-dim); font-style: italic; }
-
-/* ─── Bar fills ─────────────────────────────────────────────────────────── */
-.bar-wrap { display: flex; align-items: center; gap: 8px; }
-.bar-track { flex: 1; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; min-width: 60px; }
-.bar-fill  { height: 100%; border-radius: 2px; }
-.bar-ice   { background: var(--ice); }
-.bar-amber { background: var(--amber); }
-.bar-green { background: var(--green); }
-.bar-pct   { font-family: var(--mono); font-size: 11px; color: var(--text-dim); width: 42px; text-align: right; }
-
-/* ─── Chart containers ──────────────────────────────────────────────────── */
-.chart-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-  margin-bottom: 32px;
-}
-@media (max-width: 900px) { .chart-grid { grid-template-columns: 1fr; } }
-.chart-box {
-  background: var(--bg2);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 20px;
-}
-.chart-box.full { grid-column: 1 / -1; }
-.chart-label {
-  font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 1.5px;
-  text-transform: uppercase;
-  color: var(--text-dim);
-  margin-bottom: 16px;
-}
-.chart-container { position: relative; height: 220px; }
-.chart-container.tall { height: 300px; }
-
-/* ─── Whale alert cards ─────────────────────────────────────────────────── */
-.whale-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr)); gap: 12px; }
-.whale-card {
-  background: var(--bg2);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 16px;
-  border-left: 3px solid var(--amber);
-  transition: border-color 0.2s, background 0.2s;
-  animation: fadeIn 0.4s ease both;
-}
-.whale-card:hover { background: var(--bg3); border-left-color: var(--gold); }
-@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
-.whale-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
-.whale-isin { font-family: var(--mono); font-size: 14px; color: var(--text-bright); }
-.whale-venue { font-family: var(--mono); font-size: 11px; color: var(--text-dim); }
-.whale-notional { font-family: var(--mono); font-size: 18px; color: var(--amber); margin-bottom: 6px; }
-.whale-meta { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
-
-/* ─── Signal cards ──────────────────────────────────────────────────────── */
-.signal-list { display: flex; flex-direction: column; gap: 8px; }
-.signal-row {
-  background: var(--bg2);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 12px 16px;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  transition: background 0.12s;
-  animation: fadeIn 0.3s ease both;
-  cursor: pointer;
-}
-.signal-row:hover { background: var(--bg3); }
-.signal-icon { font-size: 18px; flex-shrink: 0; }
-.signal-body { flex: 1; }
-.signal-type { font-family: var(--mono); font-size: 11px; color: var(--amber); letter-spacing: 1px; margin-bottom: 2px; }
-.signal-desc { font-size: 12px; color: var(--text); }
-.signal-isin { font-family: var(--mono); font-size: 13px; color: var(--text-bright); }
-.signal-strength { font-family: var(--mono); font-size: 10px; }
-.signal-strength.STRONG { color: var(--amber); }
-.signal-strength.MODERATE { color: var(--text-dim); }
-
-.drill-close {
-  margin-left: auto;
-  background: none;
-  border: 1px solid var(--border);
-  color: var(--text-dim);
-  padding: 4px 10px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-family: var(--mono);
-  font-size: 12px;
-  transition: all 0.12s;
-}
-.drill-close:hover { border-color: var(--red); color: var(--red); }
-
-/* ─── Loader / error ───────────────────────────────────────────────────── */
-.loader { text-align: center; padding: 48px; font-family: var(--mono); color: var(--text-dim); letter-spacing: 2px; animation: pulse 1.5s infinite; }
-.error-msg { color: var(--red); font-family: var(--mono); font-size: 12px; padding: 16px; background: var(--red-dim); border-radius: 4px; }
-
-/* ─── Split layout ──────────────────────────────────────────────────────── */
-.split { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
-@media (max-width: 800px) { .split { grid-template-columns: 1fr; } }
-
-/* ─── Scrollbar ─────────────────────────────────────────────────────────── */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: var(--bg); }
-::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: var(--border-glow); }
-
-/* ─── Advanced section divider ───────────────────────────────────────────── */
-.adv-divider { display: flex; align-items: center; gap: 16px; margin: 44px 0 24px; }
-.adv-divider-line { flex: 1; height: 1px; background: linear-gradient(90deg, transparent, var(--border) 40%, var(--border)); }
-.adv-divider-line:last-child { background: linear-gradient(90deg, var(--border), var(--border) 60%, transparent); }
-.adv-divider-label { font-family: var(--mono); font-size: 10px; letter-spacing: 2px; color: var(--text-dim); white-space: nowrap; }
-
-/* ─── Mobile / small screens ─────────────────────────────────────────────── */
-@media (max-width: 600px) {
-  .page { padding: 0 14px 56px; }
-  header { padding: 24px 0 20px; margin-bottom: 22px; }
-  .logo { font-size: 22px; }
-  .header-meta { gap: 10px; }
-  .date-bar { margin-bottom: 22px; }
-  .date-bar input#isinSearch { width: 130px !important; }
-  .feed-title { max-width: 200px; }
-  #horizonCanvas { height: 230px; }
-  .hz-legend .dim { display: none; }
-}
-
-/* ── Return Distribution section ─────────────────────────────────────────── */
-.mr-span2 { grid-column: span 2; }
-@media (max-width: 720px) { .mr-span2 { grid-column: span 1; } }
-.dist-strip { margin-top: 12px; }
-.dist-hero {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-  gap: 10px;
-}
-.dist-stat {
-  background: rgba(11,18,30,0.74); border: 1px solid var(--border);
-  border-radius: 6px; padding: 11px 13px;
-}
-.dist-stat .k {
-  font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.14em;
-  text-transform: uppercase; color: var(--text-dim);
-}
-.dist-stat .v {
-  font-family: var(--mono); font-size: 21px; font-weight: 600;
-  color: var(--text-bright); margin-top: 4px; line-height: 1.05;
-}
-.dist-stat .v.pos { color: #43e097; }
-.dist-stat .v.neg { color: #f06060; }
-.dist-stat .v.amber { color: var(--amber); }
-.dist-stat .sub { font-family: var(--mono); font-size: 10px; color: var(--text-dim); margin-top: 3px; }
-.dist-note {
-  font-family: var(--mono); font-size: 10.5px; line-height: 1.5;
-  color: var(--text-dim); margin-top: 10px;
-}
-.dist-table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 11px; }
-.dist-table th {
-  text-align: right; padding: 5px 8px; color: var(--text-dim);
-  font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; font-size: 9.5px;
-  border-bottom: 1px solid var(--border);
-}
-.dist-table th:first-child, .dist-table td:first-child { text-align: left; }
-.dist-table td { text-align: right; padding: 5px 8px; color: var(--text); border-bottom: 1px solid rgba(255,255,255,0.04); }
-.dist-table tr.best td { color: var(--text-bright); background: var(--amber-glow); }
-.dist-table tr.best td:first-child::before { content: '★ '; color: var(--amber); }
-.dist-table .muted { color: var(--text-dim); }
 </style>
 </head>
 <body>
@@ -1041,164 +477,45 @@ tbody tr.selected { background: var(--ice-dim); }
     <div class="header-meta">
       <div class="meta-pill live" id="statusPill">T-1 DATA</div>
       <div class="meta-pill" id="tradeDatePill">—</div>
-      <div class="meta-pill" id="totalTradesPill">— TRADES</div>
     </div>
   </header>
 
-  <!-- ── Date selector / ISIN jump ───────────────────────────────────────── -->
-  <div class="date-bar">
-    <label>VIEWING DATE</label>
-    <select id="dateSelect"></select>
-    <button class="btn" onclick="loadDate()">LOAD</button>
-    <label style="margin-left:16px">JUMP TO ISIN</label>
-    <input type="text" id="isinSearch" placeholder="ISIN or ticker, e.g. EQNR" style="width:180px">
-    <button class="btn" onclick="searchISIN()">FIND</button>
-  </div>
-
-  <!-- ── HERO · Catalyst Horizon ─────────────────────────────────────────── -->
-  <section class="hero" id="sec-horizon">
-    <div class="hero-inner">
-      <div class="hero-top">
-        <span class="hero-eyebrow"><span class="dot">●</span> Catalyst Horizon</span>
-        <span class="hero-date" id="heroDate">—</span>
-        <button class="hero-fx-toggle" id="fxToggle" onclick="toggleAmbient()">◉ FX</button>
-      </div>
-      <div class="hero-lede" id="heroLede">Reading the tape…</div>
-
-      <div class="hz-wrap" id="hzWrap">
-        <canvas id="horizonCanvas"></canvas>
-        <div class="hz-tip" id="horizonTip"></div>
-        <div class="hz-empty" id="horizonEmpty" style="display:none"></div>
-      </div>
-      <div class="hz-legend">
-        <span><i class="sw" style="background:var(--green)"></i>ACCUMULATION</span>
-        <span><i class="sw" style="background:var(--red)"></i>DISTRIBUTION</span>
-        <span><i class="sw" style="background:var(--ice)"></i>NEUTRAL</span>
-        <span><i class="sw" style="background:var(--amber);border-radius:1px"></i>TODAY</span>
-        <span class="dim">size = catalyst score · pulse = event ≤ 5 days · click a node to open its setup</span>
-      </div>
-
-      <div class="hero-ticks" id="heroTicks"></div>
+  <!-- ═══ ACT I — ORBITAL CATALYST RADAR ═══════════════════════════════════ -->
+  <section class="orbital" id="orbitalSection" aria-label="Orbital catalyst radar — flagged names by days to event">
+    <canvas id="orbCanvas"></canvas>
+    <div class="orb-center">
+      <div class="orb-now">◉ Event Horizon</div>
+      <div class="orb-date" id="orbDate">—</div>
+      <div class="orb-counts" id="orbCounts">—</div>
     </div>
+    <div class="orb-status" id="orbStatus"></div>
+    <div class="orb-hint">ring = days to catalyst · size = conviction · colour = side · pulse = dark share · trail = day move · click a body for its dossier</div>
+    <div class="orb-flyout" id="orbFlyout"></div>
   </section>
 
-  <!-- ── Catalyst setups (the seven-evidence cards) ──────────────────────── -->
-  <div class="section" id="sec-catalysts">
-    <div class="section-head">
-      <div class="section-title">◆ Catalyst Setups</div>
-      <div class="section-desc">Precursor evidence — insiders, dark flow, signals, whales, volume, trend, shorts — fused per scheduled event inside 35 days. Click a card to drill.</div>
-      <div class="section-count" id="catalystCount">—</div>
-    </div>
-    <div class="section-body">
-      <div class="catalyst-grid" id="catalystGrid">
-        <div class="skeleton" style="height:230px;border-radius:8px"></div>
-        <div class="skeleton" style="height:230px;border-radius:8px"></div>
-        <div class="skeleton" style="height:230px;border-radius:8px"></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ── Market state strip ──────────────────────────────────────────────── -->
+  <!-- ═══ ACT II — MARKET INTELLIGENCE ═════════════════════════════════════ -->
   <div class="section" id="sec-market">
     <div class="section-head">
-      <div class="section-title">⊞ Market State</div>
-      <div class="section-desc">The whole tape at a glance — breadth, microstructure, leaders, insider filings.</div>
-      <div class="section-count" id="marketTodayCount">—</div>
+      <div class="section-title">⊞ Market Intelligence</div>
+      <div class="section-desc">The whole tape, one place — turnover, breadth, dark share, flow leaders, and the session minute by minute.</div>
+      <div class="section-count" id="miCount">—</div>
     </div>
-    <div class="section-body">
-      <div class="mstrip">
-
-        <div class="mr-panel">
-          <div class="mr-panel-title"><span class="g">⊞</span> Breadth &amp; Flow</div>
-          <div class="breadth-wrap" id="breadthWrap"><div class="skeleton" style="height:26px"></div></div>
-          <div id="dashStats"></div>
-        </div>
-
-        <div class="mr-panel">
-          <div class="mr-panel-title"><span class="g">⊟</span> Tape Microstructure <span class="meta">market-wide</span></div>
-          <div id="kpiGrid"><div class="conv-empty">LOADING …</div></div>
-        </div>
-
-        <div class="mr-panel">
-          <div class="mr-panel-title"><span class="g">◐</span> Insider Activity <span class="meta" id="insiderMeta">—</span></div>
-          <div class="feed" id="insiderFeed"><div class="conv-empty">LOADING …</div></div>
-        </div>
-
-        <div class="mr-panel">
-          <div class="mr-panel-title"><span class="g">▲</span> Top Movers <span class="meta">vs prior close</span></div>
-          <div class="mlist" id="moversList"></div>
-        </div>
-
-        <div class="mr-panel">
-          <div class="mr-panel-title"><span class="g">■</span> Most Active <span class="meta">turnover</span></div>
-          <div class="mlist" id="activeList"></div>
-        </div>
-
-        <div class="mr-panel">
-          <div class="mr-panel-title"><span class="g">◍</span> Dark-Flow Leaders <span class="meta">% of volume</span></div>
-          <div class="mlist" id="darkLeadersList"></div>
-        </div>
-
-        <div class="mr-panel mr-span3">
-          <div class="mr-panel-title"><span class="g">∿</span> Intraday Activity <span class="meta">notional / minute · Oslo</span></div>
-          <div class="act-spark" id="actSpark"></div>
-          <div class="act-axis"><span>07:00</span><span id="actPeakLabel">—</span><span>16:30</span></div>
-        </div>
-
+    <div class="mi-headline" id="miHeadline">Reading the tape …</div>
+    <div class="mi-grid">
+      <div class="mi-band-box">
+        <div class="mi-band-head"><span>Session flow · NOK per minute</span><span id="miBandMeta">—</span></div>
+        <canvas id="miBand"></canvas>
       </div>
+      <div class="mi-tiles" id="miTiles"></div>
     </div>
+    <div class="mi-leaders" id="miLeaders"></div>
   </div>
 
-  <!-- ── Return Distribution (Slensvik model, Phase 1) ────────────────────── -->
-  <div class="section" id="sec-distribution">
-    <div class="section-head">
-      <div class="section-title">∮ Return Distribution</div>
-      <div class="section-desc">What shape do market returns actually take? We fit a kitchen-sink of distributions to the pooled intraday tape and let the data pick the winner — the foundation of the Slensvik model.</div>
-      <div class="section-count" id="distCount">—</div>
-    </div>
-    <div class="section-body">
-      <div class="dist-hero" id="distHero"></div>
-      <div class="mstrip dist-strip">
-
-        <div class="mr-panel mr-span3">
-          <div class="mr-panel-title"><span class="g">∮</span> Empirical density vs fitted models <span class="meta">pooled 1-min log returns · Oslo session</span></div>
-          <div class="chart-container" style="height:360px"><canvas id="distDensity"></canvas></div>
-          <div class="dist-note" id="distDensityNote"></div>
-        </div>
-
-        <div class="mr-panel">
-          <div class="mr-panel-title"><span class="g">⊿</span> Normal Q–Q <span class="meta">quantile vs Gaussian</span></div>
-          <div class="chart-container" style="height:300px"><canvas id="distQQ"></canvas></div>
-          <div class="dist-note">Points bowing off the 45° line in the corners are the fat tails — extreme moves arrive far more often than the bell curve allows.</div>
-        </div>
-
-        <div class="mr-panel">
-          <div class="mr-panel-title"><span class="g">⤓</span> Left-tail survival <span class="meta">P(return &lt; −t), log scale</span></div>
-          <div class="chart-container" style="height:300px"><canvas id="distTail"></canvas></div>
-          <div class="dist-note">The empirical line sitting above the Gaussian means crashes of a given size are more probable than the Normal predicts.</div>
-        </div>
-
-        <div class="mr-panel">
-          <div class="mr-panel-title"><span class="g">⚠</span> Value-at-Risk / Expected Shortfall <span class="meta">per 1-min return</span></div>
-          <div id="distVarTable"></div>
-          <div class="dist-note" id="distVarNote"></div>
-        </div>
-
-        <div class="mr-panel mr-span2">
-          <div class="mr-panel-title"><span class="g">≣</span> Goodness-of-fit scorecard <span class="meta">ranked by AIC — lower is better</span></div>
-          <div id="distScorecard"></div>
-          <div class="dist-note">AIC/BIC use the full sample. KS &amp; Anderson–Darling are CDF-based diagnostics; gen-hyp's CDF is numerically unstable, so trust its AIC over its KS.</div>
-        </div>
-
-      </div>
-    </div>
-  </div>
-
-  <!-- ── Today's Book (conviction shortlist) ──────────────────────────────── -->
+  <!-- ═══ ACT III — TODAY'S BOOK ═══════════════════════════════════════════ -->
   <div class="section" id="sec-conviction">
     <div class="section-head">
       <div class="section-title">▣ Today's Book</div>
-      <div class="section-desc">Ranked by signal stack × direction × persistence × event proximity. Click any card to drill.</div>
+      <div class="section-desc">Ranked by signal stack × direction × persistence × event proximity × insiders × short-flow. Click any card for the dossier.</div>
       <div class="section-count" id="convictionCount">—</div>
     </div>
     <div class="section-body">
@@ -1224,7 +541,7 @@ tbody tr.selected { background: var(--ice-dim); }
     </div>
   </div>
 
-  <!-- ── Radar Intelligence — the graded book ─────────────────────────────── -->
+  <!-- ═══ Radar Intelligence — the graded book ─────────────────────────────── -->
   <div class="section" id="sec-intel-report">
     <div class="section-head">
       <div class="section-title">◎ Radar Intelligence</div>
@@ -1252,308 +569,44 @@ tbody tr.selected { background: var(--ice-dim); }
     </div>
   </div>
 
-  <!-- ── Company Deep Dive ─────────────────────────────────────────────────── -->
-  <div id="companyDeepDive" style="display:none">
-    <div class="dive-header">
-      <div>
-        <div class="dive-ticker" id="diveTicker">—</div>
-        <div class="dive-name" id="diveName">—</div>
-        <div style="display:flex;gap:8px;margin-top:8px">
-          <span class="dive-badge" id="diveVenueBadge">—</span>
-          <span class="dive-badge" id="diveISINBadge">—</span>
-        </div>
-      </div>
-      <div class="dive-hdr-right">
-        <div class="dive-mcap" id="diveMcap">—</div>
-        <div class="dive-mcap-sub" id="diveMcapSub"></div>
-      </div>
-      <button class="drill-close" onclick="closeDrill()">✕ CLOSE</button>
-    </div>
-
-    <div class="dive-syn" id="diveSyn" style="display:none"></div>
-    <div class="dive-intel" id="diveIntel"></div>
-
-    <div class="dive-metrics" id="diveMetrics"></div>
-
-    <div class="chart-box full">
-      <div class="chart-label">◍ Dark Flow Impact — Individual Trades vs VWAP</div>
-      <div class="chart-container" style="height:380px"><canvas id="darkFlowChart"></canvas></div>
-      <div class="dive-flow-legend">
-        <span>⚫ Dark trade (size = notional)</span>
-        <span style="color:rgba(79,195,247,0.55)">● Lit trade</span>
-        <span style="color:var(--amber)">— Modal price</span>
-        <span id="darkFlowStats" style="margin-left:auto;color:var(--text)"></span>
-      </div>
-    </div>
-
-    <div class="dive-bottom">
-      <div class="chart-box">
-        <div class="chart-label">Today — Intraday Volume Profile</div>
-        <div class="chart-container"><canvas id="drillIntraday"></canvas></div>
-      </div>
-      <div class="chart-box">
-        <div class="chart-label">Participant Classification Mix</div>
-        <div class="chart-container"><canvas id="drillMix"></canvas></div>
-      </div>
-      <div class="chart-box">
-        <div class="chart-label">Dark Pool vs Lit vs LIS</div>
-        <div class="chart-container"><canvas id="drillDark"></canvas></div>
-      </div>
-    </div>
-
-    <div class="dive-panel dossier-cta" style="margin-top:16px">
-      <div class="dive-panel-title">Full Company Dossier</div>
-      <p>Price history, corporate events, insider filings, short interest and signal history for this name live on its dossier page.</p>
-      <a class="dossier-link" id="diveDossierLink" href="dossier.html">OPEN FULL DOSSIER ↗</a>
-    </div>
-  </div>
-
-  <!-- ── Advanced · Microstructure & Expert Tools ───────────────────────── -->
-  <div class="adv-divider">
-    <span class="adv-divider-line"></span>
-    <span class="adv-divider-label">⊞ ADVANCED · MICROSTRUCTURE &amp; EXPERT TOOLS</span>
-    <span class="adv-divider-line"></span>
-  </div>
-
-  <!-- ── Signal Track Record ──────────────────────────────────────────────── -->
-  <div class="section collapsed" id="sec-track-record">
-    <div class="section-head collapsible" onclick="toggleSection('sec-track-record')">
-      <div class="section-title">▢ Signal Track Record</div>
-      <div class="section-desc">Per-signal-type hit rate and average return at T+1 / T+5 / T+20.</div>
-      <div class="section-count" id="trackRecordCount">—</div>
-      <span class="section-chevron">▾</span>
+  <!-- ═══ ACT IV — WATCHTOWER ══════════════════════════════════════════════ -->
+  <div class="section" id="sec-watchtower">
+    <div class="section-head">
+      <div class="section-title">◭ Watchtower</div>
+      <div class="section-desc">Every active name, micro and macro — price, flow, evidence, catalysts. Any row opens the dossier.</div>
+      <div class="section-count" id="wtCount">—</div>
     </div>
     <div class="section-body">
-      <div class="table-wrap">
-        <table class="perf-table"><thead><tr>
-          <th>Signal</th>
-          <th>Fired</th>
-          <th>Strong</th>
-          <th>Mod</th>
-          <th>T+1 Obs</th>
-          <th>T+1 Hit</th>
-          <th>T+1 Avg</th>
-          <th>T+5 Obs</th>
-          <th>T+5 Hit</th>
-          <th>T+5 Avg</th>
-          <th>T+20 Obs</th>
-          <th>T+20 Hit</th>
-          <th>T+20 Avg</th>
-        </tr></thead>
-        <tbody id="trackRecordBody"><tr><td colspan="13" class="perf-empty">EXPAND TO LOAD</td></tr></tbody>
-        </table>
+      <div class="wt-filters" id="wtFilters">
+        <button class="wt-filter on" data-f="all">All</button>
+        <button class="wt-filter" data-f="long">▲ Long</button>
+        <button class="wt-filter" data-f="short">▼ Short</button>
+        <button class="wt-filter" data-f="movers">Movers ≥3%</button>
+        <button class="wt-filter" data-f="insider">Insiders</button>
+        <button class="wt-filter" data-f="event">Event ≤7d</button>
       </div>
-    </div>
-  </div>
-
-  <!-- ── Smart Money Signals ─────────────────────────────────────────────── -->
-  <div class="section collapsed" id="sec-signals">
-    <div class="section-head collapsible" onclick="toggleSection('sec-signals')">
-      <div class="section-title">╳ Smart Money Signals</div>
-      <div class="section-desc">Cross-sectionally ranked patterns — dark accumulation / distribution, EOD sweeps, ceiling &amp; floor breaks.</div>
-      <div class="section-count" id="signalCount">—</div>
-      <span class="section-chevron">▾</span>
-    </div>
-    <div class="section-body">
-      <div class="signal-list" id="signalList"><div class="loader">EXPAND TO LOAD</div></div>
-    </div>
-  </div>
-
-  <!-- ── Whale Alerts ────────────────────────────────────────────────────── -->
-  <div class="section collapsed" id="sec-whales">
-    <div class="section-head collapsible" onclick="toggleSection('sec-whales')">
-      <div class="section-title">■ Large Prints</div>
-      <div class="section-desc">Single trades exceeding NOK 5M, dark-pool large prints, OTC reports.</div>
-      <div class="section-count" id="whaleCount">—</div>
-      <span class="section-chevron">▾</span>
-    </div>
-    <div class="section-body">
-      <div class="whale-grid" id="whaleGrid"><div class="loader">EXPAND TO LOAD</div></div>
-    </div>
-  </div>
-
-  <!-- ── Corporate Events Calendar ────────────────────────────────────────── -->
-  <div class="section collapsed" id="sec-events">
-    <div class="section-head collapsible" onclick="toggleSection('sec-events')">
-      <div class="section-title">▌ Corporate Events</div>
-      <div class="section-desc">Upcoming and recent regulatory announcements — results, dividends, profit warnings. Signals near events are highlighted.</div>
-      <div class="section-count" id="eventsCount">—</div>
-      <span class="section-chevron">▾</span>
-    </div>
-    <div class="section-body">
-      <div style="display:flex;gap:8px;padding:0 0 12px 0;flex-wrap:wrap" id="eventFilters">
-        <button onclick="filterEvents('ALL')"           class="evt-btn active" data-f="ALL">ALL</button>
-        <button onclick="filterEvents('AGM')"           class="evt-btn" data-f="AGM">Ⅱ AGM</button>
-        <button onclick="filterEvents('EARNINGS_CALL')" class="evt-btn" data-f="EARNINGS_CALL">◴ EARNINGS</button>
-        <button onclick="filterEvents('RESULTS')"       class="evt-btn" data-f="RESULTS">▢ RESULTS</button>
-        <button onclick="filterEvents('EX_DATE')"       class="evt-btn" data-f="EX_DATE">◇ EX DATE</button>
-        <button onclick="filterEvents('WARNING')"       class="evt-btn" data-f="WARNING">△ WARNING</button>
-        <button onclick="filterEvents('INSIDER')"       class="evt-btn" data-f="INSIDER">◐ INSIDER</button>
-        <button onclick="filterEvents('PLACEMENT')"     class="evt-btn" data-f="PLACEMENT">▦ PLACEMENT</button>
-        <button onclick="filterEvents('DELISTING')"     class="evt-btn" data-f="DELISTING">⊘ DELISTING</button>
-        <button onclick="filterEvents('IPO')"           class="evt-btn" data-f="IPO">▴ IPO</button>
-      </div>
-      <div class="table-wrap">
-        <table id="eventsTable"><thead><tr>
-          <th>DATE</th><th>TYPE</th><th>ISSUER</th><th>TITLE</th>
-          <th class="r">DAYS</th><th>SIGNAL PROXIMITY</th>
-        </tr></thead>
-        <tbody id="eventsBody"><tr><td colspan="6" class="loader">EXPAND TO LOAD</td></tr></tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-
-  <!-- ── Signal × Event Proximity ──────────────────────────────────────────── -->
-  <div class="section collapsed" id="sec-proximity">
-    <div class="section-head collapsible" onclick="toggleSection('sec-proximity')">
-      <div class="section-title">≡ Signal × Event Proximity</div>
-      <div class="section-desc">Signals within 30 days of a corporate event — the informed-trading fingerprint.</div>
-      <div class="section-count" id="proximityCount">—</div>
-      <span class="section-chevron">▾</span>
-    </div>
-    <div class="section-body">
-      <div class="table-wrap">
-        <table><thead><tr>
-          <th>SIGNAL DATE</th><th>ISIN</th><th>SIGNAL</th><th>STRENGTH</th>
-          <th>EVENT TYPE</th><th>EVENT DATE</th><th class="r">DAYS TO EVENT</th>
-          <th>PROXIMITY</th><th class="r">T+1</th><th class="r">T+5</th><th class="r">T+20</th>
-        </tr></thead>
-        <tbody id="proximityBody"><tr><td colspan="11" class="loader">EXPAND TO LOAD</td></tr></tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-
-  <!-- ── ISIN Summary table ──────────────────────────────────────────────── -->
-  <div class="section collapsed" id="sec-isin">
-    <div class="section-head collapsible" onclick="toggleSection('sec-isin')">
-      <div class="section-title">▣ ISIN Intelligence</div>
-      <div class="section-desc">Per-ticker microstructure metrics — click any row to open Company Deep Dive.</div>
-      <div class="section-count" id="isinCount">—</div>
-      <span class="section-chevron">▾</span>
-    </div>
-    <div class="section-body">
-      <div class="table-wrap">
-        <table id="summaryTable"><thead><tr>
-          <th>ISIN</th><th>VENUE</th><th class="r">TRADES</th><th class="r">EST. ADV</th>
-          <th class="r">AVG SIZE</th><th>ALGO %</th><th>DARK %</th>
-          <th class="r">GINI</th><th class="r">PUB LAG</th><th>OPEN AUC</th><th>CLOSE AUC</th>
-        </tr></thead>
-        <tbody id="summaryBody"><tr><td colspan="11" class="loader">LOADING …</td></tr></tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-
-  <!-- ── Market Charts ──────────────────────────────────────────────────── -->
-  <div class="section collapsed" id="sec-charts">
-    <div class="section-head collapsible" onclick="toggleSection('sec-charts')">
-      <div class="section-title">▢ Market Charts</div>
-      <div class="section-desc">Aggregate microstructure — algo vs human composition, dark pool distribution by ISIN, intraday volume profile.</div>
-      <span class="section-chevron">▾</span>
-    </div>
-    <div class="section-body">
-      <div class="chart-grid">
-        <div class="chart-box">
-          <div class="chart-label">Algo vs Human vs Auction — Market Wide</div>
-          <div class="chart-container"><canvas id="algoDonut"></canvas></div>
-        </div>
-        <div class="chart-box">
-          <div class="chart-label">Dark Pool % — Top 20 ISINs by Volume</div>
-          <div class="chart-container"><canvas id="darkBar"></canvas></div>
-        </div>
-        <div class="chart-box full">
-          <div class="chart-label">Intraday Volume Profile — <span id="intradayLabel">Market Aggregate</span></div>
-          <div class="chart-container tall"><canvas id="intradayChart"></canvas></div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ── Latency Fingerprinting ──────────────────────────────────────────── -->
-  <div class="section collapsed" id="sec-latency">
-    <div class="section-head collapsible" onclick="toggleSection('sec-latency')">
-      <div class="section-title">∿ Latency Fingerprinting</div>
-      <div class="section-desc">Publication lag from trade event to tape — sub-10ms = HFT / co-located; &gt;500ms = manual/human flow.</div>
-      <span class="section-chevron">▾</span>
-    </div>
-    <div class="section-body">
-      <div class="split">
-        <div class="table-wrap">
-          <table id="latencyTable"><thead><tr>
-            <th>ISIN</th><th class="r">AVG LAG</th><th class="r">MIN LAG</th>
-            <th>HFT &lt;10ms</th><th>ALGO 10–500ms</th><th>HUMAN &gt;500ms</th>
+      <div class="wt-wrap">
+        <table class="wt">
+          <thead><tr>
+            <th>Name</th><th>Close</th><th>1D</th><th>Session</th><th>Verdict</th>
+            <th>Signals 14d</th><th>Dark</th><th>Insiders 7d</th><th>Adv-Z</th><th>Catalyst</th>
           </tr></thead>
-          <tbody id="latencyBody"><tr><td colspan="6" class="loader">EXPAND TO LOAD</td></tr></tbody>
-          </table>
-        </div>
-        <div class="chart-box" style="height:fit-content">
-          <div class="chart-label">Speed Tier Distribution — Aggregate</div>
-          <div class="chart-container"><canvas id="latencyDonut"></canvas></div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ── Execution Chains ────────────────────────────────────────────────── -->
-  <div class="section collapsed" id="sec-chains">
-    <div class="section-head collapsible" onclick="toggleSection('sec-chains')">
-      <div class="section-title">▤ Execution Chains</div>
-      <div class="section-desc">Multi-leg executions reconstructed from shared execution IDs — institutional order slicing.</div>
-      <div style="display:flex;align-items:center;gap:12px">
-        <div class="section-count" id="chainCount">—</div>
-        <button onclick="event.stopPropagation();loadChains()" style="background:var(--ice-dim);color:var(--text);border:none;padding:4px 12px;border-radius:4px;cursor:pointer;font-family:var(--mono);font-size:11px">LOAD</button>
-      </div>
-      <span class="section-chevron">▾</span>
-    </div>
-    <div class="section-body">
-      <div class="table-wrap" id="chainWrap" style="display:none">
-        <table id="chainTable"><thead><tr>
-          <th>ISIN</th><th>VENUE</th><th class="r">LEGS</th><th class="r">TOTAL QTY</th>
-          <th class="r">NOTIONAL</th><th class="r">DURATION</th><th class="r">AVG INTERVAL</th>
-          <th>TYPE</th><th>CLASSES</th>
-        </tr></thead>
-        <tbody id="chainBody">
-          <tr><td colspan="9" style="color:var(--text-dim);font-family:var(--mono);font-size:12px;padding:16px">Click LOAD to fetch execution chains for this date.</td></tr>
-        </tbody>
+          <tbody id="wtBody"><tr><td colspan="10" class="dim" style="padding:20px">LOADING THE TAPE …</td></tr></tbody>
         </table>
       </div>
+      <div class="wt-more"><button class="wt-filter" id="wtMore" style="display:none">Show all names</button></div>
     </div>
   </div>
 
-  <!-- ── Trend Monitoring ───────────────────────────────────────────────── -->
-  <div class="section collapsed" id="sec-trends">
-    <div class="section-head collapsible" onclick="toggleSection('sec-trends')">
-      <div class="section-title">∆ Trend Monitoring</div>
-      <div class="section-desc">30-day sparklines for dark pool activity and volume. Z-score &gt; 2σ = statistically unusual versus the ISIN's own baseline.</div>
-      <div class="section-count" id="trendCount">—</div>
-      <span class="section-chevron">▾</span>
-    </div>
-    <div class="section-body">
-      <div style="display:flex;gap:6px;padding:0 0 10px 0;flex-wrap:wrap" id="trendSortBar">
-        <span style="font-family:var(--mono);font-size:10px;color:var(--text-dim);align-self:center;letter-spacing:1px">SORT:</span>
-        <button class="evt-btn active" data-tsort="adv" onclick="sortTrends('adv',this)">Vol spike</button>
-        <button class="evt-btn"        data-tsort="darkdelta" onclick="sortTrends('darkdelta',this)">Dark% rising</button>
-        <button class="evt-btn"        data-tsort="darklatest" onclick="sortTrends('darklatest',this)">Dark% highest</button>
-        <button class="evt-btn"        data-tsort="gini" onclick="sortTrends('gini',this)">Gini high</button>
-      </div>
-      <div class="table-wrap">
-        <table id="trendTable"><thead><tr>
-          <th>ISIN</th><th>VENUE</th>
-          <th>DARK% — 30D</th><th class="r">DARK Δ</th>
-          <th class="r">VOL Z</th><th>VOL — 30D</th>
-          <th class="r">GINI</th><th class="r">ALGO%</th>
-        </tr></thead>
-        <tbody id="trendBody"><tr><td colspan="8" class="loader">EXPAND TO LOAD</td></tr></tbody>
-        </table>
-      </div>
-    </div>
-  </div>
+  <footer class="radar-footer">
+    <span>Slensvikradar · built nightly from the Euronext trade tape</span>
+    <span>the finest intelligence on this side of the Isen</span>
+  </footer>
 
-</div><!-- /page -->
+</div>
 
 <script>
+
 /* ═══════════════════════════════════════════════════════════════════════════
    CONFIG — set your PostgREST endpoint here
 ═══════════════════════════════════════════════════════════════════════════ */
@@ -1610,72 +663,16 @@ async function loadInstruments() {
     });
   } catch(e) { console.warn('Could not load instruments:', e); }
 }
-
-/* ─── Render a compact ISIN cell: shows ticker bold + name dim ─────────────── */
-/* Ticker links to the company dossier (dossier.html); stopPropagation inside
-   tkLink keeps the row's own drill-down onclick working. */
-const isinCell = isin => {
-  const info = ISIN_MAP[isin];
-  if (info) return `<div style="font-family:var(--mono);font-size:13px;font-weight:600;color:var(--text-bright)">${INTEL.tkLink(isin, info.t)}</div><div style="font-size:11px;color:var(--text-dim);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${info.n}">${info.n}</div>`;
-  return `<div style="font-family:var(--mono);font-size:12px">${INTEL.tkLink(isin, isin)}</div>`;
-};
-
-/* ─── Chart.js global defaults (shared system) ──────────────────────────── */
-INTEL.chartDefaults();
-Chart.defaults.font.size = 11;
-
-/* ─── State ─────────────────────────────────────────────────────────────── */
-let currentDate = null;
-let allSummary = [];
-let allIntraday = [];
-let allDark = [];
-let allLatency = [];
-let drillChart1 = null, drillChart2 = null, drillChart3 = null;
-let algoDonutChart = null, darkBarChart = null, intradayChartInst = null, latencyDonutChart = null;
-
-/* ─── Dark microstructure read (v2) ─────────────────────────────────────────
- * Euronext dark prints come in two flavours and must be read differently:
- *   • Mid-Point Match (mechanism 3) executes AT the lit mid by rule → price
- *     carries no side. We read these as intensity + realized forward-drift.
- *   • Negotiated / LIS (mechanism 4) can print off-mid; a print dealt clearly
- *     away from the lit ref reveals an aggressor (above = buyer, below = seller).
- * Direction comes from off-mid blocks first (evidence BLOCK), mid-point forward
- * impact as a soft secondary (evidence IMPACT), else honestly NEUTRAL.       */
-function darkRead(d) {
-  d = d || {};
-  const bias = (d.dark_side_bias && d.dark_side_bias !== 'NEUTRAL') ? d.dark_side_bias : null;
-  const ev = d.dark_evidence || (bias ? 'BLOCK' : 'NONE');
-  const confirmed = d.bias_confirmed === true;
-  const impact = d.dark_impact_bps != null ? Number(d.dark_impact_bps) : null;
-  const midTr = Number(d.mid_trades || 0);
-  const blockPrints = Number(d.dark_trades_classified || 0);
-  const worked = d.worked_order === true;
-  const arrow = bias === 'BUY' ? '▲' : bias === 'SELL' ? '▼' : '◇';
-  const tone  = bias === 'BUY' ? 'pos' : bias === 'SELL' ? 'neg' : 'dark';
-  const color = bias === 'BUY' ? 'var(--green)' : bias === 'SELL' ? 'var(--red)' : 'var(--text-dim)';
-  let word, prov;
-  if (!bias) {
-    word = midTr ? '◇ At mid' : '◇ No flow';
-    prov = midTr ? `${midTr} mid-point print${midTr !== 1 ? 's' : ''} (at mid, side-agnostic)` : 'no dark prints';
-  } else if (ev === 'IMPACT') {
-    word = `${arrow} ${bias === 'BUY' ? 'Buy' : 'Sell'} lean`;
-    prov = `mid-point drift${impact != null ? ` ${impact >= 0 ? '+' : ''}${impact.toFixed(0)}bps` : ''} (no off-mid blocks)`;
-  } else {
-    word = `${arrow} ${bias === 'BUY' ? 'Buy' : 'Sell'}-side blocks`;
-    prov = `${blockPrints} off-mid negotiated print${blockPrints !== 1 ? 's' : ''}`;
+async function APIall(table, params, pageSize = 1000) {
+  let rows = [], offset = 0;
+  while (true) {
+    const page = await API(table, `${params}&limit=${pageSize}&offset=${offset}`);
+    rows = rows.concat(page);
+    if (page.length < pageSize) break;   // last page
+    offset += pageSize;
   }
-  return { bias, ev, confirmed, impact, midTr, blockPrints, worked, arrow, tone, color, word, prov };
+  return rows;
 }
-
-/* ─── Formatters ────────────────────────────────────────────────────────── */
-const fmt = {
-  num:  v => v == null ? '—' : Number(v).toLocaleString('nb-NO'),
-  nok:  v => v == null ? '—' : `NOK ${(v/1e6).toFixed(2)}M`,
-  pct:  v => v == null ? '—' : `${Number(v).toFixed(1)}%`,
-  ms:   v => v == null ? '—' : `${Number(v).toFixed(1)}ms`,
-  dec:  v => v == null ? '—' : Number(v).toFixed(3),
-  time: v => v ? v.slice(0,5) : '—',
-};
 
 /* ─── Today's Book / Conviction Shortlist ──────────────────────────────── */
 const CONV_GLYPH = {
@@ -1804,42 +801,6 @@ async function loadConviction() {
     document.getElementById('shortList').innerHTML = '<div class="conv-empty">DATA UNAVAILABLE</div>';
   }
 }
-
-async function loadTrackRecord() {
-  try {
-    const data = await API('signal_performance', 'order=total_fired.desc');
-    const tbody = document.getElementById('trackRecordBody');
-    document.getElementById('trackRecordCount').textContent =
-      `${data.length} TYPES · ${data.reduce((s,r) => s + (r.total_fired||0), 0)} TOTAL`;
-    if (!data.length) {
-      tbody.innerHTML = '<tr><td colspan="13" class="perf-empty">No signals yet.</td></tr>';
-      return;
-    }
-    const cell = (v, suffix='') => v == null ? '—' :
-      `<span class="${Number(v) > 0 ? 'pos' : Number(v) < 0 ? 'neg' : ''}">${Number(v).toFixed(2)}${suffix}</span>`;
-    tbody.innerHTML = data.map(r => `
-      <tr>
-        <td>${r.signal_type.replace(/_/g,' ')}</td>
-        <td>${r.total_fired}</td>
-        <td>${r.strong_count}</td>
-        <td>${r.moderate_count}</td>
-        <td>${r.t1_observed || 0}</td>
-        <td>${r.t1_hit_rate_pct != null ? Number(r.t1_hit_rate_pct).toFixed(0)+'%' : '—'}</td>
-        <td>${cell(r.t1_avg_dir_return_pct, '%')}</td>
-        <td>${r.t5_observed || 0}</td>
-        <td>${r.t5_hit_rate_pct != null ? Number(r.t5_hit_rate_pct).toFixed(0)+'%' : '—'}</td>
-        <td>${cell(r.t5_avg_dir_return_pct, '%')}</td>
-        <td>${r.t20_observed || 0}</td>
-        <td>${r.t20_hit_rate_pct != null ? Number(r.t20_hit_rate_pct).toFixed(0)+'%' : '—'}</td>
-        <td>${cell(r.t20_avg_dir_return_pct, '%')}</td>
-      </tr>`).join('');
-  } catch(e) {
-    console.error('Track record failed:', e);
-    document.getElementById('trackRecordBody').innerHTML =
-      '<tr><td colspan="13" class="perf-empty">DATA UNAVAILABLE</td></tr>';
-  }
-}
-
 /* ═══ Radar Intelligence — graded book + signal league ════════════════════ */
 async function loadIntelReport() {
   try {
@@ -1937,1870 +898,513 @@ async function loadIntelReport() {
   }
 }
 
-/* ═══ Market Pulse hero + Market Today dashboard ═══════════════════════════ */
-let marketMovers = [];
-let marketPulse  = null;
 
-const nf0 = v => v == null ? '—' : Number(v).toLocaleString('nb-NO', { maximumFractionDigits: 0 });
-const bnok = v => v == null ? '—' : (v / 1e9).toFixed(2);
-const mnok = v => v == null ? '—' : (v / 1e6).toFixed(0);
-const signed = v => (v >= 0 ? '+' : '') + Number(v).toFixed(2);
-const fmtNok = v => v == null ? '—' : v >= 1e9 ? `NOK ${(v/1e9).toFixed(2)}B` : v >= 1e6 ? `NOK ${(v/1e6).toFixed(0)}M` : `NOK ${(v/1e3).toFixed(0)}K`;
+/* Every drill lands on the company dossier. */
+function drillIntoISIN(isin) {
+  if (isin && isin !== 'null' && isin !== 'undefined') location.href = INTEL.dossierHref(isin);
+}
+const fmtPct = v => v == null ? '—' : (v >= 0 ? '+' : '') + Number(v).toFixed(2) + '%';
+const fmtBn  = v => v == null ? '—' : (v / 1e9).toFixed(2) + 'bn';
+const fmtMn  = v => v == null ? '—' : (v / 1e6).toFixed(0) + 'M';
 
-async function loadMarketPulse() {
-  try {
-    const [pulseRows, movers] = await Promise.all([
-      API('market_pulse', ''),
-      API('movers', 'limit=300'),
-    ]);
-    marketPulse  = pulseRows[0] || null;
-    marketMovers = movers || [];
-    if (!marketPulse) return;
-    document.getElementById('heroDate').textContent =
-      `${marketPulse.trade_date} · T-1 settled`;
-    renderHeroLede(marketPulse);
-    renderHeroTicks(marketPulse);
-    renderDashboard(marketPulse, marketMovers);
-  } catch (e) {
-    console.error('Market pulse failed:', e);
-    document.getElementById('heroLede').textContent = 'Market data temporarily unavailable.';
+/* ═══ ACT I — ORBITAL CATALYST RADAR ═══════════════════════════════════════
+   Polar starfield: the centre is now; rings are days-to-catalyst (7/14/21/
+   28d, eventless names on the outer rim). Body size = conviction, colour =
+   side, pulse = dark share, comet trail = today's move. Engine follows the
+   portfolio command deck: pre-rendered sprites, 30fps cap, static frame
+   under prefers-reduced-motion, pauses off-screen. */
+const ORB_REDUCE = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)
+  || new URLSearchParams(location.search).has('static');   // ?static=1 → single frame (screenshot/capture mode)
+const ORB_COARSE = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+
+function orbHash(s) {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return (h >>> 0) / 4294967295;
+}
+const _orbGlow = new Map();
+function orbGlowSprite(col) {
+  let c = _orbGlow.get(col);
+  if (!c) {
+    c = document.createElement('canvas'); c.width = c.height = 128;
+    const g = c.getContext('2d');
+    const grad = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+    grad.addColorStop(0, col.replace('rgb', 'rgba').replace(')', ',1)'));
+    grad.addColorStop(1, col.replace('rgb', 'rgba').replace(')', ',0)'));
+    g.fillStyle = grad; g.fillRect(0, 0, 128, 128);
+    _orbGlow.set(col, c);
   }
+  return c;
 }
 
-function renderHeroLede(p) {
-  const adv = p.advancers || 0, dec = p.decliners || 0, tot = p.total_names || 0;
-  const turnB = bnok(p.total_turnover);
-  const tchg = p.turnover_chg_pct;
-  const lean = adv > dec * 1.1 ? 'Buyers led' : dec > adv * 1.1 ? 'Sellers pressed' : 'A balanced tape';
-  const leadNums = adv >= dec
-    ? `<span class="up">${adv}</span> up vs <span class="dn">${dec}</span> down`
-    : `<span class="dn">${dec}</span> down vs <span class="up">${adv}</span> up`;
-  const turnVerb = tchg == null ? 'turnover NOK ' + turnB + 'bn'
-    : `turnover ${tchg >= 0 ? 'rose' : 'eased'} <b>${signed(tchg)}%</b> to NOK ${turnB}bn`;
-  let s = `${lean} on the Oslo tape — ${leadNums} as ${turnVerb}.`;
-  if (p.dark_unusual && p.market_dark_pct_avg > 0) {
-    const ratio = (p.market_dark_pct / p.market_dark_pct_avg).toFixed(1);
-    s += ` Dark trading spiked to <span class="warn">${p.market_dark_pct}%</span> of shares — <span class="warn">${ratio}×</span> the recent norm.`;
-  }
-  document.getElementById('heroLede').innerHTML = s;
-}
+function makeOrbital(canvas) {
+  const ctx = canvas.getContext('2d');
+  let bodies = [], W = 0, H = 0, raf = 0, hoverIdx = -1, inView = true, lastDraw = 0;
+  let stars = null, starsFar = null, meteor = null;
+  let nextMeteorAt = performance.now() + 7000 + Math.random() * 16000;
+  const t0 = performance.now();
 
-function renderHeroTicks(p) {
-  const tick = (label, value, cls, sub) => `
-    <div class="hero-tick">
-      <div class="hero-tick-label">${label}</div>
-      <div class="hero-tick-value ${cls || ''}">${value}</div>
-      <div class="hero-tick-sub">${sub || ''}</div>
-    </div>`;
-  const tchg = p.turnover_chg_pct;
-  document.getElementById('heroTicks').innerHTML =
-    tick('Turnover', `${bnok(p.total_turnover)}<span style="font-size:12px">bn</span>`,
-         tchg >= 0 ? 'up' : 'dn', tchg == null ? 'NOK' : `${signed(tchg)}% vs prior`) +
-    tick('Breadth', `${p.advancers}<span style="font-size:12px;color:var(--text-dim)">/${p.total_names}</span>`,
-         (p.pct_advancers >= 50 ? 'up' : 'dn'), `${p.pct_advancers}% advancing`) +
-    tick('Dark Vol', `${p.market_dark_pct}<span style="font-size:12px">%</span>`,
-         p.dark_unusual ? 'warn' : '', `avg ${p.market_dark_pct_avg}%`) +
-    tick('Insiders', `${p.insiders_today}`, p.insiders_today > 0 ? 'warn' : '', `${p.insiders_7d} this week`) +
-    tick('Events ≤14d', `${p.events_14d}`, '', 'results · agm · ex-div') +
-    tick('Signals', `${p.signals_today}`, '', 'smart-money fires');
-}
-
-function renderDashboard(p, movers) {
-  document.getElementById('marketTodayCount').textContent = `${p.total_names} NAMES`;
-
-  // Breadth bar
-  const tot = p.total_names || 1;
-  const aw = (p.advancers / tot * 100).toFixed(1);
-  const uw = (p.unchanged / tot * 100).toFixed(1);
-  const dw = (p.decliners / tot * 100).toFixed(1);
-  document.getElementById('breadthWrap').innerHTML = `
-    <div class="breadth-bar">
-      <div class="breadth-seg adv" style="width:${aw}%" title="${p.advancers} advancing">${p.advancers}</div>
-      <div class="breadth-seg unch" style="width:${uw}%" title="${p.unchanged} unchanged"></div>
-      <div class="breadth-seg dec" style="width:${dw}%" title="${p.decliners} declining">${p.decliners}</div>
-    </div>
-    <div class="breadth-legend"><span class="up">▲ ${p.advancers} advancing</span><span>${p.unchanged} flat</span><span class="dn">${p.decliners} declining ▼</span></div>`;
-
-  const row = (label, val, cls) => `<div class="dash-stat-row"><span class="dash-stat-label">${label}</span><span class="dash-stat-val ${cls || ''}">${val}</span></div>`;
-  document.getElementById('dashStats').innerHTML =
-    row('Total turnover', `NOK ${bnok(p.total_turnover)}bn`, p.turnover_chg_pct >= 0 ? 'up' : 'dn') +
-    row('vs prior session', p.turnover_chg_pct == null ? '—' : `${signed(p.turnover_chg_pct)}%`, p.turnover_chg_pct >= 0 ? 'up' : 'dn') +
-    row('Market dark share', `${p.market_dark_pct}%`, p.dark_unusual ? 'warn' : '') +
-    row('Trades printed', nf0(p.total_trades)) +
-    row('Smart-money signals', nf0(p.signals_today)) +
-    row('Events next 14 days', nf0(p.events_14d));
-
-  // Top movers: 4 up + 4 down, liquidity-gated
-  const liquid = movers.filter(m => (m.turnover || 0) >= 1e6 && m.change_pct != null);
-  const ups = [...liquid].sort((a, b) => b.change_pct - a.change_pct).slice(0, 4);
-  const dns = [...liquid].sort((a, b) => a.change_pct - b.change_pct).slice(0, 4);
-  const moverRow = m => `
-    <div class="mrow" onclick="drillIntoISIN('${m.isin}','${m.venue || 'XOSL'}')">
-      <div><div class="mrow-tkr">${INTEL.tkLink(m.isin, m.ticker || isinTicker(m.isin))}</div><div class="mrow-name">${m.name || ''}</div></div>
-      <div class="mrow-num ${m.change_pct >= 0 ? 'up' : 'dn'}">${signed(m.change_pct)}%</div>
-      <div class="mrow-num" style="color:var(--text-dim)">${mnok(m.turnover)}M</div>
-    </div>`;
-  document.getElementById('moversList').innerHTML = ups.map(moverRow).join('') + dns.map(moverRow).join('');
-
-  // Most active by turnover (movers already sorted desc)
-  document.getElementById('activeList').innerHTML = movers.slice(0, 7).map(m => `
-    <div class="mrow" onclick="drillIntoISIN('${m.isin}','${m.venue || 'XOSL'}')">
-      <div><div class="mrow-tkr">${INTEL.tkLink(m.isin, m.ticker || isinTicker(m.isin))}</div><div class="mrow-name">${m.name || ''}</div></div>
-      <div class="mrow-num ${(m.change_pct || 0) >= 0 ? 'up' : 'dn'}">${signed(m.change_pct || 0)}%</div>
-      <div class="mrow-num" style="color:var(--text-bright)">${mnok(m.turnover)}M</div>
-    </div>`).join('');
-
-  // Dark-flow leaders: highest dark_pct among names with real trading
-  const dark = movers.filter(m => (m.total_trades || 0) >= 20 && m.dark_pct != null)
-    .sort((a, b) => b.dark_pct - a.dark_pct).slice(0, 7);
-  document.getElementById('darkLeadersList').innerHTML = dark.map(m => {
-    const dr = darkRead(m);
-    // BLOCK bias is directional (off-mid prints); IMPACT is a soft mid-point
-    // drift lean shown in parentheses; NEUTRAL shows a dash.
-    const b = dr.bias
-      ? `<span class="mrow-badge" style="color:${dr.color}" title="${dr.prov}">${dr.ev === 'IMPACT' ? '(' + dr.bias + ')' : dr.bias}${dr.confirmed ? '✓' : ''}</span>`
-      : `<span class="mrow-badge">—</span>`;
-    return `
-    <div class="mrow" onclick="drillIntoISIN('${m.isin}','${m.venue || 'XOSL'}')">
-      <div><div class="mrow-tkr">${INTEL.tkLink(m.isin, m.ticker || isinTicker(m.isin))}</div><div class="mrow-name">${m.name || ''}</div></div>
-      <div class="mrow-num warn">${Number(m.dark_pct).toFixed(1)}%</div>
-      ${b}
-    </div>`;
-  }).join('');
-
-  loadInsiderFeed();
-  loadActivitySpark();
-}
-
-async function loadInsiderFeed() {
-  try {
-    const data = await API('corporate_events',
-      `event_type=eq.INSIDER&order=event_date.desc&limit=14`);
-    document.getElementById('insiderMeta').textContent = `${data.length} recent`;
-    if (!data.length) { document.getElementById('insiderFeed').innerHTML = '<div class="conv-empty">No filings.</div>'; return; }
-    document.getElementById('insiderFeed').innerHTML = data.map(e => `
-      <div class="feed-row" onclick="drillIntoISIN('${e.isin}','XOSL')">
-        <span class="feed-glyph">◐</span>
-        <div class="feed-main">
-          <div class="feed-issuer">${INTEL.tkLink(e.isin, e.issuer || isinName(e.isin) || e.isin)}</div>
-          <div class="feed-title" title="${(e.title || '').replace(/"/g, '&quot;')}">${e.title || 'Mandatory notification of trade'}</div>
-        </div>
-        <span class="feed-date">${e.event_date}</span>
-      </div>`).join('');
-  } catch (e) {
-    console.error('Insider feed failed:', e);
-    document.getElementById('insiderFeed').innerHTML = '<div class="conv-empty">DATA UNAVAILABLE</div>';
-  }
-}
-
-async function loadActivitySpark() {
-  try {
-    const data = await API('market_intraday', 'limit=600');
-    if (!data.length) return;
-    // Downsample to ~46 buckets for a clean sparkline.
-    const N = 46, step = Math.ceil(data.length / N);
-    const buckets = [];
-    for (let i = 0; i < data.length; i += step) {
-      const slice = data.slice(i, i + step);
-      buckets.push({
-        notional: slice.reduce((s, r) => s + Number(r.notional || 0), 0),
-        bucket: slice[0].minute_bucket,
-      });
+  function starLayer(density, bright) {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const c = document.createElement('canvas');
+    c.width = Math.max(2, Math.round(W * dpr)); c.height = Math.max(2, Math.round(H * dpr));
+    const g = c.getContext('2d');
+    for (let i = 0; i < Math.round(W * H / density); i++) {
+      g.fillStyle = `rgba(190,208,255,${(bright ? 0.45 + Math.random() * 0.4 : 0.14 + Math.random() * 0.2).toFixed(2)})`;
+      g.beginPath();
+      g.arc(Math.random() * c.width, Math.random() * c.height, (0.4 + Math.random() * (bright ? 1 : 0.55)) * dpr, 0, Math.PI * 2);
+      g.fill();
     }
-    const max = Math.max(...buckets.map(b => b.notional)) || 1;
-    const peakIdx = buckets.reduce((mi, b, i, a) => b.notional > a[mi].notional ? i : mi, 0);
-    document.getElementById('actSpark').innerHTML = buckets.map((b, i) => {
-      const h = Math.max(2, b.notional / max * 100);
-      const t = toOsloHHMM(marketPulse.trade_date + 'T' + b.bucket);
-      return `<div class="act-bar ${i === peakIdx ? 'peak' : ''}" style="height:${h}%" title="${t} · NOK ${mnok(b.notional)}M"></div>`;
-    }).join('');
-    const peakT = toOsloHHMM(marketPulse.trade_date + 'T' + buckets[peakIdx].bucket);
-    document.getElementById('actPeakLabel').innerHTML = `peak <span style="color:var(--amber)">${peakT}</span>`;
-  } catch (e) {
-    console.error('Activity spark failed:', e);
+    return c;
   }
+  function resize() {
+    const r = canvas.getBoundingClientRect();
+    W = r.width || canvas.parentElement.clientWidth; H = r.height || canvas.parentElement.clientHeight;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    stars = starsFar = null;
+    if (!raf) draw(performance.now());
+  }
+  function geom() {
+    const cx = W / 2, cy = H / 2;
+    const maxRy = H / 2 - 34;
+    const maxRx = Math.max(maxRy, Math.min(W / 2 - 70, maxRy * 2.6));
+    const inner = 0.22;   // innermost ring fraction (imminent events hug the core)
+    return { cx, cy, maxRx, maxRy, inner };
+  }
+  // rows: {isin, tk, side, conviction, days_to_event, dark_pct, change_pct,
+  //        signals, insiders, evt}
+  function setBodies(rows) {
+    bodies = rows.map(b => {
+      const h = orbHash(b.isin);
+      const q = Math.round((b.conviction || 0) / 8) * 8;   // sprite-cache friendly
+      const col = b.side === 'LONG'
+        ? `rgb(${50 - Math.round(q * 0.1)},${170 + Math.round(q * 0.54)},${120 + Math.round(q * 0.31)})`
+        : `rgb(${200 + Math.round(q * 0.55)},${100 - Math.round(q * 0.3)},${96 - Math.round(q * 0.3)})`;
+      // days → radial fraction: 0d at inner ring, 28d+ near rim, no event on the rim
+      const frac = b.days_to_event == null ? 1
+        : Math.min(1, Math.pow(Math.min(b.days_to_event, 30) / 30, 0.8)) * 0.88;
+      return {
+        ...b, col,
+        frac,
+        a0: h * Math.PI * 2,
+        omega: (0.05 + 0.05 * h) * (h > 0.5 ? 1 : -1),
+        R: 4.5 + (b.conviction || 0) / 100 * 11,
+        darkAmp: Math.min(1, (b.dark_pct || 0) / 12),
+        pulseW: 0.8 + Math.min(2.6, (b.dark_pct || 0) / 10 * 2),
+        ph: h * Math.PI * 2,
+        dim: b.days_to_event == null,
+        x: 0, y: 0,
+      };
+    });
+    if (!raf) draw(performance.now());
+  }
+  function draw(now) {
+    if (W < 80 || H < 80) return;
+    const s = !ORB_REDUCE ? (now - t0) / 1000 : 19.3;
+    const { cx, cy, maxRx, maxRy, inner } = geom();
+    ctx.clearRect(0, 0, W, H);
+
+    if (!stars) { stars = starLayer(9000, true); starsFar = starLayer(2700, false); }
+    ctx.globalAlpha = 0.55 + 0.25 * Math.sin(s * 0.32);
+    ctx.drawImage(starsFar, 0, 0, W, H);
+    ctx.globalAlpha = 0.75 + 0.25 * Math.sin(1.7 + s * 0.21);
+    ctx.drawImage(stars, 0, 0, W, H);
+    ctx.globalAlpha = 1;
+
+    // core glow — the "now" at the centre of the horizon
+    const coreR = Math.max(46, maxRy * inner * 0.9);
+    ctx.globalAlpha = 0.8 + 0.2 * Math.sin(s * 0.55);
+    ctx.drawImage(orbGlowSprite('rgb(245,166,35)'), cx - coreR, cy - coreR * 0.8, coreR * 2, coreR * 1.6);
+    ctx.globalAlpha = 1;
+
+    // time rings: 7 / 14 / 21 / 28 days + the eventless rim
+    ctx.font = '500 9px IBM Plex Mono, monospace';
+    ctx.textAlign = 'left';
+    for (const dday of [7, 14, 21, 28]) {
+      const f = Math.min(1, Math.pow(dday / 30, 0.8)) * 0.88;
+      const rx = maxRx * (inner + (1 - inner) * f), ry = maxRy * (inner + (1 - inner) * f);
+      ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(255,255,255,0.055)'; ctx.lineWidth = 1; ctx.stroke();
+      ctx.fillStyle = 'rgba(122,132,153,0.55)';
+      ctx.fillText(dday + 'd', cx + rx * 0.7071 + 5, cy - ry * 0.7071 - 5);
+    }
+    ctx.beginPath(); ctx.ellipse(cx, cy, maxRx, maxRy, 0, 0, Math.PI * 2);
+    ctx.setLineDash([2, 6]); ctx.strokeStyle = 'rgba(255,255,255,0.07)'; ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = 'rgba(122,132,153,0.45)';
+    ctx.fillText('no catalyst', cx + maxRx * 0.7071 + 5, cy - maxRy * 0.7071 - 4);
+
+    // sweep beam — a faint radar sweep, because it is a radar
+    if (!ORB_REDUCE) {
+      const sa = s * 0.22;
+      const grad = ctx.createConicGradient ? ctx.createConicGradient(sa, cx, cy) : null;
+      if (grad) {
+        grad.addColorStop(0, 'rgba(79,195,247,0.10)');
+        grad.addColorStop(0.06, 'rgba(79,195,247,0)');
+        grad.addColorStop(1, 'rgba(79,195,247,0)');
+        ctx.fillStyle = grad;
+        ctx.beginPath(); ctx.ellipse(cx, cy, maxRx, maxRy, 0, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+
+    // bodies
+    ctx.textAlign = 'center';
+    for (let i = 0; i < bodies.length; i++) {
+      const b = bodies[i];
+      const rx = maxRx * (inner + (1 - inner) * b.frac);
+      const ry = maxRy * (inner + (1 - inner) * b.frac);
+      const ang = b.a0 + s * b.omega;
+      const x = cx + Math.cos(ang) * rx, y = cy + Math.sin(ang) * ry;
+      b.x = x; b.y = y;
+      const baseA = b.dim ? 0.55 : 1;
+
+      // comet trail — behind the direction of travel, longer on big day moves
+      const tl = 0.14 + Math.min(0.7, Math.abs(b.change_pct || 0) * 0.12);
+      const tw = Math.min(2.6, 1 + b.R * 0.12);
+      for (let k = 0; k < 3; k++) {
+        ctx.beginPath();
+        const back = b.omega >= 0 ? -1 : 1;
+        const aA = ang + back * tl * (k + 1) / 3, aB = ang + back * tl * k / 3;
+        ctx.ellipse(cx, cy, rx, ry, 0, Math.min(aA, aB), Math.max(aA, aB));
+        ctx.strokeStyle = b.col;
+        ctx.globalAlpha = 0.24 * (1 - k / 3) * baseA;
+        ctx.lineWidth = tw * (1 - k * 0.28);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+
+      const pulse = 0.5 + 0.5 * Math.sin(s * b.pulseW + b.ph);
+      const gR = b.R * (2.2 + 0.6 * pulse * b.darkAmp);
+      ctx.globalAlpha = (0.15 + 0.3 * pulse * Math.max(b.darkAmp, 0.12)) * baseA;
+      ctx.drawImage(orbGlowSprite(b.col), x - gR, y - gR, gR * 2, gR * 2);
+      ctx.globalAlpha = baseA;
+      ctx.fillStyle = b.col;
+      ctx.beginPath(); ctx.arc(x, y, b.R, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = i === hoverIdx ? 'rgba(232,238,247,0.95)' : 'rgba(232,238,247,0.2)';
+      ctx.lineWidth = i === hoverIdx ? 1.5 : 1;
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+
+      if (W > 620 && (b.R >= 9 || i === hoverIdx)) {
+        ctx.fillStyle = i === hoverIdx ? 'rgba(232,238,247,0.95)' : `rgba(164,173,191,${0.6 * baseA})`;
+        ctx.fillText(b.tk || '', x, y + b.R + 13);
+      }
+    }
+
+    // shooting star
+    if (!ORB_REDUCE) {
+      if (!meteor && now >= nextMeteorAt) {
+        const fromLeft = Math.random() < 0.5;
+        meteor = { t: now, dur: 650 + Math.random() * 500,
+          x0: fromLeft ? -30 : W + 30, y0: Math.random() * H * 0.45,
+          dx: (fromLeft ? 1 : -1) * W * (0.4 + Math.random() * 0.3), dy: H * (0.12 + Math.random() * 0.25) };
+      }
+      if (meteor) {
+        const p = (now - meteor.t) / meteor.dur;
+        if (p >= 1) { meteor = null; nextMeteorAt = now + 16000 + Math.random() * 26000; }
+        else {
+          const hx = meteor.x0 + meteor.dx * p, hy = meteor.y0 + meteor.dy * p;
+          const nl = Math.hypot(meteor.dx, meteor.dy) || 1;
+          const mg = ctx.createLinearGradient(hx, hy, hx - meteor.dx / nl * 60, hy - meteor.dy / nl * 60);
+          mg.addColorStop(0, `rgba(220,235,255,${(0.6 * Math.sin(Math.PI * p)).toFixed(3)})`);
+          mg.addColorStop(1, 'rgba(220,235,255,0)');
+          ctx.strokeStyle = mg; ctx.lineWidth = 1.2;
+          ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(hx - meteor.dx / nl * 60, hy - meteor.dy / nl * 60); ctx.stroke();
+        }
+      }
+    }
+  }
+  function loop(now) {
+    raf = requestAnimationFrame(loop);
+    if (now - lastDraw < 33) return;
+    lastDraw = now; draw(now);
+  }
+  function start() {
+    if (ORB_REDUCE || document.hidden || !inView) { draw(performance.now()); return; }
+    if (!raf) raf = requestAnimationFrame(loop);
+  }
+  function stop(keep = true) { if (raf) { cancelAnimationFrame(raf); raf = 0; } if (keep) draw(performance.now()); }
+  function hitTest(px, py) {
+    let best = -1, bd = 1e9;
+    for (let i = 0; i < bodies.length; i++) {
+      const d = Math.hypot(px - bodies[i].x, py - bodies[i].y);
+      if (d < bodies[i].R + (ORB_COARSE ? 14 : 7) && d < bd) { bd = d; best = i; }
+    }
+    return best;
+  }
+  resize();
+  let rz = 0;
+  window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(resize, 150); });
+  if ('IntersectionObserver' in window) {
+    new IntersectionObserver(es => { for (const e of es) inView = e.isIntersecting; inView ? start() : stop(false); },
+      { rootMargin: '80px' }).observe(canvas);
+  }
+  document.addEventListener('visibilitychange', () => document.hidden ? stop(false) : start());
+  start();
+  return { setBodies, hitTest, get bodies() { return bodies; }, setHover(i) { hoverIdx = i; if (!raf) draw(performance.now()); } };
 }
 
-/* ═══ Catalyst Horizon — the hero scatter ══════════════════════════════════
-   Each upcoming catalyst is a node: x = days-to-event (0…35, near = left),
-   y = catalyst score (high = top), radius scales with score, colour encodes
-   direction. Nodes ≤5 days pulse. Hover shows a tooltip; click opens the
-   setup's drill-down. The "FX" toggle controls the pulse animation. */
-let _horizon = null;        // { canvas, ctx, w, h, nodes, raf, hover }
-let _catalystSetups = [];   // catalyst_radar rows backing the scatter
-let fxOn = true;            // pulse animation on/off (FX toggle)
+let orbital = null, moversByIsin = {};
+async function loadOrbital() {
+  try {
+    const [conv, movers] = await Promise.all([
+      API('conviction', 'order=conviction.desc&limit=44'),
+      API('movers', 'select=isin,ticker,name,close,change_pct,dark_pct,insider_7d&order=turnover.desc&limit=300').catch(() => []),
+    ]);
+    for (const m of movers) moversByIsin[m.isin] = Object.assign(moversByIsin[m.isin] || {}, m);
+    const rows = conv.map(r => ({
+      isin: r.isin, tk: isinTicker(r.isin), side: r.side,
+      conviction: r.conviction, days_to_event: r.days_to_event,
+      evt: r.next_event_type, dark_pct: r.dark_pct != null ? +r.dark_pct : null,
+      change_pct: moversByIsin[r.isin] ? +moversByIsin[r.isin].change_pct : 0,
+      signals: (r.signal_types || []).length,
+      insiders: r.insider_buyers_14d || 0,
+      short_chg: r.short_pct_change != null ? +r.short_pct_change : null,
+    }));
+    orbital.setBodies(rows);
+    const L = rows.filter(r => r.side === 'LONG').length, Sh = rows.filter(r => r.side === 'SHORT').length;
+    document.getElementById('orbCounts').innerHTML =
+      `<span class="L">▲ ${L} long</span> · <span class="S">▼ ${Sh} short</span>`;
+    const imminent = rows.filter(r => r.days_to_event != null && r.days_to_event <= 7).length;
+    document.getElementById('orbStatus').innerHTML =
+      `<div class="meta-pill">${imminent} INSIDE 7D</div>`;
+  } catch (e) { console.error('orbital load failed', e); }
+}
+function initOrbital() {
+  const cv = document.getElementById('orbCanvas');
+  if (!cv) return;
+  orbital = makeOrbital(cv);
+  const fly = document.getElementById('orbFlyout');
+  const sec = document.getElementById('orbitalSection');
+  const showFly = (i) => {
+    const b = orbital.bodies[i];
+    const info = ISIN_MAP[b.isin] || {};
+    const mv = moversByIsin[b.isin] || {};
+    const cls = (b.change_pct || 0) >= 0 ? 'up' : 'dn';
+    fly.innerHTML = `<span class="tk">${b.tk}</span> <span class="dim">${info.n || mv.name || ''}</span><br>
+      <span class="${b.side === 'LONG' ? 'up' : 'dn'}">${b.side} ${b.conviction}</span>
+      · ${mv.close != null ? Number(mv.close).toFixed(2) : '—'} <span class="${cls}">${fmtPct(b.change_pct)}</span><br>
+      <span class="dim">${b.signals} signal type${b.signals === 1 ? '' : 's'} 14d
+      ${b.evt ? ` · ${b.evt} T−${b.days_to_event}` : ' · no catalyst inside 14d'}
+      ${b.dark_pct != null ? ` · dark ${b.dark_pct.toFixed(1)}%` : ''}</span><br>
+      <span class="dim">${b.insiders ? `◐ ${b.insiders} insider buyer${b.insiders > 1 ? 's' : ''} · ` : ''}${b.short_chg != null ? `SI Δ ${b.short_chg > 0 ? '+' : ''}${b.short_chg.toFixed(2)}pp · ` : ''}${ORB_COARSE ? 'tap again' : 'click'} for dossier</span>`;
+    fly.style.display = 'block';
+    fly.style.left = Math.max(4, Math.min(b.x + 20, sec.clientWidth - 280)) + 'px';
+    fly.style.top = Math.max(8, b.y - 16) + 'px';
+  };
+  cv.addEventListener('mousemove', e => {
+    const r = cv.getBoundingClientRect();
+    const i = orbital.hitTest(e.clientX - r.left, e.clientY - r.top);
+    orbital.setHover(i);
+    if (i < 0) { fly.style.display = 'none'; cv.style.cursor = ''; return; }
+    showFly(i); cv.style.cursor = 'pointer';
+  });
+  cv.addEventListener('mouseleave', () => { orbital.setHover(-1); fly.style.display = 'none'; cv.style.cursor = ''; });
+  let tapIdx = -1;
+  cv.addEventListener('click', e => {
+    const r = cv.getBoundingClientRect();
+    const i = orbital.hitTest(e.clientX - r.left, e.clientY - r.top);
+    if (i < 0) { if (ORB_COARSE) { tapIdx = -1; orbital.setHover(-1); fly.style.display = 'none'; } return; }
+    if (ORB_COARSE && i !== tapIdx) { tapIdx = i; orbital.setHover(i); showFly(i); return; }
+    drillIntoISIN(orbital.bodies[i].isin);
+  });
+}
 
-const HZ_PAD = { l: 42, r: 16, t: 16, b: 26 };
-const HZ_MAXDAYS = 35;
-const DIR_RGB = { up: '67,224,151', dn: '240,96,96', flat: '79,195,247' };
-const dirKey = d => d > 0.1 ? 'up' : d < -0.1 ? 'dn' : 'flat';
-const dirWord = d => d > 0.1 ? '↑ Accumulation' : d < -0.1 ? '↓ Distribution' : '◆ Watch';
-
-function hzLayout() {
-  if (!_horizon) return;
-  const c = _horizon.canvas;
-  const rect = c.getBoundingClientRect();
+/* ═══ ACT II — MARKET INTELLIGENCE ═════════════════════════════════════════ */
+function drawBand(canvas, buckets, busiest) {
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  c.width = rect.width * dpr; c.height = rect.height * dpr;
-  _horizon.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  _horizon.w = rect.width; _horizon.h = rect.height;
-  const plotW = _horizon.w - HZ_PAD.l - HZ_PAD.r;
-  const plotH = _horizon.h - HZ_PAD.t - HZ_PAD.b;
-  const xOf = days => HZ_PAD.l + Math.min(Math.max(days, 0), HZ_MAXDAYS) / HZ_MAXDAYS * plotW;
-  const yOf = score => HZ_PAD.t + (1 - Math.min(Math.max(score, 0), 100) / 100) * plotH;
-  _horizon.nodes = _catalystSetups.map(r => ({
-    r,
-    x: xOf(r.days_to_event),
-    y: yOf(r.catalyst_score || 0),
-    rad: 5 + Math.min(r.catalyst_score || 0, 100) / 100 * 15,
-    rgb: DIR_RGB[dirKey(r.direction_score || 0)],
-    imminent: (r.days_to_event ?? 99) <= 5,
-    ticker: r.ticker || isinTicker(r.isin || '') || (r.isin || '').slice(-4),
-  }));
-}
-
-function hzDraw(ts) {
-  if (!_horizon) return;
-  const { ctx, w, h, nodes, hover } = _horizon;
-  ctx.clearRect(0, 0, w, h);
-  const plotW = w - HZ_PAD.l - HZ_PAD.r;
-  const plotH = h - HZ_PAD.t - HZ_PAD.b;
-
-  // horizontal score gridlines
-  ctx.font = '9px IBM Plex Mono, monospace';
-  ctx.textBaseline = 'middle'; ctx.textAlign = 'right';
-  [0, 25, 50, 75, 100].forEach(s => {
-    const y = HZ_PAD.t + (1 - s / 100) * plotH;
-    ctx.strokeStyle = 'rgba(255,255,255,0.05)';
-    ctx.beginPath(); ctx.moveTo(HZ_PAD.l, y); ctx.lineTo(w - HZ_PAD.r, y); ctx.stroke();
-    ctx.fillStyle = 'rgba(255,255,255,0.30)';
-    ctx.fillText(s, HZ_PAD.l - 6, y);
-  });
-
-  // x-axis day ticks + "today" marker
-  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-  [0, 7, 14, 21, 28, 35].forEach(d => {
-    const x = HZ_PAD.l + d / HZ_MAXDAYS * plotW;
-    if (d === 0) {
-      ctx.strokeStyle = 'rgba(245,166,35,0.30)';
-      ctx.beginPath(); ctx.moveTo(x, HZ_PAD.t); ctx.lineTo(x, h - HZ_PAD.b); ctx.stroke();
-    }
-    ctx.fillStyle = d === 0 ? 'rgba(245,166,35,0.85)' : 'rgba(255,255,255,0.30)';
-    ctx.fillText(d === 0 ? 'today' : d + 'd', x, h - HZ_PAD.b + 6);
-  });
-
-  // nodes
-  const pulse = fxOn ? 0.5 + 0.5 * Math.sin((ts || 0) / 360) : 0;
-  nodes.forEach(n => {
-    if (n.imminent && fxOn) {
-      ctx.beginPath();
-      ctx.arc(n.x, n.y, n.rad + 3 + pulse * 8, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(${n.rgb},${0.16 * (1 - pulse)})`;
-      ctx.fill();
-    }
-    const isHover = hover && hover === n;
-    if (isHover) {
-      ctx.beginPath(); ctx.arc(n.x, n.y, n.rad + 4, 0, Math.PI * 2);
-      ctx.strokeStyle = `rgba(${n.rgb},0.9)`; ctx.lineWidth = 1.5; ctx.stroke();
-    }
-    ctx.beginPath(); ctx.arc(n.x, n.y, n.rad, 0, Math.PI * 2);
-    ctx.fillStyle = `rgba(${n.rgb},${isHover ? 0.95 : 0.78})`; ctx.fill();
-    ctx.lineWidth = 1; ctx.strokeStyle = `rgba(${n.rgb},1)`; ctx.stroke();
-    // label larger / hovered nodes with the ticker
-    if (n.rad >= 11 || isHover) {
-      ctx.font = '10px IBM Plex Mono, monospace';
-      ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-      ctx.fillStyle = 'rgba(232,238,247,0.92)';
-      ctx.fillText(n.ticker, n.x + n.rad + 4, n.y);
-    }
-  });
-
-  if (fxOn) _horizon.raf = requestAnimationFrame(hzDraw);
-}
-
-function hzStart() { if (_horizon && !_horizon.raf) _horizon.raf = requestAnimationFrame(hzDraw); }
-function hzStop() { if (_horizon && _horizon.raf) { cancelAnimationFrame(_horizon.raf); _horizon.raf = null; } }
-
-function hzPick(e) {
-  const rect = _horizon.canvas.getBoundingClientRect();
-  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
-  let best = null, bestD = Infinity;
-  for (const n of _horizon.nodes) {
-    const d = Math.hypot(mx - n.x, my - n.y);
-    if (d <= n.rad + 4 && d < bestD) { best = n; bestD = d; }
-  }
-  return best;
-}
-
-function hzMove(e) {
-  const n = hzPick(e);
-  _horizon.canvas.style.cursor = n ? 'pointer' : 'default';
-  const tip = document.getElementById('horizonTip');
-  if (n) {
-    _horizon.hover = n;
-    const r = n.r;
-    const dte = r.days_to_event === 0 ? 'today' : r.days_to_event === 1 ? 'tomorrow' : `in ${r.days_to_event} days`;
-    tip.innerHTML =
-        `<div class="tt-tkr">${n.ticker}</div>`
-      + `<div class="tt-co">${r.issuer || isinName(r.isin || '') || ''}</div>`
-      + `<div class="tt-row"><span class="tt-k">CATALYST</span><span>${r.catalyst_score || 0}</span></div>`
-      + `<div class="tt-row"><span class="tt-k">DIRECTION</span><span>${dirWord(r.direction_score || 0)}</span></div>`
-      + `<div class="tt-row"><span class="tt-k">EVENT</span><span>${r.event_type} ${dte}</span></div>`
-      + `<div class="tt-hint">CLICK TO OPEN SETUP</div>`;
-    tip.style.display = 'block';
-    const wrapRect = _horizon.canvas.getBoundingClientRect();
-    let lx = n.x + 14, ty = n.y - 8;
-    if (lx > wrapRect.width - 232) lx = n.x - 232;
-    if (lx < 0) lx = 4;
-    tip.style.left = lx + 'px'; tip.style.top = ty + 'px';
-  } else {
-    _horizon.hover = null;
-    tip.style.display = 'none';
-  }
-  if (!fxOn) hzDraw(0);
-}
-
-function hzClick() {
-  const n = _horizon && _horizon.hover;
-  if (n && n.r.isin) drillIntoISIN(n.r.isin, 'XOSL');
-}
-
-function renderHorizon(setups) {
-  _catalystSetups = (setups || []).filter(r => r.days_to_event != null);
-  const canvas = document.getElementById('horizonCanvas');
-  const empty  = document.getElementById('horizonEmpty');
-  if (!canvas) return;
-  if (!_catalystSetups.length) {
-    if (empty) { empty.style.display = 'flex'; empty.textContent = 'No scheduled catalysts inside the 35-day horizon yet.'; }
-    canvas.style.display = 'none';
+  const W = canvas.clientWidth || canvas.parentElement.clientWidth - 28;
+  const H = 190;
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+  if (!buckets.length) {
+    ctx.fillStyle = 'rgba(122,132,153,0.6)'; ctx.font = '10px IBM Plex Mono, monospace';
+    ctx.textAlign = 'center'; ctx.fillText('NO SESSION DATA', W / 2, H / 2);
     return;
   }
-  if (empty) empty.style.display = 'none';
-  canvas.style.display = 'block';
-  if (!_horizon) {
-    _horizon = { canvas, ctx: canvas.getContext('2d'), raf: null, hover: null };
-    new ResizeObserver(() => { hzLayout(); if (!fxOn) hzDraw(0); }).observe(canvas);
-    canvas.addEventListener('mousemove', hzMove);
-    canvas.addEventListener('mouseleave', () => {
-      _horizon.hover = null;
-      document.getElementById('horizonTip').style.display = 'none';
-      if (!fxOn) hzDraw(0);
-    });
-    canvas.addEventListener('click', hzClick);
+  const n = buckets.length;
+  const maxV = Math.max(...buckets.map(b => +b.notional || 0), 1);
+  let cum = 0; const cums = buckets.map(b => (cum += +b.notional || 0));
+  const total = cums[n - 1] || 1;
+  const x = i => 6 + i * (W - 12) / Math.max(n - 1, 1);
+  // minute bars — sqrt scale so the auction spikes don't flatten the session
+  for (let i = 0; i < n; i++) {
+    const v = Math.sqrt((+buckets[i].notional || 0) / maxV);
+    const h = v * (H - 34);
+    const busy = busiest && buckets[i].minute_bucket === busiest;
+    ctx.fillStyle = busy ? 'rgba(245,166,35,0.9)' : 'rgba(79,195,247,0.34)';
+    ctx.fillRect(x(i) - Math.max(0.5, (W - 12) / n * 0.36), H - 18 - h, Math.max(1, (W - 12) / n * 0.72), h);
   }
-  hzLayout();
-  hzStop();
-  if (fxOn) hzStart(); else hzDraw(0);
+  // cumulative turnover line
+  ctx.beginPath();
+  cums.forEach((c, i) => { const yy = H - 18 - (c / total) * (H - 40); i ? ctx.lineTo(x(i), yy) : ctx.moveTo(x(i), yy); });
+  ctx.strokeStyle = 'rgba(232,238,247,0.65)'; ctx.lineWidth = 1.3; ctx.stroke();
+  // time axis labels from bucket times
+  ctx.fillStyle = 'rgba(122,132,153,0.7)'; ctx.font = '9px IBM Plex Mono, monospace'; ctx.textAlign = 'center';
+  for (const fidx of [0, Math.floor(n / 2), n - 1]) {
+    const t = (buckets[fidx].minute_bucket || '').slice(0, 5);
+    ctx.fillText(t, x(fidx), H - 5);
+  }
 }
 
-function updateFxToggle() {
-  const b = document.getElementById('fxToggle');
-  if (b) b.innerHTML = fxOn ? '◉ FX' : '⊘ FX';
-}
-function toggleAmbient() {
-  fxOn = !fxOn;
-  localStorage.setItem('mr_fx', fxOn ? '1' : '0');
-  updateFxToggle();
-  if (_horizon) { if (fxOn) hzStart(); else { hzStop(); hzDraw(0); } }
-}
-function initFx() {
-  const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const saved = localStorage.getItem('mr_fx');
-  fxOn = saved == null ? !reduce : saved === '1';
-  updateFxToggle();
-}
-
-/* ─── Return Distribution (Slensvik model, Phase 1) ─────────────────────── */
-const DIST_LABEL = {
-  normal: 'Normal', student_t: 'Student-t', laplace: 'Laplace', ged: 'GED',
-  nig: 'NIG', gen_hyp: 'Gen-hyperbolic', skew_t: 'Skew-t',
-  gaussian_mix2: '2-Normal mix', alpha_stable: 'α-stable',
-};
-const DIST_COLOR = {
-  ged: '#f5a623', student_t: '#4fc3f7', nig: '#a78bfa', gen_hyp: '#43e097',
-  skew_t: '#ff8fb3', laplace: '#d4a5ff', alpha_stable: '#77ddd4', gaussian_mix2: '#e0c060',
-};
-let distCharts = {};
-
-async function loadDistribution() {
-  let sum, fits;
+async function loadMarket() {
   try {
-    const [s, f] = await Promise.all([
-      API('return_dist_summary', 'scope_id=eq.MARKET&horizon=eq.1min'),
-      API('return_dist_fits', 'scope_id=eq.MARKET&horizon=eq.1min&order=aic.asc'),
+    const [pulseRows, band] = await Promise.all([
+      API('market_pulse', ''),
+      API('market_intraday', 'order=minute_bucket.asc').catch(() => []),
     ]);
-    sum = s && s[0]; fits = f || [];
-  } catch (e) { return; }
-  if (!sum) return;
+    const p = pulseRows && pulseRows[0];
+    if (!p) { document.getElementById('miHeadline').textContent = 'No market data yet.'; return; }
 
-  const cnt = document.getElementById('distCount');
-  if (cnt) cnt.textContent = `N=${Number(sum.n_obs).toLocaleString()}`;
+    document.getElementById('tradeDatePill').textContent = p.trade_date || '—';
+    document.getElementById('orbDate').textContent = (p.trade_date || '') + ' · T-1 settled';
+    document.getElementById('miCount').textContent = `${p.total_names} NAMES · ${Number(p.total_trades).toLocaleString('nb-NO')} TRADES`;
 
-  renderDistHero(sum);
-  renderDistDensity(sum);
-  renderDistQQ(sum);
-  renderDistTail(sum);
-  renderDistVar(sum);
-  renderDistScorecard(fits);
+    const up = +p.advancers > +p.decliners;   // verdict = heads vs heads, not share of total
+    const tch = +p.turnover_chg_pct;
+    document.getElementById('miHeadline').innerHTML =
+      (up ? `Buyers carried the tape — <span class="up">${p.advancers} up</span> vs <span class="dn">${p.decliners} down</span>`
+          : `Sellers pressed — <span class="dn">${p.decliners} down</span> vs <span class="up">${p.advancers} up</span>`) +
+      ` as turnover ${tch >= 0 ? `<span class="up">rose ${fmtPct(tch)}</span>` : `<span class="dn">eased ${fmtPct(tch)}</span>`}` +
+      ` to <span class="am">NOK ${fmtBn(+p.total_turnover)}</span>.`;
+
+    const t = (lbl, val, sub, cls = '') =>
+      `<div class="mi-tile"><div class="lbl">${lbl}</div><div class="val ${cls}">${val}</div><div class="sub">${sub}</div></div>`;
+    const a = +p.advancers, d = +p.decliners, u = +p.unchanged, tot = Math.max(a + d + u, 1);
+    document.getElementById('miTiles').innerHTML =
+      t('Turnover', 'NOK ' + fmtBn(+p.total_turnover), `${fmtPct(tch)} vs prior session`, tch >= 0 ? 'up' : 'dn') +
+      `<div class="mi-tile"><div class="lbl">Breadth</div><div class="val ${up ? 'up' : 'dn'}">${Number(p.pct_advancers).toFixed(0)}% adv</div>
+        <div class="mi-breadth"><span class="a" style="width:${a / tot * 100}%"></span><span class="u" style="width:${u / tot * 100}%"></span><span class="d" style="width:${d / tot * 100}%"></span></div>
+        <div class="sub">${a} · ${u} · ${d}</div></div>` +
+      t('True dark share', Number(p.market_dark_pct).toFixed(2) + '%', 'mid-point matching, market-wide', +p.dark_unusual ? 'am' : '') +
+      t('Signals fired', p.signals_today, 'self-baseline gated (J3)', '') +
+      t('Insider trades', `${p.insiders_today} / ${p.insiders_7d}`, 'today / trailing 7 days', +p.insiders_today > 0 ? 'am' : '') +
+      t('Catalysts ≤14d', p.events_14d, 'scheduled corporate events', '');
+
+    const lead = (what, who, detail) =>
+      `<div class="mi-lead"><div class="what">${what}</div><div class="who">${who}</div><div>${detail}</div></div>`;
+    document.getElementById('miLeaders').innerHTML =
+      lead('Top gainer', `${p.top_gainer_ticker}`, `<span class="up" style="color:var(--green,#43e097)">${fmtPct(+p.top_gainer_pct)}</span> · ${p.top_gainer_name || ''}`) +
+      lead('Top loser', `${p.top_loser_ticker}`, `<span style="color:var(--red,#f06060)">${fmtPct(+p.top_loser_pct)}</span> · ${p.top_loser_name || ''}`) +
+      lead('Most active', `${p.most_active_ticker}`, `NOK ${fmtMn(+p.most_active_turnover)} · ${p.most_active_name || ''}`) +
+      lead('Busiest minute', (p.busiest_minute || '').slice(0, 5), `NOK ${fmtMn(+p.busiest_minute_notional)} in 60s`);
+
+    document.getElementById('miBandMeta').textContent = `${band.length} minutes · ${p.trade_date}`;
+    drawBand(document.getElementById('miBand'), band, p.busiest_minute);
+    window.addEventListener('resize', () => drawBand(document.getElementById('miBand'), band, p.busiest_minute));
+  } catch (e) { console.error('market load failed', e); document.getElementById('miHeadline').textContent = 'Market data unavailable.'; }
 }
 
-function renderDistHero(s) {
-  const el = document.getElementById('distHero'); if (!el) return;
-  const k = Number(s.excess_kurtosis), sk = Number(s.skew);
-  const xiL = s.evt_left_tail_index, xiR = s.evt_right_tail_index;
-  const rejectNormal = Number(s.jb_p) < 0.01;
-  const stat = (kk, vv, cls, sub) =>
-    `<div class="dist-stat"><div class="k">${kk}</div><div class="v ${cls||''}">${vv}</div>`
-    + (sub ? `<div class="sub">${sub}</div>` : '') + `</div>`;
-  el.innerHTML = [
-    stat('Best fit', DIST_LABEL[s.best_distribution] || s.best_distribution, 'amber', 'lowest AIC'),
-    stat('Excess kurtosis', k.toFixed(1), k > 1 ? 'neg' : '', k > 1 ? 'fat-tailed vs Normal (0)' : 'near-Gaussian'),
-    stat('Skew', (sk >= 0 ? '+' : '') + sk.toFixed(2), sk < -0.1 ? 'neg' : sk > 0.1 ? 'pos' : '', sk < 0 ? 'downside-skewed' : 'symmetric-ish'),
-    stat('Normality (JB)', rejectNormal ? 'REJECTED' : 'plausible', rejectNormal ? 'neg' : 'pos', rejectNormal ? 'p < 0.01 — not Gaussian' : 'p ≥ 0.01'),
-    stat('Left tail index', xiL ? Number(xiL).toFixed(2) : '—', 'amber', 'EVT · lower = heavier'),
-    stat('Right tail index', xiR ? Number(xiR).toFixed(2) : '—', 'amber', 'EVT · lower = heavier'),
-  ].join('');
-}
+/* ═══ ACT IV — WATCHTOWER ══════════════════════════════════════════════════ */
+let wtRows = [], wtFilter = 'all', wtShowAll = false, wtSparks = {};
+const WT_VISIBLE = 48;
 
-function normPdf(x, m, s) { return Math.exp(-0.5 * ((x - m) / s) ** 2) / (s * Math.sqrt(2 * Math.PI)); }
-
-function renderDistDensity(s) {
-  const ctx = document.getElementById('distDensity'); if (!ctx) return;
-  if (distCharts.density) distCharts.density.destroy();
-  const c = s.charts || {};
-  const hist = c.hist || { centers: [], density: [] };
-  const grid = c.grid || [];
-  const m = Number(s.mean), sd = Number(s.std);
-  const toPct = v => v * 100;
-  const datasets = [{
-    type: 'line', label: 'Empirical', stepped: 'middle',
-    data: hist.centers.map((x, i) => ({ x: toPct(x), y: hist.density[i] })),
-    borderColor: 'rgba(232,238,247,0.45)', backgroundColor: 'rgba(232,238,247,0.10)',
-    fill: true, pointRadius: 0, borderWidth: 1, order: 10,
-  }];
-  // Gaussian benchmark (always shown for contrast)
-  datasets.push({
-    type: 'line', label: 'Normal (benchmark)',
-    data: grid.map(x => ({ x: toPct(x), y: normPdf(x, m, sd) })),
-    borderColor: '#6b7685', borderDash: [5, 4], pointRadius: 0, borderWidth: 1.5, fill: false, order: 5,
-  });
-  // top fitted densities
-  const dens = c.densities || {};
-  Object.keys(dens).forEach(name => {
-    datasets.push({
-      type: 'line', label: DIST_LABEL[name] || name,
-      data: grid.map((x, i) => ({ x: toPct(x), y: dens[name][i] })),
-      borderColor: DIST_COLOR[name] || '#4fc3f7', pointRadius: 0, borderWidth: 1.8, fill: false, order: 1,
-    });
-  });
-  distCharts.density = new Chart(ctx, {
-    data: { datasets },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      parsing: false, normalized: true,
-      scales: {
-        x: { type: 'linear', title: { display: true, text: '1-min log return (%)', color: '#6b7685', font: { size: 10 } },
-             min: grid.length ? grid[0] * 100 : undefined, max: grid.length ? grid[grid.length - 1] * 100 : undefined,
-             ticks: { color: '#6b7685', font: { size: 10 }, callback: v => v.toFixed(2) }, grid: { color: 'rgba(255,255,255,0.04)' } },
-        y: { title: { display: true, text: 'density', color: '#6b7685', font: { size: 10 } },
-             ticks: { color: '#6b7685', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
-      },
-      plugins: { legend: { position: 'bottom', labels: { color: '#c8d2e0', boxWidth: 12, padding: 8, font: { size: 10 } } } },
-    },
-  });
-  const note = document.getElementById('distDensityNote');
-  if (note) note.textContent = `The Normal (dashed) is too peaked in the middle and too thin in the wings; ${DIST_LABEL[s.best_distribution] || s.best_distribution} tracks the real shape best.`;
-}
-
-function renderDistQQ(s) {
-  const ctx = document.getElementById('distQQ'); if (!ctx) return;
-  if (distCharts.qq) distCharts.qq.destroy();
-  const qq = (s.charts || {}).qq || {};
-  const emp = qq.empirical || [], nrm = qq.normal || [];
-  const n = Math.min(emp.length, nrm.length);
-  const pts = []; for (let i = 0; i < n; i++) pts.push({ x: nrm[i] * 100, y: emp[i] * 100 });
-  const lo = Math.min(...pts.map(p => Math.min(p.x, p.y)));
-  const hi = Math.max(...pts.map(p => Math.max(p.x, p.y)));
-  distCharts.qq = new Chart(ctx, {
-    data: { datasets: [
-      { type: 'scatter', label: 'Q–Q', data: pts, pointRadius: 1.6, pointBackgroundColor: '#4fc3f7', borderColor: '#4fc3f7' },
-      { type: 'line', label: '45° (Gaussian)', data: [{ x: lo, y: lo }, { x: hi, y: hi }], borderColor: '#6b7685', borderDash: [5, 4], pointRadius: 0, borderWidth: 1.5 },
-    ] },
-    options: {
-      responsive: true, maintainAspectRatio: false, parsing: false,
-      scales: {
-        x: { type: 'linear', title: { display: true, text: 'theoretical (Normal) %', color: '#6b7685', font: { size: 10 } }, ticks: { color: '#6b7685', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
-        y: { title: { display: true, text: 'empirical %', color: '#6b7685', font: { size: 10 } }, ticks: { color: '#6b7685', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
-      },
-      plugins: { legend: { position: 'bottom', labels: { color: '#c8d2e0', boxWidth: 12, padding: 8, font: { size: 10 } } } },
-    },
-  });
-}
-
-function renderDistTail(s) {
-  const ctx = document.getElementById('distTail'); if (!ctx) return;
-  if (distCharts.tail) distCharts.tail.destroy();
-  const sv = (s.charts || {}).survival || {};
-  const t = sv.t || [], emp = sv.empirical || [], nrm = sv.normal || [];
-  const FLOOR = 1e-6;
-  const mk = arr => t.map((tt, i) => ({ x: tt * 100, y: Math.max(arr[i], FLOOR) }));
-  distCharts.tail = new Chart(ctx, {
-    data: { datasets: [
-      { type: 'line', label: 'Empirical', data: mk(emp), borderColor: '#f5a623', pointRadius: 0, borderWidth: 2, fill: false },
-      { type: 'line', label: 'Normal', data: mk(nrm), borderColor: '#6b7685', borderDash: [5, 4], pointRadius: 0, borderWidth: 1.5, fill: false },
-    ] },
-    options: {
-      responsive: true, maintainAspectRatio: false, parsing: false,
-      scales: {
-        x: { type: 'linear', title: { display: true, text: 'loss threshold t (%)', color: '#6b7685', font: { size: 10 } }, ticks: { color: '#6b7685', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
-        y: { type: 'logarithmic', title: { display: true, text: 'P(return < −t)', color: '#6b7685', font: { size: 10 } }, ticks: { color: '#6b7685', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
-      },
-      plugins: { legend: { position: 'bottom', labels: { color: '#c8d2e0', boxWidth: 12, padding: 8, font: { size: 10 } } } },
-    },
-  });
-}
-
-function renderDistVar(s) {
-  const el = document.getElementById('distVarTable'); if (!el) return;
-  const ve = s.var_es || {};
-  const pct = v => v == null ? '—' : (v * 100).toFixed(2) + '%';
-  const rows = ['0.95', '0.99', '0.999'].filter(l => ve[l]).map(l => {
-    const r = ve[l];
-    return `<tr><td>${(Number(l) * 100).toFixed(1)}%</td>`
-      + `<td>${pct(r.empirical_var)}</td><td>${pct(r.normal_var)}</td>`
-      + `<td>${pct(r.fit_var)}</td><td>${pct(r.empirical_es)}</td></tr>`;
-  }).join('');
-  el.innerHTML = `<table class="dist-table"><thead><tr>`
-    + `<th>Level</th><th>Empirical</th><th>Normal</th><th>Best fit</th><th>ES (emp)</th>`
-    + `</tr></thead><tbody>${rows}</tbody></table>`;
-  // Normal-underestimation callout from the 0.999 backtest
-  const note = document.getElementById('distVarNote');
-  const r999 = ve['0.999'];
-  if (note && r999) {
-    const exp = r999.expected_rate, act = r999.normal_exceed_rate;
-    const ratio = exp > 0 ? (act / exp) : null;
-    note.innerHTML = ratio
-      ? `At the 99.9% level the Normal model is breached <b>${ratio.toFixed(1)}×</b> as often as it should be (${(act * 100).toFixed(2)}% vs ${(exp * 100).toFixed(2)}% expected) — it badly understates crash risk.`
-      : '';
+function wtMatch(r) {
+  switch (wtFilter) {
+    case 'long':    return r.conviction_side === 'LONG';
+    case 'short':   return r.conviction_side === 'SHORT';
+    case 'movers':  return Math.abs(+r.change_pct || 0) >= 3;
+    case 'insider': return (+r.insider_7d || 0) > 0;
+    case 'event':   return r.days_to_event != null && r.days_to_event <= 7;
+    default:        return true;
   }
 }
-
-function renderDistScorecard(fits) {
-  const el = document.getElementById('distScorecard'); if (!el) return;
-  if (!fits.length) { el.innerHTML = '<div class="conv-empty">NO FITS</div>'; return; }
-  const fmt = v => v == null ? '—' : Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 });
-  const f4 = v => v == null ? '—' : Number(v).toFixed(3);
-  const rows = fits.map(f => {
-    return `<tr class="${f.is_best ? 'best' : ''}"><td>${DIST_LABEL[f.distribution] || f.distribution}</td>`
-      + `<td>${fmt(f.aic)}</td><td>${fmt(f.bic)}</td>`
-      + `<td class="${f.ks_stat == null ? 'muted' : ''}">${f4(f.ks_stat)}</td>`
-      + `<td class="${f.ad_stat == null ? 'muted' : ''}">${f.ad_stat == null ? '—' : Number(f.ad_stat).toFixed(1)}</td>`
-      + `<td class="muted">${f.n_params}</td></tr>`;
-  }).join('');
-  el.innerHTML = `<table class="dist-table"><thead><tr>`
-    + `<th>Distribution</th><th>AIC</th><th>BIC</th><th>KS</th><th>A–D</th><th>k</th>`
-    + `</tr></thead><tbody>${rows}</tbody></table>`;
+function wtSort(a, b) {
+  const ca = a.conviction != null ? +a.conviction : -1, cb = b.conviction != null ? +b.conviction : -1;
+  if (cb !== ca) return cb - ca;
+  return Math.abs(+b.change_pct || 0) - Math.abs(+a.change_pct || 0);
 }
-
-/* ─── Init: load instruments + available dates ─────────────────────────── */
-async function init() {
-  restoreSectionStates();
-  initFx();
-  loadMarketPulse();  // hero + Market Today dashboard (always latest day)
-  loadDistribution(); // return-distribution section (latest fit, date-independent)
-  try {
-    await loadInstruments();  // Enrich ISIN map from instruments table
-
-    // latency table: one row per ISIN per date — paginate to get all dates
-    const dates = await APIall('latency',
-      'select=trade_date&order=trade_date.desc');
-    const unique = [...new Set(dates.map(r => r.trade_date))].sort((a,b) => b.localeCompare(a));
-    const sel = document.getElementById('dateSelect');
-    sel.innerHTML = '';   // clear any existing options
-    unique.forEach(d => {
-      const opt = document.createElement('option');
-      opt.value = d; opt.textContent = d;
-      sel.appendChild(opt);
-    });
-    if (unique.length) { currentDate = unique[0]; await loadDate(); }
-    else { showError('No data found. Run the pipeline first.'); }
-  } catch(e) { showError('Could not connect to API. Check your PostgREST endpoint. ' + e.message); }
-}
-
-async function loadDate() {
-  currentDate = document.getElementById('dateSelect').value;
-  document.getElementById('tradeDatePill').textContent = currentDate;
-  closeDrill();
-  await Promise.all([
-    loadConviction(), loadTrackRecord(), loadIntelReport(),
-    loadKPIs(), loadWhales(), loadSignals(),
-    loadSummaryTable(), loadLatency(), loadIntraday(),
-    loadCatalystAlerts(), loadCorporateEvents(), loadSignalProximity(), loadTrends()
-  ]);
-  // Reset chains to unloaded state on date change
-  document.getElementById('chainWrap').style.display = 'none';
-  document.getElementById('chainCount').textContent = '—';
-  document.getElementById('chainBody').innerHTML =
-    '<tr><td colspan="9" style="color:var(--text-dim);font-family:var(--mono);font-size:12px;padding:16px">Click LOAD to fetch execution chains for this date.</td></tr>';
-}
-
-/* ─── KPIs ──────────────────────────────────────────────────────────────── */
-async function loadKPIs() {
-  const el = document.getElementById('kpiGrid');
-  // Anchor to the same complete-session day as the hero/dashboard. market_pulse
-  // is loaded in parallel; fall back to the latest daily_summary date so the
-  // panel is never blank just because daily_close ran a day ahead of the tape.
-  let d = marketPulse && marketPulse.trade_date;
-  if (!d) {
-    const latest = await API('daily_summary', 'select=trade_date&order=trade_date.desc&limit=1');
-    d = latest.length ? latest[0].trade_date : currentDate;
-  }
-  const data = await API('daily_summary',
-    `trade_date=eq.${d}&select=total_trades,adv_estimate,algo_ratio_pct,dark_pct,gini,avg_pub_lag_ms`);
-  if (!data.length) { if (el) el.innerHTML = `<div class="conv-empty">No microstructure for ${d}</div>`; return; }
-
-  const totTrades = data.reduce((s,r) => s + (r.total_trades||0), 0);
-  const totADV    = data.reduce((s,r) => s + (r.adv_estimate||0), 0);
-  const avgAlgo   = (data.reduce((s,r) => s + (r.algo_ratio_pct||0), 0) / data.length).toFixed(1);
-  const avgDark   = (data.reduce((s,r) => s + (r.dark_pct||0), 0) / data.length).toFixed(1);
-  const avgGini   = (data.reduce((s,r) => s + (r.gini||0), 0) / data.length).toFixed(3);
-  const avgLag    = (data.reduce((s,r) => s + (r.avg_pub_lag_ms||0), 0) / data.length).toFixed(0);
-
-  document.getElementById('totalTradesPill').textContent =
-    `${(totTrades/1000).toFixed(0)}K TRADES`;
-
-  const row = (label, val, cls) => `
-    <div class="dash-stat-row">
-      <span class="dash-stat-label">${label}</span>
-      <span class="dash-stat-val ${cls || ''}">${val}</span>
-    </div>`;
-  if (el) el.innerHTML =
-    row('Total trades', `${(totTrades/1000).toFixed(1)}K`) +
-    row('Est. day value', `NOK ${(totADV/1e9).toFixed(2)}B`) +
-    row('Avg algo ratio', `${avgAlgo}%`, 'warn') +
-    row('Avg dark pool', `${avgDark}%`) +
-    row('ISINs active', `${data.length}`) +
-    row('Trade-size Gini', avgGini) +
-    row('Avg publish lag', `${avgLag} ms`);
-}
-
-/* ─── Whales ────────────────────────────────────────────────────────────── */
-async function loadWhales() {
-  const data = await API('whale_alerts',
-    `trade_date=eq.${currentDate}&order=notional.desc.nullslast&limit=50`);
-  document.getElementById('whaleCount').textContent = `${data.length} EVENTS`;
-
-  if (!data.length) {
-    document.getElementById('whaleGrid').innerHTML =
-      '<div style="color:var(--text-dim);font-family:var(--mono);font-size:12px;padding:16px">No whale events detected for this date.</div>';
-    return;
-  }
-
-  const SIGNAL_ICONS = {
-    LARGE_NOK: '■', LARGE_EUR: '■', DARK_POOL_LARGE: '◍', OTC_PRINT: '⊗',
-    // legacy / now-dead alert types kept for back-compat
-    BLOCK_TRADE: '■', NEGOTIATED_OTC: '◇', DEFERRED_PRINT: '◑',
-  };
-
-  document.getElementById('whaleGrid').innerHTML = data.map(r => {
-    const notional = r.notional ? `NOK ${(r.notional/1e6).toFixed(2)}M`
-      : r.price && r.quantity ? `NOK ${(r.price*r.quantity/1e6).toFixed(2)}M` : '—';
-    const alerts = [r.size_alert, r.block_alert, r.otc_alert, r.dark_alert, r.deferral_alert]
-      .filter(Boolean);
-    const time = r.trading_time ? toOsloHHMM(r.trading_time) : '—';
-    return `
-      <div class="whale-card">
-        <div class="whale-top">
-          <div>
-            <div class="whale-isin">${INTEL.tkLink(r.isin, isinTicker(r.isin))} <span style="font-size:11px;color:var(--text-dim)">${isinName(r.isin)}</span></div>
-            <div class="whale-venue">${r.venue} · ${time}</div>
-          </div>
-          <div>${r.participant_class === 'ALGO' || r.algo_ind === 'ALGO'
-            ? '<span class="badge badge-amber">ALGO</span>'
-            : '<span class="badge badge-dim">HUMAN</span>'}</div>
-        </div>
-        <div class="whale-notional">${notional}</div>
-        <div style="font-size:12px;color:var(--text-dim)">
-          ${r.quantity ? fmt.num(r.quantity) + ' shares' : ''} @ ${r.price ? 'NOK '+Number(r.price).toFixed(2) : '—'}
-        </div>
-        <div class="whale-meta">
-          ${alerts.map(a => `<span class="badge badge-amber">${SIGNAL_ICONS[a]||''} ${a}</span>`).join('')}
-          ${r.market_mechanism ? `<span class="badge badge-ice">MECH ${r.market_mechanism}</span>` : ''}
-        </div>
-      </div>`;
-  }).join('');
-}
-
-/* ─── Smart Money Signals ───────────────────────────────────────────────── */
-async function loadSignals() {
-  const data = await API('smart_signals',
-    `trade_date=eq.${currentDate}&order=notional.desc.nullslast`);
-  document.getElementById('signalCount').textContent = `${data.length} SIGNALS`;
-
-  const ICONS = {
-    DARK_ACCUMULATION:  '◍',
-    DARK_DISTRIBUTION:  '◍',
-    DARK_BLOCK:         '◍',
-    EOD_SWEEP:          '╳',
-    LARGE_NOTIONAL:     '■',
-    CEILING_BREAK:      '▲',
-    FLOOR_BREAK:        '▼',
-    // legacy
-    DEFERRED_LARGE_PRINT: '◑',
-    ALGO_DOMINANCE:       '◴',
-    BURST_STORM:          '╳',
-  };
-
-  document.getElementById('signalList').innerHTML = !data.length
-    ? '<div style="color:var(--text-dim);font-family:var(--mono);font-size:12px;padding:16px">No smart money signals detected for this date.</div>'
-    : data.map((r, i) => `
-      <div class="signal-row" style="animation-delay:${i*0.05}s" onclick="drillIntoISIN('${r.isin}','${r.venue}')">
-        <div class="signal-icon">${ICONS[r.signal_type] || '▢'}</div>
-        <div class="signal-body">
-          <div class="signal-type">${r.signal_type}</div>
-          <div class="signal-desc">${r.signal_desc || '—'}</div>
-        </div>
-        <div style="text-align:right">
-          <div class="signal-isin">${INTEL.tkLink(r.isin, isinTicker(r.isin))}</div><div style="font-size:11px;color:var(--text-dim)">${isinName(r.isin)}</div>
-          <div class="signal-strength ${r.strength}">${r.strength || ''}</div>
-          ${r.notional ? `<div style="font-family:var(--mono);font-size:11px;color:var(--amber)">NOK ${(r.notional/1e6).toFixed(1)}M</div>` : ''}
-        </div>
-      </div>`).join('');
-}
-
-/* ─── Summary Table + Algo/Dark charts ─────────────────────────────────── */
-async function loadSummaryTable() {
-  allSummary = await API('daily_summary',
-    `trade_date=eq.${currentDate}&order=adv_estimate.desc.nullslast`);
-  allDark = await API('dark_flow_summary',
-    `trade_date=eq.${currentDate}&order=total_volume.desc.nullslast`);
-
-  document.getElementById('isinCount').textContent = `${allSummary.length} ISINs`;
-  renderSummaryTable(allSummary);
-  renderAlgoDonut(allSummary);
-  renderDarkBar(allDark);
-}
-
-function renderSummaryTable(data) {
-  document.getElementById('summaryBody').innerHTML = data.map(r => {
-    const algoPct = r.algo_ratio_pct || 0;
-    const darkPct = r.dark_pct || 0;
-    const openAuc = r.open_auction_notional ? fmt.nok(r.open_auction_notional) : '—';
-    const closeAuc = r.close_auction_notional ? fmt.nok(r.close_auction_notional) : '—';
-    return `
-      <tr onclick="drillIntoISIN('${r.isin}','${r.venue}')">
-        <td>${isinCell(r.isin)}</td>
-        <td><span class="badge ${r.venue==='XOSL'?'badge-ice':'badge-amber'}">${r.venue}</span></td>
-        <td class="r">${fmt.num(r.total_trades)}</td>
-        <td class="r">${fmt.nok(r.adv_estimate)}</td>
-        <td class="r">${fmt.num(r.avg_trade_size)}</td>
-        <td>
-          <div class="bar-wrap">
-            <div class="bar-track"><div class="bar-fill bar-amber" style="width:${Math.min(algoPct,100)}%"></div></div>
-            <div class="bar-pct">${fmt.pct(algoPct)}</div>
-          </div>
-        </td>
-        <td>
-          <div class="bar-wrap">
-            <div class="bar-track"><div class="bar-fill bar-purple" style="width:${Math.min(darkPct,100)}%;background:var(--purple)"></div></div>
-            <div class="bar-pct">${fmt.pct(darkPct)}</div>
-          </div>
-        </td>
-        <td class="r">${fmt.dec(r.gini)}</td>
-        <td class="r">${fmt.ms(r.avg_pub_lag_ms)}</td>
-        <td class="r" style="color:var(--green)">${openAuc}</td>
-        <td class="r" style="color:var(--ice)">${closeAuc}</td>
-      </tr>`;
-  }).join('');
-}
-
-function renderAlgoDonut(data) {
-  const totalAlgo    = data.reduce((s,r) => s + (r.algo_flag||0), 0);
-  const totalBurst   = data.reduce((s,r) => s + (r.burst_algo||0), 0);
-  const totalAuction = data.reduce((s,r) => s + (r.auction||0), 0);
-  const totalHuman   = data.reduce((s,r) => s + (r.human||0), 0);
-
-  if (algoDonutChart) algoDonutChart.destroy();
-  algoDonutChart = new Chart(document.getElementById('algoDonut'), {
-    type: 'doughnut',
-    data: {
-      labels: ['Flagged Algo', 'Burst Algo', 'Auction', 'Human'],
-      datasets: [{
-        data: [totalAlgo, totalBurst, totalAuction, totalHuman],
-        backgroundColor: ['#f5a623', '#a78bfa', '#4fc3f7', '#43e097'],
-        borderWidth: 0,
-        hoverOffset: 8,
-      }]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: {
-        legend: { position: 'bottom', labels: { padding: 16, usePointStyle: true } },
-        tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${fmt.num(ctx.parsed)} trades` } }
-      },
-      cutout: '62%',
-    }
-  });
-}
-
-function renderDarkBar(data) {
-  // Sort by total volume (lit+dark+lis) to get the most active ISINs
-  const top20 = data
-    .map(r => ({ ...r, _vol: (r.lit_volume||0) + (r.dark_volume||0) + (r.lis_volume||0) }))
-    .sort((a, b) => b._vol - a._vol)
-    .slice(0, 20);
-
-  // On XOSL/MERK, raw dark volumes are close to zero for most stocks.
-  // Show dark_pct as a horizontal bar — this is the meaningful signal.
-  if (darkBarChart) darkBarChart.destroy();
-  darkBarChart = new Chart(document.getElementById('darkBar'), {
-    type: 'bar',
-    data: {
-      labels: top20.map(r => isinTicker(r.isin)),
-      datasets: [{
-        label: 'Dark Pool %',
-        data: top20.map(r => r.dark_pct || 0),
-        backgroundColor: top20.map(r => (r.dark_pct||0) > 10 ? '#a78bfa' : '#4fc3f7'),
-        borderWidth: 0,
-        borderRadius: 3,
-      }]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      indexAxis: 'y',
-      scales: {
-        x: {
-          min: 0, max: 100,
-          ticks: { callback: v => v + '%' },
-          grid: { color: 'rgba(255,255,255,0.04)' }
-        },
-        y: { ticks: { font: { family: "'IBM Plex Mono', monospace", size: 11 } } }
-      },
-      plugins: {
-        legend: { display: false },
-        tooltip: { callbacks: {
-          title: ctx => {
-            const r = top20[ctx[0].dataIndex];
-            return isinName(r.isin) || isinTicker(r.isin);
-          },
-          label: ctx => {
-            const r = top20[ctx.dataIndex];
-            const pct = (r.dark_pct||0).toFixed(1);
-            const vol = ((r.dark_volume||0)/1e6).toFixed(2);
-            return ` Dark: ${pct}%  (${vol}M shares)`;
-          }
-        }}
-      }
-    }
-  });
-}
-
-/* ─── Paginated API fetch (bypasses PostgREST default row cap) ──────────── */
-async function APIall(table, params, pageSize = 1000) {
-  let rows = [], offset = 0;
-  while (true) {
-    const page = await API(table, `${params}&limit=${pageSize}&offset=${offset}`);
-    rows = rows.concat(page);
-    if (page.length < pageSize) break;   // last page
-    offset += pageSize;
-  }
-  return rows;
-}
-
-/* ─── Intraday Aggregate Chart ──────────────────────────────────────────── */
-async function loadIntraday() {
-  // PostgREST may limit rows; paginate to get all ~24k minute-bucket rows
-  allIntraday = await APIall('intraday',
-    `trade_date=eq.${currentDate}&order=minute_bucket.asc`);
-  renderIntradayAggregate();
-}
-
-function renderIntradayAggregate() {
-  document.getElementById('intradayLabel').textContent = 'Market Aggregate';
-  const buckets = {};
-  allIntraday.forEach(r => {
-    if (!buckets[r.minute_bucket]) buckets[r.minute_bucket] = { algo: 0, human: 0, auction: 0 };
-    buckets[r.minute_bucket].algo    += r.algo_volume || 0;
-    buckets[r.minute_bucket].human   += r.human_volume || 0;
-    buckets[r.minute_bucket].auction += r.auction_volume || 0;
-  });
-  const labels = Object.keys(buckets).sort();
-  renderIntradayChart('intradayChart', labels,
-    labels.map(l => buckets[l].algo),
-    labels.map(l => buckets[l].human),
-    labels.map(l => buckets[l].auction));
-}
-
-function renderIntradayChart(canvasId, labels, algoData, humanData, auctionData) {
-  const existing = Chart.getChart(canvasId);
-  if (existing) existing.destroy();
-  // labels arrive as raw minute_bucket strings ("HH:MM:SS") — convert to
-  // proper Date objects so the x-axis can be a real time scale in Oslo TZ.
-  const dates = labels.map(l => bucketToDate(l, currentDate));
-  const toPair = (vals) => dates.map((x, i) => ({ x, y: vals[i] || 0 }));
-  new Chart(document.getElementById(canvasId), {
-    type: 'bar',
-    data: {
-      datasets: [
-        { label: 'Auction', data: toPair(auctionData), backgroundColor: '#4fc3f7', stack: 'v', borderWidth: 0 },
-        { label: 'Algo',    data: toPair(algoData),    backgroundColor: '#f5a623', stack: 'v', borderWidth: 0 },
-        { label: 'Human',   data: toPair(humanData),   backgroundColor: '#43e097', stack: 'v', borderWidth: 0 },
-      ]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      animation: { duration: 400 },
-      scales: {
-        x: {
-          type: 'time',
-          stacked: true,
-          time: {
-            unit: 'minute', stepSize: 30,
-            tooltipFormat: 'HH:mm',
-            displayFormats: { minute: 'HH:mm', hour: 'HH:mm' },
-          },
-          adapters: { date: { zone: 'Europe/Oslo' } },
-          ticks: { maxRotation: 0, source: 'auto', autoSkip: true, maxTicksLimit: 24 },
-          grid: { color: 'rgba(255,255,255,0.03)' },
-        },
-        y: { stacked: true, ticks: { callback: v => (v/1e3).toFixed(0)+'K' } }
-      },
-      plugins: {
-        legend: { position: 'bottom', labels: { usePointStyle: true, padding: 12 } },
-        tooltip: {
-          callbacks: {
-            title: items => {
-              const t = items[0]?.parsed?.x;
-              return t == null ? '' : new Date(t).toLocaleTimeString('no-NO', {
-                timeZone: 'Europe/Oslo',
-                hour: '2-digit', minute: '2-digit', hour12: false,
-              });
-            },
-          },
-        },
-      },
-    }
-  });
-}
-
-/* ─── Latency table + chart ─────────────────────────────────────────────── */
-async function loadLatency() {
-  allLatency = await API('latency',
-    `trade_date=eq.${currentDate}&order=trade_count.desc&limit=50`);
-
-  document.getElementById('latencyBody').innerHTML = allLatency.slice(0,30).map(r => {
-    const total = (r.hft_count||0) + (r.algo_dma_count||0) + (r.human_count||0);
-    const hftPct = total ? ((r.hft_count||0)/total*100).toFixed(0) : 0;
-    const algoPct = total ? ((r.algo_dma_count||0)/total*100).toFixed(0) : 0;
-    const humPct = total ? ((r.human_count||0)/total*100).toFixed(0) : 0;
-    return `
-      <tr>
-        <td>${isinCell(r.isin)}</td>
-        <td class="r">${fmt.ms(r.avg_lag_ms)}</td>
-        <td class="r">${fmt.ms(r.min_lag_ms)}</td>
-        <td>
-          <div class="bar-wrap">
-            <div class="bar-track"><div class="bar-fill bar-amber" style="width:${hftPct}%"></div></div>
-            <div class="bar-pct">${hftPct}%</div>
-          </div>
-        </td>
-        <td>
-          <div class="bar-wrap">
-            <div class="bar-track"><div class="bar-fill bar-ice" style="width:${algoPct}%"></div></div>
-            <div class="bar-pct">${algoPct}%</div>
-          </div>
-        </td>
-        <td>
-          <div class="bar-wrap">
-            <div class="bar-track"><div class="bar-fill bar-green" style="width:${humPct}%"></div></div>
-            <div class="bar-pct">${humPct}%</div>
-          </div>
-        </td>
-      </tr>`;
-  }).join('');
-
-  // Aggregate speed tier donut
-  const totHFT  = allLatency.reduce((s,r) => s + (r.hft_count||0), 0);
-  const totAlgo = allLatency.reduce((s,r) => s + (r.algo_dma_count||0), 0);
-  const totHum  = allLatency.reduce((s,r) => s + (r.human_count||0), 0);
-  if (latencyDonutChart) latencyDonutChart.destroy();
-  latencyDonutChart = new Chart(document.getElementById('latencyDonut'), {
-    type: 'doughnut',
-    data: {
-      labels: ['HFT < 10ms', 'Algo DMA 10–500ms', 'Human > 500ms'],
-      datasets: [{ data: [totHFT, totAlgo, totHum],
-        backgroundColor: ['#f5a623','#4fc3f7','#43e097'], borderWidth: 0 }]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false, cutout: '58%',
-      plugins: {
-        legend: { position: 'bottom', labels: { padding: 12, usePointStyle: true } },
-        tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${fmt.num(ctx.parsed)}` } }
-      }
-    }
-  });
-}
-
-/* ─── Execution Chains ──────────────────────────────────────────────────── */
-async function loadChains() {
-  document.getElementById('chainCount').textContent = 'LOADING …';
-  document.getElementById('chainWrap').style.display = 'block';
-  const data = await API('chains',
-    `trade_date=eq.${currentDate}&order=total_notional.desc.nullslast`);
-  document.getElementById('chainCount').textContent = `${data.length} CHAINS`;
-
-  const TYPE_BADGE = {
-    RAPID_SLICER: 'badge-amber', SLICER: 'badge-amber',
-    BURST_EXEC: 'badge-purple', MULTI_LEG: 'badge-ice',
-  };
-
-  document.getElementById('chainBody').innerHTML = !data.length
-    ? '<tr><td colspan="9" style="color:var(--text-dim);font-family:var(--mono);font-size:12px;padding:16px">No multi-leg chains detected. Only single-execution trades found.</td></tr>'
-    : data.map(r => `
-      <tr>
-        <td>${isinCell(r.isin)}</td>
-        <td><span class="badge ${r.venue==='XOSL'?'badge-ice':'badge-amber'}">${r.venue}</span></td>
-        <td class="r">${r.leg_count}</td>
-        <td class="r">${fmt.num(Math.round(r.total_qty))}</td>
-        <td class="r">${r.total_notional ? fmt.nok(r.total_notional) : '—'}</td>
-        <td class="r">${r.duration_ms != null ? (r.duration_ms/1000).toFixed(1)+'s' : '—'}</td>
-        <td class="r">${r.avg_interval_ms != null ? r.avg_interval_ms+'ms' : '—'}</td>
-        <td><span class="badge ${TYPE_BADGE[r.chain_type]||'badge-dim'}">${r.chain_type||'—'}</span></td>
-        <td style="font-size:11px;color:var(--text-dim)">${r.classes||'—'}</td>
-      </tr>`).join('');
-}
-
-/* ─── Company Deep Dive ─────────────────────────────────────────────────── */
-async function drillIntoISIN(isin, venue) {
-  // The in-page deep dive is retired: its renderers rotted when the company
-  // dossier became its own page, leaving a near-empty black section (the
-  // "black page" bug). Every drill now lands on the real dossier.
-  if (isin && isin !== 'null' && isin !== 'undefined') {
-    location.href = INTEL.selskapHref(isin);
-    return;
-  }
-  return; // no ISIN mapped for this row — keep the user where they are
-
-  /* eslint-disable no-unreachable */
-  const deepDive = document.getElementById('companyDeepDive');
-  deepDive.style.display = 'block';
-  deepDive.scrollIntoView({ behavior: 'smooth', block: 'start' });
-
-  // Highlight row in ISIN table
-  document.querySelectorAll('#summaryBody tr').forEach(tr => tr.classList.remove('selected'));
-  const selRow = [...document.querySelectorAll('#summaryBody tr')].find(tr => tr.textContent.includes(isin));
-  if (selRow) selRow.classList.add('selected');
-
-  // Header — populate immediately from cache
-  const info = ISIN_MAP[isin] || {};
-  const mv = marketMovers.find(m => m.isin === isin) || {};
-  document.getElementById('diveTicker').textContent = mv.ticker || info.t || isin.slice(-6);
-  document.getElementById('diveName').textContent   = mv.name || info.n || '—';
-  document.getElementById('diveVenueBadge').textContent = venue;
-  document.getElementById('diveISINBadge').innerHTML =
-    `<a class="tk-link" href="${INTEL.dossierHref(isin)}" title="Open company dossier" style="color:inherit">${isin} ↗</a>`;
-
-  // Real price + market cap from daily_close (via movers cache)
-  const close = mv.close != null ? Number(mv.close) : null;
-  const chgPct = mv.change_pct != null ? Number(mv.change_pct) : null;
-  const mcap = mv.market_cap != null ? Number(mv.market_cap) : null;
-  if (close != null) {
-    document.getElementById('diveMcap').textContent = `NOK ${close.toFixed(2)}`;
-    const chgColor = chgPct == null ? 'var(--text-dim)' : chgPct >= 0 ? 'var(--green)' : 'var(--red)';
-    const mcapStr = mcap ? (mcap >= 1e9 ? `${(mcap/1e9).toFixed(1)}B` : `${(mcap/1e6).toFixed(0)}M`) + ' mcap' : '';
-    document.getElementById('diveMcapSub').innerHTML =
-      (chgPct != null ? `<span style="color:${chgColor}">${chgPct >= 0 ? '+' : ''}${chgPct.toFixed(2)}% today</span>` : '')
-      + (mcapStr ? ` &nbsp;· NOK ${mcapStr}` : '');
-  } else {
-    document.getElementById('diveMcap').textContent = '—';
-    document.getElementById('diveMcapSub').textContent = '';
-  }
-
-  // Synthesized intel strip + narrative (from movers cache; SI fetched below)
-  renderDiveIntel(mv, null);
-
-  // Metrics strip from already-loaded day data
-  const summary = allSummary.find(r => r.isin === isin && r.venue === venue) || {};
-  const dark    = allDark.find(r => r.isin === isin && r.venue === venue) || {};
-  const dr = darkRead(dark);
-  const biasStr   = `<span style="color:${dr.color}">${dr.word}${dr.confirmed ? ' ✓' : ''}</span>`
-                  + ` <span style="color:var(--text-dim);font-size:9px">${dr.prov}</span>`;
-  document.getElementById('diveMetrics').innerHTML = [
-    ['Dark Pool',  fmt.pct(summary.dark_pct)],
-    ['Gini',       fmt.dec(summary.gini)],
-    ['Algo',       fmt.pct(summary.algo_ratio_pct)],
-    ['Pub Lag',    fmt.ms(summary.avg_pub_lag_ms)],
-    ['Trades',     fmt.num(summary.total_trades)],
-    ['Est. ADV',   fmt.nok(summary.adv_estimate)],
-    ['Vol. wall',  dark.modal_price ? parseFloat(dark.modal_price).toFixed(2) : '—'],
-    ['Dark bias',  biasStr],
-  ].map(([l, v]) => `
-    <div class="dive-metric">
-      <div class="dive-metric-label">${l}</div>
-      <div class="dive-metric-value">${v}</div>
-    </div>`).join('');
-
-  // Link the dossier CTA to this name's full company page
-  const dossierLink = document.getElementById('diveDossierLink');
-  if (dossierLink) dossierLink.href = INTEL.selskapHref(isin);
-
-  // Fetch everything else in parallel
-  const [intradayRows, impactRows, siRows, signalRows, livePriceRows] = await Promise.all([
-    API('intraday',       `trade_date=eq.${currentDate}&isin=eq.${isin}&venue=eq.${venue}&order=minute_bucket.asc&limit=500`),
-    API('trade_impact',   `trade_date=eq.${currentDate}&isin=eq.${isin}&venue=eq.${venue}&order=trading_time.asc&limit=5000`),
-    API('short_interest', `isin=eq.${isin}&order=position_date.desc&limit=1`),
-    API('smart_signals',  `isin=eq.${isin}&order=trade_date.desc&limit=10`),
-    API('latest_price',   `isin=eq.${isin}&select=price,fidelity,day_change_pct`),
-  ]);
-
-  // Best-available header price: today's 15-min-delayed quote overrides the
-  // daily close until the EOD pipeline reconciles it back to canonical.
-  const lp = livePriceRows && livePriceRows[0];
-  if (lp && lp.fidelity === 'live' && lp.price != null) {
-    const lpx = Number(lp.price), lchg = lp.day_change_pct != null ? Number(lp.day_change_pct) : null;
-    document.getElementById('diveMcap').textContent = `NOK ${lpx.toFixed(2)}`;
-    const lchgColor = lchg == null ? 'var(--text-dim)' : lchg >= 0 ? 'var(--green)' : 'var(--red)';
-    const mcapStr = mcap ? (mcap >= 1e9 ? `${(mcap/1e9).toFixed(1)}B` : `${(mcap/1e6).toFixed(0)}M`) + ' mcap' : '';
-    document.getElementById('diveMcapSub').innerHTML =
-      (lchg != null ? `<span style="color:${lchgColor}">${lchg >= 0 ? '+' : ''}${lchg.toFixed(2)}% today</span>` : '')
-      + ` <span class="live-pill" title="15-min delayed live quote">LIVE</span>`
-      + (mcapStr ? ` &nbsp;· NOK ${mcapStr}` : '');
-  }
-
-  // Re-render intel strip now that short interest is in
-  renderDiveIntel(mv, siRows[0] || null);
-
-  // Intraday volume chart
-  document.getElementById('intradayLabel').textContent = (info.t || isinTicker(isin)) + ' — Intraday';
-  const ilabels = intradayRows.map(r => r.minute_bucket);
-  renderIntradayChart('drillIntraday', ilabels,
-    intradayRows.map(r => r.algo_volume||0),
-    intradayRows.map(r => r.human_volume||0),
-    intradayRows.map(r => r.auction_volume||0));
-
-  // Participant mix donut
-  if (drillChart2) drillChart2.destroy();
-  drillChart2 = new Chart(document.getElementById('drillMix'), {
-    type: 'doughnut',
-    data: {
-      labels: ['Flagged Algo', 'Burst Algo', 'Auction', 'Human'],
-      datasets: [{ data: [summary.algo_flag||0, summary.burst_algo||0, summary.auction||0, summary.human||0],
-        backgroundColor: ['#f5a623','#a78bfa','#4fc3f7','#43e097'], borderWidth: 0 }]
-    },
-    options: { responsive: true, maintainAspectRatio: false, cutout: '58%',
-      plugins: { legend: { position: 'bottom', labels: { padding: 10, usePointStyle: true } } } }
-  });
-
-  // Dark breakdown bar + side bias
-  if (drillChart3) drillChart3.destroy();
-  const impactBps = dr.impact;
-  // Only off-mid negotiated blocks carry a side; mid-point volume sits at the mid
-  // and is shown as a single side-agnostic bar, not split into buy/sell.
-  const midPointVol = Math.max((dark.dark_volume||0) - (dark.dark_volume_at_ask||0) - (dark.dark_volume_at_bid||0), 0);
-  const biasLabel = dr.bias
-    ? `${dr.word}${dr.confirmed ? ' (impact-confirmed)' : ' (unconfirmed)'}`
-    : (dr.midTr ? '◇ Mid-point flow (at mid, side-agnostic)' : '◇ No directional dark flow');
-  drillChart3 = new Chart(document.getElementById('drillDark'), {
-    type: 'bar',
-    data: {
-      labels: ['Lit (CLOB)', 'Mid-point (at mid)', 'Large-in-Scale', 'Off-mid block buy', 'Off-mid block sell'],
-      datasets: [{
-        label: 'Volume (shares)',
-        data: [dark.lit_volume||0, midPointVol, dark.lis_volume||0, dark.dark_volume_at_ask||0, dark.dark_volume_at_bid||0],
-        backgroundColor: ['#4fc3f7','#a78bfa','#f5a623','#43e097','#f06060'],
-        borderWidth: 0, borderRadius: 3,
-      }]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false, indexAxis: 'y',
-      plugins: {
-        legend: { display: false },
-        title: { display: true, text: `Dark: ${(dark.dark_pct||0).toFixed(1)}% — ${biasLabel}`
-            + (impactBps != null ? ` — 5m fwd drift ${impactBps >= 0 ? '+' : ''}${impactBps.toFixed(1)}bps` : ''),
-          color: '#e8eef7', font: { size: 12 } }
-      },
-      scales: { x: { ticks: { callback: v => (v/1e3).toFixed(0)+'K' } } }
-    }
-  });
-
-  loadDarkFlowChart(isin, venue, intradayRows, impactRows, dark);
-}
-
-/* ─── Deep Dive helpers ─────────────────────────────────────────────────── */
-
-const EVENT_LABEL = {
-  RESULTS: 'Q-results', EARNINGS_CALL: 'earnings call', WARNING: 'profit warning',
-  AGM: 'AGM', EX_DATE: 'ex-dividend', INSIDER: 'insider filing',
-};
-
-function renderDiveIntel(mv, si) {
-  const intel = document.getElementById('diveIntel');
-  const synEl = document.getElementById('diveSyn');
-  if (!mv || mv.isin == null) { intel.innerHTML = ''; synEl.style.display = 'none'; return; }
-
-  const chg   = mv.change_pct != null ? Number(mv.change_pct) : null;
-  const conv  = mv.conviction != null ? Number(mv.conviction) : null;
-  const side  = mv.conviction_side;
-  const bias  = mv.dark_side_bias;
-  const confirmed = mv.bias_confirmed === true;
-  const dte   = mv.days_to_event != null ? Number(mv.days_to_event) : null;
-  const evt   = mv.next_event_type;
-  const ins7  = Number(mv.insider_7d || 0);
-  const darkP = mv.dark_pct != null ? Number(mv.dark_pct) : null;
-  const shortP = si && si.short_pct != null ? Number(si.short_pct) : null;
-  const chips = [];
-
-  // Price / change
-  if (chg != null) {
-    const cls = chg >= 0 ? 'pos' : 'neg';
-    chips.push(`<div class="intel-chip ${cls}"><div class="intel-k">Day move</div>`
-      + `<div class="intel-v">${chg >= 0 ? '+' : ''}${chg.toFixed(2)}%</div>`
-      + `<div class="intel-sub">${mv.close != null ? 'NOK ' + Number(mv.close).toFixed(2) : ''}</div></div>`);
-  }
-  // Conviction
-  if (conv != null && side) {
-    const cls = side === 'LONG' ? 'pos' : side === 'SHORT' ? 'neg' : 'ice';
-    chips.push(`<div class="intel-chip ${cls}"><div class="intel-k">Conviction</div>`
-      + `<div class="intel-v">${side === 'LONG' ? '▲' : side === 'SHORT' ? '▼' : '◇'} ${conv}</div>`
-      + `<div class="intel-sub">${side.toLowerCase()} bias</div></div>`);
-  }
-  // Dark flow bias
-  if (darkP != null) {
-    const dr = darkRead(mv);
-    chips.push(`<div class="intel-chip ${dr.tone}"><div class="intel-k">Dark flow</div>`
-      + `<div class="intel-v">${dr.word}${dr.confirmed ? ' ✓' : ''}</div>`
-      + `<div class="intel-sub" title="${dr.prov}">${darkP.toFixed(1)}% of volume</div></div>`);
-  }
-  // Next event countdown
-  if (dte != null && evt) {
-    const cls = dte <= 7 ? 'warn' : 'ice';
-    chips.push(`<div class="intel-chip ${cls}"><div class="intel-k">Next event</div>`
-      + `<div class="intel-v">${dte === 0 ? 'Today' : dte + 'd'}</div>`
-      + `<div class="intel-sub">${EVENT_LABEL[evt] || evt.toLowerCase()}</div></div>`);
-  }
-  // Short interest
-  if (shortP != null) {
-    const cls = shortP >= 3 ? 'warn' : 'ice';
-    const pct = Math.min(shortP / 10 * 100, 100);
-    chips.push(`<div class="intel-chip ${cls}"><div class="intel-k">Short interest</div>`
-      + `<div class="intel-v">⊖ ${shortP.toFixed(2)}%</div>`
-      + `<div class="si-bar"><span style="width:${pct}%"></span></div></div>`);
-  }
-  // Insider filings
-  if (ins7 > 0) {
-    chips.push(`<div class="intel-chip warn"><div class="intel-k">Insiders 7d</div>`
-      + `<div class="intel-v">${ins7}</div>`
-      + `<div class="intel-sub">primary filings</div></div>`);
-  }
-  intel.innerHTML = chips.join('');
-
-  // Narrative synthesis
-  const t = mv.ticker || mv.name || 'The stock';
-  const parts = [];
-  if (chg != null) {
-    const dir = chg >= 0 ? 'rose' : 'fell';
-    const cls = chg >= 0 ? 'hl-pos' : 'hl-neg';
-    parts.push(`<strong>${t}</strong> ${dir} <span class="${cls}">${chg >= 0 ? '+' : ''}${chg.toFixed(2)}%</span>`
-      + (mv.turnover ? ` on <span class="hl-ice">${fmtNok(mv.turnover)}</span> turnover` : '') + '.');
-  }
-  if (dte != null && evt) {
-    const ev = EVENT_LABEL[evt] || evt.toLowerCase();
-    parts.push(`<span class="${dte <= 7 ? 'hl-warn' : 'hl-ice'}">${ev === 'Q-results' ? 'Q-results' : ev.charAt(0).toUpperCase() + ev.slice(1)} ${dte === 0 ? 'is today' : 'in ' + dte + (dte === 1 ? ' day' : ' days')}</span>.`);
-  }
-  if (darkP != null && bias && bias !== 'NEUTRAL') {
-    const dr = darkRead(mv);
-    const lean = bias === 'BUY' ? 'buying' : 'selling';
-    const src = dr.ev === 'IMPACT'
-      ? `inferred from mid-point forward drift${dr.impact != null ? ` (${dr.impact >= 0 ? '+' : ''}${dr.impact.toFixed(0)}bps)` : ''}`
-      : `from ${dr.blockPrints} off-mid block print${dr.blockPrints !== 1 ? 's' : ''}`;
-    parts.push(`Dark flow leans <span class="hl-dark">${lean}</span> ${src}${dr.confirmed ? ', impact-confirmed' : ' (unconfirmed)'}, at ${darkP.toFixed(1)}% of volume.`);
-  } else if (darkP != null && darkP >= 10) {
-    parts.push(`Dark trading is elevated at <span class="hl-dark">${darkP.toFixed(1)}%</span> of volume, but prints sit at the mid — no directional lean.`);
-  }
-  if (shortP != null && shortP >= 1) {
-    parts.push(`Short interest sits at <span class="hl-warn">${shortP.toFixed(2)}%</span>.`);
-  }
-  if (ins7 > 0) {
-    parts.push(`<span class="hl-warn">${ins7}</span> insider filing${ins7 > 1 ? 's' : ''} in the past week.`);
-  }
-  if (conv != null && side && side !== 'NEUTRAL') {
-    parts.push(`Net signal read: <span class="${side === 'LONG' ? 'hl-pos' : 'hl-neg'}">${side} conviction ${conv}/100</span>.`);
-  }
-  if (parts.length) { synEl.innerHTML = parts.join(' '); synEl.style.display = 'block'; }
-  else synEl.style.display = 'none';
-}
-
-/* ─── Collapse toggle ───────────────────────────────────────────────────── */
-function toggleSection(id) {
-  const sec = document.getElementById(id);
-  if (!sec) return;
-  sec.classList.toggle('collapsed');
-  try {
-    const states = JSON.parse(localStorage.getItem('mrkSectionStates') || '{}');
-    states[id] = sec.classList.contains('collapsed');
-    localStorage.setItem('mrkSectionStates', JSON.stringify(states));
-  } catch(e) {}
-}
-
-function restoreSectionStates() {
-  try {
-    const states = JSON.parse(localStorage.getItem('mrkSectionStates') || '{}');
-    Object.entries(states).forEach(([id, collapsed]) => {
-      const sec = document.getElementById(id);
-      if (!sec) return;
-      if (collapsed) sec.classList.add('collapsed');
-      else sec.classList.remove('collapsed');
-    });
-  } catch(e) {}
-}
-
-/* ─── Dark Flow Impact Chart ────────────────────────────────────────────── */
-let darkFlowChartInst = null;
-
-async function loadDarkFlowChart(isin, venue, cachedIntraday, cachedImpact, cachedDark) {
-  // Use pre-fetched data from drillIntoISIN when available, otherwise fetch
-  const [intradayRows, darkSummary, impactRows] = cachedIntraday
-    ? [cachedIntraday, [cachedDark], cachedImpact]
-    : await Promise.all([
-        API('intraday',     `trade_date=eq.${currentDate}&isin=eq.${isin}&venue=eq.${venue}&order=minute_bucket.asc&limit=500`),
-        API('dark_flow_summary', `trade_date=eq.${currentDate}&isin=eq.${isin}&venue=eq.${venue}&limit=1`),
-        API('trade_impact', `trade_date=eq.${currentDate}&isin=eq.${isin}&venue=eq.${venue}&order=trading_time.asc&limit=5000`)
-      ]);
-
-  const dark = Array.isArray(darkSummary) ? (darkSummary[0] || {}) : (darkSummary || {});
-  const modalPrice = dark.modal_price;
-
-  // Price line from intraday VWAP
-  const pricePoints = intradayRows
-    .filter(r => r.vwap)
-    .map(r => ({ x: bucketToDate(r.minute_bucket, currentDate), y: parseFloat(r.vwap) }));
-
-  // Dark trades as bubble dataset
-  const darkTrades = impactRows
-    .filter(r => r.is_dark && r.price)
-    .map(r => ({
-      x: dbTimeToDate(r.trading_time),
-      y: parseFloat(r.price),
-      r: Math.min(Math.max(Math.sqrt((r.notional||0) / 50000), 3), 25),
-      notional: r.notional,
-      qty: r.quantity,
-      impact: r.price_impact_bps,
-    }));
-
-  // Lit trades (small dots)
-  const litTrades = impactRows
-    .filter(r => !r.is_dark && r.price)
-    .slice(0, 2000)  // cap for performance
-    .map(r => ({
-      x: dbTimeToDate(r.trading_time),
-      y: parseFloat(r.price),
-      r: 2,
-    }));
-
-  // Modal price line (the "wall") — span the whole session
-  const modalLine = modalPrice && pricePoints.length
-    ? [{x: pricePoints[0].x, y: parseFloat(modalPrice)},
-       {x: pricePoints[pricePoints.length - 1].x, y: parseFloat(modalPrice)}]
-    : [];
-
-  if (darkFlowChartInst) darkFlowChartInst.destroy();
-  darkFlowChartInst = new Chart(document.getElementById('darkFlowChart'), {
-    type: 'bubble',
-    data: {
-      datasets: [
-        {
-          label: 'VWAP Price',
-          type: 'line',
-          data: pricePoints,
-          borderColor: '#4fc3f7',
-          borderWidth: 1.5,
-          pointRadius: 0,
-          tension: 0.3,
-          fill: false,
-          order: 3,
-        },
-        {
-          label: `Modal price ${modalPrice ? parseFloat(modalPrice).toFixed(2) : ''}`,
-          type: 'line',
-          data: modalLine,
-          borderColor: '#f5a623',
-          borderWidth: 1,
-          borderDash: [6, 3],
-          pointRadius: 0,
-          fill: false,
-          order: 4,
-        },
-        {
-          label: 'Dark trades',
-          type: 'bubble',
-          data: darkTrades,
-          backgroundColor: 'rgba(167,139,250,0.7)',
-          borderColor: '#a78bfa',
-          borderWidth: 1,
-          order: 1,
-        },
-        {
-          label: 'Lit trades',
-          type: 'bubble',
-          data: litTrades,
-          backgroundColor: 'rgba(79,195,247,0.15)',
-          borderColor: 'rgba(79,195,247,0.3)',
-          borderWidth: 0,
-          order: 2,
-        },
-      ]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      animation: false,
-      scales: {
-        x: {
-          type: 'time',
-          time: {
-            unit: 'minute',
-            stepSize: 30,
-            tooltipFormat: 'HH:mm',
-            displayFormats: { minute: 'HH:mm', hour: 'HH:mm' },
-          },
-          adapters: { date: { zone: 'Europe/Oslo' } },
-          ticks: { maxRotation: 0, source: 'auto', autoSkip: true, maxTicksLimit: 24 },
-          grid: { color: 'rgba(255,255,255,0.03)' },
-        },
-        y: {
-          ticks: { callback: v => v.toFixed(2) },
-          grid: { color: 'rgba(255,255,255,0.04)' }
-        }
-      },
-      plugins: {
-        legend: { position: 'bottom', labels: { usePointStyle: true, padding: 12 } },
-        tooltip: {
-          callbacks: {
-            title: items => {
-              const t = items[0]?.parsed?.x;
-              return t == null ? '' : new Date(t).toLocaleTimeString('no-NO', {
-                timeZone: 'Europe/Oslo',
-                hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
-              });
-            },
-            label: ctx => {
-              if (ctx.datasetIndex === 2) {
-                const d = ctx.raw;
-                return [
-                  ` Price: ${d.y.toFixed(2)}`,
-                  ` Notional: ${d.notional ? 'NOK ' + (d.notional/1e6).toFixed(2) + 'M' : '—'}`,
-                  ` Impact: ${d.impact != null ? d.impact.toFixed(1) + 'bps' : '—'}`,
-                ];
-              }
-              return ` ${ctx.dataset.label}: ${ctx.raw.y?.toFixed?.(2) ?? ctx.raw.y}`;
-            }
-          }
-        }
-      }
-    }
-  });
-
-  const dr = darkRead(dark);
-  const biasGlyph = dr.bias
-    ? `${dr.word}${dr.confirmed ? ' ✓' : ''}`
-    : (dr.midTr ? '◇ At mid' : '◇ Neutral');
-  document.getElementById('darkFlowStats').innerHTML =
-    `Dark: ${(dark.dark_pct||0).toFixed(1)}% · <span style="color:${dr.color}" title="${dr.prov}">${biasGlyph}</span> · Vol. wall: ${modalPrice ? parseFloat(modalPrice).toFixed(2) : '—'} · ${darkTrades.length} dark trades`;
-}
-
-/* ─── Corporate Events Calendar ─────────────────────────────────────────── */
-let allEvents = [];
-let currentEventFilter = 'ALL';
-
-async function loadCorporateEvents() {
-  try {
-    // Always anchor to today — corporate events are a calendar, not tied to selected trade date
-    const from = new Date();
-    from.setDate(from.getDate() - 7);
-    const to = new Date();
-    to.setDate(to.getDate() + 30);
-    const fromStr = from.toISOString().slice(0,10);
-    const toStr   = to.toISOString().slice(0,10);
-
-    allEvents = await APIall('corporate_events',
-      `event_date=gte.${fromStr}&event_date=lte.${toStr}&order=event_date.asc`);
-    document.getElementById('eventsCount').textContent = `${allEvents.length} events`;
-    renderEvents(allEvents);
-  } catch(e) {
-    document.getElementById('eventsBody').innerHTML =
-      `<tr><td colspan="6" style="color:var(--text-dim);font-family:var(--mono);font-size:12px;padding:16px">
-        Corporate events not yet available — run the corporate_events_scraper workflow first.
-      </td></tr>`;
-    document.getElementById('eventsCount').textContent = 'not ready';
-  }
-}
-
-function filterEvents(type) {
-  currentEventFilter = type;
-  document.querySelectorAll('.evt-btn').forEach(b => {
-    b.classList.toggle('active', b.dataset.f === type);
-  });
-  const filtered = type === 'ALL' ? allEvents : allEvents.filter(e => e.event_type === type);
-  renderEvents(filtered);
-}
-
-function renderEvents(data) {
-  const today = new Date().toISOString().slice(0,10);
-  const TYPE_ICON = {
-    RESULTS:       '▢',  EX_DATE:       '◇',  WARNING:       '△',
-    INSIDER:       '◐',  AGM:           'Ⅱ',  EARNINGS_CALL: '◴',
-    REGULATED:     '▣',  PRESS_RELEASE: '≡',  PLACEMENT:     '▦',
-    DELISTING:     '⊘',  IPO:           '▴',  PROSPECTUS:    '▤',
-    SUSPENSION:    '⊘',
-  };
-  const TYPE_COLOR = {
-    RESULTS:       'badge-ice',    EX_DATE:      'badge-purple', WARNING:   'badge-red',
-    INSIDER:       'badge-dim',    AGM:          'badge-amber',  EARNINGS_CALL: 'badge-ice',
-    REGULATED:     'badge-dim',    PRESS_RELEASE:'badge-dim',    PLACEMENT: 'badge-amber',
-    DELISTING:     'badge-red',    IPO:          'badge-green',  PROSPECTUS:'badge-dim',
-    SUSPENSION:    'badge-red',
-  };
-
-  document.getElementById('eventsBody').innerHTML = !data.length
-    ? `<tr><td colspan="6" style="color:var(--text-dim);font-size:12px;padding:16px;font-family:var(--mono)">No events in this window.</td></tr>`
-    : data.map(e => {
-        const days = Math.round((new Date(e.event_date) - new Date(today)) / 86400000);
-        const daysStr = days === 0 ? 'TODAY' : days > 0 ? `+${days}d` : `${days}d`;
-        const daysColor = days === 0 ? 'color:#f06060;font-weight:600' :
-                          days > 0 && days <= 5 ? 'color:var(--amber)' :
-                          days < 0 ? 'color:var(--text-dim)' : '';
-        const dividendInfo = e.dividend_amount
-          ? `<span style="color:var(--amber);margin-left:8px">${e.dividend_ccy||''} ${e.dividend_amount}</span>` : '';
-        const isin = e.isin || '';
-        return `<tr style="cursor:${isin?'pointer':'default'}" onclick="${isin?`drillIntoISIN('${isin}','XOSL')`:''}">
-          <td style="font-family:var(--mono);font-size:11px">${e.event_date}</td>
-          <td><span class="badge ${TYPE_COLOR[e.event_type]||'badge-dim'}">${TYPE_ICON[e.event_type]||''}${e.event_type}</span></td>
-          <td>${isin ? INTEL.tkLink(isin, e.issuer||isinName(isin)||isin) : (e.issuer||'—')}</td>
-          <td style="font-size:12px">${e.title||'—'}${dividendInfo}</td>
-          <td class="r" style="${daysColor};font-family:var(--mono)">${daysStr}</td>
-          <td id="evt-prox-${e.id}">—</td>
-        </tr>`;
-      }).join('');
-
-  // Async: check if any events have nearby signals
-  checkEventProximity(data);
-}
-
-async function checkEventProximity(events) {
-  // For each event with an ISIN, check if there's a smart signal within 7 days
-  const isins = [...new Set(events.filter(e => e.isin).map(e => e.isin))];
-  if (!isins.length) return;
-  try {
-    const signals = await API('smart_signals',
-      `isin=in.(${isins.join(',')})&order=trade_date.desc&limit=200`);
-    events.forEach(e => {
-      if (!e.isin || !e.id) return;
-      const nearby = signals.find(s =>
-        s.isin === e.isin &&
-        Math.abs(new Date(e.event_date) - new Date(s.trade_date)) / 86400000 <= 7
-      );
-      const el = document.getElementById(`evt-prox-${e.id}`);
-      if (el && nearby) {
-        el.innerHTML = `<span class="badge badge-purple">◍ ${nearby.signal_type}</span>`;
-      } else if (el) {
-        el.textContent = '—';
-      }
-    });
-  } catch(e) { /* silent fail */ }
-}
-
-/* ─── Signal × Event Proximity ─────────────────────────────────────────── */
-async function loadSignalProximity() {
-  try {
-    const data = await APIall('signal_event_proximity',
-      'order=trade_date.desc');
-    document.getElementById('proximityCount').textContent =
-      `${data.length} signal-event pairs`;
-
-    const RET_COLOR = v => {
-      if (v == null) return '';
-      return v > 2 ? 'color:var(--green)' : v < -2 ? 'color:#f06060' : '';
-    };
-    const fmt_ret = v => v == null ? '—' :
-      `<span style="${RET_COLOR(v)}">${v > 0 ? '+':''}${v.toFixed(2)}%</span>`;
-
-    document.getElementById('proximityBody').innerHTML = !data.length
-      ? `<tr><td colspan="11" style="color:var(--text-dim);font-size:12px;padding:16px;font-family:var(--mono)">
-           No signal-event pairs found yet. Accumulates as signals and events build up.
-         </td></tr>`
-      : data.slice(0, 100).map(r => `
-          <tr>
-            <td style="font-family:var(--mono);font-size:11px">${r.trade_date}</td>
-            <td>${isinCell(r.isin)}</td>
-            <td style="font-size:11px">${r.signal_type}</td>
-            <td><span class="badge ${r.strength==='STRONG'?'badge-purple':'badge-ice'}">${r.strength||'—'}</span></td>
-            <td><span class="badge badge-ice">${r.event_type}</span></td>
-            <td style="font-family:var(--mono);font-size:11px">${r.event_date}</td>
-            <td class="r prox-${r.proximity}" style="font-family:var(--mono)">${r.days_to_event > 0 ? '+':''}${r.days_to_event}d</td>
-            <td class="prox-${r.proximity}">${r.proximity||'—'}</td>
-            <td class="r">${fmt_ret(r.return_t1_pct)}</td>
-            <td class="r">${fmt_ret(r.return_t5_pct)}</td>
-            <td class="r">${fmt_ret(r.return_t20_pct)}</td>
-          </tr>`).join('');
-  } catch(e) {
-    document.getElementById('proximityBody').innerHTML =
-      `<tr><td colspan="11" style="color:var(--text-dim);font-size:12px;padding:16px;font-family:var(--mono)">
-        Proximity view not yet initialised — run create_trend_view in Database Maintenance workflow.
-      </td></tr>`;
-  }
-}
-
-/* ─── Catalyst Alerts ───────────────────────────────────────────────────────
-   Powered by api.catalyst_radar: one row per (isin, scheduled event ≤35d)
-   with seven precursor components (insider, dark flow, signals, whales,
-   volume, trend, short) fused into catalyst_score 0–100 + direction. */
-async function loadCatalystAlerts() {
-  try {
-    const rows = await APIall('catalyst_radar',
-      `order=catalyst_score.desc.nullslast&limit=60`);
-
-    // One card per ISIN — keep its highest-scored upcoming event
-    const byIsin = new Map();
-    for (const r of rows) {
-      const prev = byIsin.get(r.isin);
-      if (!prev || (r.catalyst_score || 0) > (prev.catalyst_score || 0)) byIsin.set(r.isin, r);
-    }
-    const cards = [...byIsin.values()]
-      .sort((a,b) => (b.catalyst_score||0) - (a.catalyst_score||0))
-      .slice(0, 24);
-
-    document.getElementById('catalystCount').textContent =
-      cards.length ? `${cards.length} setup${cards.length > 1 ? 's' : ''}` : 'no setups';
-
-    document.getElementById('catalystGrid').innerHTML = !cards.length
-      ? `<div style="font-family:var(--mono);font-size:12px;color:var(--text-dim);padding:32px;text-align:center">
-           No scheduled events inside the 35-day horizon — nothing to score yet.
-         </div>`
-      : cards.map(renderCatalystCard).join('');
-
-    renderHorizon(cards);
-
-  } catch(e) {
-    document.getElementById('catalystGrid').innerHTML =
-      `<div style="font-family:var(--mono);font-size:12px;color:var(--text-dim);padding:32px;text-align:center">
-         Catalyst engine unavailable (${e.message}). Check api.catalyst_radar.
-       </div>`;
-    renderHorizon([]);
-  }
-}
-
-function renderCatalystCard(r) {
-  const isin      = r.isin || '';
-  const ticker    = r.ticker || isinTicker(isin) || (r.issuer||'').split(' ')[0] || isin.slice(-4) || '—';
-  const company   = r.issuer || isin || '';
-  const daysUntil = r.days_to_event;
-  const score     = r.catalyst_score || 0;
-  const dirScore  = r.direction_score || 0;
-  const fmtDate   = d => new Date(d).toLocaleDateString('en-GB',{day:'numeric',month:'short'});
-  const fmtM      = v => v == null ? '—' : Math.abs(v) >= 1e6 ? (v/1e6).toFixed(1)+'M' : Math.abs(v) >= 1e3 ? (v/1e3).toFixed(0)+'k' : String(Math.round(v));
-
-  const dir       = dirScore > 0.1 ? 'bullish' : dirScore < -0.1 ? 'bearish' : 'neutral';
-  const dirLabel  = dir === 'bearish' ? '↓ DISTRIBUTION' : dir === 'bullish' ? '↑ ACCUMULATION' : '◆ WATCH';
-
-  const urgency   = daysUntil <= 5 ? 'imminent' : daysUntil <= 14 ? 'soon' : 'upcoming';
-  const urgLabel  = urgency === 'imminent' ? `<span style="color:var(--red)">▼ ${daysUntil}d — IMMINENT</span>`
-                  : urgency === 'soon'     ? `<span style="color:var(--amber)">◆ in ${daysUntil} days</span>`
-                  :                          `🔵 in ${daysUntil} days`;
-
-  const scoreColor= score >= 60 ? 'var(--red)' : score >= 30 ? 'var(--amber)' : 'var(--ice)';
-
-  const EVT_ICON  = { RESULTS:'▢', EARNINGS_CALL:'◴', AGM:'Ⅱ', EX_DATE:'◇',
-                      WARNING:'△', INSIDER:'◐', PLACEMENT:'▦', DELISTING:'⊘',
-                      IPO:'▴', PROSPECTUS:'▤', REGULATED:'▣', PRESS_RELEASE:'≡' };
-
-  // Seven precursor components: [label, normalized 0–1, detail string]
-  const comps = [
-    ['INSIDER', r.s_insider, r.insider_trades_30d
-        ? `${r.insider_net_value_30d > 0 ? '+' : ''}${fmtM(r.insider_net_value_30d)} net · ${r.insider_trades_30d} trades${r.insider_top_role ? ' · ' + r.insider_top_role : ''}`
-        : 'no trades 30d'],
-    ['DARK FLOW', r.s_dark, r.dark_pct != null
-        ? `${Number(r.dark_pct).toFixed(0)}% dark · ${r.dark_pct_vs_5d_norm > 0 ? '+' : ''}${Number(r.dark_pct_vs_5d_norm || 0).toFixed(1)}pp vs norm · ${r.dark_side_bias && r.dark_side_bias !== 'NEUTRAL' ? (r.dark_side_bias === 'BUY' ? 'buy' : 'sell') + ' lean' + (r.bias_confirmed ? ' ✓' : '') : 'at mid'}`
-        : '—'],
-    ['SIGNALS', r.s_signal, r.sig_count_14d
-        ? `${r.sig_count_14d} fired 14d · ${(r.sig_types || []).slice(0,2).join(', ')}${r.sig_hit_rate_t5 ? ` · ${Number(r.sig_hit_rate_t5).toFixed(0)}% hit` : ''}`
-        : 'none 14d'],
-    ['WHALES', r.s_whale, r.whale_14d
-        ? `${r.whale_14d} prints · ${fmtM(r.whale_notional_14d)} NOK${r.whale_dark_14d ? ` · ${r.whale_dark_14d} dark` : ''}`
-        : 'none 14d'],
-    ['VOLUME', r.s_volume, r.adv_zscore != null
-        ? `ADV z ${Number(r.adv_zscore).toFixed(1)}σ` : '—'],
-    ['TREND', r.s_trend, r.excess_ret_10s_pct != null
-        ? `${r.excess_ret_10s_pct > 0 ? '+' : ''}${Number(r.excess_ret_10s_pct).toFixed(1)}% vs market 10s` : '—'],
-    ['SHORT', r.s_short, r.short_pct != null
-        ? `${Number(r.short_pct).toFixed(1)}% short${r.short_pct_chg ? ` · ${r.short_pct_chg > 0 ? '+' : ''}${Number(r.short_pct_chg).toFixed(2)}pp` : ''}`
-        : 'not on list'],
-  ];
-
-  const compRows = comps.map(([label, s, detail]) => {
-    const w   = Math.round(Math.min(1, Math.max(0, s || 0)) * 100);
-    const hot = w >= 50;
-    return `<div class="cat-sig-row" style="${w === 0 ? 'opacity:.45' : ''}">
-      <span style="min-width:74px">${label}</span>
-      <span class="cat-score-bar" style="flex:0 0 64px">
-        <span class="cat-score-fill" style="display:block;height:100%;width:${w}%;background:${hot ? scoreColor : 'var(--ice)'}"></span>
-      </span>
-      <span class="cat-date" style="flex:1;text-align:right">${detail}</span>
-    </div>`;
-  }).join('');
-
-  return `
-  <div class="cat-card ${dir}" onclick="${isin ? `drillIntoISIN('${isin}','XOSL')` : ''}">
-    <div class="cat-header">
-      <div>
-        <span class="cat-ticker">${INTEL.tkLink(isin, ticker)}</span>
-        <span class="cat-company">${company}</span>
-      </div>
-      <span class="cat-dir ${dir}">${dirLabel}</span>
-    </div>
-
-    <div class="cat-panels">
-      <div class="cat-panel" style="flex:1">
-        <div class="cat-panel-label">Precursor Evidence · 14d window</div>
-        ${compRows}
-      </div>
-      <div class="cat-panel">
-        <div class="cat-panel-label">Upcoming Event</div>
-        <div class="cat-type">${EVT_ICON[r.event_type] || '▣'} ${r.event_type}</div>
-        <div class="cat-date">${fmtDate(r.event_date)}</div>
-        <div class="cat-countdown ${urgency}">${urgLabel}</div>
-      </div>
-    </div>
-
-    <div class="cat-score">
-      <span>CATALYST</span>
-      <div class="cat-score-bar">
-        <div class="cat-score-fill" style="width:${score}%;background:${scoreColor}"></div>
-      </div>
-      <span style="color:${scoreColor};min-width:28px;text-align:right">${score}</span>
-    </div>
-  </div>`;
-}
-
-/* ─── Trend Monitoring ──────────────────────────────────────────────────── */
-let _trendData = [], _sparkMap = {};
-
-function sparkSVG(values, { w=80, h=30, color='#4fc3f7' } = {}) {
-  const v = (values || []).filter(x => x != null && isFinite(x) && x >= 0);
-  if (v.length < 2) return `<svg width="${w}" height="${h}" style="display:inline-block;vertical-align:middle"><line x1="2" y1="${h/2}" x2="${w-2}" y2="${h/2}" stroke="rgba(255,255,255,0.10)" stroke-width="1"/></svg>`;
-  const mn = Math.min(...v), mx = Math.max(...v), rng = mx - mn || 1;
-  const pts = v.map((val, i) => {
-    const x = 2 + (i / (v.length - 1)) * (w - 4);
-    const y = (h - 3) - ((val - mn) / rng) * (h - 6) + 1;
-    return `${x.toFixed(1)},${y.toFixed(1)}`;
-  }).join(' ');
-  // Dot on last value
-  const lx = (w - 2).toFixed(1);
-  const ly = ((h - 3) - ((v[v.length-1] - mn) / rng) * (h - 6) + 1).toFixed(1);
-  return `<svg width="${w}" height="${h}" style="display:inline-block;vertical-align:middle">
-    <polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" opacity="0.8"/>
-    <circle cx="${lx}" cy="${ly}" r="2" fill="${color}"/>
-  </svg>`;
-}
-
-function renderTrendBody() {
-  const DC = v => v == null ? '' : v > 5 ? 'color:var(--red)' : v > 2 ? 'color:var(--amber)' : v < -2 ? 'color:var(--green)' : '';
-  if (!_trendData.length) {
-    document.getElementById('trendBody').innerHTML =
-      `<tr><td colspan="8" style="color:var(--text-dim);font-family:var(--mono);font-size:12px;padding:16px">
-         Accumulating data — trend analysis improves with each trading day.
-       </td></tr>`;
-    return;
-  }
-  document.getElementById('trendBody').innerHTML = _trendData.slice(0, 100).map(r => {
-    const sp       = _sparkMap[r.isin] || [];
-    const darkVals = sp.map(d => d.dark_pct).filter(x => x != null);
-    const advVals  = sp.map(d => (d.dark_volume||0) + (d.lit_volume||0)).filter(x => x > 0);
-    const dColor   = r.dark_pct_delta > 2 ? '#f5a623' : r.dark_pct_delta < -2 ? '#43e097' : '#4fc3f7';
-    const vColor   = r.adv_zscore > 2 ? '#f06060' : r.adv_zscore < -2 ? '#43e097' : '#4fc3f7';
-    const giniD    = r.latest_gini != null && r.avg_gini != null ? ((r.latest_gini - r.avg_gini) * 100) : null;
-    const algoD    = r.latest_algo_pct != null && r.avg_algo_pct != null ? (r.latest_algo_pct - r.avg_algo_pct) : null;
-    const latDark  = r.latest_dark_pct != null ? `<span style="font-family:var(--mono);font-size:10px;color:var(--text-dim)">${r.latest_dark_pct}%</span>` : '';
-    return `<tr onclick="drillIntoISIN('${r.isin}','${r.venue||'XOSL'}')" style="cursor:pointer">
-      <td>${isinCell(r.isin)}</td>
-      <td><span class="badge ${r.venue==='XOSL'?'badge-ice':'badge-amber'}">${r.venue||'—'}</span></td>
-      <td style="padding:3px 8px;white-space:nowrap">${sparkSVG(darkVals,{color:dColor})} ${latDark}</td>
-      <td class="r" style="${DC(r.dark_pct_delta)}">${r.dark_pct_delta != null ? (r.dark_pct_delta>0?'+':'')+r.dark_pct_delta+'pp' : '—'}</td>
-      <td class="r" style="${DC(r.adv_zscore)}">${r.adv_zscore != null ? (r.adv_zscore>0?'+':'')+r.adv_zscore+'σ' : '—'}</td>
-      <td style="padding:3px 8px">${sparkSVG(advVals,{color:vColor})}</td>
-      <td class="r" style="${DC(giniD)}">${r.latest_gini != null ? r.latest_gini.toFixed(3) : '—'}</td>
-      <td class="r" style="${DC(algoD)}">${r.latest_algo_pct != null ? r.latest_algo_pct+'%' : '—'}</td>
+function renderWatchtower() {
+  const rows = wtRows.filter(wtMatch).sort(wtSort);
+  const shown = wtShowAll ? rows : rows.slice(0, WT_VISIBLE);
+  document.getElementById('wtCount').textContent = `${rows.length} NAMES` + (wtShowAll || rows.length <= WT_VISIBLE ? '' : ` · SHOWING ${WT_VISIBLE}`);
+  document.getElementById('wtMore').style.display = rows.length > WT_VISIBLE && !wtShowAll ? '' : 'none';
+  const gl = types => (types || []).map(t => CONV_GLYPH[t] || '▢').join('');
+  document.getElementById('wtBody').innerHTML = shown.map(r => {
+    const chg = +r.change_pct || 0;
+    const v = r.conviction_side === 'LONG' ? `<span class="wt-verdict L">▲ ${r.conviction}</span>`
+      : r.conviction_side === 'SHORT' ? `<span class="wt-verdict S">▼ ${r.conviction}</span>`
+      : `<span class="wt-verdict N">—</span>`;
+    const darkD = r.dark_pct_delta != null && Math.abs(+r.dark_pct_delta) >= 1
+      ? ` <span class="${+r.dark_pct_delta > 0 ? 'up' : 'dim'}">${+r.dark_pct_delta > 0 ? '▲' : '▼'}</span>` : '';
+    const evt = r.days_to_event != null
+      ? `<span class="evt">${EVT_GLYPH[r.next_event_type] || '▌'} T−${r.days_to_event}</span>` : '<span class="dim">—</span>';
+    const z = r.adv_zscore != null ? (+r.adv_zscore).toFixed(1) : '—';
+    return `<tr onclick="drillIntoISIN('${r.isin}')">
+      <td><span class="tkr">${r.ticker || isinTicker(r.isin)}</span><span class="nm">${r.name || isinName(r.isin)}</span></td>
+      <td class="num">${r.close != null ? (+r.close).toFixed(2) : '—'}</td>
+      <td class="num ${chg > 0 ? 'up' : chg < 0 ? 'dn' : 'dim'}">${fmtPct(chg)}</td>
+      <td><canvas class="wt-spark" data-isin="${r.isin}"></canvas></td>
+      <td>${v}</td>
+      <td class="glyphs" title="${(r.signal_types || []).join(', ')}">${gl(r.signal_types) || '<span class="dim">—</span>'}</td>
+      <td class="num">${r.dark_pct != null ? (+r.dark_pct).toFixed(0) + '%' : '—'}${darkD}</td>
+      <td class="num ${(+r.insider_7d || 0) > 0 ? 'up' : 'dim'}">${r.insider_7d || '—'}</td>
+      <td class="num dim">${z}</td>
+      <td>${evt}</td>
     </tr>`;
-  }).join('');
+  }).join('') || '<tr><td colspan="10" class="dim" style="padding:20px">NOTHING MATCHES THIS FILTER</td></tr>';
+  drawSparks(shown.map(r => r.isin));
 }
-
-function sortTrends(key, btn) {
-  document.querySelectorAll('#trendSortBar .evt-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  const n = v => v ?? -Infinity;
-  const sorters = {
-    adv:        (a,b) => n(b.adv_zscore)    - n(a.adv_zscore),
-    darkdelta:  (a,b) => n(b.dark_pct_delta) - n(a.dark_pct_delta),
-    darklatest: (a,b) => n(b.latest_dark_pct)- n(a.latest_dark_pct),
-    gini:       (a,b) => n(b.latest_gini)   - n(a.latest_gini),
-  };
-  _trendData.sort(sorters[key] || sorters.adv);
-  renderTrendBody();
+function drawSparks(isins) {
+  requestAnimationFrame(() => {
+    document.querySelectorAll('.wt-spark').forEach(cv => {
+      const pts = wtSparks[cv.dataset.isin];
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      cv.width = 92 * dpr; cv.height = 26 * dpr;
+      const ctx = cv.getContext('2d');
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      if (!pts || pts.length < 2) {
+        ctx.strokeStyle = 'rgba(90,99,119,0.4)'; ctx.setLineDash([2, 3]);
+        ctx.beginPath(); ctx.moveTo(2, 13); ctx.lineTo(90, 13); ctx.stroke();
+        return;
+      }
+      const lo = Math.min(...pts), hi = Math.max(...pts), span = hi - lo || 1;
+      const up = pts[pts.length - 1] >= pts[0];
+      ctx.strokeStyle = up ? 'rgba(67,224,151,0.85)' : 'rgba(240,96,96,0.85)';
+      ctx.lineWidth = 1.1; ctx.beginPath();
+      pts.forEach((v, i) => {
+        const x = 2 + i * 88 / (pts.length - 1), y = 23 - (v - lo) / span * 20;
+        i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+      });
+      ctx.stroke();
+    });
+  });
 }
-
-async function loadTrends() {
+async function loadWatchtower() {
   try {
-    const since30 = new Date(Date.now() - 30 * 864e5).toISOString().slice(0,10);
-    const [trends, sparkRaw] = await Promise.all([
-      APIall('isin_trends', 'order=adv_zscore.desc.nullslast'),
-      APIall('dark_flow_summary',
-        `trade_date=gte.${since30}&select=isin,trade_date,dark_pct,dark_volume,lit_volume&order=isin.asc,trade_date.asc`),
-    ]);
-
-    document.getElementById('trendCount').textContent =
-      `${trends.length} ISINs · 30d sparklines`;
-
-    // Build sparkline map
-    _sparkMap = {};
-    for (const r of sparkRaw) {
-      (_sparkMap[r.isin] = _sparkMap[r.isin] || []).push(r);
+    wtRows = await API('movers', 'order=turnover.desc.nullslast&limit=300');
+    renderWatchtower();
+    // one fetch of today's ticks for the visible names → sparklines
+    const isins = wtRows.filter(wtMatch).sort(wtSort).slice(0, WT_VISIBLE).map(r => r.isin);
+    if (isins.length) {
+      const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Oslo' }).format(new Date());
+      const ticks = await API('intraday_live',
+        `isin=in.(${isins.join(',')})&ts=gte.${today}T00:00:00&select=isin,ts,price&order=ts.asc&limit=6000`).catch(() => []);
+      for (const t of ticks) (wtSparks[t.isin] = wtSparks[t.isin] || []).push(+t.price);
+      drawSparks(isins);
     }
-
-    _trendData = trends;
-    renderTrendBody();
-  } catch(e) {
-    document.getElementById('trendCount').textContent = 'not ready';
-    document.getElementById('trendBody').innerHTML =
-      `<tr><td colspan="8" style="color:var(--text-dim);font-size:12px;padding:16px;font-family:var(--mono)">
-        Trend view not initialised. Run <strong>create_trend_view</strong> in the Database Maintenance workflow, then reload.
-      </td></tr>`;
+  } catch (e) {
+    console.error('watchtower failed', e);
+    document.getElementById('wtBody').innerHTML = '<tr><td colspan="10" class="dim" style="padding:20px">DATA UNAVAILABLE</td></tr>';
   }
 }
+document.getElementById('wtFilters').addEventListener('click', e => {
+  const b = e.target.closest('.wt-filter'); if (!b || !b.dataset.f) return;
+  wtFilter = b.dataset.f;
+  document.querySelectorAll('#wtFilters .wt-filter').forEach(x => x.classList.toggle('on', x === b));
+  renderWatchtower();
+});
+document.getElementById('wtMore').addEventListener('click', () => { wtShowAll = true; renderWatchtower(); });
 
-
-function closeDrill() {
-  document.getElementById('companyDeepDive').style.display = 'none';
-  document.querySelectorAll('#summaryBody tr').forEach(tr => tr.classList.remove('selected'));
-  document.getElementById('intradayLabel').textContent = 'Market Aggregate';
-  renderIntradayAggregate();
-}
-
-function searchISIN() {
-  const q = document.getElementById('isinSearch').value.trim().toUpperCase();
-  if (!q) return;
-  // Accept both ISIN and ticker
-  const match = allSummary.find(r =>
-    r.isin === q ||
-    (ISIN_MAP[r.isin] && ISIN_MAP[r.isin].t.toUpperCase() === q)
-  );
-  if (match) drillIntoISIN(match.isin, match.venue);
-  else alert(`"${q}" not found in ${currentDate} data.`);
-}
-
-function showError(msg) {
-  document.getElementById('kpiGrid').innerHTML = `<div class="error-msg">${msg}</div>`;
-}
-
-/* ─── Boot ──────────────────────────────────────────────────────────────── */
-init();
+/* ═══ INIT ═════════════════════════════════════════════════════════════════ */
+(async function init() {
+  initOrbital();
+  loadInstruments();
+  await Promise.allSettled([loadMarket(), loadOrbital(), loadConviction(), loadIntelReport(), loadWatchtower()]);
+})();
 </script>
 </body>
 </html>
