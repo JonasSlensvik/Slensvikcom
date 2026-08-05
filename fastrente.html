@@ -139,6 +139,7 @@
   .open-badge { display: inline-block; padding: 2px 7px; border-radius: 3px; font-size: 8px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
   .open-badge.yes { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
   .open-badge.no { background: var(--bg3); color: var(--text3); border: 1px solid var(--border); }
+  .open-badge.miss { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-border); }
 
   /* ── MISC ── */
   .loading { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 60vh; gap: 16px; }
@@ -160,6 +161,9 @@
     .hero { padding: 36px 16px 28px; }
     .topbar { padding: 0 16px; }
     .forecast-grid, .benefit-row, .two-col { grid-template-columns: 1fr; }
+    .timeline { flex-wrap: wrap; gap: 16px 0; }
+    .tl-step { flex: 0 0 50%; }
+    .tl-step:nth-child(2)::after, .tl-step:last-child::after { display: none; }
   }
 </style>
 </head>
@@ -179,6 +183,31 @@ const GIDS = {
   renter: '70515895',
   swaps:  '678947345'
 };
+
+// ── NORGES BANK ──
+// Manually maintained — Norges Bank doesn't publish a machine-readable feed for
+// this. Source: norges-bank.no calendar + monetary policy meeting pages, and
+// bank research notes as individually cited below. Refresh after each meeting.
+const NB_CURRENT_RATE = 4.25; // set 18. juni 2026
+const NB_MEETINGS = [
+  { date: '2026-01-22', rate: 4.00, note: 'uendret' },
+  { date: '2026-03-26', rate: 4.00, note: 'uendret' },
+  { date: '2026-05-07', rate: 4.25, note: 'hevet +0,25 pp' },
+  { date: '2026-06-18', rate: 4.25, note: 'uendret' },
+  { date: '2026-08-13', rate: null, note: 'pressekonferanse', source: 'https://www.norges-bank.no/en/news-events/calendar/policy-rate-decisions/26-08-13/' },
+  { date: '2026-09-24', rate: null, note: null, source: 'https://www.norges-bank.no/en/news-events/calendar/' },
+];
+// Forecasters flagging August as the likely next hike, as of the dates shown.
+// Estimates of the *probability* vary noticeably by source and by when they were
+// taken (seen quoted anywhere from ~40% to ~60%), so we name the callers and
+// dates rather than present a single blended number as if it were precise.
+const NB_FORECASTS = [
+  { bank: 'Nordea Markets', analyst: 'Kjetil Olsen / Sara Midtgaard', view: 'Venter renteheving i august', asOf: '2026-07' },
+  { bank: 'Handelsbanken',  analyst: 'Marius Gonsholt Hov',           view: 'August mest sannsynlig hvis sommerens inflasjonstall holder seg høye', asOf: '2026-07' },
+  { bank: 'SB1 Markets',    analyst: 'Dane Cekov / Harald Magnus Andreassen', view: 'Venter ny renteheving i august', asOf: '2026-07' },
+];
+const NB_RATE_PATH_NOTE = 'Norges Banks egen rentebane peker mot 4,25–4,35 % ved årsslutt, med rundt 20 % sannsynlighet for to hevinger til i 2026 (tre totalt).';
+const NB_SOURCE_URL = 'https://www.norges-bank.no/en/news-events/calendar/';
 
 // ── DATA FETCHING ──
 async function fetchSheet(gid) {
@@ -236,45 +265,6 @@ function parseDate(s) {
 // ── DATE HELPERS ──
 const TODAY = new Date();
 
-function isFixingWindow(date) {
-  // Open: 10th–17th of Feb, Apr, Jun, Aug, Oct, Dec
-  const d = new Date(date);
-  const month = d.getMonth() + 1; // 1-12
-  const day = d.getDate();
-  const evenMonth = month % 2 === 0;
-  return evenMonth && day >= 10 && day <= 17;
-}
-
-function nextWindowInfo() {
-  // Find next opening date after today
-  const even = [2, 4, 6, 8, 10, 12];
-  const now = new Date(TODAY);
-  for (let i = 0; i < 24; i++) {
-    const m = now.getMonth() + 1;
-    const d = now.getDate();
-    if (even.includes(m) && d < 10) {
-      // window opens this month
-      const opens = new Date(now.getFullYear(), now.getMonth(), 10);
-      const days = Math.round((opens - NOW_MS) / 86400000);
-      return { month: opens.toLocaleString('no-NO', {month:'long', year:'numeric'}), days };
-    }
-    if (even.includes(m) && d > 17) {
-      // passed this month's window, go to next even month
-    }
-    // advance month
-    now.setDate(1);
-    now.setMonth(now.getMonth() + 1);
-  }
-  return null;
-}
-
-const NOW_MS = TODAY.getTime();
-
-function daysUntil(dateStr) {
-  const d = new Date(dateStr);
-  return Math.round((d - TODAY) / 86400000);
-}
-
 function formatDate(dateStr) {
   if (!dateStr) return '';
   const d = parseDate(dateStr);
@@ -287,13 +277,25 @@ function getWindowStatus() {
   const m = TODAY.getMonth() + 1;
   const d = TODAY.getDate();
   const evenMonths = [2, 4, 6, 8, 10, 12];
-  const isEven = evenMonths.includes(m);
 
-  if (isEven && d >= 10 && d <= 17) {
-    return { state: 'open', label: 'Vindu er åpent', color: 'open' };
+  if (evenMonths.includes(m)) {
+    if (d >= 10 && d <= 17) {
+      return { state: 'open', label: 'Vindu er åpent', color: 'open' };
+    }
+    if (d < 10) {
+      // Window opens later THIS month — must be checked before the "next
+      // window" search below, which starts by advancing past the current
+      // month and would otherwise skip straight to the month after next.
+      const opens = new Date(TODAY.getFullYear(), TODAY.getMonth(), 10);
+      const daysLeft = Math.round((opens - TODAY) / 86400000);
+      const monthName = opens.toLocaleString('no-NO', {month:'long'});
+      return { state: 'soon', label: `Vindu åpner om ${daysLeft} dager`, sub: `10.–17. ${monthName} ${TODAY.getFullYear()}`, color: 'soon', daysLeft };
+    }
+    // d > 17: this month's window has closed — fall through to search
+    // the next even month below.
   }
 
-  // Find next window
+  // Find next window (current month already handled above)
   let y = TODAY.getFullYear();
   let searchM = m;
   for (let i = 0; i < 14; i++) {
@@ -310,6 +312,32 @@ function getWindowStatus() {
     }
   }
   return { state: 'closed', label: 'Ingen aktiv periode', color: 'closed' };
+}
+
+// ── LIVE MARKET PULSE ──
+// The most recent single Finansportalen reading available, independent of
+// which month it happens to be filed under. The *official* observation
+// average only exists once the observation month's own Wednesdays start
+// landing (see getCurrentObsPeriod) — until then this is the only fresh
+// signal there is, and it's exactly the number a successfully-completed
+// scrape run has already written to the sheet.
+function getLivePulse(renterData) {
+  const withData = renterData.wednesdays
+    .filter(w => {
+      const d = parseDate(w.wedDate);
+      return d && d <= TODAY && (w.fp_obs_3yr != null || w.fp_obs_5yr != null || w.fp_obs_10yr != null);
+    })
+    .sort((a, b) => parseDate(a.wedDate) - parseDate(b.wedDate));
+  if (!withData.length) return null;
+  const latest = withData[withData.length - 1];
+  return {
+    date: latest.wedDate,
+    fp_obs_3yr: latest.fp_obs_3yr,
+    fp_obs_5yr: latest.fp_obs_5yr,
+    fp_obs_10yr: latest.fp_obs_10yr,
+    // last ~16 readings for the trend sparkline, oldest first
+    trend: withData.slice(-16),
+  };
 }
 
 // ── PARSE RENTER DATA ──
@@ -390,17 +418,24 @@ function parseSwapData(rows) {
 }
 
 // ── CURRENT OBSERVATION PERIOD ──
-function getCurrentObsPeriod(renterData) {
-  // Correct timeline:
-  //   Even month T   (e.g. Apr): fixing window open 10–17th — lock in cur* rate
-  //   Odd month T+1  (e.g. May): Lånekassen observes Finansportalen every Wednesday → determines T+2 rate
-  //   Even month T+2 (e.g. Jun): new Lånekassen rate activates → break agreement → receive gain
-  //
-  // So:
-  //   cur*  = rate_3yr/5yr/10yr from the CURRENT even month (what you lock in today)
-  //   est*  = fp_obs_* averaged from the NEXT odd month (what Lånekassen will observe in May)
-  //   fwd*  = the June rate — unknown until May ends, estimated from May fp_obs_* as they arrive
-
+// The full chain, verified against api-equivalent sheet history (May's Wednesday
+// average landed at the exact rate_3yr Lånekassen published for Jun/Jul; July's
+// average landed at the exact rate_3yr published for Aug/Sep):
+//
+//   Odd month  M-1 (e.g. Jul): Lånekassen samples Finansportalen's top-5 every
+//                              Wednesday of the month → the average becomes...
+//   Even month M   (e.g. Aug): ...the rate published for THIS window (10.–17.),
+//                              which is what "lock now" actually means. It is
+//                              already fixed by the time the window opens.
+//   Odd month  M+1 (e.g. Sep): Lånekassen samples again, this round determining
+//                              the rate for the NEXT window, two months out.
+//   Even month M+2 (e.g. Oct): New rate activates — exit here if it's higher
+//                              than what you locked at in M.
+//
+// So there are really FOUR months in view at once, not three: where this
+// month's rate came from (source), what you can do right now (lock), what's
+// being tracked for next time (observe), and when you can act on it (activate).
+function getCurrentObsPeriod(renterData, livePulse) {
   function r4(v) { return v != null ? Math.round(v * 10000) / 10000 : null; }
 
   const periodKeys = Object.keys(renterData.periods).sort();
@@ -409,10 +444,8 @@ function getCurrentObsPeriod(renterData) {
   const m = TODAY.getMonth() + 1; // 1-12
   const y = TODAY.getFullYear();
   const evenMonths = [2,4,6,8,10,12];
-  const oddMonths  = [1,3,5,7,9,11];
 
-  // ── Find the LOCK period (current or most recent even month) ──
-  // This is where cur* rates come from
+  // ── LOCK period: current or most recently-opened even month ──
   let lockPeriodKey = periodKeys.slice().reverse().find(p => {
     const d = parseDate(p);
     return d && evenMonths.includes(d.getMonth() + 1) && (d.getFullYear() < y || (d.getFullYear() === y && d.getMonth() + 1 <= m));
@@ -421,13 +454,17 @@ function getCurrentObsPeriod(renterData) {
   const lockPeriod = renterData.periods[lockPeriodKey];
   const lockDate   = parseDate(lockPeriodKey);
 
-  // ── Find the OBSERVATION period (odd month after lock month) ──
-  // This is where est* rates come from — May observes for June's rate
-  const obsMonthNum = lockDate ? (lockDate.getMonth() + 2) % 12 + 1 : null; // e.g. Apr(4) → May(5)
-  const obsYear     = lockDate && lockDate.getMonth() >= 11 ? lockDate.getFullYear() + 1 : lockDate?.getFullYear();
-  // Actually: month after lockDate
-  const obsDate = lockDate ? new Date(lockDate.getFullYear(), lockDate.getMonth() + 1, 15) : null;
+  // ── SOURCE period: the odd month immediately before lock month — this is
+  // where the rate you can lock in *right now* actually came from ──
+  const sourceDate = lockDate ? new Date(lockDate.getFullYear(), lockDate.getMonth() - 1, 15) : null;
+  const sourcePeriodKey = sourceDate ? periodKeys.find(p => {
+    const d = parseDate(p);
+    return d && d.getMonth() === sourceDate.getMonth() && d.getFullYear() === sourceDate.getFullYear();
+  }) : null;
+  const sourcePeriod = sourcePeriodKey ? renterData.periods[sourcePeriodKey] : null;
 
+  // ── OBSERVATION period: odd month after lock month — determines M+2's rate ──
+  const obsDate = lockDate ? new Date(lockDate.getFullYear(), lockDate.getMonth() + 1, 15) : null;
   const obsPeriodKey = obsDate ? periodKeys.find(p => {
     const d = parseDate(p);
     return d && d.getMonth() === obsDate.getMonth() && d.getFullYear() === obsDate.getFullYear();
@@ -439,41 +476,54 @@ function getCurrentObsPeriod(renterData) {
   const cur5  = lockPeriod?.cur5yr  || null;
   const cur10 = lockPeriod?.cur10yr || null;
 
-  // ── Wednesday observations from the observation period (May) ──
-  const weds = obsPeriod ? obsPeriod.wednesdays : (lockPeriod ? lockPeriod.wednesdays : []);
+  // ── Wednesday observations from the observation period ──
+  const weds = obsPeriod ? obsPeriod.wednesdays : [];
   const observed = weds.filter(w => {
     const wd = parseDate(w.wedDate);
     return wd && wd <= TODAY && (w.fp_obs_3yr || w.fp_obs_5yr || w.fp_obs_10yr);
   });
   const pending = weds.filter(w => { const d = parseDate(w.wedDate); return d && d > TODAY; });
 
-  // ── Estimated future rate from observation period Wednesdays seen so far ──
-  const est3  = observed.length ? r4(observed.reduce((s,w) => s + (w.fp_obs_3yr  || 0), 0) / observed.length) : null;
-  const est5  = observed.length ? r4(observed.reduce((s,w) => s + (w.fp_obs_5yr  || 0), 0) / observed.length) : null;
-  const est10 = observed.length ? r4(observed.reduce((s,w) => s + (w.fp_obs_10yr || 0), 0) / observed.length) : null;
+  // ── Estimated future rate ──
+  // Once the observation month's own Wednesdays start landing, use their
+  // average — that's the real, increasingly-confident number. Until then,
+  // fall back to the live market pulse (the freshest Finansportalen reading
+  // available, whichever month it's filed under) so the page shows *something*
+  // current instead of a blank dash for the first few weeks of every cycle.
+  const officialAvg = observed.length > 0;
+  const est3  = officialAvg ? r4(observed.reduce((s,w) => s + (w.fp_obs_3yr  || 0), 0) / observed.length)
+              : (livePulse ? livePulse.fp_obs_3yr  : null);
+  const est5  = officialAvg ? r4(observed.reduce((s,w) => s + (w.fp_obs_5yr  || 0), 0) / observed.length)
+              : (livePulse ? livePulse.fp_obs_5yr  : null);
+  const est10 = officialAvg ? r4(observed.reduce((s,w) => s + (w.fp_obs_10yr || 0), 0) / observed.length)
+              : (livePulse ? livePulse.fp_obs_10yr : null);
+  const preliminary = !officialAvg && !!livePulse;
 
   const total      = weds.length || 5;
-  const confidence = observed.length / total;
+  const confidence = officialAvg ? observed.length / total : (livePulse ? 1 / total : 0);
 
   // Month names for display
   const monthNames = ['jan','feb','mar','apr','mai','jun','jul','aug','sep','okt','nov','des'];
-  const lockMonthName = lockDate ? monthNames[lockDate.getMonth()] : '?';
-  const obsMonthName2 = obsDate  ? monthNames[obsDate.getMonth()]  : '?';
-  const actMonthName2 = lockDate ? monthNames[(lockDate.getMonth() + 2) % 12] : '?';
+  const sourceMonthName = sourceDate ? monthNames[sourceDate.getMonth()] : '?';
+  const lockMonthName   = lockDate   ? monthNames[lockDate.getMonth()]   : '?';
+  const obsMonthName2   = obsDate    ? monthNames[obsDate.getMonth()]    : '?';
+  const actMonthName2   = lockDate   ? monthNames[(lockDate.getMonth() + 2) % 12] : '?';
 
   return {
     // Period keys and raw objects
-    lockPeriodKey, lockPeriod, lockDate,
-    obsPeriodKey,  obsPeriod,  obsDate,
+    sourcePeriodKey, sourcePeriod, sourceDate,
+    lockPeriodKey,   lockPeriod,   lockDate,
+    obsPeriodKey,    obsPeriod,    obsDate,
     // Wednesday tracking (from observation period)
     weds, observed, pending,
     // Rates
-    cur3, cur5, cur10,       // lock-in rates (April)
-    est3, est5, est10,       // estimated future rates (from May observations)
+    cur3, cur5, cur10,       // lock-in rates, already set from the source month
+    est3, est5, est10,       // forecast for the NEXT regime (official avg, or pulse fallback)
+    preliminary,             // true when est* comes from the live pulse, not an official average
     // Metadata
     confidence, total, observedCount: observed.length,
     // Derived month names
-    lockMonthName, obsMonthName: obsMonthName2, actMonthName: actMonthName2,
+    sourceMonthName, lockMonthName, obsMonthName: obsMonthName2, actMonthName: actMonthName2,
     // For compatibility with periodKey usage in render()
     periodKey: lockPeriodKey,
   };
@@ -564,10 +614,57 @@ function renderBenefitCards(b3, b5, b10, balance, actMonthName) {
   }).join('');
 }
 
+// ── TRACK RECORD ──
+// For every past even-month regime we have both sides of, replay the same
+// lock→observe→activate chain and check whether "lock now, exit once the new
+// rate beats it" would actually have paid off — the only real test of the
+// strategy. Purely derived from sheet history already in renterData; needs no
+// extra data source, though real credited amounts (once you have them) are a
+// sharper check than this reconstructed one.
+function buildTrackRecord(renterData) {
+  const periodKeys = Object.keys(renterData.periods).sort();
+  const evenMonths = [2,4,6,8,10,12];
+  const monthNames = ['jan','feb','mar','apr','mai','jun','jul','aug','sep','okt','nov','des'];
+
+  const evenPeriods = periodKeys
+    .map(k => ({ key: k, date: parseDate(k), period: renterData.periods[k] }))
+    .filter(p => p.date && evenMonths.includes(p.date.getMonth() + 1))
+    .filter(p => p.period.cur3yr != null); // only regimes we actually have a published rate for
+
+  const rows = [];
+  for (let i = 0; i < evenPeriods.length - 1; i++) {
+    const lock = evenPeriods[i];
+    const next = evenPeriods.find(p =>
+      p.date.getFullYear() === lock.date.getFullYear() + (lock.date.getMonth() + 2 >= 12 ? 1 : 0) &&
+      p.date.getMonth() === (lock.date.getMonth() + 2) % 12
+    );
+    if (!next) continue;
+    // next.date is the period's date_eom (end of month) — the activation rate
+    // is actually known from day 1 of that month, not its last day, so compare
+    // against the month's start or every current-month cycle looks "incomplete".
+    const nextStarts = new Date(next.date.getFullYear(), next.date.getMonth(), 1);
+    if (nextStarts > TODAY) continue; // rate genuinely not published yet
+
+    const lockRate = lock.period.cur3yr;
+    const actRate  = next.period.cur3yr;
+    if (lockRate == null || actRate == null) continue;
+    const spreadBps = Math.round((actRate - lockRate) * 100 * 100) / 100; // pp -> bps
+    rows.push({
+      lockMonth: monthNames[lock.date.getMonth()], lockYear: lock.date.getFullYear(),
+      actMonth:  monthNames[next.date.getMonth()], actYear:  next.date.getFullYear(),
+      lockRate, actRate, spreadBps,
+      hit: spreadBps > 0,
+    });
+  }
+  return rows.slice(-6); // most recent 6 completed cycles
+}
+
 // ── RENDER ──
 function render(renterData, swapData) {
-  const winStatus = getWindowStatus();
-  const obs = getCurrentObsPeriod(renterData);
+  const winStatus  = getWindowStatus();
+  const livePulse  = getLivePulse(renterData);
+  const obs        = getCurrentObsPeriod(renterData, livePulse);
+  const trackRecord = buildTrackRecord(renterData);
 
   // Rates and month names come directly from obs
   const obsMon    = obs?.lockDate || new Date();
@@ -619,9 +716,22 @@ function render(renterData, swapData) {
 
   // Month name helpers — use names computed in getCurrentObsPeriod
   const monthNames    = ['jan','feb','mar','apr','mai','jun','jul','aug','sep','okt','nov','des'];
+  const sourceMonthName = obs?.sourceMonthName || monthNames[(obsMon.getMonth()+11)%12]; // where cur* came from
   const obsMonthName  = obs?.lockMonthName  || monthNames[obsMon.getMonth()];        // April — lock month
   const waitMonthName = obs?.obsMonthName   || monthNames[(obsMon.getMonth()+1)%12]; // May   — observation month
   const actMonthName = obs?.actMonthName || monthNames[(obsMon.getMonth() + 2) % 12];
+
+  // ── Norges Bank meetings relevant to this cycle ──
+  const nbMeetingsInLockWindow = NB_MEETINGS.filter(mtg => {
+    const d = parseDate(mtg.date);
+    return d && obs?.lockDate && d.getFullYear() === obs.lockDate.getFullYear() &&
+      d.getMonth() === obs.lockDate.getMonth() && d.getDate() >= 10 && d.getDate() <= 17;
+  });
+  const nbMeetingsInObsMonth = NB_MEETINGS.filter(mtg => {
+    const d = parseDate(mtg.date);
+    return d && obs?.obsDate && d.getFullYear() === obs.obsDate.getFullYear() &&
+      d.getMonth() === obs.obsDate.getMonth();
+  });
 
   // Wednesday dots for forecast cards
   function wedDots(totalW, observedN) {
@@ -647,7 +757,7 @@ function render(renterData, swapData) {
     <div class="hero fade-in">
       <div class="hero-eyebrow">Lånekassen · Rentesstrategi</div>
       <h1 class="hero-title">Fastrente<br><span>Strategi</span></h1>
-      <p class="hero-desc">Du kan binde fastrenten din i Lånekassen i et kort vindu (10.–17.) i partallsmåneder. Lånekassen bestemmer den neste fastrenten ved å observere de 5 beste markedsrentene hver onsdag i måneden <em>etter</em> bindingsvinduet. Vi følger disse observasjonene løpende — jo lenger inn i observasjonsmåneden vi er, desto sikrere vet vi hva gevinsten blir.</p>
+      <p class="hero-desc">Du kan binde fastrenten din i Lånekassen i et kort vindu (10.–17.) i partallsmåneder. Renten du binder <em>nå</em> i ${obsMonthName} ble allerede satt av Finansportalen-observasjoner i ${sourceMonthName}. Lånekassen observerer på nytt hver onsdag i ${waitMonthName} for å sette renten som gjelder fra ${actMonthName} — vi følger disse observasjonene løpende, og viser siste markedsavlesning i mellomtiden.</p>
     </div>
 
     <div class="main fade-in">
@@ -668,29 +778,48 @@ function render(renterData, swapData) {
         </div>
       </div>
 
+      ${nbMeetingsInLockWindow.length ? `
+      <div class="window-banner soon" style="background:var(--blue-bg);border-color:var(--blue-border)">
+        <div class="banner-left">
+          <div class="banner-icon soon" style="background:rgba(77,143,255,0.12)">🏛</div>
+          <div>
+            <div class="banner-title soon" style="color:var(--blue)">Norges Bank-møte inni bindingsvinduet</div>
+            <div class="banner-sub">${nbMeetingsInLockWindow.map(m => formatDate(m.date) + (m.note ? ' · ' + m.note : '')).join(' · ')}</div>
+          </div>
+        </div>
+        <div class="banner-right" style="max-width:340px">
+          Rentebeslutningen kan flytte markedsrentene <em>i løpet av</em> det åpne vinduet. Binder du før møtet, sikrer du dagens rente uansett utfall.
+        </div>
+      </div>
+      ` : ''}
+
       <!-- ── TIMELINE ── -->
       <div class="card">
         <div class="card-header">
           <span class="card-title">Hvordan fastrenten bestemmes</span>
-          <span class="card-meta">Tre-fase prosess</span>
+          <span class="card-meta">Fire-fase kjede</span>
         </div>
         <div class="timeline">
           <div class="tl-step">
-            <div class="tl-dot active">OBS</div>
-            <div class="tl-label"><strong>${obsMonthName.toUpperCase()}</strong>Observasjon<br>5 onsdager<br>Finansportalen</div>
+            <div class="tl-dot done">✓</div>
+            <div class="tl-label"><strong>${sourceMonthName.toUpperCase()}</strong>Kilde<br>5 onsdager observert<br>satte ${obsMonthName}-renten</div>
           </div>
           <div class="tl-step">
-            <div class="tl-dot ${obs && obs.observed.length > 0 ? 'active' : 'future'}">OBS</div>
-            <div class="tl-label"><strong>${waitMonthName.toUpperCase()}</strong>Observasjon<br>${obs ? obs.observedCount + '/' + obs.total + ' onsdager' : '0/5 onsdager'}<br>Bestemmer jun-rente</div>
+            <div class="tl-dot active">LÅS</div>
+            <div class="tl-label"><strong>${obsMonthName.toUpperCase()}</strong>Binding<br>Vindu 10.–17.<br>Rente allerede satt</div>
+          </div>
+          <div class="tl-step">
+            <div class="tl-dot ${obs && obs.observedCount > 0 ? 'active' : (obs && obs.preliminary ? 'active' : 'future')}">OBS</div>
+            <div class="tl-label"><strong>${waitMonthName.toUpperCase()}</strong>Observasjon<br>${obs ? obs.observedCount + '/' + obs.total + ' onsdager' : '0/5 onsdager'}<br>Setter ${actMonthName}-renten</div>
           </div>
           <div class="tl-step">
             <div class="tl-dot future">★</div>
-            <div class="tl-label"><strong>${actMonthName.toUpperCase()}</strong>Aktivering<br>Ny fastrente<br>gjelder fra</div>
+            <div class="tl-label"><strong>${actMonthName.toUpperCase()}</strong>Aktivering<br>Ny fastrente<br>— bryt om høyere</div>
           </div>
         </div>
         <div class="section-divider">Strategi</div>
-        <p style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text2);line-height:1.8;max-width:700px">
-          Bind renten i <strong style="color:var(--text1)">${obsMonthName}</strong> (nå). Lånekassen observerer markedet hver onsdag i <strong style="color:var(--text1)">${waitMonthName}</strong> for å sette renten som gjelder fra <strong style="color:var(--text1)">${actMonthName}</strong>. Dersom ${actMonthName}-renten er høyere enn det du bandt i ${obsMonthName}, avslutt bindingen i ${actMonthName} — Lånekassen krediterer differansen på lånesaldoen din. Vi oppdaterer estimatet løpende etter hvert som ${waitMonthName}-onsdagene passerer.
+        <p style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text2);line-height:1.8;max-width:760px">
+          Renten du kan binde <strong style="color:var(--text1)">nå i ${obsMonthName}</strong> (${cur3 != null ? cur3.toFixed(3) + '%' : '—'} · 3-årig) ble satt av Finansportalen-observasjoner gjennom <strong style="color:var(--text1)">${sourceMonthName}</strong> — det er allerede historie, ikke noe å vente på. Det som fortsatt er ubestemt er <strong style="color:var(--text1)">${actMonthName}</strong>-renten: den bestemmes av onsdagsobservasjoner gjennom <strong style="color:var(--text1)">${waitMonthName}</strong>${obs && obs.observedCount > 0 ? `, som er ${obs.observedCount}/${obs.total} onsdager inn i nå` : ' — ennå ikke startet, så vi viser siste markedsavlesning som en foreløpig pekepinn i mellomtiden'}. Dersom ${actMonthName}-renten ender høyere enn det du bandt i ${obsMonthName}, bryt bindingen når vinduet åpner i ${actMonthName} — Lånekassen krediterer differansen på lånesaldoen din.
         </p>
       </div>
 
@@ -698,22 +827,22 @@ function render(renterData, swapData) {
       <div class="card">
         <div class="card-header">
           <span class="card-title">Estimert Lånekassen-rente · ${actMonthName.toUpperCase()}</span>
-          <span class="card-meta">${obs ? obs.observedCount + ' av ' + obs.total + ' onsdager observert i ' + waitMonthName : 'laster...'}</span>
+          <span class="card-meta">${obs && obs.observedCount > 0 ? obs.observedCount + ' av ' + obs.total + ' onsdager observert i ' + waitMonthName : obs && obs.preliminary ? 'Foreløpig · siste markedsavlesning' : 'laster...'}</span>
         </div>
         <div class="forecast-grid">
           ${[
-            { label: '3-årig binding', key: '3y', avg: obs?.est3, fwd: fwd3, b: b3, color: '#4d8fff' },
-            { label: '5-årig binding', key: '5y', avg: obs?.est5, fwd: fwd5, b: b5, color: '#9b7fff' },
-            { label: '10-årig binding', key: '10y', avg: obs?.est10, fwd: fwd10, b: b10, color: '#00e5a0' }
+            { label: '3-årig binding', key: '3y', fwd: fwd3, b: b3, color: '#4d8fff' },
+            { label: '5-årig binding', key: '5y', fwd: fwd5, b: b5, color: '#9b7fff' },
+            { label: '10-årig binding', key: '10y', fwd: fwd10, b: b10, color: '#00e5a0' }
           ].map(fc => `
             <div class="forecast-card">
               <div class="fc-accent-top" style="background:${fc.color}; opacity:0.6"></div>
-              <div class="fc-label">${fc.label}</div>
-              <div class="fc-rate" style="color:${fc.color}">${fc.fwd != null ? fc.fwd.toFixed(2) + '%' : fc.avg != null ? fc.avg.toFixed(2) + '%*' : '—'}</div>
-              <div class="fc-sub">${fc.fwd != null ? 'Lånekassen nominell · ' + actMonthName : fc.avg != null ? 'Estimat fra ' + waitMonthName + ' (' + obs.observedCount + '/' + obs.total + ')' : 'Venter på ' + waitMonthName + '-data'}</div>
+              <div class="fc-label">${fc.label}${obs && obs.preliminary ? ' <span style="color:var(--amber);font-weight:400">· foreløpig</span>' : ''}</div>
+              <div class="fc-rate" style="color:${fc.color}">${fc.fwd != null ? fc.fwd.toFixed(2) + '%' : '—'}</div>
+              <div class="fc-sub">${obs && obs.observedCount > 0 ? 'Snitt fra ' + waitMonthName + ' (' + obs.observedCount + '/' + obs.total + ')' : obs && obs.preliminary ? 'Siste avlesning · ' + formatDate(livePulse.date) : 'Venter på ' + waitMonthName + '-data'}</div>
               <div class="fc-confidence">
                 <div class="fc-conf-label">
-                  <span>Sikkerhet</span>
+                  <span>${obs && obs.observedCount > 0 ? 'Sikkerhet' : 'Foreløpig sikkerhet'}</span>
                   <span style="color:${confColor}">${confPct}%</span>
                 </div>
                 <div class="fc-bar-bg"><div class="fc-bar" style="width:${confPct}%;background:${confColor}"></div></div>
@@ -723,8 +852,83 @@ function render(renterData, swapData) {
           `).join('')}
         </div>
         <div style="margin-top:12px;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--text3)">
-          * Estimat basert på onsdager observert hittil. Konfidensintervallet øker for hver observasjonsdag.
-          Endelig rente publiseres av Lånekassen ved månedslutt.
+          ${obs && obs.observedCount > 0
+            ? 'Snitt av onsdager observert hittil i ' + waitMonthName + '. Sikkerheten øker for hver observasjonsdag. Endelig rente publiseres av Lånekassen ved månedslutt.'
+            : 'Foreløpig tall er siste tilgjengelige Finansportalen-avlesning (' + (livePulse ? formatDate(livePulse.date) : '—') + '), ikke et offisielt ' + waitMonthName + '-snitt — den offisielle observasjonsperioden starter ' + (obs && obs.weds.length ? formatDate(obs.weds[0].wedDate) : waitMonthName) + '.'}
+        </div>
+      </div>
+
+      <!-- ── MARKET PULSE ── -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Markedspuls · Finansportalen topp-5</span>
+          <span class="card-meta">${livePulse ? 'Siste: ' + formatDate(livePulse.date) : '—'}</span>
+        </div>
+        <div class="two-col" style="align-items:start">
+          <div>
+            <div class="chart-outer" style="height:180px"><canvas id="pulseChart"></canvas></div>
+            <div class="curve-legend" style="margin-top:10px">
+              <div class="cl-item"><div class="cl-dot" style="background:#4d8fff"></div>3-årig</div>
+              <div class="cl-item"><div class="cl-dot" style="background:#9b7fff"></div>5-årig</div>
+              <div class="cl-item"><div class="cl-dot" style="background:#00e5a0"></div>10-årig</div>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            ${[
+              { l: '3-årig', v: livePulse?.fp_obs_3yr, c: '#4d8fff' },
+              { l: '5-årig', v: livePulse?.fp_obs_5yr, c: '#9b7fff' },
+              { l: '10-årig', v: livePulse?.fp_obs_10yr, c: '#00e5a0' },
+            ].map(r => `
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:5px">
+                <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text3)">${r.l}</span>
+                <span style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:500;color:${r.c}">${r.v != null ? r.v.toFixed(3) + '%' : '—'}</span>
+              </div>
+            `).join('')}
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--text3);line-height:1.7;margin-top:4px">
+              Siste ${livePulse ? livePulse.trend.length : 0} onsdagsavlesninger, uavhengig av hvilken måned de tilhører — et raskt bilde av retningen markedet beveger seg, før ${waitMonthName}s offisielle observasjon er ferdig.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── NORGES BANK ── -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Norges Bank · Renteforventninger</span>
+          <span class="card-meta">Styringsrente: ${NB_CURRENT_RATE.toFixed(2)}%</span>
+        </div>
+        <div class="two-col">
+          <div>
+            <div class="section-divider" style="margin-bottom:12px">Møter</div>
+            ${NB_MEETINGS.map(mtg => {
+              const d = parseDate(mtg.date);
+              const isPast = d && d <= TODAY;
+              const inLockWindow = nbMeetingsInLockWindow.some(m => m.date === mtg.date);
+              const inObsMonth   = nbMeetingsInObsMonth.some(m => m.date === mtg.date);
+              const flag = inLockWindow ? '<span style="color:var(--blue)">· i bindingsvinduet</span>'
+                         : inObsMonth   ? '<span style="color:var(--amber)">· i ' + waitMonthName + 's observasjon</span>' : '';
+              return `<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border);font-family:'IBM Plex Mono',monospace;font-size:11px">
+                <span style="color:${isPast ? 'var(--text2)' : 'var(--text1)'}">${formatDate(mtg.date)}</span>
+                <span style="color:var(--text3);font-size:10px;text-align:right">${mtg.rate != null ? mtg.rate.toFixed(2) + '% · ' + mtg.note : (mtg.note || 'kommende')} ${flag}</span>
+              </div>`;
+            }).join('')}
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--text3);margin-top:10px">
+              Kilde: <a href="${NB_SOURCE_URL}" target="_blank" rel="noopener" style="color:var(--text3)">norges-bank.no</a>. ${NB_RATE_PATH_NOTE}
+            </div>
+          </div>
+          <div>
+            <div class="section-divider" style="margin-bottom:12px">Meglerhus venter heving</div>
+            ${NB_FORECASTS.map(f => `
+              <div style="padding:10px 0;border-bottom:1px solid var(--border)">
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text1);font-weight:500">${f.bank}</div>
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text2);margin-top:2px">${f.view}</div>
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--text3);margin-top:2px">${f.analyst} · ${f.asOf}</div>
+              </div>
+            `).join('')}
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--text3);margin-top:10px;line-height:1.7">
+              Sannsynlighetsanslag for en augusthevning har variert mellom kilder og tidspunkt (sett fra ~40 % til ~60 %) — vi lister hvem som sier hva og når, i stedet for ett enkelt tall som ser mer presist ut enn det er.
+            </div>
+          </div>
         </div>
       </div>
 
@@ -732,7 +936,7 @@ function render(renterData, swapData) {
       <div class="card">
         <div class="card-header">
           <span class="card-title">Rente nå vs estimert rente · ${actMonthName.toUpperCase()}</span>
-          <span class="card-meta">Bind i ${obsMonthName} · observeres i ${waitMonthName} · aktiveres i ${actMonthName}</span>
+          <span class="card-meta">Bind i ${obsMonthName} · observeres i ${waitMonthName} · aktiveres i ${actMonthName}${obs && obs.preliminary ? ' · foreløpig' : ''}</span>
         </div>
         <div class="benefit-row">
           ${buildCompareCards(cur3, cur5, cur10, fwd3, fwd5, fwd10, obsMonthName, actMonthName)}
@@ -741,6 +945,7 @@ function render(renterData, swapData) {
           Dersom spreaden er <span style="color:var(--green)">positiv</span>, er Lånekassens fremtidige rente
           høyere enn det du kan binde til nå — strategien er lønnsom. Du binder i dag og avslutter bindingen
           i ${actMonthName}, og Lånekassen krediterer differansen på lånesaldoen din.
+          ${obs && obs.preliminary ? ' Tallene over er foreløpige (siste markedsavlesning, ikke ' + waitMonthName + 's offisielle snitt ennå).' : ''}
         </div>
       </div>
 
@@ -764,7 +969,7 @@ function render(renterData, swapData) {
         </div>
         <div style="margin-top:16px;padding:14px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:5px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text3);line-height:1.8">
           Beregningsmetode: PV av rentedifferansen over bindingstiden =
-          <span style="color:var(--text2)">Saldo × (r<sub>jun</sub> − r<sub>apr</sub>) / 1200 × annuitetsfaktor(r<sub>jun</sub>, n)</span><br>
+          <span style="color:var(--text2)">Saldo × (r<sub>${actMonthName}</sub> − r<sub>${obsMonthName}</sub>) / 1200 × annuitetsfaktor(r<sub>${actMonthName}</sub>, n)</span><br>
           der annuitetsfaktor = (1 − (1 + r/1200)<sup>−n</sup>) / (r/1200), n = antall måneder i bindingstiden.
         </div>
         <div style="margin-top:10px;padding:12px 16px;background:var(--amber-bg);border:1px solid var(--amber-border);border-radius:5px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--amber);line-height:1.8">
@@ -775,6 +980,47 @@ function render(renterData, swapData) {
         <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text3);padding:20px 0">
           Ingen gevinst beregnet — enten mangler data, eller fremtidig rente er ikke høyere enn variabel rente.
         </div>
+        `}
+      </div>
+
+      <!-- ── TRACK RECORD ── -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Historikk · traff strategien?</span>
+          <span class="card-meta">${trackRecord.length} fullførte sykluser</span>
+        </div>
+        ${trackRecord.length ? `
+        <div style="overflow-x:auto">
+          <table class="wed-table">
+            <thead>
+              <tr>
+                <th>Bind</th>
+                <th>Aktivering</th>
+                <th>Rente bundet</th>
+                <th>Rente aktivert</th>
+                <th>Spread</th>
+                <th>Utfall</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${trackRecord.map(r => `
+                <tr>
+                  <td style="color:var(--text1)">${r.lockMonth} ${r.lockYear}</td>
+                  <td>${r.actMonth} ${r.actYear}</td>
+                  <td>${r.lockRate.toFixed(3)}%</td>
+                  <td>${r.actRate.toFixed(3)}%</td>
+                  <td style="color:${r.hit ? 'var(--green)' : 'var(--red)'}">${r.spreadBps > 0 ? '+' : ''}${r.spreadBps.toFixed(1)} bps</td>
+                  <td><span class="open-badge ${r.hit ? 'yes' : 'miss'}">${r.hit ? 'lønnsomt' : 'ikke lønnsomt'}</span></td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+        <div style="margin-top:12px;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--text3);line-height:1.7">
+          Treffrate: ${trackRecord.filter(r=>r.hit).length}/${trackRecord.length} sykluser hadde positiv spread (3-årig rente). Rekonstruert fra Lånekassens publiserte rente per periode — ikke fra faktisk kreditert beløp. Har du de reelle tallene (rente du bandt, dato du brøt, kr kreditert), send dem inn så kan vi kalibrere mot faktiske utfall i stedet.
+        </div>
+        ` : `
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text3);padding:20px 0">Ingen fullførte sykluser i datasettet ennå.</div>
         `}
       </div>
 
@@ -850,6 +1096,39 @@ function render(renterData, swapData) {
     const el = document.getElementById('benefitRow');
     if (el) el.innerHTML = renderBenefitCards(b3r, b5r, b10r, bal, window._actMonthName);
   };
+
+  // ── MARKET PULSE SPARKLINE ──
+  if (livePulse && livePulse.trend.length && document.getElementById('pulseChart')) {
+    new Chart(document.getElementById('pulseChart').getContext('2d'), {
+      type: 'line',
+      data: {
+        labels: livePulse.trend.map(w => formatDate(w.wedDate)),
+        datasets: [
+          { data: livePulse.trend.map(w => w.fp_obs_3yr),  borderColor: '#4d8fff', borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, tension: 0.3, fill: false, spanGaps: true },
+          { data: livePulse.trend.map(w => w.fp_obs_5yr),  borderColor: '#9b7fff', borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, tension: 0.3, fill: false, spanGaps: true },
+          { data: livePulse.trend.map(w => w.fp_obs_10yr), borderColor: '#00e5a0', borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, tension: 0.3, fill: false, spanGaps: true },
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        animation: { duration: 400 },
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#141820', borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1,
+            titleColor: '#7f8799', bodyColor: '#e6eaf4',
+            titleFont: { family: 'IBM Plex Mono', size: 10 }, bodyFont: { family: 'IBM Plex Mono', size: 11 }, padding: 10,
+            callbacks: { label: c => ' ' + (c.parsed.y != null ? c.parsed.y.toFixed(3) + '%' : '—') }
+          }
+        },
+        scales: {
+          x: { grid: { display: false }, ticks: { color: '#434b5e', font: { size: 8, family: 'IBM Plex Mono' }, maxTicksLimit: 6, maxRotation: 0 } },
+          y: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#434b5e', font: { size: 8, family: 'IBM Plex Mono' }, callback: v => v.toFixed(2) + '%' } }
+        }
+      }
+    });
+  }
 
   // ── SWAP CHART ENGINE ──
   let swapChart = null;
