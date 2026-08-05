@@ -508,6 +508,14 @@ function getCurrentObsPeriod(renterData, livePulse) {
   const lockMonthName   = lockDate   ? monthNames[lockDate.getMonth()]   : '?';
   const obsMonthName2   = obsDate    ? monthNames[obsDate.getMonth()]    : '?';
   const actMonthName2   = lockDate   ? monthNames[(lockDate.getMonth() + 2) % 12] : '?';
+  // Confirmed against two real Lånekassen decision letters (Apr window → contract
+  // 01.05; Jun window → floating 01.07) and against Lånekassen's own document
+  // archive, which only ever publishes "Fast/Flytende rente fra 1. <odd month>" —
+  // never an even month. The window you use is always ONE MONTH ahead of when the
+  // agreement/rate actually takes effect. obsMonthName already *is* that effective
+  // month for the lock side (lockMonth+1); settleMonthName is the same one month
+  // ahead for the activate/exit side (actMonth+1).
+  const settleMonthName = lockDate ? monthNames[(lockDate.getMonth() + 3) % 12] : '?';
 
   return {
     // Period keys and raw objects
@@ -524,6 +532,7 @@ function getCurrentObsPeriod(renterData, livePulse) {
     confidence, total, observedCount: observed.length,
     // Derived month names
     sourceMonthName, lockMonthName, obsMonthName: obsMonthName2, actMonthName: actMonthName2,
+    settleMonthName, // actMonth's window, but contract effect is 1st of THIS month
     // For compatibility with periodKey usage in render()
     periodKey: lockPeriodKey,
   };
@@ -720,6 +729,10 @@ function render(renterData, swapData) {
   const obsMonthName  = obs?.lockMonthName  || monthNames[obsMon.getMonth()];        // April — lock month
   const waitMonthName = obs?.obsMonthName   || monthNames[(obsMon.getMonth()+1)%12]; // May   — observation month
   const actMonthName = obs?.actMonthName || monthNames[(obsMon.getMonth() + 2) % 12];
+  // Confirmed against two real Lånekassen decision letters: the window you use to
+  // bind/break is always one month ahead of when the agreement/rate actually takes
+  // effect (Lånekassen only ever publishes "fra 1. <odd month>" documents).
+  const settleMonthName = obs?.settleMonthName || monthNames[(obsMon.getMonth() + 3) % 12];
 
   // ── Norges Bank meetings relevant to this cycle ──
   const nbMeetingsInLockWindow = NB_MEETINGS.filter(mtg => {
@@ -814,12 +827,12 @@ function render(renterData, swapData) {
           </div>
           <div class="tl-step">
             <div class="tl-dot future">★</div>
-            <div class="tl-label"><strong>${actMonthName.toUpperCase()}</strong>Aktivering<br>Ny fastrente<br>— bryt om høyere</div>
+            <div class="tl-label"><strong>${actMonthName.toUpperCase()}</strong>Aktivering<br>Bryt i vinduet<br>gjelder fra ${settleMonthName} 1.</div>
           </div>
         </div>
         <div class="section-divider">Strategi</div>
         <p style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text2);line-height:1.8;max-width:760px">
-          Renten du kan binde <strong style="color:var(--text1)">nå i ${obsMonthName}</strong> (${cur3 != null ? cur3.toFixed(3) + '%' : '—'} · 3-årig) ble satt av Finansportalen-observasjoner gjennom <strong style="color:var(--text1)">${sourceMonthName}</strong> — det er allerede historie, ikke noe å vente på. Det som fortsatt er ubestemt er <strong style="color:var(--text1)">${actMonthName}</strong>-renten: den bestemmes av onsdagsobservasjoner gjennom <strong style="color:var(--text1)">${waitMonthName}</strong>${obs && obs.observedCount > 0 ? `, som er ${obs.observedCount}/${obs.total} onsdager inn i nå` : ' — ennå ikke startet, så vi viser siste markedsavlesning som en foreløpig pekepinn i mellomtiden'}. Dersom ${actMonthName}-renten ender høyere enn det du bandt i ${obsMonthName}, bryt bindingen når vinduet åpner i ${actMonthName} — Lånekassen krediterer differansen på lånesaldoen din.
+          Renten du kan binde <strong style="color:var(--text1)">nå i ${obsMonthName}</strong> (${cur3 != null ? cur3.toFixed(3) + '%' : '—'} · 3-årig) ble satt av Finansportalen-observasjoner gjennom <strong style="color:var(--text1)">${sourceMonthName}</strong> — det er allerede historie, ikke noe å vente på. Avtalen gjelder formelt fra <strong style="color:var(--text1)">${waitMonthName} 1.</strong> (vinduet i ${obsMonthName} er søknadsvinduet, ikke startdatoen — bekreftet mot to reelle Lånekassen-vedtak). Det som fortsatt er ubestemt er <strong style="color:var(--text1)">${actMonthName}</strong>-renten: den bestemmes av onsdagsobservasjoner gjennom <strong style="color:var(--text1)">${waitMonthName}</strong>${obs && obs.observedCount > 0 ? `, som er ${obs.observedCount}/${obs.total} onsdager inn i nå` : ' — ennå ikke startet, så vi viser siste markedsavlesning som en foreløpig pekepinn i mellomtiden'}. Dersom ${actMonthName}-renten ender høyere enn det du bandt i ${obsMonthName}, bryt bindingen i ${actMonthName}-vinduet — den nye renten (eller flytende) gjelder fra ${settleMonthName} 1., og Lånekassen krediterer differansen på lånesaldoen din.
         </p>
       </div>
 
@@ -973,8 +986,17 @@ function render(renterData, swapData) {
           der annuitetsfaktor = (1 − (1 + r/1200)<sup>−n</sup>) / (r/1200), n = antall måneder i bindingstiden.
         </div>
         <div style="margin-top:10px;padding:12px 16px;background:var(--amber-bg);border:1px solid var(--amber-border);border-radius:5px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--amber);line-height:1.8">
-          ⚠ Gevinsten realiseres kun dersom du binder renten nå og avslutter bindingen i ${actMonthName}.
+          ⚠ Gevinsten realiseres kun dersom du binder renten nå og avslutter bindingen i ${actMonthName}-vinduet (ny rente gjelder fra ${settleMonthName} 1.).
+          Dette er en forenklet tilnærming — se advarsel om Lånekassens faktiske underkurs-formel under.
           Dette er ikke finansiell rådgivning.
+        </div>
+        <div style="margin-top:10px;padding:12px 16px;background:var(--red-bg);border:1px solid var(--red-border);border-radius:5px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text2);line-height:1.8">
+          ⚠ <strong style="color:var(--red)">Denne formelen er en forenkling, ikke Lånekassens faktiske metode.</strong>
+          Testet mot et reelt underkurs-oppgjør (10-årig, brutt etter 2 av 120 måneder): formelen traff verken med
+          spreaden fra denne siden eller med Finanstilsynets offisielle referanserente — begge var 3–4× for høye
+          eller for lave. Lånekassens forskrift (§ 9) bruker en <em>interpolert</em> referanserente mellom nærmeste
+          bindingstider vektet mot <em>gjenværende</em> tid, sannsynligvis diskontert mot et fallende (nedbetalt)
+          lånesaldo — ikke en flat sum som her. Bruk tallene over som en retningsindikator, ikke et eksakt beløp.
         </div>
         ` : `
         <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text3);padding:20px 0">
@@ -1024,7 +1046,42 @@ function render(renterData, swapData) {
         `}
       </div>
 
-      <!-- ── WEDNESDAY TABLE ── -->
+      <!-- ── SOURCE WEDNESDAY TABLE (historical — already baked into cur*, shown for context only) ── -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Onsdagsobservasjoner · ${sourceMonthName.toUpperCase()} ${obs && obs.sourceDate ? obs.sourceDate.getFullYear() : ''} <span style="color:var(--text3);font-weight:400">(historisk)</span></span>
+          <span class="card-meta">Satte ${obsMonthName}-renten du kan binde nå</span>
+        </div>
+        <div style="overflow-x:auto">
+          <table class="wed-table">
+            <thead>
+              <tr>
+                <th>Onsdag</th>
+                <th>3-årig eff%</th>
+                <th>5-årig eff%</th>
+                <th>10-årig eff%</th>
+                <th>Åpent vindu</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${obs && obs.sourcePeriod && obs.sourcePeriod.wednesdays.length ? obs.sourcePeriod.wednesdays.map(w => `
+                <tr>
+                  <td style="color:var(--text1)">${formatDate(w.wedDate)}</td>
+                  <td>${w.fp_obs_3yr != null ? w.fp_obs_3yr.toFixed(3) + '%' : '<span style="color:var(--text3)">—</span>'}</td>
+                  <td>${w.fp_obs_5yr != null ? w.fp_obs_5yr.toFixed(3) + '%' : '<span style="color:var(--text3)">—</span>'}</td>
+                  <td>${w.fp_obs_10yr != null ? w.fp_obs_10yr.toFixed(3) + '%' : '<span style="color:var(--text3)">—</span>'}</td>
+                  <td><span class="open-badge ${w.open ? 'yes' : 'no'}">${w.open ? 'åpent' : 'lukket'}</span></td>
+                </tr>
+              `).join('') : '<tr><td colspan="5" style="color:var(--text3);text-align:center;padding:20px">Ingen historiske data</td></tr>'}
+            </tbody>
+          </table>
+        </div>
+        <div style="margin-top:12px;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--text3)">
+          Dette er ferdig historie — snittet av disse ${obs && obs.sourcePeriod ? obs.sourcePeriod.wednesdays.length : 5} onsdagene er allerede bakt inn i ${obsMonthName}s ${cur3 != null ? cur3.toFixed(3) + '%' : '—'} (3-årig). Vises kun som grunnlag for beslutningen din nå — påvirker ikke ${actMonthName}-estimatet over.
+        </div>
+      </div>
+
+      <!-- ── WEDNESDAY TABLE (forward-looking — feeds the estimate above) ── -->
       <div class="card">
         <div class="card-header">
           <span class="card-title">Onsdagsobservasjoner · ${waitMonthName.toUpperCase()} ${obsMon.getFullYear() + (obsMon.getMonth() >= 11 ? 1 : 0)}</span>
