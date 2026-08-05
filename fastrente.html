@@ -992,11 +992,15 @@ function render(renterData, swapData) {
         </div>
         <div style="margin-top:10px;padding:12px 16px;background:var(--red-bg);border:1px solid var(--red-border);border-radius:5px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text2);line-height:1.8">
           ⚠ <strong style="color:var(--red)">Denne formelen er en forenkling, ikke Lånekassens faktiske metode.</strong>
-          Testet mot et reelt underkurs-oppgjør (10-årig, brutt etter 2 av 120 måneder): formelen traff verken med
-          spreaden fra denne siden eller med Finanstilsynets offisielle referanserente — begge var 3–4× for høye
-          eller for lave. Lånekassens forskrift (§ 9) bruker en <em>interpolert</em> referanserente mellom nærmeste
-          bindingstider vektet mot <em>gjenværende</em> tid, sannsynligvis diskontert mot et fallende (nedbetalt)
-          lånesaldo — ikke en flat sum som her. Bruk tallene over som en retningsindikator, ikke et eksakt beløp.
+          Testet mot et reelt underkurs-oppgjør (10-årig, brutt etter 2 av 120 måneder, spread ≈19 bps mot en
+          korrekt interpolert referanserente — <em>renten</em> stemmer godt: Finanstilsynets offisielle effektive
+          basisrente, konvertert til nominell rente og med Lånekassens kjente 0,15 pp-rabatt trukket fra, treffer
+          denne sidens publiserte rente_Xyr på 1–3 bps for alle tre bindingstider). Det som IKKE stemmer er
+          diskonteringen: formelen over, brukt over hele gjenværende bindingstid (118 mnd), gir ~22 % for høyt
+          beløp. Å treffe det reelle beløpet krever en effektiv løpetid på kun ~78 % av gjenværende tid — konsistent
+          med at dette er et nedbetalingslån (avdrag reduserer eksponeringen underveis), men den nøyaktige
+          diskonteringsmetoden i forskriften (§ 9) er ikke bekreftet. Bruk tallene over som en retningsindikator,
+          ikke et eksakt beløp.
         </div>
         ` : `
         <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text3);padding:20px 0">
