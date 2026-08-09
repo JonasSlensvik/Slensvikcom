@@ -862,6 +862,7 @@ function nearestIdx(labels, dateStr) {
     candle.setData(ohlc.map(({ time, open, high, low, close }) => ({ time, open, high, low, close })));
   }
   const firstCandleDate = ohlc.length ? ohlc[0].time : null;
+  const lastCandleDate  = ohlc.length ? ohlc[ohlc.length - 1].time : null;
 
   /* area series — adjusted closes for dates the tape doesn't cover
      (overlaps one session with the first candle for visual continuity) */
@@ -878,6 +879,28 @@ function nearestIdx(labels, dateStr) {
       priceFormat: { type: 'price', precision: prec, minMove },
     });
     area.setData(areaRows);
+  }
+
+  /* post-tape area series — adjusted closes for dates AFTER the last candle.
+     price_ohlcv (the trade-tape source) can silently stop updating while
+     daily_close_adj keeps going (this happened for 5 weeks, 2026-07-02 to
+     2026-08-07, from an unrelated DB-permission error elsewhere in the
+     pipeline); without this the chart used to just freeze at the tape's last
+     date with no indication anything was missing. Overlaps one session with
+     the last candle, same convention as the pre-tape area above. */
+  let postArea = null;
+  const postAreaRows = (lastCandleDate ? all.filter(r => r.trade_date >= lastCandleDate) : [])
+    .filter(r => r.adj_close != null)
+    .map(r => ({ time: r.trade_date, value: +r.adj_close }));
+  if (candle && postAreaRows.length > 1) {
+    postArea = chart.addAreaSeries({
+      lineColor: C.ice, lineWidth: 1.5,
+      topColor: 'rgba(79,195,247,0.16)', bottomColor: 'rgba(79,195,247,0)',
+      priceLineVisible: false, lastValueVisible: true,
+      crosshairMarkerRadius: 3,
+      priceFormat: { type: 'price', precision: prec, minMove },
+    });
+    postArea.setData(postAreaRows);
   }
   const host = candle || area;
 
@@ -928,9 +951,14 @@ function nearestIdx(labels, dateStr) {
   function applyMarkers() {
     const mk = buildMarkers();
     if (candle && area) {
-      const c = [], a = [];
-      mk.forEach(m => (m.time >= firstCandleDate ? c : a).push(m));
+      const c = [], a = [], p = [];
+      mk.forEach(m => {
+        if (m.time < firstCandleDate) a.push(m);
+        else if (postArea && m.time > lastCandleDate) p.push(m);
+        else c.push(m);
+      });
       candle.setMarkers(c); area.setMarkers(a);
+      if (postArea) postArea.setMarkers(p);
     } else if (host) host.setMarkers(mk);
   }
 
