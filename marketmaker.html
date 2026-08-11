@@ -248,14 +248,14 @@ const MILESTONES = [
   { id:'M0', sub:'spec + decisions',  name:'Align on <em>spec, architecture and decisions</em>',                 status:'done' },
   { id:'M1', sub:'data recorder',     name:'Deribit <em>market-data recorder</em> — full-depth, zstd Parquet. <span style="color:var(--text3)">Live-validated 2026-08-11: 99-instrument BTC chain, 36,286 rows, 0 resyncs, ~1.6 MB/h.</span>', status:'done' },
   { id:'M2', sub:'book module',       name:'<em>Order-book</em> module — snapshot + increments, structural integrity + session-level gap detection. <span style="color:var(--text3)">Built inside feed/, not a separate package.</span>', status:'done' },
-  { id:'M3', sub:'pricing + costs',   name:'<em>Pricing + units + cost</em> model — parity engine, hedge slippage', status:'pend' },
+  { id:'M3', sub:'pricing + costs',   name:'<em>Pricing + units + cost</em> model — parity engine, hedge slippage. <span style="color:var(--text3)">Landed 2026-08-11: currency-safe Btc/Usd units, parity engine, depth-walk slippage, verified 2026-08-01 Deribit fee schedule, honest edge gate (net = raw − slippage − fees − settlement − buffer).</span>', status:'done' },
   { id:'M4', sub:'paper simulator',   name:'<em>Paper-trading simulator</em> + honest edge gate',                status:'pend' },
   { id:'M5', sub:'persistence',       name:'<em>Persistence</em> to Postgres (api schema) for this page',        status:'pend' },
   { id:'M6', sub:'this frontend',     name:'<em>Frontend</em> — milestone tracker + live paper-PnL mockup',      status:'done' },
   { id:'M7', sub:'testnet + go/no-go',name:'<em>Testnet run</em> reproduces sim → written go/no-go',             status:'pend' },
 ];
 const GATES = [
-  { mk:'prog', txt:'<em>Unit + property tests</em> green: book/FIX/writer done (31 tests, live-validated) — pricing / costs units still pending.' },
+  { mk:'done', txt:'<em>Unit + property tests</em> green on pricing / book / costs: 111 tests incl. hypothesis property tests (currency safety, parity inverses, depth-walk, edge-gate reconciliation). First real capture session (28AUG26 chain, 24 h) recording since 2026-08-11.' },
   { mk:'pend', txt:'<em>Replay backtest</em> shows positive PnL net of modeled costs across multiple recorded sessions.' },
   { mk:'pend', txt:'<em>Testnet run</em> reproduces sim behaviour (quotes, fills, hedges) with no book desyncs over hours.' },
   { mk:'pend', txt:'<em>Go / no-go</em> on real capital — only after gates 1–3, written sign-off.' },
