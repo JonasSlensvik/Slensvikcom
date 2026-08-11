@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inside the Simulator · Market Maker · Slensvik</title>
+<meta name="description" content="How the put-call-parity market maker's paper-trading simulator works — replayed Deribit data, honest edge gate, conservative fill rule.">
+<link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=Syne:wght@500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link rel="stylesheet" href="assets/intel.css">
+<script src="assets/intel.js?v=20260615"></script>
+<style>
+  /* Design tokens live in assets/intel.css. Chart marks use darker, CVD-validated
+     variants of the brand hues (validated on --bg1): bid #00af6a, ask #ba2b34,
+     fair #9477e4, future/cost #ab6000; the market spread band is neutral gray. */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background:var(--bg0); color:var(--text1); font-family:var(--mono); min-height:100vh; -webkit-font-smoothing:antialiased; }
+  .topbar { display:flex; align-items:center; gap:14px; padding:22px 36px; border-bottom:1px solid var(--border); }
+  .topbar a.back { font-family:var(--mono); font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--text2); text-decoration:none; padding:4px 12px; border:1px solid var(--border2); }
+  .topbar a.back:hover { color:var(--amber); border-color:var(--amber); }
+  .crumb { font-family:var(--mono); font-size:11px; letter-spacing:.18em; text-transform:uppercase; color:var(--text2); }
+  .crumb .glyph { color:var(--amber); margin-right:8px; }
+  .src-pill { font-family:var(--mono); font-size:9.5px; letter-spacing:.14em; padding:3px 9px; border:1px solid var(--border2); }
+  .src-pill.mock { color:var(--amber); border-color:rgba(245,166,35,0.4); background:rgba(245,166,35,0.06); }
+  .src-pill.live { color:var(--green); border-color:rgba(67,224,151,0.4); background:rgba(67,224,151,0.06); }
+
+  main { max-width:1280px; margin:0 auto; padding:36px 28px 80px; }
+  h1 { font-family:var(--sans); font-weight:700; font-size:clamp(26px,3.5vw,38px); line-height:1.05; letter-spacing:-0.02em; margin-bottom:14px; }
+  .lead { font-size:12.5px; color:var(--text2); line-height:1.7; margin-bottom:20px; max-width:880px; }
+  .lead strong { color:var(--text1); font-weight:500; }
+
+  .sec { margin-top:26px; }
+  .sec-head { font-family:var(--mono); font-size:10px; letter-spacing:.2em; text-transform:uppercase; color:var(--text2); margin-bottom:12px; display:flex; align-items:baseline; gap:14px; padding-bottom:8px; border-bottom:1px solid var(--border); }
+  .sec-head .glyph { color:var(--amber); font-size:13px; }
+  .sec-head .desc { color:var(--text3); font-weight:400; letter-spacing:.06em; text-transform:none; flex:1; font-size:11px; }
+  .panel { border:1px solid var(--border2); background:var(--bg1); padding:18px 20px 16px; }
+  .footnote { font-size:10.5px; color:var(--text3); line-height:1.65; margin-top:10px; }
+  .footnote strong { color:var(--text2); font-weight:500; }
+
+  /* KPI strip */
+  .kpis { display:grid; grid-template-columns:repeat(6,1fr); gap:10px; margin-bottom:6px; }
+  @media (max-width:1000px){ .kpis{ grid-template-columns:repeat(3,1fr); } }
+  @media (max-width:640px){ .kpis{ grid-template-columns:repeat(2,1fr); } }
+  .kpi { border:1px solid var(--border2); padding:12px 14px; background:var(--bg1); }
+  .kpi-lbl { font-size:9px; letter-spacing:.18em; text-transform:uppercase; color:var(--text3); margin-bottom:6px; }
+  .kpi-val { font-size:19px; font-weight:500; color:var(--text1); font-variant-numeric:tabular-nums; letter-spacing:-0.01em; }
+  .kpi-sub { font-size:9px; color:var(--text3); margin-top:3px; letter-spacing:.06em; }
+
+  /* Pipeline diagram */
+  .pipe { display:flex; flex-wrap:wrap; gap:0; align-items:stretch; }
+  .pipe-step { flex:1 1 150px; min-width:150px; border:1px solid var(--border2); background:var(--bg2); padding:12px 14px; position:relative; margin-right:22px; margin-bottom:10px; }
+  .pipe-step:last-child { margin-right:0; }
+  .pipe-step::after { content:'▸'; position:absolute; right:-17px; top:50%; transform:translateY(-50%); color:var(--text4); font-size:12px; }
+  .pipe-step:last-child::after { display:none; }
+  .pipe-name { font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--text1); font-weight:600; margin-bottom:5px; }
+  .pipe-mod { font-size:9px; color:var(--amber); letter-spacing:.06em; margin-bottom:6px; }
+  .pipe-desc { font-size:9.5px; color:var(--text3); line-height:1.55; }
+
+  /* Charts */
+  .chart-wrap { position:relative; width:100%; }
+  .chart-tall { height:340px; }
+  .chart-short { height:120px; }
+  .chart-mid { height:300px; }
+  .chart-note { font-size:10px; color:var(--text3); margin-top:8px; letter-spacing:.04em; line-height:1.6; }
+  .filter-row { display:flex; gap:8px; margin-bottom:12px; align-items:center; }
+  .pill-btn { font-family:var(--mono); font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--text2); background:none; border:1px solid var(--border2); padding:5px 14px; cursor:pointer; }
+  .pill-btn.active { color:var(--text1); border-color:var(--border3); background:var(--bg3); }
+  .pill-btn:hover { border-color:var(--border3); }
+
+  /* Cost stack bars */
+  .stack-row { display:grid; grid-template-columns:180px 1fr 90px; gap:12px; align-items:center; margin-bottom:7px; }
+  .stack-lbl { font-size:10px; color:var(--text2); letter-spacing:.06em; text-align:right; }
+  .stack-track { position:relative; height:14px; background:var(--bg2); }
+  .stack-fill { position:absolute; inset:0 auto 0 0; background:#ab6000; }
+  .stack-fill.edge { background:#00af6a; }
+  .stack-val { font-size:10px; color:var(--text1); font-variant-numeric:tabular-nums; }
+  .stack-sum { border-top:1px solid var(--border2); margin-top:10px; padding-top:10px; font-size:11px; color:var(--text2); line-height:1.7; }
+  .stack-sum strong { color:var(--text1); font-weight:500; }
+
+  /* Fill-rule ladders */
+  .fill-demo { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  @media (max-width:800px){ .fill-demo{ grid-template-columns:1fr; } }
+  .ladder-box { border:1px solid var(--border2); background:var(--bg2); padding:14px 16px; }
+  .ladder-title { font-size:10px; letter-spacing:.14em; text-transform:uppercase; margin-bottom:4px; }
+  .ladder-title.no { color:var(--text2); }
+  .ladder-title.yes { color:var(--green); }
+  .ladder-sub { font-size:9.5px; color:var(--text3); line-height:1.55; margin-bottom:10px; }
+  .lvl { display:grid; grid-template-columns:70px 1fr; gap:10px; font-size:10.5px; padding:3px 6px; font-variant-numeric:tabular-nums; }
+  .lvl.ask { color:#d98a8a; }
+  .lvl.bid { color:#63c795; }
+  .lvl.ours { border:1px dashed var(--border3); background:var(--bg3); color:var(--text1); }
+  .lvl .tag { color:var(--text3); font-size:9px; letter-spacing:.1em; text-transform:uppercase; }
+
+  /* Chain table (a11y / detail view) */
+  details.tbl { margin-top:12px; }
+  details.tbl summary { font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--text3); cursor:pointer; }
+  details.tbl summary:hover { color:var(--text2); }
+  .chain-table { width:100%; border-collapse:collapse; margin-top:10px; font-size:10.5px; }
+  .chain-table th { text-align:right; font-size:9px; letter-spacing:.12em; text-transform:uppercase; color:var(--text3); padding:6px 8px; border-bottom:1px solid var(--border2); font-weight:400; }
+  .chain-table th:first-child, .chain-table td:first-child { text-align:left; }
+  .chain-table td { text-align:right; padding:4px 8px; border-bottom:1px solid var(--border); color:var(--text2); font-variant-numeric:tabular-nums; }
+  .chain-table td.inside { color:var(--green); }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <a class="back" href="marketmaker.html">← Market Maker</a>
+  <span class="crumb"><span class="glyph">◆</span>INSIDE THE SIMULATOR</span>
+  <div data-intel-nav style="margin-left:auto"></div>
+  <span style="font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--text3)">DATA <strong id="srcTag" class="src-pill">—</strong></span>
+</header>
+
+<main>
+  <h1>How the paper-trading simulator works.</h1>
+  <p class="lead">
+    Every chart on this page is drawn from a <strong>real recorded Deribit session</strong> — the full
+    28AUG26 BTC option chain (99 instruments, full depth, every update) — replayed tick-by-tick through the
+    <em>actual</em> strategy stack: order books are rebuilt from the recorded feed, put-call parity
+    (<span style="color:var(--text1)">C&nbsp;=&nbsp;P&nbsp;+&nbsp;(F−K)/F</span>) prices every strike off the dated future, the
+    honest edge gate charges depth-walked hedge slippage plus every fee, and only quotes that still clear a
+    minimum edge are rested in the (paper) book. Nothing here is mocked.
+  </p>
+
+  <!-- KPIs -->
+  <div class="kpis" id="kpis"></div>
+  <div class="footnote" id="runNote"></div>
+
+  <!-- Pipeline -->
+  <div class="sec">
+    <div class="sec-head"><span class="glyph">◫</span>THE PIPELINE<span class="desc">One batch of recorded book events at a time, strictly in this order</span></div>
+    <div class="pipe">
+      <div class="pipe-step"><div class="pipe-name">Replay feed</div><div class="pipe-mod">feed/replay.py</div><div class="pipe-desc">Recorded Parquet re-emitted through the <em>same</em> interface as the live FIX feed — downstream code cannot tell disk from socket.</div></div>
+      <div class="pipe-step"><div class="pipe-name">Order books</div><div class="pipe-mod">feed/book.py</div><div class="pipe-desc">Full-depth books rebuilt per instrument. Any inconsistency raises — a desynced sim would be a lie.</div></div>
+      <div class="pipe-step"><div class="pipe-name">Parity fair</div><div class="pipe-mod">pricing/parity.py</div><div class="pipe-desc">Fair value of each option from its opposite leg + the dated future, at the prices the hedge could actually execute.</div></div>
+      <div class="pipe-step"><div class="pipe-name">Honest edge gate</div><div class="pipe-mod">costs/gate.py</div><div class="pipe-desc">Depth-walked hedge repricing + maker/taker/future fees + settlement + safety buffer. Post only if net edge &gt; minimum.</div></div>
+      <div class="pipe-step"><div class="pipe-name">Quoter → broker</div><div class="pipe-mod">strategy/ · exec/</div><div class="pipe-desc">Passive post-only quotes rested per strike and side; cancelled the moment their hedge disappears.</div></div>
+      <div class="pipe-step"><div class="pipe-name">Fill → hedge → blotter</div><div class="pipe-mod">sim/</div><div class="pipe-desc">A strict price cross fills a quote; the completing hedge is priced immediately at the books as they are <em>now</em>, and the trade is blotted with full cost accounting.</div></div>
+    </div>
+  </div>
+
+  <!-- ATM timeline -->
+  <div class="sec">
+    <div class="sec-head"><span class="glyph">∿</span>THE ATM STRIKE, TICK BY TICK<span class="desc" id="tlDesc">—</span></div>
+    <div class="panel">
+      <div class="chart-wrap chart-tall"><canvas id="tlChart"></canvas></div>
+      <div class="chart-note">
+        Our ask (red) rests above parity fair (purple) by the full cost stack + minimum edge; our bid (green)
+        rests below it by the same amount. The gray band is the market's own bid–ask spread. Fair value moves
+        with the future and the put book — our quotes follow it, requoting only when the move exceeds the
+        requote threshold.
+      </div>
+      <div class="chart-wrap chart-short" style="margin-top:14px"><canvas id="futChart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Fill rule + cost stack -->
+  <div class="sec">
+    <div class="sec-head"><span class="glyph">✕</span>HOW A FILL IS SIMULATED<span class="desc">The replayed market never saw our orders — so what counts as a fill?</span></div>
+    <div class="panel">
+      <p class="lead" style="margin-bottom:14px">
+        We can't know our place in the queue at a price level, and the recorded feed contains no trade prints —
+        only book state. So the simulator uses the most pessimistic defensible rule: a resting quote fills
+        <strong>only when the opposite side of the market moves strictly through its price</strong> — proof someone
+        was willing to trade at a price <em>worse</em> than ours, meaning they would certainly have hit us first.
+      </p>
+      <div class="fill-demo">
+        <div class="ladder-box">
+          <div class="ladder-title no">TOUCH — NOT A FILL</div>
+          <div class="ladder-sub">The ask drops to exactly our bid price. Real outcome depends on queue position we cannot know — assuming a fill here is the optimism that sank prior attempts.</div>
+          <div class="lvl ask"><span>0.0575</span><span class="tag">market ask ↓ touches</span></div>
+          <div class="lvl ours"><span>0.0575</span><span class="tag">our resting bid — still waiting</span></div>
+          <div class="lvl bid"><span>0.0570</span><span class="tag">market bid</span></div>
+        </div>
+        <div class="ladder-box">
+          <div class="ladder-title yes">STRICT CROSS — FILL</div>
+          <div class="ladder-sub">The ask moves below our bid: a seller accepted less than we were paying. They would have traded with us at our price. Filled, then hedged immediately.</div>
+          <div class="lvl ask"><span>0.0565</span><span class="tag">market ask ↓ crossed through</span></div>
+          <div class="lvl ours"><span>0.0575</span><span class="tag">our resting bid — FILLED @ 0.0575</span></div>
+          <div class="lvl bid"><span>0.0570</span><span class="tag">market bid</span></div>
+        </div>
+      </div>
+      <div class="footnote">
+        <strong>Deliberately conservative, with known limits:</strong> touches never fill (real MMs earn some
+        at-touch fills), fills are all-or-nothing at full quote size, and our orders leave no footprint in the
+        replayed market. Price-wise this under-counts fills rather than over-counting them — the direction you
+        want when the simulator is the thing deciding whether the edge is real. The testnet stage (gate 3)
+        replaces this model with real fills from a real matching engine.
+      </div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-head"><span class="glyph">Σ</span>THE COST STACK<span class="desc" id="stackDesc">Every BTC a quote must clear before it earns its first satoshi of edge</span></div>
+    <div class="panel">
+      <div id="stackBars"></div>
+      <div class="stack-sum" id="stackSum"></div>
+    </div>
+  </div>
+
+  <!-- Chain -->
+  <div class="sec">
+    <div class="sec-head"><span class="glyph">≡</span>WHERE WE QUOTE ACROSS THE CHAIN<span class="desc">End-of-replay snapshot — every strike, market spread vs our resting quotes</span></div>
+    <div class="panel">
+      <div class="filter-row">
+        <button class="pill-btn active" id="btnCalls">Calls</button>
+        <button class="pill-btn" id="btnPuts">Puts</button>
+        <span class="chart-note" style="margin:0">log scale — premiums span 0.0005 to 0.4 BTC across the chain</span>
+      </div>
+      <div class="chart-wrap chart-mid"><canvas id="chainChart"></canvas></div>
+      <div class="chart-note" id="chainNote"></div>
+      <details class="tbl">
+        <summary>table view — all strikes</summary>
+        <div style="overflow-x:auto"><table class="chain-table" id="chainTable"></table></div>
+      </details>
+    </div>
+  </div>
+
+</main>
+
+<script>
+/* Embedded snapshot of the same data the API serves (real capture, not mock);
+   used when api.slensvik.com is unreachable or the sim tables are absent. */
+const EMBED = {"meta":{"generated_at":1786477878,"source_files":["data/deribit_feed_20260811-17.parquet"],"rows":36286,"batches":25890,"instruments":99,"atm_instrument":"BTC-28AUG26-64000-C","future":"BTC-28AUG26","fills":0,"hedge_failures":0,"total_pnl_btc":0,"open_quotes_end":140,"params":{"size":0.1,"min_edge":0.0005,"buffer":0.0002},"span_ns":[1786469867579920000,1786470762723105000]},"stack":{"instrument":"BTC-28AUG26-64000-C","fair_at_depth":0.0254347,"maker_fee":0.0003,"opp_taker_fee":0.0003,"future_taker_fee":0.00035,"option_settlement":0.00015,"future_delivery":0.00015,"buffer":0.0002,"min_edge":0.0005,"ask":0.0273847},"timeline":[{"ts":1786469867,"fm":63612.5,"cb":0.023,"ca":0.024,"ob":0.02079,"oa":0.02708,"f":0.02513,"oq":141},{"ts":1786469872,"fm":63605.0,"cb":0.023,"ca":0.024,"ob":0.020506,"oa":0.026085,"f":0.024116,"oq":141},{"ts":1786469877,"fm":63605.0,"cb":0.023,"ca":0.024,"ob":0.020506,"oa":0.026085,"f":0.024081,"oq":141},{"ts":1786469882,"fm":63600.0,"cb":0.023,"ca":0.024,"ob":0.020506,"oa":0.026024,"f":0.024074,"oq":141},{"ts":1786469887,"fm":63596.25,"cb":0.023,"ca":0.024,"ob":0.020577,"oa":0.026938,"f":0.024985,"oq":140},{"ts":1786469892,"fm":63602.5,"cb":0.023,"ca":0.024,"ob":0.020642,"oa":0.027043,"f":0.025093,"oq":140},{"ts":1786469897,"fm":63602.5,"cb":0.023,"ca":0.024,"ob":0.020647,"oa":0.026957,"f":0.025008,"oq":140},{"ts":1786469902,"fm":63603.75,"cb":0.023,"ca":0.024,"ob":0.020475,"oa":0.026986,"f":0.025045,"oq":140},{"ts":1786469908,"fm":63607.5,"cb":0.023,"ca":0.024,"ob":0.020717,"oa":0.026986,"f":0.025038,"oq":140},{"ts":1786469913,"fm":63602.5,"cb":0.023,"ca":0.024,"ob":0.020641,"oa":0.027017,"f":0.024997,"oq":140},{"ts":1786469918,"fm":63593.75,"cb":0.023,"ca":0.024,"ob":0.020439,"oa":0.02696,"f":0.02501,"oq":140},{"ts":1786469923,"fm":63597.5,"cb":0.023,"ca":0.024,"ob":0.020565,"oa":0.02696,"f":0.02506,"oq":141},{"ts":1786469928,"fm":63588.75,"cb":0.023,"ca":0.024,"ob":0.0204,"oa":0.026924,"f":0.02492,"oq":141},{"ts":1786469933,"fm":63587.5,"cb":0.023,"ca":0.024,"ob":0.0204,"oa":0.026924,"f":0.024917,"oq":141},{"ts":1786469938,"fm":63587.5,"cb":0.023,"ca":0.024,"ob":0.0204,"oa":0.026924,"f":0.024947,"oq":141},{"ts":1786469943,"fm":63600.0,"cb":0.023,"ca":0.024,"ob":0.019842,"oa":0.027439,"f":0.025489,"oq":141},{"ts":1786469948,"fm":63600.0,"cb":0.023,"ca":0.024,"ob":0.020441,"oa":0.026421,"f":0.024471,"oq":141},{"ts":1786469954,"fm":63603.75,"cb":0.023,"ca":0.024,"ob":0.02047,"oa":0.026512,"f":0.024564,"oq":141},{"ts":1786469959,"fm":63602.5,"cb":0.023,"ca":0.024,"ob":0.020651,"oa":0.026482,"f":0.024547,"oq":140},{"ts":1786469964,"fm":63602.5,"cb":0.023,"ca":0.024,"ob":0.020651,"oa":0.026482,"f":0.024586,"oq":141},{"ts":1786469969,"fm":63602.5,"cb":0.023,"ca":0.024,"ob":0.020651,"oa":0.026482,"f":0.024545,"oq":140},{"ts":1786469975,"fm":63600.0,"cb":0.023,"ca":0.024,"ob":0.020451,"oa":0.02644,"f":0.024464,"oq":141},{"ts":1786469980,"fm":63598.75,"cb":0.023,"ca":0.024,"ob":0.020451,"oa":0.02644,"f":0.024462,"oq":141},{"ts":1786469985,"fm":63598.75,"cb":0.023,"ca":0.024,"ob":0.020451,"oa":0.02644,"f":0.024462,"oq":141},{"ts":1786469990,"fm":63598.75,"cb":0.023,"ca":0.024,"ob":0.020451,"oa":0.02644,"f":0.024462,"oq":141},{"ts":1786469995,"fm":63598.75,"cb":0.023,"ca":0.024,"ob":0.020451,"oa":0.02644,"f":0.024465,"oq":141},{"ts":1786470000,"fm":63598.75,"cb":0.023,"ca":0.024,"ob":0.020451,"oa":0.02644,"f":0.024426,"oq":141},{"ts":1786470006,"fm":63602.5,"cb":0.023,"ca":0.024,"ob":0.020523,"oa":0.027306,"f":0.025369,"oq":140},{"ts":1786470011,"fm":63596.25,"cb":0.023,"ca":0.024,"ob":0.020413,"oa":0.026343,"f":0.024393,"oq":140},{"ts":1786470016,"fm":63593.75,"cb":0.023,"ca":0.024,"ob":0.020517,"oa":0.027275,"f":0.02532,"oq":140},{"ts":1786470021,"fm":63593.75,"cb":0.023,"ca":0.024,"ob":0.020517,"oa":0.027275,"f":0.025319,"oq":140},{"ts":1786470026,"fm":63593.75,"cb":0.023,"ca":0.024,"ob":0.020517,"oa":0.027275,"f":0.025374,"oq":140},{"ts":1786470031,"fm":63593.75,"cb":0.023,"ca":0.024,"ob":0.020526,"oa":0.027275,"f":0.025319,"oq":140},{"ts":1786470036,"fm":63593.75,"cb":0.023,"ca":0.024,"ob":0.020526,"oa":0.027275,"f":0.025319,"oq":140},{"ts":1786470041,"fm":63590.0,"cb":0.023,"ca":0.024,"ob":0.020393,"oa":0.026223,"f":0.02429,"oq":140},{"ts":1786470047,"fm":63585.0,"cb":0.023,"ca":0.024,"ob":0.020293,"oa":0.026174,"f":0.02421,"oq":140},{"ts":1786470052,"fm":63588.75,"cb":0.023,"ca":0.024,"ob":0.020453,"oa":0.027153,"f":0.02526,"oq":140},{"ts":1786470057,"fm":63585.0,"cb":0.023,"ca":0.024,"ob":0.02034,"oa":0.027102,"f":0.025217,"oq":140},{"ts":1786470062,"fm":63587.5,"cb":0.023,"ca":0.024,"ob":0.020454,"oa":0.026257,"f":0.024307,"oq":140},{"ts":1786470067,"fm":63587.5,"cb":0.023,"ca":0.024,"ob":0.020454,"oa":0.027176,"f":0.025196,"oq":140},{"ts":1786470072,"fm":63588.75,"cb":0.023,"ca":0.024,"ob":0.020454,"oa":0.027176,"f":0.025195,"oq":140},{"ts":1786470077,"fm":63591.25,"cb":0.023,"ca":0.024,"ob":0.020454,"oa":0.02722,"f":0.025244,"oq":140},{"ts":1786470083,"fm":63612.5,"cb":0.023,"ca":0.024,"ob":0.020794,"oa":0.027113,"f":0.02516,"oq":139},{"ts":1786470088,"fm":63612.5,"cb":0.023,"ca":0.024,"ob":0.020794,"oa":0.027113,"f":0.025105,"oq":139},{"ts":1786470093,"fm":63612.5,"cb":0.023,"ca":0.024,"ob":0.020535,"oa":0.02714,"f":0.025225,"oq":139},{"ts":1786470098,"fm":63613.75,"cb":0.023,"ca":0.024,"ob":0.019714,"oa":0.026272,"f":0.024322,"oq":140},{"ts":1786470103,"fm":63613.75,"cb":0.023,"ca":0.024,"ob":0.019714,"oa":0.027216,"f":0.025266,"oq":139},{"ts":1786470108,"fm":63631.25,"cb":0.023,"ca":0.024,"ob":0.021038,"oa":0.027264,"f":0.025346,"oq":139},{"ts":1786470113,"fm":63631.25,"cb":0.023,"ca":0.024,"ob":0.021038,"oa":0.027264,"f":0.025352,"oq":139},{"ts":1786470119,"fm":63631.25,"cb":0.023,"ca":0.024,"ob":0.021062,"oa":0.027264,"f":0.02526,"oq":139},{"ts":1786470124,"fm":63631.25,"cb":0.023,"ca":0.024,"ob":0.020697,"oa":0.027264,"f":0.025329,"oq":139},{"ts":1786470129,"fm":63631.25,"cb":0.023,"ca":0.024,"ob":0.019796,"oa":0.026601,"f":0.02462,"oq":140},{"ts":1786470134,"fm":63631.25,"cb":0.023,"ca":0.024,"ob":0.019796,"oa":0.02736,"f":0.025402,"oq":140},{"ts":1786470139,"fm":63643.75,"cb":0.023,"ca":0.024,"ob":0.02071,"oa":0.027294,"f":0.025344,"oq":140},{"ts":1786470144,"fm":63643.75,"cb":0.023,"ca":0.024,"ob":0.02073,"oa":0.027451,"f":0.025523,"oq":140},{"ts":1786470149,"fm":63646.25,"cb":0.023,"ca":0.024,"ob":0.020263,"oa":0.027451,"f":0.02556,"oq":140},{"ts":1786470154,"fm":63638.75,"cb":0.023,"ca":0.024,"ob":0.020263,"oa":0.026676,"f":0.024688,"oq":140},{"ts":1786470159,"fm":63640.0,"cb":0.023,"ca":0.024,"ob":0.020263,"oa":0.026676,"f":0.024718,"oq":140},{"ts":1786470165,"fm":63632.5,"cb":0.023,"ca":0.024,"ob":0.02104,"oa":0.026584,"f":0.024596,"oq":140},{"ts":1786470170,"fm":63632.5,"cb":0.023,"ca":0.024,"ob":0.02067,"oa":0.026576,"f":0.024626,"oq":140},{"ts":1786470175,"fm":63632.5,"cb":0.023,"ca":0.024,"ob":0.02067,"oa":0.027357,"f":0.02541,"oq":140},{"ts":1786470180,"fm":63632.5,"cb":0.023,"ca":0.024,"ob":0.019653,"oa":0.027358,"f":0.025454,"oq":140},{"ts":1786470185,"fm":63637.5,"cb":0.023,"ca":0.024,"ob":0.02072,"oa":0.026613,"f":0.024662,"oq":140},{"ts":1786470191,"fm":63637.5,"cb":0.023,"ca":0.024,"ob":0.02072,"oa":0.027396,"f":0.025413,"oq":140},{"ts":1786470196,"fm":63637.5,"cb":0.023,"ca":0.024,"ob":0.02072,"oa":0.026626,"f":0.024644,"oq":140},{"ts":1786470201,"fm":63637.5,"cb":0.023,"ca":0.024,"ob":0.02072,"oa":0.026626,"f":0.024643,"oq":140},{"ts":1786470206,"fm":63637.5,"cb":0.023,"ca":0.024,"ob":0.02072,"oa":0.026584,"f":0.024634,"oq":140},{"ts":1786470211,"fm":63643.75,"cb":0.023,"ca":0.024,"ob":0.02075,"oa":0.027464,"f":0.025439,"oq":140},{"ts":1786470217,"fm":63640.0,"cb":0.023,"ca":0.024,"ob":0.020718,"oa":0.027355,"f":0.025405,"oq":140},{"ts":1786470222,"fm":63642.5,"cb":0.023,"ca":0.024,"ob":0.020735,"oa":0.027355,"f":0.025405,"oq":140},{"ts":1786470227,"fm":63640.0,"cb":0.023,"ca":0.024,"ob":0.020735,"oa":0.026582,"f":0.024632,"oq":140},{"ts":1786470232,"fm":63638.75,"cb":0.023,"ca":0.024,"ob":0.020735,"oa":0.027352,"f":0.0254,"oq":140},{"ts":1786470238,"fm":63638.75,"cb":0.023,"ca":0.024,"ob":0.020735,"oa":0.02658,"f":0.024631,"oq":140},{"ts":1786470243,"fm":63632.5,"cb":0.023,"ca":0.024,"ob":0.02106,"oa":0.027298,"f":0.025338,"oq":140},{"ts":1786470249,"fm":63632.5,"cb":0.023,"ca":0.024,"ob":0.02106,"oa":0.027298,"f":0.02533,"oq":140},{"ts":1786470254,"fm":63632.5,"cb":0.023,"ca":0.024,"ob":0.02106,"oa":0.027298,"f":0.025259,"oq":140},{"ts":1786470259,"fm":63632.5,"cb":0.023,"ca":0.024,"ob":0.02106,"oa":0.026482,"f":0.024515,"oq":140},{"ts":1786470264,"fm":63633.75,"cb":0.023,"ca":0.024,"ob":0.020696,"oa":0.026482,"f":0.024514,"oq":140},{"ts":1786470270,"fm":63633.75,"cb":0.023,"ca":0.024,"ob":0.020696,"oa":0.026482,"f":0.0245,"oq":140},{"ts":1786470275,"fm":63633.75,"cb":0.023,"ca":0.024,"ob":0.020696,"oa":0.026482,"f":0.024499,"oq":140},{"ts":1786470280,"fm":63633.75,"cb":0.023,"ca":0.024,"ob":0.020696,"oa":0.026482,"f":0.024499,"oq":140},{"ts":1786470285,"fm":63616.25,"cb":0.023,"ca":0.024,"ob":0.020536,"oa":0.027205,"f":0.025196,"oq":140},{"ts":1786470290,"fm":63613.75,"cb":0.023,"ca":0.024,"ob":0.020536,"oa":0.026209,"f":0.024232,"oq":140},{"ts":1786470296,"fm":63613.75,"cb":0.023,"ca":0.024,"ob":0.020536,"oa":0.026209,"f":0.024258,"oq":140},{"ts":1786470301,"fm":63615.0,"cb":0.023,"ca":0.024,"ob":0.020536,"oa":0.026186,"f":0.024236,"oq":140},{"ts":1786470306,"fm":63602.5,"cb":0.023,"ca":0.024,"ob":0.020637,"oa":0.027011,"f":0.025061,"oq":140},{"ts":1786470311,"fm":63596.25,"cb":0.023,"ca":0.024,"ob":0.019863,"oa":0.028639,"f":0.02661,"oq":139},{"ts":1786470316,"fm":63615.0,"cb":0.023,"ca":0.024,"ob":0.020516,"oa":0.027147,"f":0.025228,"oq":140},{"ts":1786470321,"fm":63618.75,"cb":0.023,"ca":0.024,"ob":0.020844,"oa":0.026289,"f":0.024309,"oq":140},{"ts":1786470326,"fm":63618.75,"cb":0.023,"ca":0.024,"ob":0.020687,"oa":0.026707,"f":0.024757,"oq":140},{"ts":1786470331,"fm":63618.75,"cb":0.023,"ca":0.024,"ob":0.020054,"oa":0.026256,"f":0.024306,"oq":140},{"ts":1786470337,"fm":63620.0,"cb":0.023,"ca":0.024,"ob":0.020054,"oa":0.026256,"f":0.024328,"oq":140},{"ts":1786470342,"fm":63615.0,"cb":0.023,"ca":0.024,"ob":0.020063,"oa":0.02616,"f":0.024222,"oq":140},{"ts":1786470347,"fm":63615.0,"cb":0.023,"ca":0.024,"ob":0.020063,"oa":0.02616,"f":0.024222,"oq":140},{"ts":1786470352,"fm":63641.25,"cb":0.023,"ca":0.0245,"ob":0.020035,"oa":0.026663,"f":0.024702,"oq":140},{"ts":1786470357,"fm":63640.0,"cb":0.023,"ca":0.0245,"ob":0.021018,"oa":0.027254,"f":0.025255,"oq":140},{"ts":1786470362,"fm":63635.0,"cb":0.023,"ca":0.024,"ob":0.020475,"oa":0.027166,"f":0.025246,"oq":140},{"ts":1786470367,"fm":63630.0,"cb":0.023,"ca":0.024,"ob":0.020822,"oa":0.027132,"f":0.025203,"oq":140},{"ts":1786470372,"fm":63647.5,"cb":0.0235,"ca":0.0245,"ob":0.020122,"oa":0.026854,"f":0.024904,"oq":115},{"ts":1786470377,"fm":63647.5,"cb":0.0235,"ca":0.0245,"ob":0.020122,"oa":0.026817,"f":0.024867,"oq":115},{"ts":1786470382,"fm":63647.5,"cb":0.0235,"ca":0.0245,"ob":0.020122,"oa":0.026817,"f":0.024895,"oq":115},{"ts":1786470388,"fm":63647.5,"cb":0.0235,"ca":0.0245,"ob":0.020122,"oa":0.026817,"f":0.024869,"oq":115},{"ts":1786470393,"fm":63647.5,"cb":0.0235,"ca":0.0245,"ob":0.020122,"oa":0.026817,"f":0.024848,"oq":115},{"ts":1786470399,"fm":63647.5,"cb":0.0235,"ca":0.0245,"ob":0.020122,"oa":0.026817,"f":0.024866,"oq":115},{"ts":1786470404,"fm":63640.0,"cb":0.023,"ca":0.024,"ob":0.020018,"oa":0.02667,"f":0.024682,"oq":115},{"ts":1786470409,"fm":63640.0,"cb":0.023,"ca":0.024,"ob":0.020018,"oa":0.02667,"f":0.024682,"oq":115},{"ts":1786470414,"fm":63662.5,"cb":0.0235,"ca":0.0245,"ob":0.02017,"oa":0.027068,"f":0.025209,"oq":114},{"ts":1786470419,"fm":63665.0,"cb":0.0235,"ca":0.0245,"ob":0.020171,"oa":0.027135,"f":0.025154,"oq":114},{"ts":1786470424,"fm":63658.75,"cb":0.0235,"ca":0.0245,"ob":0.02079,"oa":0.026426,"f":0.024502,"oq":115},{"ts":1786470431,"fm":63657.5,"cb":0.0235,"ca":0.0245,"ob":0.020138,"oa":0.026363,"f":0.02447,"oq":115},{"ts":1786470436,"fm":63653.75,"cb":0.0235,"ca":0.0245,"ob":0.020727,"oa":0.02751,"f":0.025554,"oq":114},{"ts":1786470441,"fm":63655.0,"cb":0.0235,"ca":0.0245,"ob":0.020727,"oa":0.02751,"f":0.025539,"oq":114},{"ts":1786470446,"fm":63645.0,"cb":0.023,"ca":0.0245,"ob":0.02059,"oa":0.026742,"f":0.024783,"oq":115},{"ts":1786470451,"fm":63645.0,"cb":0.023,"ca":0.024,"ob":0.020615,"oa":0.027455,"f":0.025462,"oq":115},{"ts":1786470457,"fm":63643.75,"cb":0.023,"ca":0.024,"ob":0.020057,"oa":0.026668,"f":0.024718,"oq":115},{"ts":1786470462,"fm":63645.0,"cb":0.023,"ca":0.024,"ob":0.020615,"oa":0.027412,"f":0.025461,"oq":115},{"ts":1786470467,"fm":63642.5,"cb":0.023,"ca":0.024,"ob":0.020056,"oa":0.0267,"f":0.02472,"oq":115},{"ts":1786470472,"fm":63647.5,"cb":0.023,"ca":0.024,"ob":0.020092,"oa":0.027414,"f":0.025469,"oq":115},{"ts":1786470477,"fm":63646.25,"cb":0.023,"ca":0.024,"ob":0.020092,"oa":0.027414,"f":0.025496,"oq":115},{"ts":1786470482,"fm":63646.25,"cb":0.023,"ca":0.024,"ob":0.020092,"oa":0.027414,"f":0.025496,"oq":115},{"ts":1786470488,"fm":63641.25,"cb":0.023,"ca":0.024,"ob":0.020092,"oa":0.026703,"f":0.024744,"oq":115},{"ts":1786470493,"fm":63645.0,"cb":0.023,"ca":0.024,"ob":0.020617,"oa":0.027438,"f":0.025489,"oq":114},{"ts":1786470498,"fm":63647.5,"cb":0.023,"ca":0.024,"ob":0.020621,"oa":0.027438,"f":0.025522,"oq":115},{"ts":1786470503,"fm":63645.0,"cb":0.023,"ca":0.024,"ob":0.020621,"oa":0.027438,"f":0.025485,"oq":115},{"ts":1786470508,"fm":63645.0,"cb":0.023,"ca":0.024,"ob":0.020621,"oa":0.027438,"f":0.025483,"oq":125},{"ts":1786470513,"fm":63645.0,"cb":0.023,"ca":0.024,"ob":0.020621,"oa":0.027438,"f":0.025483,"oq":125},{"ts":1786470519,"fm":63645.0,"cb":0.023,"ca":0.024,"ob":0.020621,"oa":0.027438,"f":0.025483,"oq":125},{"ts":1786470525,"fm":63645.0,"cb":0.023,"ca":0.024,"ob":0.020621,"oa":0.027438,"f":0.025483,"oq":125},{"ts":1786470530,"fm":63645.0,"cb":0.023,"ca":0.024,"ob":0.020621,"oa":0.027438,"f":0.025483,"oq":125},{"ts":1786470536,"fm":63646.25,"cb":0.023,"ca":0.024,"ob":0.020621,"oa":0.027438,"f":0.025479,"oq":125},{"ts":1786470542,"fm":63645.0,"cb":0.023,"ca":0.024,"ob":0.020621,"oa":0.027438,"f":0.025478,"oq":125},{"ts":1786470547,"fm":63636.25,"cb":0.023,"ca":0.024,"ob":0.020997,"oa":0.027356,"f":0.025401,"oq":128},{"ts":1786470553,"fm":63635.0,"cb":0.023,"ca":0.024,"ob":0.020997,"oa":0.027356,"f":0.02532,"oq":140},{"ts":1786470559,"fm":63632.5,"cb":0.023,"ca":0.024,"ob":0.02048,"oa":0.027235,"f":0.025285,"oq":140},{"ts":1786470564,"fm":63632.5,"cb":0.023,"ca":0.024,"ob":0.02048,"oa":0.026462,"f":0.024512,"oq":140},{"ts":1786470569,"fm":63631.25,"cb":0.023,"ca":0.024,"ob":0.02048,"oa":0.026462,"f":0.024506,"oq":140},{"ts":1786470574,"fm":63631.25,"cb":0.023,"ca":0.024,"ob":0.02048,"oa":0.026462,"f":0.024506,"oq":140},{"ts":1786470580,"fm":63622.5,"cb":0.023,"ca":0.024,"ob":0.02048,"oa":0.026369,"f":0.024416,"oq":140},{"ts":1786470585,"fm":63621.25,"cb":0.023,"ca":0.024,"ob":0.02048,"oa":0.027224,"f":0.025274,"oq":140},{"ts":1786470590,"fm":63617.5,"cb":0.023,"ca":0.024,"ob":0.020355,"oa":0.027211,"f":0.025181,"oq":140},{"ts":1786470595,"fm":63611.25,"cb":0.023,"ca":0.024,"ob":0.020655,"oa":0.027074,"f":0.025162,"oq":140},{"ts":1786470600,"fm":63601.25,"cb":0.023,"ca":0.024,"ob":0.020515,"oa":0.02604,"f":0.024121,"oq":140},{"ts":1786470605,"fm":63607.5,"cb":0.023,"ca":0.024,"ob":0.020561,"oa":0.026707,"f":0.02474,"oq":140},{"ts":1786470610,"fm":63613.75,"cb":0.023,"ca":0.024,"ob":0.020701,"oa":0.026766,"f":0.024787,"oq":140},{"ts":1786470615,"fm":63613.75,"cb":0.023,"ca":0.024,"ob":0.020701,"oa":0.026766,"f":0.024814,"oq":140},{"ts":1786470621,"fm":63613.75,"cb":0.023,"ca":0.024,"ob":0.020701,"oa":0.026766,"f":0.024787,"oq":140},{"ts":1786470626,"fm":63623.75,"cb":0.023,"ca":0.024,"ob":0.020841,"oa":0.027222,"f":0.025332,"oq":140},{"ts":1786470632,"fm":63625.0,"cb":0.023,"ca":0.024,"ob":0.020414,"oa":0.027325,"f":0.025297,"oq":140},{"ts":1786470637,"fm":63625.0,"cb":0.023,"ca":0.024,"ob":0.020414,"oa":0.027325,"f":0.025339,"oq":140},{"ts":1786470642,"fm":63620.0,"cb":0.023,"ca":0.024,"ob":0.020414,"oa":0.02635,"f":0.024356,"oq":140},{"ts":1786470647,"fm":63625.0,"cb":0.023,"ca":0.024,"ob":0.02087,"oa":0.02722,"f":0.025275,"oq":140},{"ts":1786470652,"fm":63627.5,"cb":0.023,"ca":0.024,"ob":0.020467,"oa":0.027256,"f":0.025343,"oq":140},{"ts":1786470657,"fm":63627.5,"cb":0.023,"ca":0.024,"ob":0.020467,"oa":0.027256,"f":0.025343,"oq":140},{"ts":1786470663,"fm":63625.0,"cb":0.023,"ca":0.024,"ob":0.02087,"oa":0.027311,"f":0.025304,"oq":140},{"ts":1786470668,"fm":63621.25,"cb":0.023,"ca":0.024,"ob":0.020435,"oa":0.026374,"f":0.024353,"oq":140},{"ts":1786470673,"fm":63630.0,"cb":0.023,"ca":0.024,"ob":0.0205,"oa":0.026468,"f":0.024482,"oq":140},{"ts":1786470678,"fm":63626.25,"cb":0.023,"ca":0.024,"ob":0.0205,"oa":0.027274,"f":0.025284,"oq":140},{"ts":1786470685,"fm":63626.25,"cb":0.023,"ca":0.024,"ob":0.0205,"oa":0.027274,"f":0.025284,"oq":140},{"ts":1786470690,"fm":63626.25,"cb":0.023,"ca":0.024,"ob":0.0205,"oa":0.027274,"f":0.025284,"oq":140},{"ts":1786470695,"fm":63630.0,"cb":0.023,"ca":0.024,"ob":0.020556,"oa":0.026404,"f":0.024454,"oq":140},{"ts":1786470702,"fm":63630.0,"cb":0.023,"ca":0.024,"ob":0.020556,"oa":0.026404,"f":0.024431,"oq":140},{"ts":1786470708,"fm":63630.0,"cb":0.023,"ca":0.024,"ob":0.020556,"oa":0.026404,"f":0.024431,"oq":140},{"ts":1786470713,"fm":63630.0,"cb":0.023,"ca":0.024,"ob":0.020556,"oa":0.026404,"f":0.024431,"oq":140},{"ts":1786470719,"fm":63630.0,"cb":0.023,"ca":0.024,"ob":0.020556,"oa":0.026404,"f":0.024431,"oq":140},{"ts":1786470725,"fm":63630.0,"cb":0.023,"ca":0.024,"ob":0.020556,"oa":0.026404,"f":0.024432,"oq":140},{"ts":1786470730,"fm":63630.0,"cb":0.023,"ca":0.024,"ob":0.020556,"oa":0.026404,"f":0.024388,"oq":140},{"ts":1786470736,"fm":63633.75,"cb":0.023,"ca":0.024,"ob":0.019637,"oa":0.027497,"f":0.025461,"oq":140},{"ts":1786470741,"fm":63633.75,"cb":0.023,"ca":0.024,"ob":0.019637,"oa":0.027412,"f":0.025464,"oq":140},{"ts":1786470746,"fm":63633.75,"cb":0.023,"ca":0.024,"ob":0.019637,"oa":0.026638,"f":0.024687,"oq":140},{"ts":1786470752,"fm":63633.75,"cb":0.023,"ca":0.024,"ob":0.019637,"oa":0.026638,"f":0.024687,"oq":140},{"ts":1786470757,"fm":63633.75,"cb":0.023,"ca":0.024,"ob":0.019637,"oa":0.026638,"f":0.024688,"oq":140},{"ts":1786470762,"fm":63633.75,"cb":0.023,"ca":0.024,"ob":0.020535,"oa":0.027386,"f":0.025435,"oq":140}],"chain":[{"i":"BTC-28AUG26-40000-C","k":"C","s":40000.0,"mb":0.37,"ma":0.3925,"ob":null,"oa":0.37391},{"i":"BTC-28AUG26-40000-P","k":"P","s":40000.0,"mb":null,"ma":0.0001,"ob":null,"oa":0.023522},{"i":"BTC-28AUG26-46000-C","k":"C","s":46000.0,"mb":0.2505,"ma":0.3035,"ob":0.275092,"oa":0.279957},{"i":"BTC-28AUG26-46000-P","k":"P","s":46000.0,"mb":0.0002,"ma":0.0003,"ob":null,"oa":0.028883},{"i":"BTC-28AUG26-48000-C","k":"C","s":48000.0,"mb":0.2425,"ma":0.2495,"ob":0.243814,"oa":0.24879},{"i":"BTC-28AUG26-48000-P","k":"P","s":48000.0,"mb":0.0004,"ma":0.0005,"ob":null,"oa":0.006336},{"i":"BTC-28AUG26-50000-C","k":"C","s":50000.0,"mb":0.211,"ma":0.218,"ob":0.212539,"oa":0.217735},{"i":"BTC-28AUG26-50000-P","k":"P","s":50000.0,"mb":0.0006,"ma":0.0008,"ob":null,"oa":0.00629},{"i":"BTC-28AUG26-52000-C","k":"C","s":52000.0,"mb":0.18,"ma":0.188,"ob":0.181432,"oa":0.186792},{"i":"BTC-28AUG26-52000-P","k":"P","s":52000.0,"mb":0.001,"ma":0.0012,"ob":null,"oa":0.007744},{"i":"BTC-28AUG26-53000-C","k":"C","s":53000.0,"mb":0.1645,"ma":0.1725,"ob":0.16588,"oa":0.171208},{"i":"BTC-28AUG26-53000-P","k":"P","s":53000.0,"mb":0.0012,"ma":0.0013,"ob":null,"oa":0.00797},{"i":"BTC-28AUG26-54000-C","k":"C","s":54000.0,"mb":0.149,"ma":0.1565,"ob":0.150503,"oa":0.156187},{"i":"BTC-28AUG26-54000-P","k":"P","s":54000.0,"mb":0.0016,"ma":0.0019,"ob":null,"oa":0.007697},{"i":"BTC-28AUG26-55000-C","k":"C","s":55000.0,"mb":0.134,"ma":0.1415,"ob":0.135126,"oa":0.140941},{"i":"BTC-28AUG26-55000-P","k":"P","s":55000.0,"mb":0.002,"ma":0.0023,"ob":null,"oa":0.008424},{"i":"BTC-28AUG26-56000-C","k":"C","s":56000.0,"mb":0.119,"ma":0.1265,"ob":0.120049,"oa":0.125957},{"i":"BTC-28AUG26-56000-P","k":"P","s":56000.0,"mb":0.0027,"ma":0.003,"ob":null,"oa":0.009151},{"i":"BTC-28AUG26-57000-C","k":"C","s":57000.0,"mb":0.1045,"ma":0.111,"ob":0.105122,"oa":0.11116},{"i":"BTC-28AUG26-57000-P","k":"P","s":57000.0,"mb":0.0035,"ma":0.0039,"ob":null,"oa":0.009378},{"i":"BTC-28AUG26-58000-C","k":"C","s":58000.0,"mb":0.09,"ma":0.0965,"ob":0.090596,"oa":0.097064},{"i":"BTC-28AUG26-58000-P","k":"P","s":58000.0,"mb":0.0047,"ma":0.0055,"ob":null,"oa":0.010604},{"i":"BTC-28AUG26-59000-C","k":"C","s":59000.0,"mb":0.076,"ma":0.0825,"ob":0.076169,"oa":0.082868},{"i":"BTC-28AUG26-59000-P","k":"P","s":59000.0,"mb":0.006,"ma":0.007,"ob":0.000132,"oa":0.012331},{"i":"BTC-28AUG26-60000-C","k":"C","s":60000.0,"mb":0.0625,"ma":0.069,"ob":0.062942,"oa":0.069671},{"i":"BTC-28AUG26-60000-P","k":"P","s":60000.0,"mb":0.0085,"ma":0.0095,"ob":0.002329,"oa":0.014558},{"i":"BTC-28AUG26-61000-C","k":"C","s":61000.0,"mb":0.051,"ma":0.056,"ob":0.050215,"oa":0.056975},{"i":"BTC-28AUG26-61000-P","k":"P","s":61000.0,"mb":0.0115,"ma":0.0125,"ob":0.006525,"oa":0.017285},{"i":"BTC-28AUG26-62000-C","k":"C","s":62000.0,"mb":0.0415,"ma":0.043,"ob":0.038988,"oa":0.045779},{"i":"BTC-28AUG26-62000-P","k":"P","s":62000.0,"mb":0.016,"ma":0.017,"ob":0.012721,"oa":0.020012},{"i":"BTC-28AUG26-63000-C","k":"C","s":63000.0,"mb":0.0315,"ma":0.0325,"ob":0.028762,"oa":0.035583},{"i":"BTC-28AUG26-63000-P","k":"P","s":63000.0,"mb":0.0215,"ma":0.0225,"ob":0.018417,"oa":0.025238},{"i":"BTC-28AUG26-64000-C","k":"C","s":64000.0,"mb":0.023,"ma":0.024,"ob":0.020535,"oa":0.027386},{"i":"BTC-28AUG26-64000-P","k":"P","s":64000.0,"mb":0.029,"ma":0.03,"ob":0.025614,"oa":0.032465},{"i":"BTC-28AUG26-65000-C","k":"C","s":65000.0,"mb":0.0165,"ma":0.017,"ob":0.012808,"oa":0.02069},{"i":"BTC-28AUG26-65000-P","k":"P","s":65000.0,"mb":0.037,"ma":0.039,"ob":0.03481,"oa":0.041192},{"i":"BTC-28AUG26-66000-C","k":"C","s":66000.0,"mb":0.011,"ma":0.012,"ob":0.006581,"oa":0.017494},{"i":"BTC-28AUG26-66000-P","k":"P","s":66000.0,"mb":0.0465,"ma":0.0515,"ob":0.045006,"oa":0.051919},{"i":"BTC-28AUG26-67000-C","k":"C","s":67000.0,"mb":0.007,"ma":0.008,"ob":0.001854,"oa":0.014796},{"i":"BTC-28AUG26-67000-P","k":"P","s":67000.0,"mb":0.0575,"ma":0.0645,"ob":0.056703,"oa":0.063646},{"i":"BTC-28AUG26-68000-C","k":"C","s":68000.0,"mb":0.0048,"ma":0.0055,"ob":null,"oa":0.011601},{"i":"BTC-28AUG26-68000-P","k":"P","s":68000.0,"mb":0.0695,"ma":0.077,"ob":0.070199,"oa":0.076872},{"i":"BTC-28AUG26-69000-C","k":"C","s":69000.0,"mb":0.003,"ma":0.0034,"ob":null,"oa":0.010905},{"i":"BTC-28AUG26-69000-P","k":"P","s":69000.0,"mb":0.0835,"ma":0.092,"ob":0.084095,"oa":0.090499},{"i":"BTC-28AUG26-70000-C","k":"C","s":70000.0,"mb":0.002,"ma":0.0022,"ob":null,"oa":0.009708},{"i":"BTC-28AUG26-70000-P","k":"P","s":70000.0,"mb":0.098,"ma":0.1065,"ob":0.098842,"oa":0.105001},{"i":"BTC-28AUG26-71000-C","k":"C","s":71000.0,"mb":0.0013,"ma":0.0015,"ob":null,"oa":0.048012},{"i":"BTC-28AUG26-71000-P","k":"P","s":71000.0,"mb":0.079,"ma":0.1605,"ob":0.113926,"oa":0.11994},{"i":"BTC-28AUG26-72000-C","k":"C","s":72000.0,"mb":0.0009,"ma":0.0011,"ob":null,"oa":0.009816},{"i":"BTC-28AUG26-72000-P","k":"P","s":72000.0,"mb":0.128,"ma":0.138,"ob":0.129273,"oa":0.135217},{"i":"BTC-28AUG26-73000-C","k":"C","s":73000.0,"mb":0.0006,"ma":0.0008,"ob":null,"oa":0.047119},{"i":"BTC-28AUG26-73000-P","k":"P","s":73000.0,"mb":0.109,"ma":0.191,"ob":0.144706,"oa":0.150606},{"i":"BTC-28AUG26-74000-C","k":"C","s":74000.0,"mb":0.0004,"ma":0.0006,"ob":null,"oa":0.046923},{"i":"BTC-28AUG26-74000-P","k":"P","s":74000.0,"mb":0.124,"ma":0.2065,"ob":0.160227,"oa":0.166108},{"i":"BTC-28AUG26-75000-C","k":"C","s":75000.0,"mb":0.0003,"ma":0.0005,"ob":null,"oa":0.009227},{"i":"BTC-28AUG26-75000-P","k":"P","s":75000.0,"mb":0.173,"ma":0.1845,"ob":0.175836,"oa":0.181722},{"i":"BTC-28AUG26-76000-C","k":"C","s":76000.0,"mb":0.0003,"ma":0.0004,"ob":null,"oa":0.048531},{"i":"BTC-28AUG26-76000-P","k":"P","s":76000.0,"mb":0.154,"ma":0.2395,"ob":0.191532,"oa":0.197335},{"i":"BTC-28AUG26-77000-C","k":"C","s":77000.0,"mb":0.0002,"ma":0.0004,"ob":null,"oa":0.048834},{"i":"BTC-28AUG26-77000-P","k":"P","s":77000.0,"mb":0.17,"ma":0.2555,"ob":0.207141,"oa":0.213064},{"i":"BTC-28AUG26-78000-C","k":"C","s":78000.0,"mb":0.0002,"ma":0.0003,"ob":null,"oa":0.049138},{"i":"BTC-28AUG26-78000-P","k":"P","s":78000.0,"mb":0.185,"ma":0.2715,"ob":0.222837,"oa":0.228676},{"i":"BTC-28AUG26-79000-C","k":"C","s":79000.0,"mb":0.0002,"ma":0.0003,"ob":null,"oa":0.049442},{"i":"BTC-28AUG26-79000-P","k":"P","s":79000.0,"mb":0.1995,"ma":0.2875,"ob":0.238533,"oa":0.244405},{"i":"BTC-28AUG26-80000-C","k":"C","s":80000.0,"mb":0.0001,"ma":0.0002,"ob":null,"oa":0.009745},{"i":"BTC-28AUG26-80000-P","k":"P","s":80000.0,"mb":0.251,"ma":0.2635,"ob":0.254142,"oa":0.260018},{"i":"BTC-28AUG26-81000-C","k":"C","s":81000.0,"mb":0.0001,"ma":0.0002,"ob":null,"oa":0.050549},{"i":"BTC-28AUG26-81000-P","k":"P","s":81000.0,"mb":0.2305,"ma":0.32,"ob":0.269839,"oa":0.275744},{"i":"BTC-28AUG26-82000-C","k":"C","s":82000.0,"mb":null,"ma":0.0002,"ob":null,"oa":0.051353},{"i":"BTC-28AUG26-82000-P","k":"P","s":82000.0,"mb":0.245,"ma":0.3365,"ob":null,"oa":0.291471},{"i":"BTC-28AUG26-83000-C","k":"C","s":83000.0,"mb":null,"ma":0.0002,"ob":null,"oa":0.051656},{"i":"BTC-28AUG26-83000-P","k":"P","s":83000.0,"mb":0.2605,"ma":0.3525,"ob":null,"oa":0.307198},{"i":"BTC-28AUG26-84000-C","k":"C","s":84000.0,"mb":null,"ma":0.0002,"ob":null,"oa":0.05196},{"i":"BTC-28AUG26-84000-P","k":"P","s":84000.0,"mb":0.2755,"ma":0.3685,"ob":null,"oa":0.322925},{"i":"BTC-28AUG26-85000-C","k":"C","s":85000.0,"mb":null,"ma":0.0001,"ob":null,"oa":0.052264},{"i":"BTC-28AUG26-85000-P","k":"P","s":85000.0,"mb":0.2905,"ma":0.3845,"ob":null,"oa":0.338539},{"i":"BTC-28AUG26-86000-C","k":"C","s":86000.0,"mb":null,"ma":0.0001,"ob":null,"oa":0.053067},{"i":"BTC-28AUG26-86000-P","k":"P","s":86000.0,"mb":0.307,"ma":0.401,"ob":null,"oa":0.354267},{"i":"BTC-28AUG26-88000-C","k":"C","s":88000.0,"mb":null,"ma":0.0001,"ob":null,"oa":0.054175},{"i":"BTC-28AUG26-88000-P","k":"P","s":88000.0,"mb":0.3365,"ma":0.4335,"ob":null,"oa":0.385721},{"i":"BTC-28AUG26-90000-C","k":"C","s":90000.0,"mb":null,"ma":0.0001,"ob":null,"oa":0.055782},{"i":"BTC-28AUG26-90000-P","k":"P","s":90000.0,"mb":0.3665,"ma":0.4665,"ob":null,"oa":0.417174},{"i":"BTC-28AUG26-92000-C","k":"C","s":92000.0,"mb":null,"ma":0.0001,"ob":null,"oa":0.05689},{"i":"BTC-28AUG26-92000-P","k":"P","s":92000.0,"mb":0.3975,"ma":0.499,"ob":null,"oa":0.448628},{"i":"BTC-28AUG26-94000-C","k":"C","s":94000.0,"mb":null,"ma":0.0001,"ob":null,"oa":0.057997},{"i":"BTC-28AUG26-94000-P","k":"P","s":94000.0,"mb":0.4275,"ma":0.5315,"ob":null,"oa":0.480082},{"i":"BTC-28AUG26-95000-C","k":"C","s":95000.0,"mb":null,"ma":0.0001,"ob":null,"oa":0.058301},{"i":"BTC-28AUG26-95000-P","k":"P","s":95000.0,"mb":0.4425,"ma":0.5475,"ob":null,"oa":0.495808},{"i":"BTC-28AUG26-96000-C","k":"C","s":96000.0,"mb":null,"ma":0.0001,"ob":null,"oa":0.059104},{"i":"BTC-28AUG26-96000-P","k":"P","s":96000.0,"mb":0.4575,"ma":0.564,"ob":null,"oa":0.511535},{"i":"BTC-28AUG26-98000-C","k":"C","s":98000.0,"mb":null,"ma":0.0001,"ob":null,"oa":0.060212},{"i":"BTC-28AUG26-98000-P","k":"P","s":98000.0,"mb":0.488,"ma":0.5965,"ob":null,"oa":0.542989},{"i":"BTC-28AUG26-100000-C","k":"C","s":100000.0,"mb":null,"ma":0.0001,"ob":null,"oa":0.060819},{"i":"BTC-28AUG26-100000-P","k":"P","s":100000.0,"mb":0.5185,"ma":0.6285,"ob":null,"oa":0.574442},{"i":"BTC-28AUG26-105000-C","k":"C","s":105000.0,"mb":null,"ma":0.0001,"ob":null,"oa":0.064338},{"i":"BTC-28AUG26-105000-P","k":"P","s":105000.0,"mb":0.5945,"ma":0.7105,"ob":null,"oa":0.653076},{"i":"BTC-28AUG26-110000-C","k":"C","s":110000.0,"mb":null,"ma":0.0001,"ob":null,"oa":0.066856},{"i":"BTC-28AUG26-110000-P","k":"P","s":110000.0,"mb":0.671,"ma":0.7915,"ob":null,"oa":0.73171}]};
+
+const API = 'https://api.slensvik.com';
+const INK = { t1:'#e8eef7', t2:'#a4adbf', t3:'#5a6377', grid:'rgba(255,255,255,0.05)' };
+/* Chart marks — CVD-validated dark-surface variants of the site hues. */
+const MK = { bid:'#00af6a', ask:'#ba2b34', fair:'#9477e4', fut:'#ab6000',
+             band:'rgba(164,173,191,0.35)', bandFill:'rgba(164,173,191,0.10)' };
+
+Chart.defaults.font.family = "'IBM Plex Mono', monospace";
+Chart.defaults.font.size = 10;
+Chart.defaults.color = INK.t3;
+
+function fmtBtc(x, dp = 4) { return x == null ? '—' : x.toFixed(dp); }
+function fmtTs(sec) {
+  return new Date(sec * 1000).toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+}
+
+async function fetchApi() {
+  const get = async (path) => {
+    const r = await fetch(`${API}/${path}`, { signal: AbortSignal.timeout(6000) });
+    if (!r.ok) throw new Error(`${path}: ${r.status}`);
+    return r.json();
+  };
+  const [meta, timeline, chain] = await Promise.all([
+    get('marketmaker_sim_meta'),
+    get('marketmaker_sim_timeline?order=ts.asc'),
+    get('marketmaker_sim_chain?order=strike.asc,kind.asc'),
+  ]);
+  if (!meta.length || !timeline.length) throw new Error('empty');
+  const payload = meta[0].payload;
+  return {
+    meta: payload.meta, stack: payload.stack,
+    timeline: timeline.map(r => ({
+      ts: Date.parse(r.ts) / 1000, fm: r.future_mid, cb: r.call_bid, ca: r.call_ask,
+      ob: r.our_bid, oa: r.our_ask, f: r.fair, oq: r.open_quotes,
+    })),
+    chain: chain.map(r => ({
+      i: r.instrument, k: r.kind, s: r.strike, mb: r.market_bid, ma: r.market_ask,
+      ob: r.our_bid, oa: r.our_ask,
+    })),
+  };
+}
+
+function renderKpis(d) {
+  const m = d.meta;
+  const spanMin = d.timeline.length
+    ? Math.round((d.timeline[d.timeline.length-1].ts - d.timeline[0].ts) / 60) : 0;
+  const items = [
+    ['session', `${spanMin} min`, 'recorded live, replayed'],
+    ['book events', m.rows.toLocaleString('en-US'), `${m.batches.toLocaleString('en-US')} batches`],
+    ['instruments', m.instruments, 'full 28AUG26 chain'],
+    ['resting quotes', m.open_quotes_end, 'at end of replay'],
+    ['fills', m.fills, 'strict-cross rule'],
+    ['hedge failures', m.hedge_failures, 'quotes with no hedge: cancelled'],
+  ];
+  document.getElementById('kpis').innerHTML = items.map(([l,v,s]) =>
+    `<div class="kpi"><div class="kpi-lbl">${l}</div><div class="kpi-val">${v}</div><div class="kpi-sub">${s}</div></div>`
+  ).join('');
+  const p = m.params;
+  document.getElementById('runNote').innerHTML =
+    `Replay parameters: size <strong>${p.size} BTC</strong> per quote · minimum net edge <strong>${p.min_edge}</strong> BTC ` +
+    `· safety buffer <strong>${p.buffer}</strong> BTC · fees: Deribit standard tier, 2026-08-01 schedule. ` +
+    `Zero fills in a ${spanMin}-minute window is the expected honest result — the strict-cross rule only fills when ` +
+    `someone trades <em>through</em> a quote resting a full cost-stack away from fair. Longer sessions are what gate 2 measures.`;
+}
+
+let tlChart, futChart, chainChart;
+
+function renderTimeline(d) {
+  const tl = d.timeline;
+  document.getElementById('tlDesc').textContent =
+    `${d.meta.atm_instrument} — the strike nearest the future; BTC premiums`;
+  const labels = tl.map(r => fmtTs(r.ts));
+  const mk = (label, key, color, extra={}) => ({
+    label, data: tl.map(r => r[key]), borderColor: color, backgroundColor: color,
+    borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, tension: 0, spanGaps: true, ...extra,
+  });
+  tlChart = new Chart(document.getElementById('tlChart'), {
+    type: 'line',
+    data: { labels, datasets: [
+      mk('Market ask', 'ca', MK.band, { borderWidth: 1, fill: '+1', backgroundColor: MK.bandFill }),
+      mk('Market bid', 'cb', MK.band, { borderWidth: 1 }),
+      mk('Parity fair (at hedge depth)', 'f', MK.fair),
+      mk('Our bid', 'ob', MK.bid),
+      mk('Our ask', 'oa', MK.ask),
+    ]},
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { labels: { color: INK.t2, boxWidth: 8, boxHeight: 8, padding: 14 } },
+        tooltip: { backgroundColor: '#11161f', borderColor: 'rgba(255,255,255,0.12)', borderWidth: 1,
+                   titleColor: INK.t2, bodyColor: INK.t1,
+                   callbacks: { label: c => ` ${c.dataset.label}: ${fmtBtc(c.parsed.y, 5)}` } },
+      },
+      scales: {
+        x: { grid: { color: INK.grid }, ticks: { maxTicksLimit: 8, maxRotation: 0 } },
+        y: { grid: { color: INK.grid }, ticks: { callback: v => v.toFixed(3) },
+             title: { display: true, text: 'premium · BTC', color: INK.t3, font: { size: 9 } } },
+      },
+    },
+  });
+
+  futChart = new Chart(document.getElementById('futChart'), {
+    type: 'line',
+    data: { labels, datasets: [{
+      label: `${d.meta.future} mid · USD`, data: tl.map(r => r.fm),
+      borderColor: MK.fut, backgroundColor: MK.fut, borderWidth: 2, pointRadius: 0,
+      pointHoverRadius: 4, tension: 0,
+    }]},
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { labels: { color: INK.t2, boxWidth: 8, boxHeight: 8 } },
+        tooltip: { backgroundColor: '#11161f', borderColor: 'rgba(255,255,255,0.12)', borderWidth: 1,
+                   titleColor: INK.t2, bodyColor: INK.t1 },
+      },
+      scales: {
+        x: { display: false },
+        y: { grid: { color: INK.grid }, ticks: { maxTicksLimit: 4, callback: v => v.toLocaleString('en-US') } },
+      },
+    },
+  });
+}
+
+function renderChain(d, kind) {
+  const rows = d.chain.filter(c => c.k === kind && (c.mb != null || c.ma != null));
+  const labels = rows.map(c => (c.s / 1000) + 'k');
+  const mk = (label, key, color, extra={}) => ({
+    label, data: rows.map(c => c[key]), borderColor: color, backgroundColor: color,
+    borderWidth: 2, pointRadius: 2, pointHoverRadius: 5, tension: 0, spanGaps: false, ...extra,
+  });
+  const cfg = {
+    type: 'line',
+    data: { labels, datasets: [
+      mk('Market ask', 'ma', MK.band, { borderWidth: 1, pointRadius: 0, fill: '+1', backgroundColor: MK.bandFill }),
+      mk('Market bid', 'mb', MK.band, { borderWidth: 1, pointRadius: 0 }),
+      mk('Our bid', 'ob', MK.bid),
+      mk('Our ask', 'oa', MK.ask),
+    ]},
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { labels: { color: INK.t2, boxWidth: 8, boxHeight: 8, padding: 14 } },
+        tooltip: { backgroundColor: '#11161f', borderColor: 'rgba(255,255,255,0.12)', borderWidth: 1,
+                   titleColor: INK.t2, bodyColor: INK.t1,
+                   callbacks: { title: items => `strike ${items[0].label}`,
+                                label: c => ` ${c.dataset.label}: ${fmtBtc(c.parsed.y, 5)}` } },
+      },
+      scales: {
+        x: { grid: { color: INK.grid }, ticks: { maxRotation: 0, autoSkipPadding: 10 },
+             title: { display: true, text: 'strike · USD', color: INK.t3, font: { size: 9 } } },
+        y: { type: 'logarithmic', grid: { color: INK.grid },
+             ticks: { callback: v => { const l = Math.log10(v); return Number.isInteger(l) || [2,5].includes(v/Math.pow(10,Math.floor(l))) ? v : null; } },
+             title: { display: true, text: 'premium · BTC (log)', color: INK.t3, font: { size: 9 } } },
+      },
+    },
+  };
+  if (chainChart) chainChart.destroy();
+  chainChart = new Chart(document.getElementById('chainChart'), cfg);
+
+  const inside = rows.filter(c =>
+    (c.ob != null && c.mb != null && c.ob > c.mb) || (c.oa != null && c.ma != null && c.oa < c.ma)).length;
+  document.getElementById('chainNote').innerHTML =
+    `Where the green/red points sit <em>inside</em> the gray band, the strategy's honest-edge quote is tighter than ` +
+    `the market's own touch — it would be best bid or best offer. On this snapshot that holds at ` +
+    `<strong>${inside} of ${rows.length}</strong> quoted ${kind === 'C' ? 'call' : 'put'} strikes; on the rest the ` +
+    `full cost stack pushes us behind the touch, and the quote waits deeper in the book.`;
+
+  document.getElementById('chainTable').innerHTML =
+    `<tr><th>instrument</th><th>mkt bid</th><th>our bid</th><th>our ask</th><th>mkt ask</th></tr>` +
+    rows.map(c => `<tr><td>${c.i}</td><td>${fmtBtc(c.mb)}</td>` +
+      `<td class="${c.ob != null && c.mb != null && c.ob > c.mb ? 'inside' : ''}">${fmtBtc(c.ob)}</td>` +
+      `<td class="${c.oa != null && c.ma != null && c.oa < c.ma ? 'inside' : ''}">${fmtBtc(c.oa)}</td>` +
+      `<td>${fmtBtc(c.ma)}</td></tr>`).join('');
+}
+
+function renderStack(d) {
+  const s = d.stack;
+  const parts = [
+    ['maker fee (our leg)', s.maker_fee],
+    ['taker fee (opposite option)', s.opp_taker_fee],
+    ['taker fee (future leg)', s.future_taker_fee],
+    ['option settlement at expiry', s.option_settlement],
+    ['future delivery at expiry', s.future_delivery],
+    ['safety buffer', s.buffer],
+    ['minimum edge (our margin)', s.min_edge],
+  ];
+  const max = Math.max(...parts.map(p => p[1]));
+  document.getElementById('stackBars').innerHTML = parts.map(([l, v]) =>
+    `<div class="stack-row"><div class="stack-lbl">${l}</div>` +
+    `<div class="stack-track"><div class="stack-fill${l.startsWith('minimum') ? ' edge' : ''}" style="width:${(v/max*100).toFixed(1)}%"></div></div>` +
+    `<div class="stack-val">${v.toFixed(5)}</div></div>`).join('');
+  const stackSum = parts.reduce((a, p) => a + p[1], 0);
+  document.getElementById('stackSum').innerHTML =
+    `For <strong>${s.instrument}</strong> at replay end: parity fair value <strong>${s.fair_at_depth.toFixed(5)}</strong> BTC ` +
+    `(priced at depth-walked hedge prices) + cost stack <strong>${stackSum.toFixed(5)}</strong> = ` +
+    `our resting ask <strong>${s.ask.toFixed(5)}</strong> BTC. All values are per 1 BTC of underlying — the green bar is ` +
+    `the only part we keep; everything amber is paid away or held in reserve.`;
+}
+
+async function boot() {
+  let data, live = false;
+  try { data = await fetchApi(); live = true; }
+  catch (e) { data = EMBED; }
+  const tag = document.getElementById('srcTag');
+  tag.textContent = live ? 'LIVE API' : 'EMBEDDED SNAPSHOT';
+  tag.classList.add(live ? 'live' : 'mock');
+
+  renderKpis(data);
+  renderTimeline(data);
+  renderStack(data);
+  renderChain(data, 'C');
+
+  const bc = document.getElementById('btnCalls'), bp = document.getElementById('btnPuts');
+  bc.onclick = () => { bc.classList.add('active'); bp.classList.remove('active'); renderChain(data, 'C'); };
+  bp.onclick = () => { bp.classList.add('active'); bc.classList.remove('active'); renderChain(data, 'P'); };
+}
+boot();
+</script>
+</body>
+</html>
