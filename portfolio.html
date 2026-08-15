@@ -2232,7 +2232,10 @@ function initDecks() {
       const totCls = (b.totPct || 0) > 0 ? 'up' : (b.totPct || 0) < 0 ? 'dn' : '';
       const extra = [
         b.totPct != null ? `<span class="${totCls}">${fmtPct(b.totPct)}</span> since cost` : '',
-        b.divDate ? `◐ ex-div ${b.divDate}` : '',
+        b.divDate
+          ? (b.divAhead ? `◐ ex-div ${b.divDate}` : `◐ went ex ${b.divDate}`) +
+            (b.divPay ? ` · pays ${b.divPay}` : '')
+          : '',
         b.evtDate ? `◌ ${(b.evtTitle || 'event').slice(0, 26)} ${b.evtDate}` : '',
       ].filter(Boolean).join(' · ');
       fly.innerHTML = `<span class="fo-tk">${b.tk}</span> &nbsp;<span class="${cls}">${fmtPct(b.dayPct)}</span><br>
@@ -2373,6 +2376,56 @@ function buildDeckRibbonSeries(t, day) {
   return pts;
 }
 
+/* ── ex-dividend moon window ──────────────────────────────────────────────
+   Oslo Børs publishes two kinds of ex-dividend notice, and the moon has to
+   cope with both:
+
+   · the MAR "key information" form, filed days or weeks ahead, which states
+     the real ex-date and payment date — genuinely forward-looking;
+   · the same-day notice ("Ex. dividend NOK 3.00 today"), which by definition
+     only exists once the shares have ALREADY gone ex, and which reaches us
+     that evening when the scraper runs.
+
+   With only the first rule the moon was invisible in practice, because the
+   second kind is the overwhelming majority. So the window runs from the
+   ex-date until the dividend is actually paid — the position is "in
+   dividend" that whole time — and falls back to a few days' grace when no
+   payment date was published. Forward sightings are capped so a moon always
+   means "soon" rather than "sometime this year".                            */
+const DIV_GRACE_DAYS   = 4;    // day-of notices linger this long without a pay date
+const DIV_FORWARD_DAYS = 45;   // don't light up for an ex-date further out than this
+
+function addDays(iso, n) {
+  const d = new Date(iso + 'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+// The ex-dividend event a holding is currently inside, or null.
+function divMoonFor(md) {
+  const today = new Date().toISOString().slice(0, 10);
+  const horizon = addDays(today, DIV_FORWARD_DAYS);
+  const rows = [
+    ...(md.events || []).filter(e => e.event_type === 'EX_DATE'),
+    ...(md.pastDivs || []),                    // already ex, payment maybe pending
+  ].filter(e => e.event_date);
+
+  let best = null;
+  for (const e of rows) {
+    if (e.event_date > horizon) continue;
+    const until = e.payment_date || addDays(e.event_date, DIV_GRACE_DAYS);
+    if (until < today) continue;               // paid out — the moon has set
+    const upcoming = e.event_date >= today;
+    // Prefer the next ex-date; among already-ex holdings prefer the newest.
+    const better = !best
+      || (upcoming && !best.upcoming)
+      || (upcoming === best.upcoming
+          && (upcoming ? e.event_date < best.ex : e.event_date > best.ex));
+    if (better) best = { ex: e.event_date, pay: e.payment_date || null, until, upcoming };
+  }
+  return best;
+}
+
 /* ── deck data + centre overlay ──────────────────────────────────────────── */
 function renderDeck() {
   if (!heroDeck) return;
@@ -2392,7 +2445,7 @@ function renderDeck() {
     const evs = (md.events || [])
       .filter(e => e.event_date && e.event_date >= today)
       .sort((a, b) => a.event_date.localeCompare(b.event_date));
-    const nextDiv = evs.find(e => e.event_type === 'EX_DATE');
+    const moon = divMoonFor(md);
     const nextEvt = evs.find(e => e.event_type !== 'EX_DATE' && e.event_date <= evHorizon);
     const row = {
       isin, tk: ticker(isin), value,
@@ -2400,7 +2453,9 @@ function renderDeck() {
       dayPct: holdingDayPct(isin),
       darkPct: md.intel?.dark_pct ?? md.darkPct,
       totPct: p.avgCost > 0 ? (price / p.avgCost - 1) * 100 : null,
-      divDate: nextDiv ? nextDiv.event_date : null,
+      divDate: moon ? moon.ex : null,
+      divPay: moon ? moon.pay : null,
+      divAhead: moon ? moon.upcoming : false,
       evtDate: nextEvt ? nextEvt.event_date : null,
       evtTitle: nextEvt ? (nextEvt.title || '') : '',
     };
