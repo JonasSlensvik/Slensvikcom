@@ -409,6 +409,22 @@ table.wt { width: 100%; border-collapse: collapse; font-family: var(--mono); fon
 .conv-chip.dark .g        { color: inherit; }
 .conv-chip.dark.confirmed { background: rgba(245,166,35,0.10); border-color: var(--amber); }
 
+/* ── conviction score breakdown — the itemized pts_* components ──────── */
+.conv-break { margin-top: 8px; }
+.conv-break summary { cursor: pointer; font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--text-dim); list-style: none; }
+.conv-break summary::-webkit-details-marker { display: none; }
+.conv-break summary::before { content: '▸ '; }
+.conv-break[open] summary::before { content: '▾ '; }
+.conv-break summary:hover { color: var(--text-bright); }
+.conv-break-body { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+.conv-break-row { display: grid; grid-template-columns: 1fr 62px 38px; gap: 8px; align-items: center; margin-bottom: 4px; font-size: 10px; }
+.conv-break-lbl { color: var(--text); }
+.conv-break-track { position: relative; height: 8px; background: var(--bg3); }
+.conv-break-fill { position: absolute; inset: 0 auto 0 0; background: var(--amber); }
+.conv-break-fill.neg { background: var(--red, #f87171); }
+.conv-break-val { text-align: right; font-variant-numeric: tabular-nums; color: var(--text-bright); }
+.conv-break-cap { margin-top: 6px; font-size: 9.5px; color: var(--text-dim); line-height: 1.5; }
+
 /* ─── Book KPI strip ────────────────────────────────────────────────────── */
 .book-kpis {
   display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
@@ -541,12 +557,13 @@ table.wt { width: 100%; border-collapse: collapse; font-family: var(--mono); fon
     </div>
   </div>
 
-  <!-- ═══ Radar Intelligence — the graded book ─────────────────────────────── -->
+  <!-- ═══ Backtest Regrade — the reconstructed book (in-sample) ────────────── -->
   <div class="section" id="sec-intel-report">
-    <div class="section-head">
-      <div class="section-title">◎ Radar Intelligence</div>
-      <div class="section-desc">Every daily top-10 call regraded against what the market then did — dividend-adjusted excess return vs the cap-weighted index.</div>
+    <div class="section-head collapsible" onclick="toggleSection('sec-intel-report')">
+      <div class="section-title">◎ Backtest Regrade · In-Sample</div>
+      <div class="section-desc">Reconstructed with TODAY's formula, not what was actually live at the time — a backtest, not a live record. See Forward Track Record below for the honest test.</div>
       <div class="section-count" id="irCount">—</div>
+      <span class="section-chevron">▾</span>
     </div>
     <div class="section-body">
       <div class="ir-kpis" id="irKpis"></div>
@@ -566,6 +583,22 @@ table.wt { width: 100%; border-collapse: collapse; font-family: var(--mono); fon
       </div>
       <div class="ir-reads" id="irReads"></div>
       <div class="ir-note" id="irNote"></div>
+    </div>
+  </div>
+
+  <!-- ═══ Forward Track Record — the true point-in-time test ───────────────── -->
+  <div class="section" id="sec-forward-record">
+    <div class="section-head">
+      <div class="section-title">◈ Forward Track Record · Live</div>
+      <div class="section-desc">Every conviction call is snapshotted once, live, on the day it's made — no reconstruction, no hindsight. Forward returns fill in as trading days pass.</div>
+      <div class="section-count" id="frCount">—</div>
+    </div>
+    <div class="section-body">
+      <div class="ir-kpis" id="frKpis"></div>
+      <div class="table-wrap"><table class="perf-table"><thead><tr>
+        <th>Horizon</th><th>Matured</th><th>Long hit</th><th>Long med excess</th><th>Short hit</th><th>Short med excess</th>
+      </tr></thead><tbody id="frTable"><tr><td colspan="6" class="perf-empty">LOADING …</td></tr></tbody></table></div>
+      <div class="ir-note" id="frNote"></div>
     </div>
   </div>
 
@@ -727,6 +760,29 @@ function renderConvictionCard(r, side) {
   ].filter(Boolean).join('');
   const fundRow = fundChips
     ? `<div class="conv-signals" style="margin-top:5px">${fundChips}</div>` : '';
+  // Driver transparency: the itemized point-components behind this number
+  // (api.conviction v3's pts_* columns — see ENEXT sql/conviction_view.sql).
+  // stopPropagation is required: the whole card navigates on click, and
+  // without it expanding <details> would also fire drillIntoISIN.
+  const breakdown = INTEL.convictionBreakdown(r);
+  let breakRow = '';
+  if (breakdown.length) {
+    const maxAbs = Math.max(...breakdown.map(([, p]) => Math.abs(p)), 1);
+    const sum = breakdown.reduce((s, [, p]) => s + p, 0);
+    const rows = breakdown.map(([lbl, pts]) => {
+      const w = Math.abs(pts) / maxAbs * 100;
+      return `<div class="conv-break-row"><span class="conv-break-lbl">${lbl}</span>
+        <div class="conv-break-track"><div class="conv-break-fill${pts < 0 ? ' neg' : ''}" style="width:${w.toFixed(0)}%"></div></div>
+        <span class="conv-break-val">${pts > 0 ? '+' : ''}${pts}</span></div>`;
+    }).join('');
+    const capNote = sum > r.conviction
+      ? `<div class="conv-break-cap">Components sum to ${sum.toFixed(0)} — score is capped at 100.</div>` : '';
+    breakRow = `
+      <details class="conv-break" onclick="event.stopPropagation()">
+        <summary>why ${r.conviction}?</summary>
+        <div class="conv-break-body">${rows}${capNote}</div>
+      </details>`;
+  }
   return `
     <div class="conv-card ${side}" onclick="drillIntoISIN('${r.isin}','${r.venue}')">
       <div class="conv-row1">
@@ -739,6 +795,7 @@ function renderConvictionCard(r, side) {
       <div class="conv-signals">${sigChips}${evChip}${siChip}${darkChip}</div>
       ${fundRow}
       <div class="conv-footer">${wall}${vw}${darkPct}${moveStr}</div>
+      ${breakRow}
     </div>`;
 }
 
@@ -895,6 +952,80 @@ async function loadIntelReport() {
   } catch (e) {
     console.error('intel report failed', e);
     document.getElementById('irCount').textContent = 'DATA UNAVAILABLE';
+  }
+}
+
+/* Collapse toggle for the Backtest Regrade panel — CSS already had
+   .section.collapsed / .section-chevron rules sitting unused; this is the
+   only place that wires them up. */
+function toggleSection(id) {
+  document.getElementById(id).classList.toggle('collapsed');
+}
+
+/* ═══ Forward Track Record — api.conviction_snapshot, the true point-in-time
+   test (see ENEXT sql/conviction_snapshot.sql). Unlike Backtest Regrade
+   above, nothing here is reconstructed: every row was frozen live, on the
+   day it was made, before anyone knew what happened next. ═══════════════ */
+const FR_HORIZONS = [1, 5, 20, 60, 120];
+
+async function loadForwardRecord() {
+  try {
+    const cols = ['snapshot_date', 'isin', 'side',
+      ...FR_HORIZONS.flatMap(n => [`excess_return_t${n}_pct`])].join(',');
+    const rows = await API('conviction_snapshot', `select=${cols}&order=snapshot_date.asc`);
+    const tbl = document.getElementById('frTable');
+    if (!rows.length) {
+      document.getElementById('frCount').textContent = 'NO DATA YET';
+      tbl.innerHTML = '<tr><td colspan="6" class="perf-empty">Snapshotting starts today — check back tomorrow.</td></tr>';
+      document.getElementById('frNote').textContent = '';
+      return;
+    }
+
+    const days = new Set(rows.map(r => r.snapshot_date));
+    const firstDay = [...days].sort()[0];
+    document.getElementById('frCount').textContent = `${days.size} DAY${days.size === 1 ? '' : 'S'} TRACKED · ${rows.length} CALLS`;
+
+    const pct = v => v == null ? '—' : v.toFixed(0) + '%';
+    // conviction_snapshot's excess_return_tN_pct is already a PERCENT
+    // (computed as a *100 in SQL), not a fraction — display it directly
+    // rather than reusing Backtest Regrade's fraction*10000-to-bps scaling,
+    // which would be a real unit bug against this table's actual units.
+    const fmtExcess = v => v == null ? '—' :
+      `<span class="${v > 0 ? 'pos' : v < 0 ? 'neg' : ''}">${v > 0 ? '+' : ''}${v.toFixed(2)}%</span>`;
+    const MIN_N = 5; // below this, a hit-rate would be one or two names, not a stat
+
+    const perHorizon = FR_HORIZONS.map(n => {
+      const excCol = `excess_return_t${n}_pct`;
+      const agg = side => {
+        const vals = rows.filter(r => r.side === side && r[excCol] != null).map(r => Number(r[excCol]));
+        if (!vals.length) return { n: 0, hit: null, med: null };
+        const hits = vals.filter(x => side === 'LONG' ? x > 0 : x < 0).length;
+        const s = [...vals].sort((a, b) => a - b);
+        return { n: vals.length, hit: hits / vals.length * 100, med: s[Math.floor(s.length / 2)] };
+      };
+      return { n, long: agg('LONG'), short: agg('SHORT') };
+    });
+
+    const label = n => n < 60 ? `T+${n}d` : `T+${n}d (~${Math.round(n / 20)}mo)`;
+    tbl.innerHTML = perHorizon.map(h => {
+      const cell = a => a.n < MIN_N
+        ? `<td colspan="2" class="perf-empty">n=${a.n} — accumulating</td>`
+        : `<td>${pct(a.hit)}</td><td>${fmtExcess(a.med)}</td>`;
+      return `<tr><td>${label(h.n)}</td><td>${h.long.n + h.short.n}</td>${cell(h.long)}${cell(h.short)}</tr>`;
+    }).join('');
+
+    const anyMatured = perHorizon.some(h => h.long.n + h.short.n > 0);
+    document.getElementById('frNote').textContent = anyMatured
+      ? `Method: api.conviction_snapshot freezes the full universe's conviction score, plus a price and market-index ` +
+        `anchor, once — live, the day the call is made, never revised afterward. Excess return is vs the dividend-` +
+        `adjusted, cap-weighted market index. ${days.size} day${days.size === 1 ? '' : 's'} of live snapshots since ` +
+        `${firstDay}. The 60/120-trading-day columns need ~3-6 months of calendar time to start filling in — that's ` +
+        `expected, not a gap.`
+      : `Live tracking since ${firstDay} — nothing has reached even the T+1 horizon yet; check back after the next ` +
+        `trading session.`;
+  } catch (e) {
+    console.error('forward record failed', e);
+    document.getElementById('frCount').textContent = 'DATA UNAVAILABLE';
   }
 }
 
@@ -1403,7 +1534,7 @@ document.getElementById('wtMore').addEventListener('click', () => { wtShowAll = 
 (async function init() {
   initOrbital();
   loadInstruments();
-  await Promise.allSettled([loadMarket(), loadOrbital(), loadConviction(), loadIntelReport(), loadWatchtower()]);
+  await Promise.allSettled([loadMarket(), loadOrbital(), loadConviction(), loadIntelReport(), loadForwardRecord(), loadWatchtower()]);
 })();
 </script>
 </body>

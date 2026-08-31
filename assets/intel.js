@@ -613,11 +613,44 @@
       `Free cash flow ${fmtCompact(h.fcf)} ${h.ccy} · no dividend paid · FY ${String(h.period).slice(0, 4)}`);
   }
 
+  // Conviction score breakdown — the itemized point-components behind
+  // api.conviction's single number (ENEXT sql/conviction_view.sql v3, the
+  // pts_* columns). Works unmodified against either a live api.conviction
+  // row or an api.conviction_snapshot row — both carry the same columns.
+  // Zero-value components are omitted; [label, points] pairs, in the
+  // formula's own order.
+  function convictionBreakdown(row) {
+    const dir = row.side === 'LONG' ? 1 : -1;
+    const n = v => v == null ? 0 : Number(v);
+    const parts = [];
+    if (n(row.pts_direction_strength))
+      parts.push(['Signal direction & strength', n(row.pts_direction_strength)]);
+    if (n(row.pts_days_confirmed))
+      parts.push([`${row.direction_days} day(s) of signals confirmed`, n(row.pts_days_confirmed)]);
+    if (n(row.pts_event_proximity))
+      parts.push([`${row.next_event_type || 'Event'} in ${row.days_to_event}d`, n(row.pts_event_proximity)]);
+    if (n(row.pts_short_interest_level))
+      parts.push([dir > 0 ? 'High short interest + dark accumulation' : 'Elevated short interest',
+                  n(row.pts_short_interest_level)]);
+    if (n(row.pts_dark_confirmation))
+      parts.push([`Dark flow confirmed ${row.confirmed_days}d`, n(row.pts_dark_confirmation)]);
+    if (n(row.pts_insider_buying))
+      parts.push([`${row.insider_buyers_14d} insider(s) buying`, n(row.pts_insider_buying)]);
+    if (n(row.pts_insider_selling))
+      parts.push([n(row.pts_insider_selling) < 0 ? 'Insiders selling, no buyers' : 'Net insider selling supports short',
+                  n(row.pts_insider_selling)]);
+    if (n(row.pts_short_interest_change))
+      parts.push([dir > 0 ? 'Short interest covering' : 'Short interest building',
+                  n(row.pts_short_interest_change)]);
+    return parts;
+  }
+
   // injectNav is exposed so pages that render their shell via JS (fastrente)
   // can re-run nav injection after the [data-intel-nav] mount appears.
   window.INTEL = { API, safeGet, fmtNum, fmtPct, fmtNOK, fmtCompact, dossierHref, selskapHref,
                    tkLink, chartDefaults, injectNav, liveNumber, openPalette,
                    toggleDensity, mood,
                    analystRead, finHealth, healthBand,
-                   analystChip, healthChip, leverageChip, fcfChip };
+                   analystChip, healthChip, leverageChip, fcfChip,
+                   convictionBreakdown };
 })();

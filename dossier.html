@@ -255,6 +255,25 @@
     .gauge-lbl { flex-wrap:wrap; gap:4px 10px; }
     .desc-clip { max-width:200px; }
   }
+
+  /* ── conviction score breakdown — the itemized pts_* components ─────────
+     Mirrors radar.html's .conv-break* rules (page-local CSS is this site's
+     convention, same as marketmaker-sim.html's .stack-*; the JS helper that
+     drives both lives once, shared, in assets/intel.js). */
+  .conv-break { margin-top: 14px; }
+  .conv-break summary { cursor: pointer; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--text-dim); list-style: none; }
+  .conv-break summary::-webkit-details-marker { display: none; }
+  .conv-break summary::before { content: '▸ '; }
+  .conv-break[open] summary::before { content: '▾ '; }
+  .conv-break summary:hover { color: var(--text-bright); }
+  .conv-break-body { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+  .conv-break-row { display: grid; grid-template-columns: 1fr 100px 50px; gap: 10px; align-items: center; margin-bottom: 5px; font-size: 11px; }
+  .conv-break-lbl { color: var(--text); }
+  .conv-break-track { position: relative; height: 8px; background: var(--bg3); }
+  .conv-break-fill { position: absolute; inset: 0 auto 0 0; background: var(--amber); }
+  .conv-break-fill.neg { background: var(--red, #f87171); }
+  .conv-break-val { text-align: right; font-variant-numeric: tabular-nums; color: var(--text-bright); }
+  .conv-break-cap { margin-top: 6px; font-size: 10px; color: var(--text-dim); line-height: 1.5; }
 </style>
 </head>
 <body>
@@ -300,6 +319,11 @@
       <div class="kpi-label">Radar Verdict</div><div class="kpi-value" id="kRadar">—</div><div class="kpi-sub" id="kRadarSub">—</div>
     </div>
   </div>
+
+  <details class="conv-break" id="convBreakWrap" style="display:none">
+    <summary>why this radar verdict?</summary>
+    <div class="conv-break-body" id="convBreakBody"></div>
+  </details>
 
   <!-- PRICE CHART -->
   <div class="sec">
@@ -597,7 +621,10 @@ const [
   safeGet(`financials_key?isin=eq.${Q}&freq=eq.annual&order=period_end.desc&limit=5`), // NEW (may 404)
   safeGet(`analyst_rec_trend?isin=eq.${Q}&order=period_month.asc`),                  // NEW (may 404)
   safeGet(`intraday_live?isin=eq.${Q}&ts=gte.${todayOslo}T00:00:00&select=ts,price&order=ts.asc&limit=3000`),
-  safeGet(`conviction?isin=eq.${Q}&select=side,conviction,signal_types,direction_days,last_signal_date`),
+  safeGet(`conviction?isin=eq.${Q}&select=side,conviction,signal_types,direction_days,last_signal_date,` +
+          `next_event_type,days_to_event,confirmed_days,insider_buyers_14d,` +
+          `pts_direction_strength,pts_days_confirmed,pts_event_proximity,pts_short_interest_level,` +
+          `pts_dark_confirmation,pts_insider_buying,pts_insider_selling,pts_short_interest_change`),
 ]);
 
 /* euronext trade-tape candles: keep the dominant venue, one bar per day */
@@ -788,6 +815,22 @@ if (cv && cv.side !== 'NEUTRAL') {
   setKpi('kRadar', `${cv.side} ${cv.conviction}`, cv.side === 'LONG' ? 1 : -1);
   $('kRadarSub').textContent =
     `${(cv.signal_types || []).length} signal types · ${cv.direction_days || 0} active days · open radar ↗`;
+
+  const breakdown = INTEL.convictionBreakdown(cv);
+  if (breakdown.length) {
+    const maxAbs = Math.max(...breakdown.map(([, p]) => Math.abs(p)), 1);
+    const sum = breakdown.reduce((s, [, p]) => s + p, 0);
+    const rows = breakdown.map(([lbl, pts]) => {
+      const w = Math.abs(pts) / maxAbs * 100;
+      return `<div class="conv-break-row"><span class="conv-break-lbl">${lbl}</span>
+        <div class="conv-break-track"><div class="conv-break-fill${pts < 0 ? ' neg' : ''}" style="width:${w.toFixed(0)}%"></div></div>
+        <span class="conv-break-val">${pts > 0 ? '+' : ''}${pts}</span></div>`;
+    }).join('');
+    const capNote = sum > cv.conviction
+      ? `<div class="conv-break-cap">Components sum to ${sum.toFixed(0)} — score is capped at 100.</div>` : '';
+    $('convBreakBody').innerHTML = rows + capNote;
+    $('convBreakWrap').style.display = '';
+  }
 } else {
   $('kRadar').textContent = 'CLEAR';
   $('kRadarSub').textContent = 'not on today’s radar · open radar ↗';
