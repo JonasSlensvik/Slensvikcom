@@ -38,6 +38,19 @@
   }
   .alpha-banner strong { color:var(--text1); }
 
+  /* ─── Live-order-test callout (mirrors .alpha-banner, "live" not "alpha") ── */
+  .live-note {
+    display:flex; align-items:center; gap:12px;
+    border:1px solid rgba(67,224,151,0.32); background:var(--green-dim);
+    padding:10px 16px; margin-bottom:16px;
+    font-family:var(--mono); font-size:11px; letter-spacing:.06em; color:var(--text2); line-height:1.6;
+  }
+  .live-note .tag {
+    font-size:9.5px; letter-spacing:.18em; text-transform:uppercase; color:var(--green);
+    border:1px solid rgba(67,224,151,0.4); padding:3px 8px; white-space:nowrap; font-weight:500; align-self:flex-start;
+  }
+  .live-note strong { color:var(--text1); }
+
   .sec { margin-top:22px; }
   .sec-head {
     font-family:var(--mono); font-size:10px; letter-spacing:.2em; text-transform:uppercase;
@@ -207,6 +220,41 @@
     </div>
   </div>
 
+  <!-- ─── SECTION · LIVE ORDER TEST (real Deribit production) ── -->
+  <div class="sec">
+    <div class="panel">
+      <div class="sec-head"><span class="glyph">⬢</span>LIVE ORDER TEST · DERIBIT PRODUCTION<span class="desc">A real post-only order, held and cancelled on repeat, purely to prove the code reaches the exchange and to time it</span><span class="meta" id="lotMeta">—</span></div>
+
+      <div class="live-note">
+        <span class="tag">Real · Production</span>
+        <span>
+          <strong>The one thing on this page that actually touched the exchange</strong> — everything else here is offline
+          simulation. This posted a genuine post-only order on Deribit's live order book, priced far enough from the
+          touch that a fill was never realistically possible, at the exchange's minimum size, cancelled within
+          seconds — repeated for a real latency sample. Zero fills, zero capital ever at risk.
+        </span>
+      </div>
+
+      <div class="kpis">
+        <div class="kpi"><div class="kpi-lbl">Order ack latency</div><div class="kpi-val" id="lotAck">—</div><div class="kpi-sub" id="lotAckSub">—</div></div>
+        <div class="kpi"><div class="kpi-lbl">Cancel ack latency</div><div class="kpi-val" id="lotCxl">—</div><div class="kpi-sub" id="lotCxlSub">—</div></div>
+        <div class="kpi"><div class="kpi-lbl">Cycles</div><div class="kpi-val" id="lotCycles">—</div><div class="kpi-sub" id="lotCyclesSub">place → hold → cancel</div></div>
+        <div class="kpi"><div class="kpi-lbl">Fills</div><div class="kpi-val" id="lotFills">—</div><div class="kpi-sub">by design: none possible</div></div>
+      </div>
+
+      <div style="height:260px"><canvas id="lotCanvas"></canvas></div>
+
+      <div class="tbl-wrap" style="margin-top:16px">
+        <table class="trades">
+          <thead>
+            <tr><th>Cycle</th><th>Quote (ASK)</th><th>Ack latency</th><th>Cancel latency</th><th>Status</th></tr>
+          </thead>
+          <tbody id="lotBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
   <!-- ─── SECTION 2 · STRATEGY LIVE MOCKUP ─────────────────── -->
   <div class="sec">
     <div class="panel">
@@ -291,6 +339,103 @@ function renderGates() {
       <span class="gate-mk ${g.mk}">${glyph[g.mk]}</span>
       <span class="gate-txt"><strong style="color:var(--text3)">${i+1}.</strong> ${g.txt}</span>
     </div>`).join('');
+}
+
+/* ─── LIVE ORDER TEST (real Deribit production, 2026-09-03) ──────────────
+   Fixed historical result, not a live/mock feed like the sections below —
+   tools/live_order_export.py joined the run's Parquet book capture with
+   its order-event log; values rounded on the way in (see that tool and
+   build_page_embed.py's precedent for why: the page prints 4-6 decimals,
+   full float precision is just noise here). Re-generate by re-running
+   tools/live_order_test.py + tools/live_order_export.py and pasting the
+   new payload in below. */
+const LIVE_ORDER_TEST = {"meta":{"generated_at":1788459861,"instrument":"BTC-25SEP26-81000-C","side":"ASK","size":1.0,"cycles":10,"fills":0,"rejects":0,"timeouts":0,"cancel_unconfirmed":0,"session_start":"2026-09-03T18:23:17Z","session_end":"2026-09-03T18:24:08Z","book_rows":115,"touch_points":3},"ack_latency_ms":{"n":10,"min":31.3,"median":33.5,"p95":45.5,"max":45.5},"cancel_latency_ms":{"n":10,"min":32.7,"median":36.2,"p95":40.2,"max":40.2},"timeline":[{"ts":1788459797288556000,"bid":0.0375,"ask":0.0385},{"ts":1788459802849998000,"bid":0.037,"ask":0.0385},{"ts":1788459828842030000,"bid":0.037,"ask":0.038}],"orders":[{"cycle":1,"price":0.04939,"submitted_ns":1788459797000000000,"cancelled_ns":1788459802000000000,"ack_status":"accepted","ack_latency_ms":33.5,"cancel_status":"confirmed","cancel_latency_ms":36.7},{"cycle":2,"price":0.049372,"submitted_ns":1788459802000000000,"cancelled_ns":1788459807000000000,"ack_status":"accepted","ack_latency_ms":31.7,"cancel_status":"confirmed","cancel_latency_ms":36.6},{"cycle":3,"price":0.049584,"submitted_ns":1788459807000000000,"cancelled_ns":1788459812000000000,"ack_status":"accepted","ack_latency_ms":36.6,"cancel_status":"confirmed","cancel_latency_ms":40.2},{"cycle":4,"price":0.049723,"submitted_ns":1788459812000000000,"cancelled_ns":1788459817000000000,"ack_status":"accepted","ack_latency_ms":45.5,"cancel_status":"confirmed","cancel_latency_ms":32.7},{"cycle":5,"price":0.049741,"submitted_ns":1788459817000000000,"cancelled_ns":1788459822000000000,"ack_status":"accepted","ack_latency_ms":32.7,"cancel_status":"confirmed","cancel_latency_ms":35.4},{"cycle":6,"price":0.049703,"submitted_ns":1788459822000000000,"cancelled_ns":1788459828000000000,"ack_status":"accepted","ack_latency_ms":31.3,"cancel_status":"confirmed","cancel_latency_ms":37.6},{"cycle":7,"price":0.04946,"submitted_ns":1788459828000000000,"cancelled_ns":1788459833000000000,"ack_status":"accepted","ack_latency_ms":33.0,"cancel_status":"confirmed","cancel_latency_ms":35.3},{"cycle":8,"price":0.049397,"submitted_ns":1788459833000000000,"cancelled_ns":1788459838000000000,"ack_status":"accepted","ack_latency_ms":33.6,"cancel_status":"confirmed","cancel_latency_ms":35.7},{"cycle":9,"price":0.049163,"submitted_ns":1788459838000000000,"cancelled_ns":1788459843000000000,"ack_status":"accepted","ack_latency_ms":33.4,"cancel_status":"confirmed","cancel_latency_ms":39.4},{"cycle":10,"price":0.049386,"submitted_ns":1788459843000000000,"cancelled_ns":1788459848000000000,"ack_status":"accepted","ack_latency_ms":33.7,"cancel_status":"confirmed","cancel_latency_ms":34.8}]};
+
+function renderLiveOrderTest() {
+  const d = LIVE_ORDER_TEST, m = d.meta, a = d.ack_latency_ms, c = d.cancel_latency_ms;
+
+  const started = new Date(m.session_start);
+  document.getElementById('lotMeta').textContent =
+    `${m.instrument} · ${started.toISOString().slice(0,16).replace('T',' ')} UTC`;
+
+  document.getElementById('lotAck').textContent = a.median.toFixed(1) + ' ms';
+  document.getElementById('lotAckSub').textContent = `min ${a.min} · p95 ${a.p95} ms`;
+  document.getElementById('lotCxl').textContent = c.median.toFixed(1) + ' ms';
+  document.getElementById('lotCxlSub').textContent = `min ${c.min} · p95 ${c.p95} ms`;
+  document.getElementById('lotCycles').textContent = m.cycles;
+  document.getElementById('lotCyclesSub').textContent = `${m.rejects} rejected · ${m.timeouts} timed out`;
+  document.getElementById('lotFills').textContent = m.fills;
+
+  document.getElementById('lotBody').innerHTML = d.orders.map(o => `
+    <tr>
+      <td class="t-inst">#${o.cycle}</td>
+      <td>${btc4(o.price)}</td>
+      <td>${o.ack_latency_ms != null ? o.ack_latency_ms.toFixed(1) + ' ms' : '—'}</td>
+      <td>${o.cancel_latency_ms != null ? o.cancel_latency_ms.toFixed(1) + ' ms' : '—'}</td>
+      <td><span class="t-pf ${o.cancel_status === 'confirmed' ? 'y' : 'n'}">${(o.cancel_status || o.ack_status).toUpperCase()}</span></td>
+    </tr>`).join('');
+
+  // -- chart: market touch (stepped, built by hand — see toSteps) with our
+  // own resting quote overlaid as short, clearly separate segments -------
+  const t0 = Math.min(
+    d.timeline.length ? d.timeline[0].ts : Infinity,
+    d.orders.length ? d.orders[0].submitted_ns : Infinity,
+  );
+  const secs = ns => (ns - t0) / 1e9;
+
+  // Pre-built as a plain (non-stepped) line of explicit hold-then-jump
+  // points, rather than relying on Chart.js's own `stepped` option — this
+  // is unambiguous regardless of that option's before/after convention.
+  function toSteps(points) {
+    const out = [];
+    for (const p of points) {
+      if (p.y == null) continue;
+      if (out.length) out.push({ x: p.x, y: out[out.length - 1].y });
+      out.push({ x: p.x, y: p.y });
+    }
+    return out;
+  }
+  const bidSteps = toSteps(d.timeline.map(p => ({ x: secs(p.ts), y: p.bid })));
+  const askSteps = toSteps(d.timeline.map(p => ({ x: secs(p.ts), y: p.ask })));
+
+  const ourOrder = [];
+  d.orders.forEach(o => {
+    if (o.ack_status !== 'accepted') return;
+    const x0 = secs(o.submitted_ns);
+    const x1 = o.cancelled_ns != null ? secs(o.cancelled_ns) : x0 + 0.1;
+    ourOrder.push({ x: x0, y: o.price }, { x: x1, y: o.price }, { x: x1, y: null });
+  });
+
+  new Chart(document.getElementById('lotCanvas'), {
+    type: 'line',
+    data: {
+      datasets: [
+        { label: 'Market bid', data: bidSteps, borderColor: '#00af6a',
+          backgroundColor: 'transparent', borderWidth: 1.6, pointRadius: 0, tension: 0 },
+        { label: 'Market ask', data: askSteps, borderColor: '#ba2b34',
+          backgroundColor: 'transparent', borderWidth: 1.6, pointRadius: 0, tension: 0 },
+        { label: 'Our resting ask (×10 cycles)', data: ourOrder, borderColor: '#f5a623',
+          backgroundColor: 'transparent', borderWidth: 2.4, pointRadius: 0, tension: 0, spanGaps: false },
+      ],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      interaction: { intersect: false, mode: 'nearest' },
+      plugins: {
+        legend: { labels: { color: '#a4adbf', font: { family: 'IBM Plex Mono', size: 10 }, boxWidth: 12 } },
+        tooltip: { callbacks: {
+          title: items => items.length ? `t+${items[0].parsed.x.toFixed(1)}s` : '',
+          label: ctx => `${ctx.dataset.label}: ${btc4(ctx.parsed.y)}`,
+        } },
+      },
+      scales: {
+        x: { type: 'linear', title: { display:true, text:'seconds since session start', color:'#5a6377', font:{ family:'IBM Plex Mono', size:9 } },
+             grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#5a6377', font: { family: 'IBM Plex Mono', size: 9 } } },
+        y: { grid: { color: 'rgba(255,255,255,0.05)' },
+             ticks: { color: '#5a6377', font: { family: 'IBM Plex Mono', size: 9 }, callback: v => btc4(v) } },
+      },
+    },
+  });
 }
 
 /* ─── DATA LAYER ─────────────────────────────────────────────────────────────
@@ -447,6 +592,7 @@ function setSource(mock) {
 (async () => {
   renderMilestones();
   renderGates();
+  renderLiveOrderTest();
 
   async function refresh() {
     const { trades, pnl, mock } = await loadData();
