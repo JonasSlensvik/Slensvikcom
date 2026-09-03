@@ -645,6 +645,49 @@
     return parts;
   }
 
+  // Catalyst radar breakdown — the itemized component scores behind
+  // api.catalyst_radar's single catalyst_score (ENEXT sql/catalyst_radar.sql,
+  // the s_* columns × their fixed weights: insider .25, dark .20, signal
+  // .15, whale .15, volume .10, trend .10, short .05). Zero-value
+  // components are omitted; [label, points] pairs, heaviest weight first.
+  function catalystBreakdown(row) {
+    const n = v => v == null ? 0 : Number(v);
+    const pts = (s, w) => Math.round(n(s) * w * 100);
+    const parts = [];
+    const pInsider = pts(row.s_insider, 0.25);
+    if (pInsider) {
+      const v = n(row.insider_net_value_30d);
+      parts.push([`Insiders net ${v >= 0 ? 'buying' : 'selling'} — NOK ${fmtCompact(Math.abs(v))}, 30d`, pInsider]);
+    }
+    const pDark = pts(row.s_dark, 0.20);
+    if (pDark) {
+      parts.push([`Dark flow ${n(row.dark_pct_vs_5d_norm).toFixed(1)}pp above its 5d norm${row.dark_side_bias ? ' · ' + row.dark_side_bias + ' bias' : ''}`, pDark]);
+    }
+    const pSignal = pts(row.s_signal, 0.15);
+    if (pSignal) {
+      parts.push([`${row.sig_count_14d || 0} smart signal(s) fired, 14d${row.sig_hit_rate_t5 != null ? ' · ' + n(row.sig_hit_rate_t5).toFixed(0) + '% hist. hit-rate' : ''}`, pSignal]);
+    }
+    const pWhale = pts(row.s_whale, 0.15);
+    if (pWhale) {
+      parts.push([`${row.whale_14d || 0} whale print(s), 14d${row.whale_notional_14d ? ' · NOK ' + fmtCompact(n(row.whale_notional_14d)) : ''}`, pWhale]);
+    }
+    const pVolume = pts(row.s_volume, 0.10);
+    if (pVolume) {
+      parts.push([`Volume ${n(row.adv_zscore).toFixed(1)}σ above average`, pVolume]);
+    }
+    const pTrend = pts(row.s_trend, 0.10);
+    if (pTrend) {
+      const v = n(row.excess_ret_10s_pct);
+      parts.push([`Price ${v >= 0 ? '+' : ''}${v.toFixed(1)}% vs market, ~14d`, pTrend]);
+    }
+    const pShort = pts(row.s_short, 0.05);
+    if (pShort) {
+      const v = n(row.short_pct_chg);
+      parts.push([`Short interest ${v >= 0 ? 'building' : 'covering'} ${Math.abs(v).toFixed(2)}pp`, pShort]);
+    }
+    return parts;
+  }
+
   // injectNav is exposed so pages that render their shell via JS (fastrente)
   // can re-run nav injection after the [data-intel-nav] mount appears.
   window.INTEL = { API, safeGet, fmtNum, fmtPct, fmtNOK, fmtCompact, dossierHref, selskapHref,
@@ -652,5 +695,5 @@
                    toggleDensity, mood,
                    analystRead, finHealth, healthBand,
                    analystChip, healthChip, leverageChip, fcfChip,
-                   convictionBreakdown };
+                   convictionBreakdown, catalystBreakdown };
 })();

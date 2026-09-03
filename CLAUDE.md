@@ -10,8 +10,9 @@ backend architecture, scheduled jobs, DB access, and working agreements.
 ## Pages
 
 - `index.html` — landing.
-- `radar.html (formerly markedsradar.html)` — dark-flow conviction shortlist (`api.conviction`). Do **not** edit
-  this file with `sed` — it wiped the file once; use the Edit tool.
+- `radar.html (formerly markedsradar.html)` — dark-flow conviction shortlist (`api.conviction`) plus the
+  Catalyst Radar section (`api.catalyst_radar` — event-first precursor scoring, added 2026-09-02). Do **not**
+  edit this file with `sed` — it wiped the file once; use the Edit tool.
 - `portfolio.html` — personal portfolio tracker; 5D chart merges `api.intraday_live` for
   minute-level live resolution during Oslo market hours.
 - `galton.html` — Galton weekly-strategy page; live tracker mirrors the portfolio's
@@ -24,6 +25,8 @@ backend architecture, scheduled jobs, DB access, and working agreements.
 - `api.latest_price` — per-ISIN best price (live tick > EOD), `fidelity` = 'live'|'eod'.
 - `api.intraday_live` — 15-min delayed live ticks (`isin, ts, price`), today's session.
 - `api.conviction`, `api.galton_weights` / `api.galton_metrics` / `api.galton_matrices`.
+- `api.catalyst_radar` — one row per (isin, upcoming event ≤35d), fused insider/dark/signal/whale/volume/trend/
+  short precursor score (`catalyst_score` 0-100) + `direction_score`. Defined in ENEXT `sql/catalyst_radar.sql`.
 
 ## Working agreements
 

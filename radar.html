@@ -11,7 +11,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
 <link rel="stylesheet" href="assets/intel.css">
-<script src="assets/intel.js?v=20260831"></script>
+<script src="assets/intel.js?v=20260902"></script>
 
 <style>
 /* ─── Variables ──────────────────────────────────────────────────────────
@@ -223,6 +223,59 @@ header {
 .orb-flyout .up { color: var(--green, #43e097); } .orb-flyout .dn { color: var(--red, #f06060); }
 .orb-flyout .dim { color: var(--text-dim); font-size: 9px; }
 @media (max-width: 768px) { .orbital { height: 420px; } .orb-hint { display: none; } }
+
+/* ═══ CATALYST RADAR (approach-vector scanner) ═════════════════════════════
+   Same sky as the orbital hero — shared starfield/glow/meteor — different
+   geometry: linear, not polar. NOW is the left edge; the 35d horizon is the
+   right. Lane = event type (fixed, so it's learnable), not a fit-avoidance
+   jitter. */
+.cr-scan {
+  position: relative; height: 300px; margin-bottom: 18px;
+  border: 1px solid var(--border); border-radius: 8px;
+  background:
+    radial-gradient(ellipse 55% 90% at 6% 50%, rgba(15,22,34,0.55), rgba(4,7,14,0.95)),
+    var(--bg, #050810);
+  overflow: hidden;
+}
+#crCanvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.cr-hint {
+  font-family: var(--mono); font-size: 9px; letter-spacing: .1em; color: var(--text-dim); text-transform: uppercase;
+  text-align: right; margin: 6px 2px 16px;
+}
+.cr-flyout {
+  position: absolute; z-index: 5; pointer-events: none; display: none;
+  background: rgba(13,18,28,0.95); border: 1px solid var(--border-bright, var(--border));
+  border-radius: 7px; padding: 9px 12px;
+  font-family: var(--mono); font-size: 10px; color: var(--text); line-height: 1.7; white-space: nowrap;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+}
+.cr-flyout .tk { font-size: 12.5px; font-weight: 600; color: var(--text-bright); letter-spacing: .06em; }
+.cr-flyout .up { color: var(--green, #43e097); } .cr-flyout .dn { color: var(--red, #f06060); } .cr-flyout .dim { color: var(--text-dim); }
+@media (max-width: 680px) { .cr-scan { height: 240px; } .cr-hint { display: none; } }
+
+.cr-list { display: flex; flex-direction: column; gap: 8px; }
+.cr-card {
+  border: 1px solid var(--border); background: var(--bg2, #0d1218);
+  padding: 10px 12px 9px; cursor: pointer; transition: all 0.15s;
+}
+.cr-card:hover { background: var(--bg3); border-color: rgba(255,255,255,0.12); }
+.cr-row1 { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 5px; }
+.cr-evt {
+  font-family: var(--mono); font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--amber);
+}
+.cr-tminus { font-family: var(--mono); font-size: 9.5px; color: var(--text-dim); font-variant-numeric: tabular-nums; }
+.cr-row2 { display: flex; align-items: baseline; gap: 10px; }
+.cr-arrow { font-size: 11px; line-height: 1; }
+.cr-arrow.up { color: var(--green, #4ade80); } .cr-arrow.dn { color: var(--red, #f87171); } .cr-arrow.dim { color: var(--text-dim); }
+.cr-ticker { font-family: var(--mono); font-size: 13px; font-weight: 500; color: var(--text-bright); letter-spacing: .04em; }
+.cr-name { font-family: var(--sans); font-size: 11px; color: var(--text-dim); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cr-score { font-family: var(--mono); font-size: 20px; font-weight: 500; color: var(--amber); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.cr-bar { height: 2px; background: var(--bg3); margin: 7px 0 2px; overflow: hidden; }
+.cr-bar-fill { height: 100%; background: linear-gradient(90deg, var(--amber), #ffd27a); }
+.cr-bar-fill.up { background: linear-gradient(90deg, var(--green, #4ade80), #86efac); }
+.cr-bar-fill.dn { background: linear-gradient(90deg, var(--red, #f87171), #fda4af); }
+.cr-more { text-align: center; margin-top: 12px; }
+.conv-break-fill.signal { background: var(--purple, #a78bfa); }
 
 /* ═══ MARKET INTELLIGENCE ══════════════════════════════════════════════════ */
 .mi-grid { display: grid; grid-template-columns: 1.5fr 1fr; gap: 22px; }
@@ -508,6 +561,24 @@ table.wt { width: 100%; border-collapse: collapse; font-family: var(--mono); fon
     <div class="orb-hint">ring = days to catalyst · size = conviction · colour = side · pulse = dark share · trail = day move · click a body for its dossier</div>
     <div class="orb-flyout" id="orbFlyout"></div>
   </section>
+
+  <!-- ═══ CATALYST RADAR — event-first precursor scanner ═══════════════════ -->
+  <div class="section" id="sec-catalyst">
+    <div class="section-head">
+      <div class="section-title">◬ Catalyst Radar</div>
+      <div class="section-desc">Every scheduled event in the next 35 days, ranked by how much insider, dark-pool, whale, and signal evidence is stacking up ahead of it.</div>
+      <div class="section-count" id="crCount">—</div>
+    </div>
+    <div class="section-body">
+      <div class="cr-scan" id="catalystSection" aria-label="Catalyst radar — upcoming events by days to catalyst and precursor evidence">
+        <canvas id="crCanvas"></canvas>
+        <div class="cr-flyout" id="crFlyout"></div>
+      </div>
+      <div class="cr-hint">lane = event type · size = catalyst score · colour = precursor direction · click a contact for its dossier</div>
+      <div class="cr-list" id="crList"><div class="conv-empty">LOADING …</div></div>
+      <div class="cr-more"><button class="wt-filter" id="crMore" style="display:none">Show all events</button></div>
+    </div>
+  </div>
 
   <!-- ═══ ACT II — MARKET INTELLIGENCE ═════════════════════════════════════ -->
   <div class="section" id="sec-market">
@@ -1068,6 +1139,22 @@ function orbGlowSprite(col) {
   return c;
 }
 
+// Shared starfield sprite generator — used by both the orbital hero and the
+// catalyst scanner below, so the two canvases read as the same sky.
+function starLayer(W, H, density, bright) {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const c = document.createElement('canvas');
+  c.width = Math.max(2, Math.round(W * dpr)); c.height = Math.max(2, Math.round(H * dpr));
+  const g = c.getContext('2d');
+  for (let i = 0; i < Math.round(W * H / density); i++) {
+    g.fillStyle = `rgba(190,208,255,${(bright ? 0.45 + Math.random() * 0.4 : 0.14 + Math.random() * 0.2).toFixed(2)})`;
+    g.beginPath();
+    g.arc(Math.random() * c.width, Math.random() * c.height, (0.4 + Math.random() * (bright ? 1 : 0.55)) * dpr, 0, Math.PI * 2);
+    g.fill();
+  }
+  return c;
+}
+
 function makeOrbital(canvas) {
   const ctx = canvas.getContext('2d');
   let bodies = [], W = 0, H = 0, raf = 0, hoverIdx = -1, inView = true, lastDraw = 0;
@@ -1075,19 +1162,6 @@ function makeOrbital(canvas) {
   let nextMeteorAt = performance.now() + 7000 + Math.random() * 16000;
   const t0 = performance.now();
 
-  function starLayer(density, bright) {
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    const c = document.createElement('canvas');
-    c.width = Math.max(2, Math.round(W * dpr)); c.height = Math.max(2, Math.round(H * dpr));
-    const g = c.getContext('2d');
-    for (let i = 0; i < Math.round(W * H / density); i++) {
-      g.fillStyle = `rgba(190,208,255,${(bright ? 0.45 + Math.random() * 0.4 : 0.14 + Math.random() * 0.2).toFixed(2)})`;
-      g.beginPath();
-      g.arc(Math.random() * c.width, Math.random() * c.height, (0.4 + Math.random() * (bright ? 1 : 0.55)) * dpr, 0, Math.PI * 2);
-      g.fill();
-    }
-    return c;
-  }
   function resize() {
     const r = canvas.getBoundingClientRect();
     W = r.width || canvas.parentElement.clientWidth; H = r.height || canvas.parentElement.clientHeight;
@@ -1137,7 +1211,7 @@ function makeOrbital(canvas) {
     const { cx, cy, maxRx, maxRy, inner } = geom();
     ctx.clearRect(0, 0, W, H);
 
-    if (!stars) { stars = starLayer(9000, true); starsFar = starLayer(2700, false); }
+    if (!stars) { stars = starLayer(W, H, 9000, true); starsFar = starLayer(W, H, 2700, false); }
     ctx.globalAlpha = 0.55 + 0.25 * Math.sin(s * 0.32);
     ctx.drawImage(starsFar, 0, 0, W, H);
     ctx.globalAlpha = 0.75 + 0.25 * Math.sin(1.7 + s * 0.21);
@@ -1342,6 +1416,309 @@ function initOrbital() {
   });
 }
 
+/* ═══ CATALYST RADAR — approach-vector scanner ═════════════════════════════
+   Linear, not polar: NOW is the left edge, the 35-day horizon is the right.
+   Lane = event type (fixed — a repeat visitor learns "AGMs live in lane 3").
+   Body size = catalyst_score, colour = precursor direction, glow pulse =
+   how much evidence is stacking up. Shares the orbital's starfield + glow
+   sprite + meteor mechanic — same sky, different instrument. */
+const CR_LANES = [
+  { t: 'EARNINGS_CALL', lbl: 'EARNINGS CALL' },
+  { t: 'RESULTS',       lbl: 'RESULTS' },
+  { t: 'AGM',            lbl: 'AGM' },
+  { t: 'EX_DATE',        lbl: 'EX-DIV' },
+  { t: 'WARNING',        lbl: 'WARNING' },
+];
+const CR_HORIZON = 35;
+
+function makeCatalystScanner(canvas) {
+  const ctx = canvas.getContext('2d');
+  let bodies = [], W = 0, H = 0, raf = 0, hoverIdx = -1, inView = true, lastDraw = 0;
+  let stars = null, starsFar = null, meteor = null;
+  let nextMeteorAt = performance.now() + 9000 + Math.random() * 18000;
+  const t0 = performance.now();
+
+  function resize() {
+    const r = canvas.getBoundingClientRect();
+    W = r.width || canvas.parentElement.clientWidth; H = r.height || canvas.parentElement.clientHeight;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    stars = starsFar = null;
+    if (!raf) draw(performance.now());
+  }
+  function geom() {
+    const padL = W > 560 ? 100 : 54, padR = 20, padT = 22, padB = 22;
+    return { x0: padL, x1: W - padR, padT, padB, laneH: (H - padT - padB) / CR_LANES.length };
+  }
+  const xOf = (days, g) => g.x0 + Math.min(Math.max(days || 0, 0), CR_HORIZON) / CR_HORIZON * (g.x1 - g.x0);
+
+  function setBodies(rows) {
+    bodies = rows.map(b => {
+      const h = orbHash(b.isin + '|' + b.event_type + '|' + b.event_date);
+      const laneIdx = Math.max(0, CR_LANES.findIndex(l => l.t === b.event_type));
+      const dir = b.direction_score || 0;
+      const col = dir > 0.15 ? 'rgb(67,224,151)' : dir < -0.15 ? 'rgb(240,96,96)' : 'rgb(168,163,150)';
+      return {
+        ...b, col, laneIdx,
+        R: 4 + Math.min(b.catalyst_score || 0, 100) / 100 * 10,
+        ph: h * Math.PI * 2,
+        bobAmp: 3 + h * 4,
+        pulseW: 0.9 + Math.min(2.2, (b.catalyst_score || 0) / 100 * 2),
+        x: 0, y: 0,
+      };
+    });
+    if (!raf) draw(performance.now());
+  }
+
+  function draw(now) {
+    if (W < 80 || H < 80) return;
+    const s = !ORB_REDUCE ? (now - t0) / 1000 : 12.7;
+    const g = geom();
+    ctx.clearRect(0, 0, W, H);
+
+    if (!stars) { stars = starLayer(W, H, 9000, true); starsFar = starLayer(W, H, 2700, false); }
+    ctx.globalAlpha = 0.5 + 0.2 * Math.sin(s * 0.28);
+    ctx.drawImage(starsFar, 0, 0, W, H);
+    ctx.globalAlpha = 0.7 + 0.2 * Math.sin(1.3 + s * 0.19);
+    ctx.drawImage(stars, 0, 0, W, H);
+    ctx.globalAlpha = 1;
+
+    // NOW edge — amber core, echoes the orbital's centre glow
+    const nowR = Math.max(40, g.laneH * 1.15);
+    ctx.globalAlpha = 0.5 + 0.2 * Math.sin(s * 0.55);
+    ctx.drawImage(orbGlowSprite('rgb(245,166,35)'), g.x0 - nowR, H / 2 - nowR, nowR * 2, nowR * 2);
+    ctx.globalAlpha = 1;
+
+    // sweep — a soft band drifting in from the horizon, because it's still a radar
+    if (!ORB_REDUCE) {
+      const span = g.x1 - g.x0 + 160;
+      const sweepX = g.x1 - ((s * 38) % span);
+      const grad = ctx.createLinearGradient(sweepX - 70, 0, sweepX + 70, 0);
+      grad.addColorStop(0, 'rgba(79,195,247,0)');
+      grad.addColorStop(0.5, 'rgba(79,195,247,0.07)');
+      grad.addColorStop(1, 'rgba(79,195,247,0)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(g.x0, g.padT - 6, g.x1 - g.x0, H - g.padT - g.padB + 6);
+    }
+
+    // day gridlines + NOW/HORIZON labels
+    ctx.font = '500 9px IBM Plex Mono, monospace';
+    ctx.textAlign = 'center';
+    for (const d of [0, 7, 14, 21, 28, 35]) {
+      const x = xOf(d, g);
+      ctx.beginPath(); ctx.moveTo(x, g.padT - 6); ctx.lineTo(x, H - g.padB);
+      ctx.strokeStyle = d === 0 ? 'rgba(245,166,35,0.28)' : 'rgba(255,255,255,0.055)';
+      ctx.lineWidth = 1; ctx.stroke();
+      ctx.fillStyle = d === 0 ? 'rgba(245,166,35,0.85)' : 'rgba(122,132,153,0.55)';
+      ctx.fillText(d === 0 ? 'NOW' : d + 'd', x, H - 8);
+    }
+    ctx.textAlign = 'right';
+    ctx.fillStyle = 'rgba(122,132,153,0.45)';
+    ctx.fillText('35D HORIZON', g.x1, g.padT - 10);
+
+    // lanes
+    ctx.textAlign = 'left';
+    for (let i = 0; i < CR_LANES.length; i++) {
+      const y = g.padT + g.laneH * (i + 0.5);
+      ctx.beginPath(); ctx.moveTo(g.x0 - (W > 560 ? 8 : 4), y); ctx.lineTo(g.x1, y);
+      ctx.strokeStyle = 'rgba(255,255,255,0.035)'; ctx.lineWidth = 1; ctx.stroke();
+      if (W > 560) {
+        ctx.fillStyle = 'rgba(122,132,153,0.65)';
+        ctx.fillText((EVT_GLYPH[CR_LANES[i].t] || '▌') + ' ' + CR_LANES[i].lbl, 0, y + 3);
+      }
+    }
+
+    // bodies
+    ctx.textAlign = 'center';
+    for (let i = 0; i < bodies.length; i++) {
+      const b = bodies[i];
+      const laneCenter = g.padT + g.laneH * (b.laneIdx + 0.5);
+      const x = xOf(b.days_to_event, g);
+      const y = laneCenter + Math.sin(s * 0.6 + b.ph) * b.bobAmp * 0.4;
+      b.x = x; b.y = y;
+
+      const pulse = 0.5 + 0.5 * Math.sin(s * b.pulseW + b.ph);
+      const gR = b.R * (2.1 + 0.7 * pulse);
+      ctx.globalAlpha = 0.14 + 0.28 * pulse;
+      ctx.drawImage(orbGlowSprite(b.col), x - gR, y - gR, gR * 2, gR * 2);
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = b.col;
+      ctx.beginPath(); ctx.arc(x, y, b.R, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = i === hoverIdx ? 'rgba(232,238,247,0.95)' : 'rgba(232,238,247,0.22)';
+      ctx.lineWidth = i === hoverIdx ? 1.5 : 1;
+      ctx.stroke();
+
+      if (W > 680 && (b.R >= 9.5 || i === hoverIdx)) {
+        ctx.fillStyle = i === hoverIdx ? 'rgba(232,238,247,0.95)' : 'rgba(164,173,191,0.65)';
+        ctx.fillText(b.tk || '', x, y - b.R - 7);
+      }
+    }
+
+    // shooting star — same mechanic as the orbital, ties the two skies together
+    if (!ORB_REDUCE) {
+      if (!meteor && now >= nextMeteorAt) {
+        const fromLeft = Math.random() < 0.5;
+        meteor = { t: now, dur: 600 + Math.random() * 450,
+          x0: fromLeft ? -30 : W + 30, y0: Math.random() * H * 0.5,
+          dx: (fromLeft ? 1 : -1) * W * (0.35 + Math.random() * 0.3), dy: H * (0.08 + Math.random() * 0.2) };
+      }
+      if (meteor) {
+        const p = (now - meteor.t) / meteor.dur;
+        if (p >= 1) { meteor = null; nextMeteorAt = now + 18000 + Math.random() * 28000; }
+        else {
+          const hx = meteor.x0 + meteor.dx * p, hy = meteor.y0 + meteor.dy * p;
+          const nl = Math.hypot(meteor.dx, meteor.dy) || 1;
+          const mg = ctx.createLinearGradient(hx, hy, hx - meteor.dx / nl * 55, hy - meteor.dy / nl * 55);
+          mg.addColorStop(0, `rgba(220,235,255,${(0.55 * Math.sin(Math.PI * p)).toFixed(3)})`);
+          mg.addColorStop(1, 'rgba(220,235,255,0)');
+          ctx.strokeStyle = mg; ctx.lineWidth = 1.1;
+          ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(hx - meteor.dx / nl * 55, hy - meteor.dy / nl * 55); ctx.stroke();
+        }
+      }
+    }
+  }
+  function loop(now) {
+    raf = requestAnimationFrame(loop);
+    if (now - lastDraw < 33) return;
+    lastDraw = now; draw(now);
+  }
+  function start() {
+    if (ORB_REDUCE || document.hidden || !inView) { draw(performance.now()); return; }
+    if (!raf) raf = requestAnimationFrame(loop);
+  }
+  function stop(keep = true) { if (raf) { cancelAnimationFrame(raf); raf = 0; } if (keep) draw(performance.now()); }
+  function hitTest(px, py) {
+    let best = -1, bd = 1e9;
+    for (let i = 0; i < bodies.length; i++) {
+      const d = Math.hypot(px - bodies[i].x, py - bodies[i].y);
+      if (d < bodies[i].R + (ORB_COARSE ? 14 : 7) && d < bd) { bd = d; best = i; }
+    }
+    return best;
+  }
+  resize();
+  let rz = 0;
+  window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(resize, 150); });
+  if ('IntersectionObserver' in window) {
+    new IntersectionObserver(es => { for (const e of es) inView = e.isIntersecting; inView ? start() : stop(false); },
+      { rootMargin: '80px' }).observe(canvas);
+  }
+  document.addEventListener('visibilitychange', () => document.hidden ? stop(false) : start());
+  start();
+  return { setBodies, hitTest, get bodies() { return bodies; }, setHover(i) { hoverIdx = i; if (!raf) draw(performance.now()); } };
+}
+
+let catalystScanner = null, catalystRows = [], crShowAll = false;
+const CR_VISIBLE = 12;
+
+function renderCatalystCard(r) {
+  const ticker = r.tk || isinTicker(r.isin);
+  const name = isinName(r.isin) || r.issuer || '';
+  const dir = r.direction_score || 0;
+  const dirCls = dir > 0.15 ? 'up' : dir < -0.15 ? 'dn' : 'dim';
+  const dirArrow = dir > 0.15 ? '▲' : dir < -0.15 ? '▼' : '◆';
+  const breakdown = INTEL.catalystBreakdown(r);
+  let breakRow = '';
+  if (breakdown.length) {
+    const maxAbs = Math.max(...breakdown.map(([, p]) => Math.abs(p)), 1);
+    const rows = breakdown.map(([lbl, pts]) => {
+      const w = Math.abs(pts) / maxAbs * 100;
+      const isSignal = /smart signal/.test(lbl);
+      return `<div class="conv-break-row"><span class="conv-break-lbl">${lbl}</span>
+        <div class="conv-break-track"><div class="conv-break-fill${isSignal ? ' signal' : ''}" style="width:${w.toFixed(0)}%"></div></div>
+        <span class="conv-break-val">+${pts}</span></div>`;
+    }).join('');
+    breakRow = `
+      <details class="conv-break" onclick="event.stopPropagation()">
+        <summary>why ${r.catalyst_score}?</summary>
+        <div class="conv-break-body">${rows}</div>
+      </details>`;
+  }
+  return `
+    <div class="cr-card" onclick="drillIntoISIN('${r.isin}')">
+      <div class="cr-row1">
+        <span class="cr-evt">${EVT_GLYPH[r.event_type] || '▌'} ${r.event_type.replace(/_/g,' ')}</span>
+        <span class="cr-tminus">T−${r.days_to_event}d · ${r.event_date}</span>
+      </div>
+      <div class="cr-row2">
+        <span class="cr-arrow ${dirCls}">${dirArrow}</span>
+        <span class="cr-ticker">${INTEL.tkLink(r.isin, ticker)}</span>
+        <span class="cr-name">${name}</span>
+        <span class="cr-score">${r.catalyst_score}</span>
+      </div>
+      <div class="cr-bar"><div class="cr-bar-fill ${dirCls}" style="width:${Math.min(r.catalyst_score||0,100)}%"></div></div>
+      ${breakRow}
+    </div>`;
+}
+
+function renderCatalystList() {
+  const shown = crShowAll ? catalystRows : catalystRows.slice(0, CR_VISIBLE);
+  document.getElementById('crList').innerHTML = shown.length
+    ? shown.map(renderCatalystCard).join('')
+    : '<div class="conv-empty">NO SCHEDULED CATALYSTS INSIDE 35D</div>';
+  document.getElementById('crMore').style.display =
+    catalystRows.length > CR_VISIBLE && !crShowAll ? '' : 'none';
+}
+
+async function loadCatalystRadar() {
+  try {
+    const rows = await APIall('catalyst_radar',
+      'select=isin,issuer,event_type,event_date,days_to_event,catalyst_score,direction_score,' +
+      'insider_net_value_30d,dark_pct_vs_5d_norm,dark_side_bias,sig_count_14d,sig_hit_rate_t5,' +
+      'whale_14d,whale_notional_14d,adv_zscore,excess_ret_10s_pct,short_pct_chg,' +
+      's_insider,s_dark,s_signal,s_whale,s_volume,s_trend,s_short');
+    catalystRows = rows.map(r => ({ ...r, tk: isinTicker(r.isin) }));
+    const bullish = catalystRows.filter(r => (r.direction_score||0) > 0.15).length;
+    const bearish = catalystRows.filter(r => (r.direction_score||0) < -0.15).length;
+    document.getElementById('crCount').textContent =
+      `${catalystRows.length} EVENTS · ${bullish} BULLISH · ${bearish} BEARISH`;
+    catalystScanner.setBodies(catalystRows);
+    renderCatalystList();
+  } catch (e) {
+    console.error('catalyst radar load failed', e);
+    document.getElementById('crList').innerHTML = '<div class="conv-empty">DATA UNAVAILABLE</div>';
+  }
+}
+
+function initCatalystRadar() {
+  const cv = document.getElementById('crCanvas');
+  if (!cv) return;
+  catalystScanner = makeCatalystScanner(cv);
+  const fly = document.getElementById('crFlyout');
+  const sec = document.getElementById('catalystSection');
+  const showFly = (i) => {
+    const b = catalystScanner.bodies[i];
+    const name = isinName(b.isin) || b.issuer || '';
+    const dir = b.direction_score || 0;
+    const dirLbl = dir > 0.15 ? 'bullish precursor' : dir < -0.15 ? 'bearish precursor' : 'mixed signal';
+    const dirCls = dir > 0.15 ? 'up' : dir < -0.15 ? 'dn' : 'dim';
+    fly.innerHTML = `<span class="tk">${b.tk}</span> <span class="dim">${name}</span><br>
+      <span class="${dirCls}">${EVT_GLYPH[b.event_type]||'▌'} ${b.event_type.replace(/_/g,' ')} T−${b.days_to_event}d</span>
+      · score <strong>${b.catalyst_score}</strong><br>
+      <span class="dim">${dirLbl} · ${ORB_COARSE ? 'tap again' : 'click'} for dossier</span>`;
+    fly.style.display = 'block';
+    fly.style.left = Math.max(4, Math.min(b.x + 16, sec.clientWidth - 260)) + 'px';
+    fly.style.top = Math.max(6, b.y - 12) + 'px';
+  };
+  cv.addEventListener('mousemove', e => {
+    const r = cv.getBoundingClientRect();
+    const i = catalystScanner.hitTest(e.clientX - r.left, e.clientY - r.top);
+    catalystScanner.setHover(i);
+    if (i < 0) { fly.style.display = 'none'; cv.style.cursor = ''; return; }
+    showFly(i); cv.style.cursor = 'pointer';
+  });
+  cv.addEventListener('mouseleave', () => { catalystScanner.setHover(-1); fly.style.display = 'none'; cv.style.cursor = ''; });
+  let tapIdx = -1;
+  cv.addEventListener('click', e => {
+    const r = cv.getBoundingClientRect();
+    const i = catalystScanner.hitTest(e.clientX - r.left, e.clientY - r.top);
+    if (i < 0) { if (ORB_COARSE) { tapIdx = -1; catalystScanner.setHover(-1); fly.style.display = 'none'; } return; }
+    if (ORB_COARSE && i !== tapIdx) { tapIdx = i; catalystScanner.setHover(i); showFly(i); return; }
+    drillIntoISIN(catalystScanner.bodies[i].isin);
+  });
+  document.getElementById('crMore').addEventListener('click', () => { crShowAll = true; renderCatalystList(); });
+}
+
 /* ═══ ACT II — MARKET INTELLIGENCE ═════════════════════════════════════════ */
 function drawBand(canvas, buckets, busiest) {
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -1533,8 +1910,9 @@ document.getElementById('wtMore').addEventListener('click', () => { wtShowAll = 
 /* ═══ INIT ═════════════════════════════════════════════════════════════════ */
 (async function init() {
   initOrbital();
+  initCatalystRadar();
   loadInstruments();
-  await Promise.allSettled([loadMarket(), loadOrbital(), loadConviction(), loadIntelReport(), loadForwardRecord(), loadWatchtower()]);
+  await Promise.allSettled([loadMarket(), loadOrbital(), loadCatalystRadar(), loadConviction(), loadIntelReport(), loadForwardRecord(), loadWatchtower()]);
 })();
 </script>
 </body>
