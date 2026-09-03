@@ -657,6 +657,22 @@ table.wt { width: 100%; border-collapse: collapse; font-family: var(--mono); fon
     </div>
   </div>
 
+  <!-- ═══ Max Conviction Entries — first-hit-only entry study (in-sample) ──── -->
+  <div class="section" id="sec-conv-entries">
+    <div class="section-head">
+      <div class="section-title">◇ Max Conviction Entries · In-Sample</div>
+      <div class="section-desc">Buy the day conviction first hits 100, hold for N days — one entry per name per streak, not one row for every day it lingered at the top.</div>
+      <div class="section-count" id="ceCount">—</div>
+    </div>
+    <div class="section-body">
+      <div class="ir-kpis" id="ceKpis"></div>
+      <div class="table-wrap"><table class="perf-table"><thead><tr>
+        <th>Horizon</th><th>Long N</th><th>Long hit</th><th>Long med excess</th><th>Short N</th><th>Short hit</th><th>Short med excess</th>
+      </tr></thead><tbody id="ceTable"><tr><td colspan="7" class="perf-empty">LOADING …</td></tr></tbody></table></div>
+      <div class="ir-note" id="ceNote">Reconstructed with today's formula applied to each historical day — in-sample, not proof, same caveat as Backtest Regrade above. Conviction=100 only, so N is small by design: treat every row here as a lead, not a verdict.</div>
+    </div>
+  </div>
+
   <!-- ═══ Forward Track Record — the true point-in-time test ───────────────── -->
   <div class="section" id="sec-forward-record">
     <div class="section-head">
@@ -1031,6 +1047,68 @@ async function loadIntelReport() {
    only place that wires them up. */
 function toggleSection(id) {
   document.getElementById(id).classList.toggle('collapsed');
+}
+
+/* ═══ Max Conviction Entries — api.conviction_entries, first-hit-only ══════
+   Same reconstruction as Backtest Regrade (in-sample, not proof), but each
+   name's first day at conviction=100 is one entry — buy-and-hold for N days
+   — not one row for every day it stayed there. The raw/excess columns on
+   each row are the underlying's own return (radar_calls' convention, a
+   fraction, not a percent); SHORT rows get sign-flipped here, in JS, same
+   as loadIntelReport's hit-rate check already does — never pre-flipped in SQL. */
+async function loadConvictionEntries() {
+  try {
+    const rows = await API('conviction_entries',
+      'select=entry_date,isin,side,r1,r5,r20,r60,r120,x1,x5,x20,x60,x120&order=entry_date');
+    const longs  = rows.filter(r => r.side === 'LONG');
+    const shorts = rows.filter(r => r.side === 'SHORT');
+    document.getElementById('ceCount').textContent = `${longs.length}L · ${shorts.length}S ENTRIES`;
+    if (!rows.length) {
+      document.getElementById('ceTable').innerHTML = '<tr><td colspan="7" class="perf-empty">NO ENTRIES YET</td></tr>';
+      return;
+    }
+
+    const agg = (side, rkey, xkey) => {
+      const set = rows.filter(r => r.side === side && r[rkey] != null);
+      if (!set.length) return { n: 0, hit: null, med: null };
+      const pnl  = set.map(r => side === 'LONG' ?  Number(r[rkey]) : -Number(r[rkey]));
+      const pnlx = set.map(r => side === 'LONG' ?  Number(r[xkey]) : -Number(r[xkey]));
+      const hits = pnl.filter(v => v > 0).length;
+      const sx = [...pnlx].sort((a, b) => a - b);
+      return { n: set.length, hit: hits / set.length * 100, med: sx[Math.floor(sx.length / 2)] * 100 };
+    };
+
+    const pct = v => v == null ? '—' : v.toFixed(0) + '%';
+    const medStr = v => v == null ? '—' : (v >= 0 ? '+' : '') + v.toFixed(1) + '%';
+    const kpi = (lbl, val, sub) => `<div class="ir-kpi"><div class="lbl">${lbl}</div><div class="val">${val}</div><div class="sub">${sub}</div></div>`;
+    const longNames  = new Set(longs.map(r => r.isin)).size;
+    const shortNames = new Set(shorts.map(r => r.isin)).size;
+    document.getElementById('ceKpis').innerHTML =
+      kpi('LONG ENTRIES',  longs.length,  `${longNames} unique name${longNames === 1 ? '' : 's'}`) +
+      kpi('SHORT ENTRIES', shorts.length, `${shortNames} unique name${shortNames === 1 ? '' : 's'}`) +
+      kpi('EARLIEST ENTRY', rows[0].entry_date, 'reconstruction start');
+
+    document.getElementById('ceTable').innerHTML = [
+      ['1', 'r1', 'x1'], ['5', 'r5', 'x5'], ['20', 'r20', 'x20'], ['60', 'r60', 'x60'], ['120', 'r120', 'x120'],
+    ].map(([d, rk, xk]) => {
+      const L = agg('LONG', rk, xk), S = agg('SHORT', rk, xk);
+      const hitCls = h => h == null ? '' : h >= 55 ? 'pos' : h <= 45 ? 'neg' : '';
+      const medCls = m => m == null ? '' : m > 0 ? 'pos' : m < 0 ? 'neg' : '';
+      return `<tr>
+        <td>T+${d}</td>
+        <td>${L.n || '—'}</td>
+        <td class="${hitCls(L.hit)}">${pct(L.hit)}</td>
+        <td class="${medCls(L.med)}">${medStr(L.med)}</td>
+        <td>${S.n || '—'}</td>
+        <td class="${hitCls(S.hit)}">${pct(S.hit)}</td>
+        <td class="${medCls(S.med)}">${medStr(S.med)}</td>
+      </tr>`;
+    }).join('');
+  } catch (e) {
+    console.error('conviction entries load failed', e);
+    document.getElementById('ceCount').textContent = 'DATA UNAVAILABLE';
+    document.getElementById('ceTable').innerHTML = '<tr><td colspan="7" class="perf-empty">DATA UNAVAILABLE</td></tr>';
+  }
 }
 
 /* ═══ Forward Track Record — api.conviction_snapshot, the true point-in-time
@@ -1912,7 +1990,7 @@ document.getElementById('wtMore').addEventListener('click', () => { wtShowAll = 
   initOrbital();
   initCatalystRadar();
   loadInstruments();
-  await Promise.allSettled([loadMarket(), loadOrbital(), loadCatalystRadar(), loadConviction(), loadIntelReport(), loadForwardRecord(), loadWatchtower()]);
+  await Promise.allSettled([loadMarket(), loadOrbital(), loadCatalystRadar(), loadConviction(), loadIntelReport(), loadConvictionEntries(), loadForwardRecord(), loadWatchtower()]);
 })();
 </script>
 </body>
