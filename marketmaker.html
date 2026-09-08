@@ -149,6 +149,31 @@
   .src-pill.mock { color:var(--amber); border-color:rgba(245,166,35,0.4); background:rgba(245,166,35,0.06); }
   .src-pill.live { color:var(--green); border-color:rgba(67,224,151,0.4); background:rgba(67,224,151,0.06); }
 
+  /* ─── Live market dashboard: option-chain OI split bar ─────────────── */
+  .oi-bar-track { display:flex; height:20px; border:1px solid var(--border2); overflow:hidden; background:var(--bg2); }
+  .oi-bar-seg { height:100%; transition:width .4s; }
+  .oi-bar-seg.call { background:var(--green); }
+  .oi-bar-seg.put { background:var(--red); }
+  .oi-legend { display:flex; justify-content:space-between; margin-top:8px; font-family:var(--mono); font-size:10px; letter-spacing:.04em; color:var(--text3); }
+  .oi-legend .call-lbl { color:var(--green); } .oi-legend .put-lbl { color:var(--red); }
+  .chart-lbl { font-family:var(--mono); font-size:9px; letter-spacing:.16em; text-transform:uppercase; color:var(--text3); margin-bottom:8px; }
+
+  /* ─── Account & Risk: key gate ──────────────────────────────────────── */
+  .ad-gate { text-align:center; padding:26px 16px 22px; }
+  .ad-gate-msg { font-family:var(--mono); font-size:11px; color:var(--text3); letter-spacing:.03em; margin-bottom:14px; line-height:1.6; }
+  .ad-gate-row { display:flex; gap:8px; justify-content:center; align-items:center; flex-wrap:wrap; }
+  .ad-key-input {
+    font-family:var(--mono); font-size:12px; letter-spacing:.08em; color:var(--text1);
+    background:var(--bg2); border:1px solid var(--border2); padding:8px 12px; width:240px;
+  }
+  .ad-key-input:focus { outline:none; border-color:var(--ice); }
+  .ad-unlock-btn {
+    font-family:var(--mono); font-size:10px; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--text2); background:transparent; border:1px solid var(--border2); padding:8px 16px; cursor:pointer;
+  }
+  .ad-unlock-btn:hover { color:var(--ice); border-color:var(--ice); }
+  .ad-error { font-family:var(--mono); font-size:10.5px; color:var(--red); margin-top:10px; display:none; }
+
   .ph {
     font-family:var(--mono); font-size:11px; letter-spacing:.1em;
     color:var(--text3); text-align:center; padding:32px 8px;
@@ -202,6 +227,105 @@
       users, not a realistic live picture): prove mechanics live, in bounded and monitored steps, before any capital
       is committed. A written go/no-go is the last step, not an early one.
     </span>
+  </div>
+
+  <!-- ─── SECTION · LIVE MARKET DASHBOARD (Pi monitor, continuous 30s poll) ── -->
+  <div class="sec">
+    <div class="panel">
+      <div class="sec-head">
+        <span class="glyph">◉</span>LIVE MARKET DASHBOARD
+        <span class="desc">Polled every 30s straight off Deribit's public REST by the Raspberry Pi account monitor — the same market this strategy quotes into, not a mockup</span>
+        <span class="meta"><strong id="mdSrc" class="src-pill">—</strong> <span id="mdAsOf">—</span></span>
+      </div>
+
+      <div class="kpis">
+        <div class="kpi"><div class="kpi-lbl">BTC index</div><div class="kpi-val" id="mdIndex">—</div><div class="kpi-sub" id="mdIndexSub">—</div></div>
+        <div class="kpi"><div class="kpi-lbl">DVOL</div><div class="kpi-val" id="mdDvol">—</div><div class="kpi-sub">30-day implied vol index</div></div>
+        <div class="kpi"><div class="kpi-lbl">Perp funding (8h)</div><div class="kpi-val" id="mdFunding">—</div><div class="kpi-sub" id="mdFundingSub">—</div></div>
+        <div class="kpi"><div class="kpi-lbl">ATM IV, call / put</div><div class="kpi-val" id="mdAtmIv">—</div><div class="kpi-sub" id="mdAtmIvSub">—</div></div>
+      </div>
+
+      <div class="grid-2">
+        <div>
+          <div class="chart-lbl">BTC index — recent</div>
+          <div style="height:200px"><canvas id="mdIndexCanvas"></canvas></div>
+        </div>
+        <div>
+          <div class="chart-lbl">DVOL — recent</div>
+          <div style="height:200px"><canvas id="mdDvolCanvas"></canvas></div>
+        </div>
+      </div>
+
+      <div class="grid-2" style="margin-top:16px">
+        <div>
+          <div class="chart-lbl">Perpetual funding (8h) — recent</div>
+          <div style="height:160px"><canvas id="mdFundingCanvas"></canvas></div>
+        </div>
+        <div>
+          <div class="chart-lbl">Option chain open interest</div>
+          <div class="oi-bar-track"><div class="oi-bar-seg call" id="mdOiCall"></div><div class="oi-bar-seg put" id="mdOiPut"></div></div>
+          <div class="oi-legend">
+            <span class="call-lbl" id="mdOiCallLbl">CALL —</span>
+            <span id="mdOiTotal">—</span>
+            <span class="put-lbl" id="mdOiPutLbl">PUT —</span>
+          </div>
+          <div class="kpi-sub" style="margin-top:16px" id="mdOiMeta">—</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── SECTION · ACCOUNT & RISK (key-gated, real Deribit account data) ── -->
+  <div class="sec">
+    <div class="panel">
+      <div class="sec-head">
+        <span class="glyph">⚿</span>ACCOUNT &amp; RISK
+        <span class="desc">Real Deribit account state — equity, margin, positions, open orders, fills. Key-gated, unlike the public dashboard above.</span>
+        <span class="meta" id="adAsOf">—</span>
+      </div>
+
+      <div id="adGate" class="ad-gate">
+        <div class="ad-gate-msg">This is real account data, not a demo — access-gated separately from the rest of this page.</div>
+        <div class="ad-gate-row">
+          <input id="adKeyInput" class="ad-key-input" type="password" placeholder="ACCESS KEY" autocomplete="off" spellcheck="false">
+          <button id="adUnlockBtn" class="ad-unlock-btn" type="button">Unlock</button>
+        </div>
+        <div id="adError" class="ad-error">Invalid key.</div>
+      </div>
+
+      <div id="adContent" style="display:none">
+        <div class="kpis">
+          <div class="kpi"><div class="kpi-lbl">Equity</div><div class="kpi-val" id="adEquity">—</div><div class="kpi-sub" id="adEquitySub">—</div></div>
+          <div class="kpi"><div class="kpi-lbl">Margin ratio</div><div class="kpi-val" id="adMarginRatio">—</div><div class="kpi-sub" id="adMarginSub">—</div></div>
+          <div class="kpi"><div class="kpi-lbl">Portfolio delta</div><div class="kpi-val" id="adDelta">—</div><div class="kpi-sub" id="adGreeksSub">—</div></div>
+          <div class="kpi"><div class="kpi-lbl">Orders / positions</div><div class="kpi-val" id="adCounts">—</div><div class="kpi-sub" id="adCountsSub">—</div></div>
+        </div>
+
+        <div class="kpi-lbl" style="margin:18px 0 8px">Positions</div>
+        <div class="tbl-wrap">
+          <table class="trades">
+            <thead><tr><th style="text-align:left">Instrument</th><th>Direction</th><th>Size</th><th>Avg price</th><th>Mark price</th><th>Delta</th><th>P&amp;L</th></tr></thead>
+            <tbody id="adPositionsBody"></tbody>
+          </table>
+        </div>
+
+        <div class="kpi-lbl" style="margin:18px 0 8px">Open orders</div>
+        <div class="tbl-wrap">
+          <table class="trades">
+            <thead><tr><th style="text-align:left">Instrument</th><th>Side</th><th>Price</th><th>Amount</th><th>Filled</th><th>State</th></tr></thead>
+            <tbody id="adOrdersBody"></tbody>
+          </table>
+        </div>
+
+        <div class="kpi-lbl" style="margin:18px 0 8px">Recent fills</div>
+        <div class="tbl-wrap">
+          <table class="trades">
+            <thead><tr><th>Time (UTC)</th><th style="text-align:left">Instrument</th><th>Side</th><th>Price</th><th>Amount</th><th>Fee</th><th>P&amp;L</th></tr></thead>
+            <tbody id="adFillsBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- ─── SECTION 1 · PROJECT PROGRESS TRACKER ─────────────── -->
@@ -611,6 +735,257 @@ const btc  = v => (v >= 0 ? '+' : '−') + '₿' + Math.abs(v).toFixed(5);
 const btc4 = v => '₿' + Number(v).toFixed(4);
 const sgn  = v => (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(5);
 const hhmm = iso => new Date(iso).toISOString().slice(11, 16);
+const fmtUsd0 = v => v == null ? '—' : '$' + Math.round(v).toLocaleString('en-US');
+const fmtPct4 = v => v == null ? '—' : (v * 100).toFixed(4) + '%';
+
+/* ─── LIVE MARKET DASHBOARD ──────────────────────────────────────────────
+   Independent data layer from the paper-trades one above: reads
+   api.mm_{index,perpetual,volatility,options_market}_snapshot, written
+   every 30s by marketmaker/tools/pi_deribit_monitor.py running on the
+   Raspberry Pi (a separate, INSERT-only Postgres role — see that script's
+   docstring). Refreshes on its own 30s cadence below, matching the real
+   poll interval, rather than the 3-min cadence the paper-trades section
+   uses for its much slower-moving data. */
+
+const MD_COLOR = { index:'#4fc3f7', dvol:'#a78bfa', funding:'#f5a623' };
+let mdIndexChart = null, mdDvolChart = null, mdFundingChart = null;
+
+function mdBuildMock() {
+  let rng = 20260908;
+  const rand = () => (rng = (rng * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+  const n = 120, now = Date.now();
+  const index = [], perp = [], dvol = [];
+  let price = 78500, vol = 40, funding = 0.00003;
+  for (let i = 0; i < n; i++) {
+    const ts = new Date(now - (n - i) * 30000).toISOString();
+    price += (rand() - 0.5) * 60;
+    vol = Math.max(10, vol + (rand() - 0.5) * 0.3);
+    funding += (rand() - 0.5) * 0.000004;
+    index.push({ ts, index_price: price });
+    perp.push({ ts, price_change_24h: -0.8, current_funding: funding, funding_8h: funding });
+    dvol.push({ ts, dvol: vol });
+  }
+  const options = [{ ts: new Date(now).toISOString(), num_instruments: 900,
+    call_open_interest: 280000, put_open_interest: 150000,
+    underlying_price: price, atm_expiry: '—', atm_strike: Math.round(price / 500) * 500,
+    atm_iv_call: vol - 13, atm_iv_put: vol - 13 }];
+  return { index, perp, dvol, options, mock: true };
+}
+
+async function mdLoadData() {
+  const [index, perp, dvol, options] = await Promise.all([
+    getJSON('mm_index_snapshot?order=ts.desc&limit=500'),
+    getJSON('mm_perpetual_snapshot?order=ts.desc&limit=500'),
+    getJSON('mm_volatility_snapshot?order=ts.desc&limit=500'),
+    getJSON('mm_options_market_snapshot?order=ts.desc&limit=1'),
+  ]);
+  if (index && index.length && perp && perp.length && dvol && dvol.length && options && options.length) {
+    return { index: [...index].reverse(), perp: [...perp].reverse(), dvol: [...dvol].reverse(), options, mock: false };
+  }
+  return mdBuildMock();
+}
+
+function mdLineChart(canvasId, existing, points, color, label, fmt) {
+  if (existing) existing.destroy();
+  return new Chart(document.getElementById(canvasId), {
+    type: 'line',
+    data: {
+      labels: points.map(p => hhmm(p.ts)),
+      datasets: [{ label, data: points.map(p => p.y), borderColor: color,
+        backgroundColor: 'transparent', borderWidth: 1.6, pointRadius: 0, tension: 0.15 }],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      interaction: { intersect: false, mode: 'index' },
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { title: items => items.length ? items[0].label + ' UTC' : '',
+          label: ctx => `${label}: ${fmt(ctx.parsed.y)}` } },
+      },
+      scales: {
+        x: { grid: { color: 'rgba(255,255,255,0.05)' },
+             ticks: { color: '#5a6377', font: { family: 'IBM Plex Mono', size: 9 }, autoSkip: true, maxTicksLimit: 7, maxRotation: 0 } },
+        y: { grid: { color: 'rgba(255,255,255,0.05)' },
+             ticks: { color: '#5a6377', font: { family: 'IBM Plex Mono', size: 9 }, callback: v => fmt(v) } },
+      },
+    },
+  });
+}
+
+function renderMarketDashboard(d) {
+  const lastIndex = d.index[d.index.length - 1];
+  const lastPerp = d.perp[d.perp.length - 1];
+  const lastDvol = d.dvol[d.dvol.length - 1];
+  const opt = d.options[0];
+
+  document.getElementById('mdIndex').textContent = fmtUsd0(Number(lastIndex.index_price));
+  document.getElementById('mdIndexSub').textContent = lastPerp.price_change_24h != null
+    ? (lastPerp.price_change_24h >= 0 ? '+' : '') + Number(lastPerp.price_change_24h).toFixed(2) + '% 24h (perp)' : '—';
+  document.getElementById('mdDvol').textContent = Number(lastDvol.dvol).toFixed(2);
+  document.getElementById('mdFunding').textContent = fmtPct4(Number(lastPerp.funding_8h));
+  document.getElementById('mdFundingSub').textContent = `current ${fmtPct4(Number(lastPerp.current_funding))} · BTC-PERPETUAL`;
+  const ivC = opt.atm_iv_call, ivP = opt.atm_iv_put;
+  document.getElementById('mdAtmIv').textContent =
+    (ivC != null ? Number(ivC).toFixed(1) : '—') + '% / ' + (ivP != null ? Number(ivP).toFixed(1) : '—') + '%';
+  document.getElementById('mdAtmIvSub').textContent =
+    `${opt.atm_expiry || '—'} · ${opt.atm_strike ? Number(opt.atm_strike).toLocaleString('en-US') : '—'} strike`;
+
+  mdIndexChart = mdLineChart('mdIndexCanvas', mdIndexChart,
+    d.index.map(p => ({ ts: p.ts, y: Number(p.index_price) })), MD_COLOR.index, 'BTC index', fmtUsd0);
+  mdDvolChart = mdLineChart('mdDvolCanvas', mdDvolChart,
+    d.dvol.map(p => ({ ts: p.ts, y: Number(p.dvol) })), MD_COLOR.dvol, 'DVOL', v => v.toFixed(2));
+  mdFundingChart = mdLineChart('mdFundingCanvas', mdFundingChart,
+    d.perp.map(p => ({ ts: p.ts, y: Number(p.funding_8h) })), MD_COLOR.funding, 'Funding (8h)', fmtPct4);
+
+  const callOi = Number(opt.call_open_interest) || 0, putOi = Number(opt.put_open_interest) || 0;
+  const total = callOi + putOi;
+  const callPct = total ? (100 * callOi / total) : 50;
+  document.getElementById('mdOiCall').style.width = callPct + '%';
+  document.getElementById('mdOiPut').style.width = (100 - callPct) + '%';
+  const oiFmt = v => v.toLocaleString('en-US', { maximumFractionDigits: 0 });
+  document.getElementById('mdOiCallLbl').textContent = `CALL ${oiFmt(callOi)} BTC`;
+  document.getElementById('mdOiPutLbl').textContent = `PUT ${oiFmt(putOi)} BTC`;
+  document.getElementById('mdOiTotal').textContent = `${oiFmt(total)} BTC total · ${opt.num_instruments} instruments`;
+  document.getElementById('mdOiMeta').textContent = `underlying ${fmtUsd0(Number(opt.underlying_price))} at last chain read`;
+
+  const src = document.getElementById('mdSrc');
+  src.textContent = d.mock ? 'MOCK' : 'LIVE';
+  src.className = 'src-pill ' + (d.mock ? 'mock' : 'live');
+  document.getElementById('mdAsOf').textContent = d.mock ? 'Pi monitor unreachable' : `updated ${hhmm(lastIndex.ts)} UTC`;
+}
+
+/* ─── ACCOUNT & RISK (key-gated) ──────────────────────────────────────────
+   Real Deribit account data — equity, margin, positions, open orders,
+   fills — read through api.mm_account_dashboard(key), a SECURITY DEFINER
+   Postgres function that only returns real data when the key matches
+   (sql/mm_account_dashboard.sql). The raw snapshot tables have NO web_anon
+   grant at all — this RPC is the only read path, verified live by hitting
+   the raw table endpoints directly and confirming 401. Key is remembered
+   in sessionStorage so a reload within the same tab doesn't ask again. */
+
+const AD_KEY_STORAGE = 'mm_account_dashboard_key';
+let adTimer = null;
+
+async function adFetch(key) {
+  try {
+    const r = await fetch(`${API}/rpc/mm_account_dashboard`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_key: key }),
+    });
+    if (!r.ok) return { ok: false };
+    return await r.json();
+  } catch (e) { return { ok: false }; }
+}
+
+function adRenderEmpty(tbodyId, cols, label) {
+  document.getElementById(tbodyId).innerHTML =
+    `<tr><td colspan="${cols}" style="text-align:center;color:var(--text3);padding:20px;letter-spacing:.1em">${label}</td></tr>`;
+}
+
+function adSidePill(direction) {
+  const d = (direction || '').toLowerCase();
+  return `<span class="t-side ${d === 'buy' ? 'buy' : 'sell'}">${(direction || '—').toUpperCase()}</span>`;
+}
+
+function adRender(d) {
+  const a = d.account || {};
+  document.getElementById('adEquity').textContent = a.equity != null ? '₿' + Number(a.equity).toFixed(5) : '—';
+  document.getElementById('adEquitySub').textContent = a.available_funds != null
+    ? `₿${Number(a.available_funds).toFixed(5)} available` : '—';
+
+  const ratio = a.margin_ratio != null ? Number(a.margin_ratio) * 100 : null;
+  document.getElementById('adMarginRatio').textContent = ratio != null ? ratio.toFixed(1) + '%' : '—';
+  document.getElementById('adMarginSub').textContent = (a.initial_margin != null && a.maintenance_margin != null)
+    ? `IM ₿${Number(a.initial_margin).toFixed(5)} · MM ₿${Number(a.maintenance_margin).toFixed(5)}` : '—';
+
+  document.getElementById('adDelta').textContent = a.options_delta != null ? Number(a.options_delta).toFixed(4) : '—';
+  document.getElementById('adGreeksSub').textContent = a.options_gamma != null
+    ? `γ ${Number(a.options_gamma).toFixed(4)} · θ ${Number(a.options_theta).toFixed(4)} · ν ${Number(a.options_vega).toFixed(4)}` : '—';
+
+  const positions = d.positions || [], orders = d.orders || [], fills = d.fills || [];
+  document.getElementById('adCounts').textContent = `${orders.length} / ${positions.length}`;
+  document.getElementById('adCountsSub').textContent = `${fills.length} fill(s) on record`;
+
+  if (positions.length) {
+    document.getElementById('adPositionsBody').innerHTML = positions.map(p => `
+      <tr>
+        <td class="t-inst" style="text-align:left">${p.instrument_name}</td>
+        <td>${adSidePill(p.direction)}</td>
+        <td>${Number(p.size).toFixed(4)}</td>
+        <td>${btc4(p.average_price)}</td>
+        <td>${btc4(p.mark_price)}</td>
+        <td>${p.delta != null ? Number(p.delta).toFixed(4) : '—'}</td>
+        <td class="t-edge ${Number(p.total_profit_loss) >= 0 ? 'pos' : 'neg'}">${p.total_profit_loss != null ? sgn(Number(p.total_profit_loss)) : '—'}</td>
+      </tr>`).join('');
+  } else {
+    adRenderEmpty('adPositionsBody', 7, 'NO OPEN POSITIONS');
+  }
+
+  if (orders.length) {
+    document.getElementById('adOrdersBody').innerHTML = orders.map(o => `
+      <tr>
+        <td class="t-inst" style="text-align:left">${o.instrument_name}</td>
+        <td>${adSidePill(o.direction)}</td>
+        <td>${btc4(o.price)}</td>
+        <td>${Number(o.amount).toFixed(4)}</td>
+        <td>${Number(o.filled_amount || 0).toFixed(4)}</td>
+        <td><span class="t-side info">${(o.order_state || '—').toUpperCase()}</span></td>
+      </tr>`).join('');
+  } else {
+    adRenderEmpty('adOrdersBody', 6, 'NO OPEN ORDERS');
+  }
+
+  if (fills.length) {
+    document.getElementById('adFillsBody').innerHTML = fills.map(f => `
+      <tr>
+        <td>${hhmm(f.trade_timestamp)}</td>
+        <td class="t-inst" style="text-align:left">${f.instrument_name}</td>
+        <td>${adSidePill(f.direction)}</td>
+        <td>${btc4(f.price)}</td>
+        <td>${Number(f.amount).toFixed(4)}</td>
+        <td>${f.fee != null ? Number(f.fee).toFixed(6) : '—'}</td>
+        <td class="t-edge ${Number(f.profit_loss) >= 0 ? 'pos' : 'neg'}">${f.profit_loss != null ? sgn(Number(f.profit_loss)) : '—'}</td>
+      </tr>`).join('');
+  } else {
+    adRenderEmpty('adFillsBody', 7, 'NO FILLS YET — zero across every live test to date');
+  }
+
+  document.getElementById('adAsOf').textContent = a.ts ? `updated ${hhmm(a.ts)} UTC` : '—';
+}
+
+async function adTryUnlock(key, opts) {
+  const silent = opts && opts.silent;
+  const d = await adFetch(key);
+  if (!d.ok) {
+    if (!silent) document.getElementById('adError').style.display = 'block';
+    try { sessionStorage.removeItem(AD_KEY_STORAGE); } catch (e) {}
+    return false;
+  }
+  try { sessionStorage.setItem(AD_KEY_STORAGE, key); } catch (e) {}
+  document.getElementById('adError').style.display = 'none';
+  document.getElementById('adGate').style.display = 'none';
+  document.getElementById('adContent').style.display = 'block';
+  adRender(d);
+  if (adTimer) clearInterval(adTimer);
+  adTimer = setInterval(async () => {
+    const fresh = await adFetch(key);
+    if (fresh.ok) adRender(fresh);
+  }, 30000);
+  return true;
+}
+
+function initAccountDashboard() {
+  const input = document.getElementById('adKeyInput');
+  const btn = document.getElementById('adUnlockBtn');
+  const go = () => { if (input.value) adTryUnlock(input.value); };
+  btn.addEventListener('click', go);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
+
+  let stored = null;
+  try { stored = sessionStorage.getItem(AD_KEY_STORAGE); } catch (e) {}
+  if (stored) adTryUnlock(stored, { silent: true });
+}
 
 /* ─── Renderers ─────────────────────────────────────────────────────────── */
 function renderTrades(rows) {
@@ -709,6 +1084,16 @@ function setSource(mock) {
   // Poll for live data the same cadence galton uses for its live tracker.
   // Once the api endpoints exist this seamlessly flips MOCK → LIVE on its own.
   setInterval(refresh, 180000);
+
+  async function refreshMarketDashboard() {
+    renderMarketDashboard(await mdLoadData());
+  }
+  await refreshMarketDashboard();
+  // Matches the Pi monitor's own poll interval — no point refreshing faster
+  // than the underlying data actually changes.
+  setInterval(refreshMarketDashboard, 30000);
+
+  initAccountDashboard();
 })();
 </script>
 
