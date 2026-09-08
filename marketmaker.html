@@ -134,6 +134,9 @@
   .t-side { font-size:8.5px; letter-spacing:.1em; padding:2px 6px; border:1px solid var(--border2); }
   .t-side.buy  { color:var(--green); border-color:rgba(67,224,151,0.4); background:rgba(67,224,151,0.06); }
   .t-side.sell { color:var(--red);   border-color:rgba(240,96,96,0.4);  background:rgba(240,96,96,0.06); }
+  .t-side.info { color:var(--ice);   border-color:rgba(79,195,247,0.4); background:rgba(79,195,247,0.06); }
+  .t-side.warn { color:var(--amber); border-color:rgba(245,166,35,0.4); background:rgba(245,166,35,0.06); }
+  .t-side.neutral { color:var(--text3); border-color:var(--border2); background:var(--bg2); }
   .t-pf { font-size:8.5px; letter-spacing:.12em; padding:2px 7px; border:1px solid var(--border2); }
   .t-pf.y { color:var(--green); border-color:rgba(67,224,151,0.4); background:rgba(67,224,151,0.06); }
   .t-pf.n { color:var(--red);   border-color:rgba(240,96,96,0.4);  background:rgba(240,96,96,0.06); }
@@ -298,6 +301,16 @@
           <span class="gate-mk pend">○</span>
           <span class="gate-txt"><em>Does not prove:</em> a fill, a completed hedge, or that the edge survives real costs. That's phase D (budgeted fill tests) and beyond — see Validation Gates above.</span>
         </div>
+      </div>
+
+      <div class="tbl-wrap" style="margin-top:18px">
+        <div class="kpi-lbl" style="margin-bottom:8px">Eighteen attempts against the real exchange</div>
+        <table class="trades">
+          <thead>
+            <tr><th>#</th><th style="text-align:left">What it found</th><th>Category</th></tr>
+          </thead>
+          <tbody id="c3Body"></tbody>
+        </table>
       </div>
     </div>
   </div>
@@ -487,6 +500,46 @@ function renderLiveOrderTest() {
   });
 }
 
+/* ─── PHASE C ATTEMPT LOG ─────────────────────────────────────────────────
+   Pulled directly from docs/C3-NOTES.md's own append-only engineering log
+   (marketmaker repo) — twelve numbered live attempts against production,
+   each with its own real incident, before the eventual clean pass. Not a
+   fabricated illustration: every row below traces to a specific dated
+   entry in that file. The final PASS itself isn't separately numbered
+   there (the notes end at attempt #18's fix; the pass evidence comes from
+   the commit that followed), so it's listed without a number. */
+const C3_ATTEMPTS = [
+  { n:7,  cat:'bug',  txt:'Own proximity-guard math let an unsafe bid through, 2 ticks below touch' },
+  { n:8,  cat:'req',  txt:'Exchange rejected the mass quote: required MMPGroup field (tag 9019) missing' },
+  { n:9,  cat:'req',  txt:'Exchange rejected the mass quote: bid + ask must merge into one wire entry per instrument' },
+  { n:10, cat:'bug',  txt:'Accepted (41 sides / 27 instruments), then crashed: an ordinary order update misread as sweep data' },
+  { n:11, cat:'bug',  txt:'Accepted, then desynced: a price re-priced across a tick-size tier the broker didn’t model' },
+  { n:12, cat:'bug',  txt:'Accepted (41 sides / 27 instruments), then crashed: a clock-ordering bug in the auto-cancel path' },
+  { n:13, cat:'bug',  txt:'Accepted (40 sides), false alarm: a cancel acknowledgment with no OrderID looked “unsolicited”' },
+  { n:14, cat:'live', txt:'A legitimate proximity auto-cancel mid-run was treated as a fatal error' },
+  { n:15, cat:'live', txt:'A quote aging out of eligibility after ≈40 minutes was treated as a fatal error' },
+  { n:16, cat:'live', txt:'A 2-second reconciliation timeout was too tight — one real exchange reply took ≈3 seconds' },
+  { n:17, cat:'live', txt:'The same aging-out issue, this time caught during a live edit' },
+  { n:18, cat:'live', txt:'A one-sided quote was wrongly held to a two-sided safety check' },
+  { n:null, cat:'pass', txt:'Clean pass — 124 entries, 3 flushes of 30+, 41 edits, 0 fills, 0 orphans' },
+];
+const C3_CAT = {
+  req:  { lbl:'Exchange requirement', cls:'info' },
+  bug:  { lbl:'Internal bug',         cls:'warn' },
+  live: { lbl:'Live-only edge case',  cls:'neutral' },
+  pass: { lbl:'Pass',                 cls:'buy' },
+};
+function renderC3Attempts() {
+  document.getElementById('c3Body').innerHTML = C3_ATTEMPTS.map(a => {
+    const c = C3_CAT[a.cat];
+    return `<tr>
+      <td class="t-inst">${a.n != null ? '#' + a.n : '—'}</td>
+      <td style="text-align:left;white-space:normal;color:var(--text2)">${a.txt}</td>
+      <td><span class="t-side ${c.cls}">${c.lbl}</span></td>
+    </tr>`;
+  }).join('');
+}
+
 /* ─── DATA LAYER ─────────────────────────────────────────────────────────────
    SINGLE source-of-truth fetcher. Flip mock → live by simply making these
    PostgREST endpoints return rows once the simulator persists to the api schema.
@@ -642,6 +695,7 @@ function setSource(mock) {
   renderMilestones();
   renderGates();
   renderLiveOrderTest();
+  renderC3Attempts();
 
   async function refresh() {
     const { trades, pnl, mock } = await loadData();
