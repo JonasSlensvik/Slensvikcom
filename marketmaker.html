@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Market Maker · Slensvik</title>
-<meta name="description" content="Put-call-parity options market maker on Deribit — build milestones, validation gates and paper-traded P&L. Alpha, paper only.">
+<meta name="description" content="Put-call-parity options market maker on Deribit — build milestones, live-first validation ladder and paper-traded P&L. Alpha — bulk mass-quoting proven live on production, zero fills, no capital committed.">
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=Syne:wght@500;700&display=swap" rel="stylesheet">
@@ -190,11 +190,14 @@
   </p>
 
   <div class="alpha-banner">
-    <span class="tag">Alpha · Paper only</span>
+    <span class="tag">Alpha · No capital committed</span>
     <span>
-      <strong>No real capital.</strong> Everything below is offline simulation / paper trading.
-      Validation order is strict: simulator proves edge net of costs → Deribit testnet reproduces sim → only
-      then a written go/no-go on real money.
+      <strong>Zero fills across every live test to date.</strong> Two sections below show real activity on Deribit
+      production — a single-order latency test and a full bulk mass-quoting smoke test — but every quote sent has
+      been post-only, far from the market, minimum size, or all three. Validation now follows a <em style="color:var(--text1)">live-first
+      ladder</em> (six phases, A–F, replacing the original testnet gate — Deribit testnet only shows other testnet
+      users, not a realistic live picture): prove mechanics live, in bounded and monitored steps, before any capital
+      is committed. A written go/no-go is the last step, not an early one.
     </span>
   </div>
 
@@ -255,6 +258,50 @@
     </div>
   </div>
 
+  <!-- ─── SECTION · PHASE C (bulk live smoke test, Deribit production) ── -->
+  <div class="sec">
+    <div class="panel">
+      <div class="sec-head"><span class="glyph">▦</span>PHASE C · BULK LIVE MARKET-MAKING TEST<span class="desc">Mass-quoting, editing, MMP and kill-switch machinery — proven live on Deribit production</span><span class="meta">25SEP26 expiry · 2026-09-08</span></div>
+
+      <div class="live-note">
+        <span class="tag">Real · Production</span>
+        <span>
+          <strong>The bigger of the two real tests on this page.</strong> Five days after the single-order latency
+          test above, the same account ran the full bulk market-making stack live: mass-quote batching through a
+          smart change queue with rate limiting, Market Maker Protection (MMP), proximity-based auto-cancel, and a
+          hard kill-switch — everything phase C exists to prove, short of an actual fill. Getting a clean run took
+          roughly twenty rounds of live attempts and fixes: a few were real protocol details (MMP field mapping,
+          price-grid rounding, REST auth format); most were the test harness being too strict about legitimate
+          exchange behavior — a proximity auto-cancel it didn't expect, a market drifting out of range mid-window, one
+          truth-sweep reply that legitimately took 3 seconds against a 2-second deadline. Zero fills, zero capital
+          ever at risk.
+        </span>
+      </div>
+
+      <div class="kpis">
+        <div class="kpi"><div class="kpi-lbl">Quote entries</div><div class="kpi-val">124</div><div class="kpi-sub">across the session</div></div>
+        <div class="kpi"><div class="kpi-lbl">Flushes</div><div class="kpi-val">3 × 30+</div><div class="kpi-sub">mass-quote batches sent</div></div>
+        <div class="kpi"><div class="kpi-lbl">Edits</div><div class="kpi-val">41</div><div class="kpi-sub">resting quotes repriced live</div></div>
+        <div class="kpi"><div class="kpi-lbl">Fills / orphans</div><div class="kpi-val">0 / 0</div><div class="kpi-sub">clean kill, verified via REST</div></div>
+      </div>
+
+      <div style="margin-top:4px">
+        <div class="gate-row">
+          <span class="gate-mk done">✓</span>
+          <span class="gate-txt">30-minute window, far-OTC post-only quotes at minimum size. A deliberate mid-session kill, fresh reconnect and re-quote, then a final mass-cancel confirmed empty via a private REST order read.</span>
+        </div>
+        <div class="gate-row">
+          <span class="gate-mk done">✓</span>
+          <span class="gate-txt"><em>Proves:</em> mass-quote plumbing, the live edit cycle, MMP arming, proximity auto-cancel, the kill-switch, and execution-report / position reconciliation — all on the real exchange.</span>
+        </div>
+        <div class="gate-row">
+          <span class="gate-mk pend">○</span>
+          <span class="gate-txt"><em>Does not prove:</em> a fill, a completed hedge, or that the edge survives real costs. That's phase D (budgeted fill tests) and beyond — see Validation Gates above.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ─── SECTION 2 · STRATEGY LIVE MOCKUP ─────────────────── -->
   <div class="sec">
     <div class="panel">
@@ -301,16 +348,18 @@ const MILESTONES = [
   { id:'M1', sub:'data recorder',     name:'Deribit <em>market-data recorder</em> — full-depth, zstd Parquet. <span style="color:var(--text3)">Live-validated 2026-08-11: 99-instrument BTC chain, 36,286 rows, 0 resyncs, ~1.6 MB/h.</span>', status:'done' },
   { id:'M2', sub:'book module',       name:'<em>Order-book</em> module — snapshot + increments, structural integrity + session-level gap detection. <span style="color:var(--text3)">Built inside feed/, not a separate package.</span>', status:'done' },
   { id:'M3', sub:'pricing + costs',   name:'<em>Pricing + units + cost</em> model — parity engine, hedge slippage. <span style="color:var(--text3)">Landed 2026-08-11: currency-safe Btc/Usd units, parity engine, depth-walk slippage, verified 2026-08-01 Deribit fee schedule, honest edge gate (net = raw − slippage − fees − settlement − buffer).</span>', status:'done' },
-  { id:'M4', sub:'paper simulator',   name:'<em>Paper-trading simulator</em> + honest edge gate. <span style="color:var(--text3)">Built 2026-08-11: replay feed, post-only SimBroker (fills on strict price cross only), parity quoter, blotter. Smoke-validated on real captured data; first full replay backtest awaits the 24 h capture.</span>', status:'prog' },
+  { id:'M4', sub:'paper simulator',   name:'<em>Paper-trading simulator</em> + honest edge gate. <span style="color:var(--text3)">Replay engine, post-only SimBroker, parity quoter, blotter — full 24h-capture backtest done (zero fills, zero hedge failures). Extended with a live-feed paper engine (pipeline-latency instrumentation, touch-inside-rate tracking) and a parameter-sweep tool, validated end-to-end against the real capture.</span>', status:'done' },
   { id:'M5', sub:'persistence',       name:'<em>Persistence</em> to Postgres (api schema) for this page',        status:'pend' },
   { id:'M6', sub:'this frontend',     name:'<em>Frontend</em> — milestone tracker + live paper-PnL mockup',      status:'done' },
-  { id:'M7', sub:'testnet + go/no-go',name:'<em>Testnet run</em> reproduces sim → written go/no-go',             status:'pend' },
+  { id:'M7', sub:'live validation',   name:'<em>Live-first validation ladder</em> (phases A–F, see Validation Gates) → written go/no-go. <span style="color:var(--text3)">Replaces the original testnet gate — Deribit testnet only shows other testnet users, not a realistic live picture. Phases A–C done; D–F ahead.</span>', status:'prog' },
 ];
 const GATES = [
-  { mk:'done', txt:'<em>Unit + property tests</em> green on pricing / book / costs: 111 tests incl. hypothesis property tests (currency safety, parity inverses, depth-walk, edge-gate reconciliation). First real capture session (28AUG26 chain, 24 h) recording since 2026-08-11.' },
-  { mk:'pend', txt:'<em>Replay backtest</em> shows positive PnL net of modeled costs across multiple recorded sessions.' },
-  { mk:'pend', txt:'<em>Testnet run</em> reproduces sim behaviour (quotes, fills, hedges) with no book desyncs over hours.' },
-  { mk:'pend', txt:'<em>Go / no-go</em> on real capital — only after gates 1–3, written sign-off.' },
+  { mk:'done', txt:'<em>A. Live capture + replay sim</em> — a full 24h production capture replayed through the real engine: zero fills, zero hedge failures. Edge existence is still unproven either way; the parameter-sweep tool built to answer it (touch-inside rate, fill count, PnL vs. min_edge/buffer/size) is validated end-to-end against that same capture.' },
+  { mk:'done', txt:'<em>B. Live feed + paper broker</em> — the real strategy loop wired to the live Deribit FIX feed in paper mode, with pipeline-latency instrumentation and no-quote-reason accounting.' },
+  { mk:'done', txt:'<em>C. Far-OTC live orders</em> — bulk mass-quoting, MMP, proximity auto-cancel and the kill-switch, proven on Deribit <strong style="color:var(--text1)">production</strong>: 124 quote entries, 3 flushes of 30+, 41 edits, 0 fills, 0 orphans over a 30-minute window. See below.' },
+  { mk:'pend', txt:'<em>D. Budgeted fill tests</em> — scripted conversions on the cheapest liquid options, hedged immediately, calibrating the cost model against real fills. Hard-capped burn budget (~0.0102 BTC).' },
+  { mk:'pend', txt:'<em>E. Risk & inventory management</em> — margin-ratio monitor, unwind quoter, inventory limits. Mandatory before any extended live quoting.' },
+  { mk:'pend', txt:'<em>F. Paper-live parallel → go/no-go</em> — a fill-rate reality check, then a written decision on real quoting.' },
 ];
 
 function renderMilestones() {
