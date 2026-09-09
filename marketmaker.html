@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Market Maker · Slensvik</title>
-<meta name="description" content="Put-call-parity options market maker on Deribit — build milestones, live-first validation ladder and paper-traded P&L. Alpha — bulk mass-quoting proven live on production, zero fills, no capital committed.">
+<title>Market Maker · Ops Centre · Slensvik</title>
+<meta name="description" content="Live operations centre for a put-call-parity options market maker on Deribit — real account state, exposure by expiry, payoff and Greeks drift, plus the build history and validation ladder behind it. Alpha, hard-capped burn budget.">
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=Syne:wght@500;700&display=swap" rel="stylesheet">
@@ -174,6 +174,38 @@
   .ad-unlock-btn:hover { color:var(--ice); border-color:var(--ice); }
   .ad-error { font-family:var(--mono); font-size:10.5px; color:var(--red); margin-top:10px; display:none; }
 
+  /* ─── Exposure-by-expiry timeline (mirrors portfolio.html's evt-timeline) ── */
+  .exp-timeline {
+    position:relative; height:56px; margin:4px 0 14px;
+    border:1px solid var(--border2); background:var(--bg2);
+    font-family:var(--mono); font-size:9px; color:var(--text3);
+  }
+  .exp-tl-axis {
+    position:absolute; inset:0;
+    background:linear-gradient(to right, rgba(79,195,247,0.14) 0%, rgba(79,195,247,0.04) 40%, var(--bg2) 100%);
+  }
+  .exp-tl-today { position:absolute; top:-2px; bottom:-2px; width:1px; background:var(--ice); left:0; }
+  .exp-tl-marker { position:absolute; top:8px; display:flex; flex-direction:column; align-items:center; gap:3px; transform:translateX(-50%); cursor:default; }
+  .exp-tl-dot { width:9px; height:9px; border-radius:50%; border:1.5px solid var(--bg2); }
+  .exp-tl-lbl { font-size:8.5px; white-space:nowrap; letter-spacing:.04em; color:var(--text2); }
+  .exp-tl-val { font-size:9.5px; white-space:nowrap; color:var(--text1); font-variant-numeric:tabular-nums; }
+  .exp-tl-axis-ticks { position:absolute; left:0; right:0; bottom:2px; display:flex; justify-content:space-between; padding:0 8px; font-size:8px; color:var(--text3); }
+
+  /* ─── Greeks/margin small multiples ─────────────────────────────────── */
+  .grid-4 { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+  @media (max-width:900px){ .grid-4{ grid-template-columns:repeat(2,1fr); } }
+
+  .margin-gauge-track { position:relative; height:16px; border:1px solid var(--border2); background:var(--bg2); overflow:hidden; margin:8px 0 4px; }
+  .margin-gauge-fill { height:100%; background:var(--ice); transition:width .4s; }
+  .margin-gauge-mk { position:absolute; top:-3px; bottom:-3px; width:1px; background:var(--text3); }
+  .margin-gauge-lbl { position:absolute; top:18px; font-size:8px; color:var(--text3); transform:translateX(-50%); white-space:nowrap; }
+
+  .pkg-row { border:1px solid var(--border2); background:var(--bg2); padding:12px 14px; margin-bottom:8px; }
+  .pkg-head { display:flex; align-items:center; gap:10px; font-family:var(--mono); font-size:11px; margin-bottom:8px; flex-wrap:wrap; }
+  .pkg-head .pkg-title { color:var(--text1); letter-spacing:.03em; }
+  .pkg-legs { font-size:10px; color:var(--text3); line-height:1.7; }
+  .pkg-legs .leg-c { color:var(--green); } .pkg-legs .leg-p { color:var(--red); } .pkg-legs .leg-f { color:var(--amber); }
+
   .ph {
     font-family:var(--mono); font-size:11px; letter-spacing:.1em;
     color:var(--text3); text-align:center; padding:32px 8px;
@@ -302,6 +334,9 @@
           <div class="kpi"><div class="kpi-lbl">Orders / positions</div><div class="kpi-val" id="adCounts">—</div><div class="kpi-sub" id="adCountsSub">—</div></div>
         </div>
 
+        <div class="kpi-lbl" style="margin:18px 0 8px">Exposure by expiry <span style="color:var(--text3);text-transform:none;letter-spacing:0">— option notional (BTC), orders + positions</span></div>
+        <div class="exp-timeline" id="expTimeline"></div>
+
         <div class="kpi-lbl" style="margin:18px 0 8px">Positions</div>
         <div class="tbl-wrap">
           <table class="trades">
@@ -318,6 +353,12 @@
           </table>
         </div>
 
+        <div class="kpi-lbl" style="margin:18px 0 8px">Positions grouped by package <span style="color:var(--text3);text-transform:none;letter-spacing:0">— inferred from fill timing, not an exchange-side ID; see hover</span></div>
+        <div id="pkgList"></div>
+
+        <div class="kpi-lbl" style="margin:18px 0 8px" id="payoffLbl">Payoff at expiry — real fills, actual hedge size</div>
+        <div style="height:240px"><canvas id="payoffCanvas"></canvas></div>
+
         <div class="kpi-lbl" style="margin:18px 0 8px">Recent fills</div>
         <div class="tbl-wrap">
           <table class="trades">
@@ -325,11 +366,72 @@
             <tbody id="adFillsBody"></tbody>
           </table>
         </div>
+
+        <div class="kpi-lbl" style="margin:18px 0 8px">Greeks over time <span style="color:var(--text3);text-transform:none;letter-spacing:0">— portfolio delta should sit near zero if the hedge is holding; γ/θ/ν are options-only</span></div>
+        <div class="grid-4">
+          <div><div class="chart-lbl">Delta (total)</div><div style="height:140px"><canvas id="grkDeltaCanvas"></canvas></div></div>
+          <div><div class="chart-lbl">Gamma (options)</div><div style="height:140px"><canvas id="grkGammaCanvas"></canvas></div></div>
+          <div><div class="chart-lbl">Theta (options)</div><div style="height:140px"><canvas id="grkThetaCanvas"></canvas></div></div>
+          <div><div class="chart-lbl">Vega (options)</div><div style="height:140px"><canvas id="grkVegaCanvas"></canvas></div></div>
+        </div>
+
+        <div class="kpi-lbl" style="margin:18px 0 8px">Margin ratio <span style="color:var(--text3);text-transform:none;letter-spacing:0">— maintenance / equity, thresholds per GUIDE.md §10.1</span></div>
+        <div class="margin-gauge-track">
+          <div class="margin-gauge-fill" id="marginGaugeFill" style="width:0%"></div>
+          <div class="margin-gauge-mk" style="left:50%"></div>
+          <div class="margin-gauge-mk" style="left:70%"></div>
+          <div class="margin-gauge-mk" style="left:85%"></div>
+        </div>
+        <div style="position:relative;height:14px;margin-bottom:14px">
+          <span class="margin-gauge-lbl" style="left:50%">warn 50%</span>
+          <span class="margin-gauge-lbl" style="left:70%">de-risk 70%</span>
+          <span class="margin-gauge-lbl" style="left:85%">unwind 85%</span>
+        </div>
+        <div style="height:140px"><canvas id="marginCanvas"></canvas></div>
       </div>
     </div>
   </div>
 
-  <!-- ─── SECTION 1 · PROJECT PROGRESS TRACKER ─────────────── -->
+  <!-- ─── SECTION · PHASE D (first real fills, Deribit production) ── -->
+  <div class="sec">
+    <div class="panel">
+      <div class="sec-head"><span class="glyph">⬥</span>PHASE D · REAL TRADES<span class="desc">Budgeted fill tests — a full parity package opened, hedged and closed for real, hard-capped burn budget</span><span class="meta" id="pdMeta">—</span></div>
+
+      <div class="live-note">
+        <span class="tag">Real · Production</span>
+        <span>
+          <strong>The first fills this account has ever had.</strong> A full put-call-parity package — buy the put,
+          sell the call, hedge the delta with the future — opened and then closed again for real, on the live
+          25DEC26 30000-strike chain. Every row below is pulled live from Deribit's own trade history, not a mockup;
+          the KPIs are computed from it directly, including the flat check, so this section stays honest as more
+          budgeted tests land.
+        </span>
+      </div>
+
+      <div class="kpis">
+        <div class="kpi"><div class="kpi-lbl">Fills</div><div class="kpi-val" id="pdLegs">—</div><div class="kpi-sub" id="pdInstrumentsSub">—</div></div>
+        <div class="kpi"><div class="kpi-lbl">Net realized</div><div class="kpi-val" id="pdPnl">—</div><div class="kpi-sub" id="pdPnlSub">—</div></div>
+        <div class="kpi"><div class="kpi-lbl">Span</div><div class="kpi-val" id="pdDuration">—</div><div class="kpi-sub">first fill to last</div></div>
+        <div class="kpi"><div class="kpi-lbl">Net position</div><div class="kpi-val" id="pdFlat">—</div><div class="kpi-sub">computed from fills, not a live position read</div></div>
+      </div>
+
+      <div class="chart-lbl" style="margin-top:2px">Cumulative realized P&amp;L — real fills only</div>
+      <div style="height:220px"><canvas id="pdPnlCanvas"></canvas></div>
+
+      <div class="tbl-wrap" style="margin-top:16px">
+        <table class="trades">
+          <thead>
+            <tr><th>Time (UTC)</th><th style="text-align:left">Instrument</th><th>Side</th><th>Price</th><th>Amount</th><th>Fee</th><th>P&amp;L</th></tr>
+          </thead>
+          <tbody id="pdBody">
+            <tr><td colspan="7" style="text-align:center;color:var(--text3);padding:24px;letter-spacing:.1em">LOADING …</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── SECTION · BUILD HISTORY (planning — how we got here) ─────────────── -->
   <div class="sec">
     <div class="grid-2">
 
@@ -435,45 +537,6 @@
             <tr><th>#</th><th style="text-align:left">What it found</th><th>Category</th></tr>
           </thead>
           <tbody id="c3Body"></tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-
-  <!-- ─── SECTION · PHASE D (first real fills, Deribit production) ── -->
-  <div class="sec">
-    <div class="panel">
-      <div class="sec-head"><span class="glyph">⬥</span>PHASE D · REAL TRADES<span class="desc">Budgeted fill tests — a full parity package opened, hedged and closed for real, hard-capped burn budget</span><span class="meta" id="pdMeta">—</span></div>
-
-      <div class="live-note">
-        <span class="tag">Real · Production</span>
-        <span>
-          <strong>The first fills this account has ever had.</strong> A full put-call-parity package — buy the put,
-          sell the call, hedge the delta with the future — opened and then closed again for real, on the live
-          25DEC26 30000-strike chain. Every row below is pulled live from Deribit's own trade history, not a mockup;
-          the KPIs are computed from it directly, including the flat check, so this section stays honest as more
-          budgeted tests land.
-        </span>
-      </div>
-
-      <div class="kpis">
-        <div class="kpi"><div class="kpi-lbl">Fills</div><div class="kpi-val" id="pdLegs">—</div><div class="kpi-sub" id="pdInstrumentsSub">—</div></div>
-        <div class="kpi"><div class="kpi-lbl">Net realized</div><div class="kpi-val" id="pdPnl">—</div><div class="kpi-sub" id="pdPnlSub">—</div></div>
-        <div class="kpi"><div class="kpi-lbl">Span</div><div class="kpi-val" id="pdDuration">—</div><div class="kpi-sub">first fill to last</div></div>
-        <div class="kpi"><div class="kpi-lbl">Net position</div><div class="kpi-val" id="pdFlat">—</div><div class="kpi-sub">computed from fills, not a live position read</div></div>
-      </div>
-
-      <div class="chart-lbl" style="margin-top:2px">Cumulative realized P&amp;L — real fills only</div>
-      <div style="height:220px"><canvas id="pdPnlCanvas"></canvas></div>
-
-      <div class="tbl-wrap" style="margin-top:16px">
-        <table class="trades">
-          <thead>
-            <tr><th>Time (UTC)</th><th style="text-align:left">Instrument</th><th>Side</th><th>Price</th><th>Amount</th><th>Fee</th><th>P&amp;L</th></tr>
-          </thead>
-          <tbody id="pdBody">
-            <tr><td colspan="7" style="text-align:center;color:var(--text3);padding:24px;letter-spacing:.1em">LOADING …</td></tr>
-          </tbody>
         </table>
       </div>
     </div>
@@ -829,6 +892,275 @@ async function adFetch(key) {
   } catch (e) { return { ok: false }; }
 }
 
+/* ─── Shared instrument/expiry parsing ───────────────────────────────────── */
+const MM_MONTHS = { JAN:0, FEB:1, MAR:2, APR:3, MAY:4, JUN:5, JUL:6, AUG:7, SEP:8, OCT:9, NOV:10, DEC:11 };
+
+function mmParseInstrument(name) {
+  const parts = name.split('-');
+  if (parts.length === 4) {
+    return { underlying: parts[0], expiry: parts[1], strike: Number(parts[2]), kind: parts[3] };
+  }
+  return { underlying: parts[0], expiry: parts[1] || parts[0], strike: null, kind: 'F' };
+}
+
+function mmExpiryDate(tok) {
+  const m = /^(\d{1,2})([A-Z]{3})(\d{2})$/.exec(tok);
+  return m ? new Date(2000 + Number(m[3]), MM_MONTHS[m[2]], Number(m[1])) : null;
+}
+
+/* ─── Exposure by expiry (options only — BTC notional is directly summable;
+   a future's USD notional isn't the same unit, so it's called out in the
+   tooltip instead of folded into the same number) ──────────────────────── */
+function renderExpiryTimeline(positions, orders) {
+  const el = document.getElementById('expTimeline');
+  const byExpiry = new Map();
+  const add = (bucket, items) => {
+    for (const it of items) {
+      const p = mmParseInstrument(it.instrument_name);
+      if (p.kind !== 'C' && p.kind !== 'P') continue; // futures excluded — see comment above
+      if (!byExpiry.has(p.expiry)) byExpiry.set(p.expiry, { call: 0, put: 0, orderNotional: 0, posNotional: 0 });
+      const g = byExpiry.get(p.expiry);
+      const size = Math.abs(Number(it.size != null ? it.size : it.amount));
+      if (p.kind === 'C') g.call += size; else g.put += size;
+      g[bucket] += size;
+    }
+  };
+  add('posNotional', positions.filter(p => mmParseInstrument(p.instrument_name).kind !== 'F'));
+  add('orderNotional', orders);
+
+  if (!byExpiry.size) {
+    el.innerHTML = '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:10px;letter-spacing:.1em">no open orders or positions</div>';
+    return;
+  }
+
+  const today = new Date();
+  const expiries = [...byExpiry.keys()].filter(e => mmExpiryDate(e)).sort((a, b) => mmExpiryDate(a) - mmExpiryDate(b));
+  const maxDate = mmExpiryDate(expiries[expiries.length - 1]);
+  const horizonDays = Math.max(30, (maxDate - today) / 86400000 * 1.15);
+
+  const markers = expiries.map(e => {
+    const g = byExpiry.get(e);
+    const days = Math.max(0, (mmExpiryDate(e) - today) / 86400000);
+    const pct = Math.min(98, (days / horizonDays) * 100);
+    const total = g.call + g.put;
+    const color = g.call >= g.put ? 'var(--green)' : 'var(--red)';
+    return `<div class="exp-tl-marker" style="left:${pct}%"
+        title="${e}: ${total.toFixed(4)} BTC total
+calls ${g.call.toFixed(4)} · puts ${g.put.toFixed(4)}
+orders ${g.orderNotional.toFixed(4)} · positions ${g.posNotional.toFixed(4)}">
+      <span class="exp-tl-val">${total.toFixed(3)} BTC</span>
+      <span class="exp-tl-dot" style="background:${color}"></span>
+      <span class="exp-tl-lbl">${e}</span>
+    </div>`;
+  }).join('');
+
+  const tickAt = frac => {
+    const d = new Date(today.getTime() + frac * horizonDays * 86400000);
+    return d.toISOString().slice(0, 10);
+  };
+  el.innerHTML = `<div class="exp-tl-axis"></div><div class="exp-tl-today"></div>${markers}
+    <div class="exp-tl-axis-ticks"><span>today</span><span>${tickAt(0.5)}</span><span>${tickAt(1)}</span></div>`;
+}
+
+/* ─── Fill -> inferred package grouping ───────────────────────────────────
+   Deribit gives each order its own opaque label, not a shared "this call,
+   put and future belong together" id — so packages are INFERRED: same
+   expiry, fills within `gapSeconds` of each other. Every real test so far
+   landed all its legs within ~1s, so 60s is generous, not tight; this is a
+   heuristic, not an exchange-verified grouping, and is labeled as such in
+   the UI. */
+function mmGroupIntoPackages(fillsAsc, gapSeconds = 60) {
+  const byExpiry = new Map();
+  for (const f of fillsAsc) {
+    const p = mmParseInstrument(f.instrument_name);
+    if (!byExpiry.has(p.expiry)) byExpiry.set(p.expiry, []);
+    byExpiry.get(p.expiry).push({ ...f, parsed: p });
+  }
+  const packages = [];
+  for (const fills of byExpiry.values()) {
+    let current = [], lastMs = null;
+    for (const f of fills) {
+      const ms = new Date(f.trade_timestamp).getTime();
+      if (lastMs != null && (ms - lastMs) / 1000 > gapSeconds) { packages.push(current); current = []; }
+      current.push(f);
+      lastMs = ms;
+    }
+    if (current.length) packages.push(current);
+  }
+  packages.sort((a, b) => new Date(b[b.length - 1].trade_timestamp) - new Date(a[a.length - 1].trade_timestamp));
+  return packages.map(mmSummarizePackage);
+}
+
+function mmSummarizePackage(fills) {
+  const legMap = new Map();
+  for (const f of fills) {
+    const key = f.parsed.kind === 'F' ? 'F' : `${f.parsed.kind}-${f.parsed.strike}`;
+    if (!legMap.has(key)) legMap.set(key, { kind: f.parsed.kind, strike: f.parsed.strike, qty: 0, notionalSum: 0, fills: [] });
+    const leg = legMap.get(key);
+    const sign = f.direction === 'buy' ? 1 : -1;
+    const amt = Number(f.amount);
+    leg.qty += sign * amt;
+    leg.notionalSum += amt * Number(f.price);
+    leg.fills.push(f);
+  }
+  const legs = [...legMap.values()].map(l => ({
+    ...l,
+    avgPrice: l.fills.reduce((s, f) => s + Number(f.amount), 0) > 0
+      ? l.notionalSum / l.fills.reduce((s, f) => s + Number(f.amount), 0) : 0,
+  }));
+  const netPnl = fills.reduce((s, f) => s + Number(f.profit_loss || 0), 0);
+  const totalFee = fills.reduce((s, f) => s + Number(f.fee || 0), 0);
+  const flat = legs.every(l => Math.abs(l.qty) < 1e-6);
+  return {
+    expiry: fills[0].parsed.expiry, fills, legs, netPnl, totalFee, flat,
+    t0: fills[0].trade_timestamp, t1: fills[fills.length - 1].trade_timestamp,
+    underlyingPrice: Number(fills[0].underlying_price),
+  };
+}
+
+/* ─── Payoff math — faithful port of pricing/payoff.py, same variable names
+   and formulas. Do not "simplify" the inverse-settlement division; that is
+   exactly the shape of two prior real bugs in this codebase (see CLAUDE.md
+   2026-08-14). optionQty/oppQty/futureNotionalUsd are REAL signed sizes
+   (not per-1-BTC-normalized) — see that file's docstring for why that's
+   the correct unit to pass here. ─────────────────────────────────────── */
+function optionSettlementBtc(kind, strike, spot) {
+  const intrinsic = kind === 'C' ? Math.max(0, spot - strike) : Math.max(0, strike - spot);
+  return intrinsic / spot;
+}
+function futurePnlBtc(notionalUsd, entry, spot) {
+  return notionalUsd * (1 / entry - 1 / spot);
+}
+function payoffBtc(legs, spot) {
+  let total = 0;
+  for (const l of legs.options) total += l.qty * (optionSettlementBtc(l.kind, l.strike, spot) - l.avgPrice);
+  if (legs.future) total += futurePnlBtc(legs.future.notionalUsd, legs.future.avgPrice, spot);
+  return total;
+}
+
+function renderPayoffChart(pkg) {
+  document.getElementById('payoffLbl').textContent = pkg.flat
+    ? 'Payoff at expiry — most recent package, already closed (fixed P&L, not spot-dependent)'
+    : 'Payoff at expiry — real fills, actual executed hedge size';
+
+  const strike = pkg.legs.find(l => l.kind !== 'F' && l.strike != null)?.strike || pkg.underlyingPrice;
+  // Span both strike and current spot, not just the strike — a deep-ITM/OTM
+  // test (this project's real Phase D picks the cheapest liquid strike,
+  // which can sit far from spot) would otherwise render a chart whose
+  // visible range never reaches where the market actually is.
+  const anchorLo = Math.min(strike, pkg.underlyingPrice), anchorHi = Math.max(strike, pkg.underlyingPrice);
+  const spots = [];
+  const lo = anchorLo * 0.5, hi = anchorHi * 1.5;
+  for (let i = 0; i <= 60; i++) spots.push(lo + (hi - lo) * (i / 60));
+
+  let points;
+  if (pkg.flat) {
+    points = spots.map(s => ({ x: s, y: pkg.netPnl }));
+  } else {
+    const options = pkg.legs.filter(l => l.kind !== 'F' && Math.abs(l.qty) > 1e-9)
+      .map(l => ({ kind: l.kind, strike: l.strike, qty: l.qty, avgPrice: l.avgPrice }));
+    const futureLeg = pkg.legs.find(l => l.kind === 'F');
+    const future = futureLeg && Math.abs(futureLeg.qty) > 1e-9
+      ? { notionalUsd: futureLeg.qty * 10, avgPrice: futureLeg.avgPrice } : null;
+    points = spots.map(s => ({ x: s, y: payoffBtc({ options, future }, s) }));
+  }
+
+  if (window.__payoffChart) { window.__payoffChart.destroy(); }
+  window.__payoffChart = new Chart(document.getElementById('payoffCanvas'), {
+    type: 'line',
+    data: { datasets: [
+      { label: 'P&L at settlement', data: points, borderColor: '#4fc3f7', backgroundColor: 'rgba(79,195,247,0.08)',
+        borderWidth: 1.8, fill: true, tension: 0, pointRadius: 0 },
+      { label: 'Break-even', data: spots.map(s => ({ x: s, y: 0 })), borderColor: 'rgba(245,166,35,0.45)',
+        borderDash: [4, 4], borderWidth: 1, fill: false, pointRadius: 0 },
+    ] },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      interaction: { intersect: false, mode: 'index' },
+      plugins: {
+        legend: { labels: { color: '#a4adbf', font: { family: 'IBM Plex Mono', size: 10 }, boxWidth: 12 } },
+        tooltip: { callbacks: {
+          title: items => items.length ? '$' + Math.round(items[0].parsed.x).toLocaleString('en-US') : '',
+          label: ctx => `${ctx.dataset.label}: ${sgn(ctx.parsed.y)} BTC`,
+        } },
+      },
+      scales: {
+        x: { type: 'linear', title: { display: true, text: 'BTC spot at settlement', color: '#5a6377', font: { family: 'IBM Plex Mono', size: 9 } },
+             grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#5a6377', font: { family: 'IBM Plex Mono', size: 9 }, callback: v => '$' + (v / 1000).toFixed(0) + 'k' } },
+        y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#5a6377', font: { family: 'IBM Plex Mono', size: 9 }, callback: v => sgn(v) } },
+      },
+    },
+  });
+}
+
+function renderPackages(fillsDesc) {
+  const fillsAsc = [...fillsDesc].reverse();
+  const packages = mmGroupIntoPackages(fillsAsc);
+  const list = document.getElementById('pkgList');
+  if (!packages.length) {
+    list.innerHTML = '<div class="ph">NO PACKAGES YET</div>';
+    return;
+  }
+  list.innerHTML = packages.map(pkg => {
+    const legTxt = pkg.legs.map(l => {
+      const cls = l.kind === 'C' ? 'leg-c' : l.kind === 'P' ? 'leg-p' : 'leg-f';
+      const nm = l.kind === 'F' ? `${pkg.expiry} future` : `${pkg.expiry} ${l.strike} ${l.kind}`;
+      return `<span class="${cls}">${nm}: ${l.qty >= 0 ? '+' : ''}${l.qty.toFixed(l.kind === 'F' ? 0 : 4)} @ ${l.kind === 'F' ? '$' + l.avgPrice.toFixed(2) : '₿' + l.avgPrice.toFixed(4)}</span>`;
+    }).join(' · ');
+    return `<div class="pkg-row">
+      <div class="pkg-head">
+        <span class="pkg-title">${pkg.expiry}</span>
+        <span class="src-pill ${pkg.flat ? '' : 'live'}" style="${pkg.flat ? '' : ''}">${pkg.flat ? 'CLOSED' : 'OPEN'}</span>
+        <span style="color:var(--text3)">${pkg.fills.length} fills · ${hhmm(pkg.t0)}–${hhmm(pkg.t1)} UTC</span>
+        <span class="t-edge ${pkg.netPnl >= 0 ? 'pos' : 'neg'}" style="margin-left:auto">${sgn(pkg.netPnl)} BTC</span>
+      </div>
+      <div class="pkg-legs">${legTxt}</div>
+    </div>`;
+  }).join('');
+
+  // Payoff chart follows the most recent OPEN package if one exists,
+  // otherwise the most recent package overall (already closed).
+  const focus = packages.find(p => !p.flat) || packages[0];
+  renderPayoffChart(focus);
+}
+
+/* ─── Greeks / margin over time ──────────────────────────────────────────── */
+let mmGreekCharts = {};
+function mmSmallChart(canvasId, points, color, fmt) {
+  if (mmGreekCharts[canvasId]) mmGreekCharts[canvasId].destroy();
+  mmGreekCharts[canvasId] = new Chart(document.getElementById(canvasId), {
+    type: 'line',
+    data: { labels: points.map(p => hhmm(p.ts)), datasets: [
+      { data: points.map(p => p.y), borderColor: color, backgroundColor: 'transparent', borderWidth: 1.5, pointRadius: 0, tension: 0.1 },
+    ] },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      interaction: { intersect: false, mode: 'index' },
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => fmt(ctx.parsed.y) } } },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: '#5a6377', font: { family: 'IBM Plex Mono', size: 8 }, autoSkip: true, maxTicksLimit: 4, maxRotation: 0 } },
+        y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#5a6377', font: { family: 'IBM Plex Mono', size: 8 }, callback: v => fmt(v) } },
+      },
+    },
+  });
+}
+
+function renderGreeksAndMargin(history) {
+  if (!history.length) return;
+  mmSmallChart('grkDeltaCanvas', history.map(h => ({ ts: h.ts, y: Number(h.delta_total) })), '#4fc3f7', v => v.toFixed(4));
+  mmSmallChart('grkGammaCanvas', history.map(h => ({ ts: h.ts, y: Number(h.options_gamma) })), '#a78bfa', v => v.toFixed(4));
+  mmSmallChart('grkThetaCanvas', history.map(h => ({ ts: h.ts, y: Number(h.options_theta) })), '#f5a623', v => v.toFixed(4));
+  mmSmallChart('grkVegaCanvas', history.map(h => ({ ts: h.ts, y: Number(h.options_vega) })), '#43e097', v => v.toFixed(4));
+
+  const last = history[history.length - 1];
+  const pct = Math.min(100, Math.max(0, Number(last.margin_ratio) * 100));
+  const fill = document.getElementById('marginGaugeFill');
+  fill.style.width = pct + '%';
+  fill.style.background = pct >= 85 ? 'var(--red)' : pct >= 70 ? 'var(--amber)' : pct >= 50 ? '#f5a623' : 'var(--ice)';
+
+  mmSmallChart('marginCanvas', history.map(h => ({ ts: h.ts, y: Number(h.margin_ratio) * 100 })), '#4fc3f7', v => v.toFixed(1) + '%');
+}
+
 function adRenderEmpty(tbodyId, cols, label) {
   document.getElementById(tbodyId).innerHTML =
     `<tr><td colspan="${cols}" style="text-align:center;color:var(--text3);padding:20px;letter-spacing:.1em">${label}</td></tr>`;
@@ -908,6 +1240,10 @@ function adRender(d) {
   }
 
   document.getElementById('adAsOf').textContent = a.ts ? `updated ${hhmm(a.ts)} UTC` : '—';
+
+  renderExpiryTimeline(positions, orders);
+  renderPackages(fills);
+  renderGreeksAndMargin(d.history || []);
 }
 
 async function adTryUnlock(key, opts) {
