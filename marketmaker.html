@@ -908,6 +908,21 @@ function mmExpiryDate(tok) {
   return m ? new Date(2000 + Number(m[3]), MM_MONTHS[m[2]], Number(m[1])) : null;
 }
 
+// Shared price/amount formatters for fill/trade rows — futures & perpetuals
+// are USD-denominated (Deribit: "for perpetual and inverse futures the
+// amount is in USD units"), options are BTC-denominated. Centralized here
+// after the same kind-blind ₿-prefix mistake showed up in three different
+// render functions.
+function mmIsFutureInstrument(name) {
+  return mmParseInstrument(name).kind === 'F';
+}
+function mmPriceTxt(instrumentName, price) {
+  return mmIsFutureInstrument(instrumentName) ? '$' + Number(price).toFixed(2) : btc4(price);
+}
+function mmAmountTxt(instrumentName, amount) {
+  return mmIsFutureInstrument(instrumentName) ? '$' + Number(amount).toFixed(0) : Number(amount).toFixed(4);
+}
+
 /* ─── Exposure by expiry (options only — BTC notional is directly summable;
    a future's USD notional isn't the same unit, so it's called out in the
    tooltip instead of folded into the same number) ──────────────────────── */
@@ -1059,9 +1074,16 @@ function renderPayoffChart(pkg) {
   } else {
     const options = pkg.legs.filter(l => l.kind !== 'F' && Math.abs(l.qty) > 1e-9)
       .map(l => ({ kind: l.kind, strike: l.strike, qty: l.qty, avgPrice: l.avgPrice }));
+    // futureLeg.qty is already USD notional, NOT a contract count — Deribit's
+    // docs for user_trade.amount: "For perpetual and inverse futures the
+    // amount is in USD units." A prior version of this function multiplied
+    // by 10 here (treating it as contracts needing conversion at $10/contract)
+    // and that single wrong assumption made a correctly-hedged position look
+    // like a wildly unhedged one on this chart. Verified against Deribit's
+    // docs and against account.delta_total (~0) before trusting this fix.
     const futureLeg = pkg.legs.find(l => l.kind === 'F');
     const future = futureLeg && Math.abs(futureLeg.qty) > 1e-9
-      ? { notionalUsd: futureLeg.qty * 10, avgPrice: futureLeg.avgPrice } : null;
+      ? { notionalUsd: futureLeg.qty, avgPrice: futureLeg.avgPrice } : null;
     points = spots.map(s => ({ x: s, y: payoffBtc({ options, future }, s) }));
   }
 
@@ -1104,8 +1126,15 @@ function renderPackages(fillsDesc) {
   list.innerHTML = packages.map(pkg => {
     const legTxt = pkg.legs.map(l => {
       const cls = l.kind === 'C' ? 'leg-c' : l.kind === 'P' ? 'leg-p' : 'leg-f';
-      const nm = l.kind === 'F' ? `${pkg.expiry} future` : `${pkg.expiry} ${l.strike} ${l.kind}`;
-      return `<span class="${cls}">${nm}: ${l.qty >= 0 ? '+' : ''}${l.qty.toFixed(l.kind === 'F' ? 0 : 4)} @ ${l.kind === 'F' ? '$' + l.avgPrice.toFixed(2) : '₿' + l.avgPrice.toFixed(4)}</span>`;
+      if (l.kind === 'F') {
+        // l.qty is USD notional directly (Deribit: "for perpetual and inverse
+        // futures the amount is in USD units") — shown alongside the
+        // contract-equivalent explicitly so raw notional is never mistaken
+        // for a contract count again.
+        const contracts = l.qty / 10;
+        return `<span class="${cls}">${pkg.expiry} future: ${l.qty >= 0 ? '+' : ''}$${l.qty.toFixed(0)} (${contracts >= 0 ? '+' : ''}${contracts.toFixed(0)} contracts) @ $${l.avgPrice.toFixed(2)}</span>`;
+      }
+      return `<span class="${cls}">${pkg.expiry} ${l.strike} ${l.kind}: ${l.qty >= 0 ? '+' : ''}${l.qty.toFixed(4)} @ ₿${l.avgPrice.toFixed(4)}</span>`;
     }).join(' · ');
     return `<div class="pkg-row">
       <div class="pkg-head">
@@ -1196,16 +1225,27 @@ function adRender(d) {
   document.getElementById('adCountsSub').textContent = `${fills.length} fill(s) on record`;
 
   if (positions.length) {
-    document.getElementById('adPositionsBody').innerHTML = positions.map(p => `
-      <tr>
+    // Futures/perpetuals: size is USD notional and price is a USD price per
+    // BTC (Deribit: "for perpetual and inverse futures the amount is in USD
+    // units") — options: size is BTC and price is a BTC premium. A single
+    // shared ₿-prefixed formatter across both kinds is exactly the mistake
+    // that made a correctly-hedged future look 10x oversized elsewhere on
+    // this page; kept kind-aware here on purpose.
+    document.getElementById('adPositionsBody').innerHTML = positions.map(p => {
+      const isFuture = p.kind !== 'option';
+      const sizeTxt = isFuture ? '$' + Number(p.size).toFixed(0) : Number(p.size).toFixed(4);
+      const avgTxt = isFuture ? '$' + Number(p.average_price).toFixed(2) : btc4(p.average_price);
+      const markTxt = isFuture ? '$' + Number(p.mark_price).toFixed(2) : btc4(p.mark_price);
+      return `<tr>
         <td class="t-inst" style="text-align:left">${p.instrument_name}</td>
         <td>${adSidePill(p.direction)}</td>
-        <td>${Number(p.size).toFixed(4)}</td>
-        <td>${btc4(p.average_price)}</td>
-        <td>${btc4(p.mark_price)}</td>
+        <td>${sizeTxt}</td>
+        <td>${avgTxt}</td>
+        <td>${markTxt}</td>
         <td>${p.delta != null ? Number(p.delta).toFixed(4) : '—'}</td>
         <td class="t-edge ${Number(p.total_profit_loss) >= 0 ? 'pos' : 'neg'}">${p.total_profit_loss != null ? sgn(Number(p.total_profit_loss)) : '—'}</td>
-      </tr>`).join('');
+      </tr>`;
+    }).join('');
   } else {
     adRenderEmpty('adPositionsBody', 7, 'NO OPEN POSITIONS');
   }
@@ -1230,8 +1270,8 @@ function adRender(d) {
         <td>${hhmm(f.trade_timestamp)}</td>
         <td class="t-inst" style="text-align:left">${f.instrument_name}</td>
         <td>${adSidePill(f.direction)}</td>
-        <td>${btc4(f.price)}</td>
-        <td>${Number(f.amount).toFixed(4)}</td>
+        <td>${mmPriceTxt(f.instrument_name, f.price)}</td>
+        <td>${mmAmountTxt(f.instrument_name, f.amount)}</td>
         <td>${f.fee != null ? Number(f.fee).toFixed(6) : '—'}</td>
         <td class="t-edge ${Number(f.profit_loss) >= 0 ? 'pos' : 'neg'}">${f.profit_loss != null ? sgn(Number(f.profit_loss)) : '—'}</td>
       </tr>`).join('');
@@ -1347,8 +1387,8 @@ function pdRender(trades) {
       <td>${hhmm(t.trade_timestamp)}</td>
       <td class="t-inst" style="text-align:left">${t.instrument_name}</td>
       <td>${adSidePill(t.direction)}</td>
-      <td>${btc4(t.price)}</td>
-      <td>${Number(t.amount).toFixed(4)}</td>
+      <td>${mmPriceTxt(t.instrument_name, t.price)}</td>
+      <td>${mmAmountTxt(t.instrument_name, t.amount)}</td>
       <td>${t.fee != null ? Number(t.fee).toFixed(6) : '—'}</td>
       <td class="t-edge ${Number(t.profit_loss) >= 0 ? 'pos' : 'neg'}">${t.profit_loss != null ? sgn(Number(t.profit_loss)) : '—'}</td>
     </tr>`).join('');
