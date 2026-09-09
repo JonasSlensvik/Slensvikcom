@@ -218,14 +218,16 @@
   </p>
 
   <div class="alpha-banner">
-    <span class="tag">Alpha · No capital committed</span>
+    <span class="tag">Alpha · Hard-capped burn budget</span>
     <span>
-      <strong>Zero fills across every live test to date.</strong> Two sections below show real activity on Deribit
-      production — a single-order latency test and a full bulk mass-quoting smoke test — but every quote sent has
-      been post-only, far from the market, minimum size, or all three. Validation now follows a <em style="color:var(--text1)">live-first
+      <strong>Real fills landed for the first time on 2026-09-09.</strong> Three sections below show real activity
+      on Deribit production: a single-order latency test and a full bulk mass-quoting smoke test, both zero-fill by
+      design (post-only, far from the market, minimum size) — and Phase D, where a full put-call-parity package
+      (put, call, future hedge) was actually opened and closed for real, a small bounded loss against a hard-capped
+      ~0.0102 BTC burn budget, not the strategy resting live. Validation still follows a <em style="color:var(--text1)">live-first
       ladder</em> (six phases, A–F, replacing the original testnet gate — Deribit testnet only shows other testnet
       users, not a realistic live picture): prove mechanics live, in bounded and monitored steps, before any capital
-      is committed. A written go/no-go is the last step, not an early one.
+      is committed at scale. A written go/no-go is still the last step, not an early one.
     </span>
   </div>
 
@@ -439,6 +441,42 @@
     </div>
   </div>
 
+  <!-- ─── SECTION · PHASE D (first real fills, Deribit production) ── -->
+  <div class="sec">
+    <div class="panel">
+      <div class="sec-head"><span class="glyph">⬥</span>PHASE D · REAL TRADES<span class="desc">Budgeted fill tests — a full parity package opened, hedged and closed for real, hard-capped burn budget</span><span class="meta" id="pdMeta">—</span></div>
+
+      <div class="live-note">
+        <span class="tag">Real · Production</span>
+        <span>
+          <strong>The first fills this account has ever had.</strong> A full put-call-parity package — buy the put,
+          sell the call, hedge the delta with the future — opened and then closed again for real, on the live
+          25DEC26 30000-strike chain. Every row below is pulled live from Deribit's own trade history, not a mockup;
+          the KPIs are computed from it directly, including the flat check, so this section stays honest as more
+          budgeted tests land.
+        </span>
+      </div>
+
+      <div class="kpis">
+        <div class="kpi"><div class="kpi-lbl">Fills</div><div class="kpi-val" id="pdLegs">—</div><div class="kpi-sub" id="pdInstrumentsSub">—</div></div>
+        <div class="kpi"><div class="kpi-lbl">Net realized</div><div class="kpi-val" id="pdPnl">—</div><div class="kpi-sub" id="pdPnlSub">—</div></div>
+        <div class="kpi"><div class="kpi-lbl">Span</div><div class="kpi-val" id="pdDuration">—</div><div class="kpi-sub">first fill to last</div></div>
+        <div class="kpi"><div class="kpi-lbl">Net position</div><div class="kpi-val" id="pdFlat">—</div><div class="kpi-sub">computed from fills, not a live position read</div></div>
+      </div>
+
+      <div class="tbl-wrap" style="margin-top:6px">
+        <table class="trades">
+          <thead>
+            <tr><th>Time (UTC)</th><th style="text-align:left">Instrument</th><th>Side</th><th>Price</th><th>Amount</th><th>Fee</th><th>P&amp;L</th></tr>
+          </thead>
+          <tbody id="pdBody">
+            <tr><td colspan="7" style="text-align:center;color:var(--text3);padding:24px;letter-spacing:.1em">LOADING …</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
   <!-- ─── SECTION 2 · STRATEGY LIVE MOCKUP ─────────────────── -->
   <div class="sec">
     <div class="panel">
@@ -488,13 +526,13 @@ const MILESTONES = [
   { id:'M4', sub:'paper simulator',   name:'<em>Paper-trading simulator</em> + honest edge gate. <span style="color:var(--text3)">Replay engine, post-only SimBroker, parity quoter, blotter — full 24h-capture backtest done (zero fills, zero hedge failures). Extended with a live-feed paper engine (pipeline-latency instrumentation, touch-inside-rate tracking) and a parameter-sweep tool, validated end-to-end against the real capture.</span>', status:'done' },
   { id:'M5', sub:'persistence',       name:'<em>Persistence</em> to Postgres (api schema) for this page',        status:'pend' },
   { id:'M6', sub:'this frontend',     name:'<em>Frontend</em> — milestone tracker + live paper-PnL mockup',      status:'done' },
-  { id:'M7', sub:'live validation',   name:'<em>Live-first validation ladder</em> (phases A–F, see Validation Gates) → written go/no-go. <span style="color:var(--text3)">Replaces the original testnet gate — Deribit testnet only shows other testnet users, not a realistic live picture. Phases A–C done; D–F ahead.</span>', status:'prog' },
+  { id:'M7', sub:'live validation',   name:'<em>Live-first validation ladder</em> (phases A–F, see Validation Gates) → written go/no-go. <span style="color:var(--text3)">Replaces the original testnet gate — Deribit testnet only shows other testnet users, not a realistic live picture. Phases A–C done; D in progress (first real fills 2026-09-09); E–F ahead.</span>', status:'prog' },
 ];
 const GATES = [
   { mk:'done', txt:'<em>A. Live capture + replay sim</em> — a full 24h production capture replayed through the real engine: zero fills, zero hedge failures. Edge existence is still unproven either way; the parameter-sweep tool built to answer it (touch-inside rate, fill count, PnL vs. min_edge/buffer/size) is validated end-to-end against that same capture.' },
   { mk:'done', txt:'<em>B. Live feed + paper broker</em> — the real strategy loop wired to the live Deribit FIX feed in paper mode, with pipeline-latency instrumentation and no-quote-reason accounting.' },
   { mk:'done', txt:'<em>C. Far-OTC live orders</em> — bulk mass-quoting, MMP, proximity auto-cancel and the kill-switch, proven on Deribit <strong style="color:var(--text1)">production</strong>: 124 quote entries, 3 flushes of 30+, 41 edits, 0 fills, 0 orphans over a 30-minute window. See below.' },
-  { mk:'pend', txt:'<em>D. Budgeted fill tests</em> — scripted conversions on the cheapest liquid options, hedged immediately, calibrating the cost model against real fills. Hard-capped burn budget (~0.0102 BTC).' },
+  { mk:'prog', txt:'<em>D. Budgeted fill tests</em> — scripted conversions on the cheapest liquid options, hedged immediately, calibrating the cost model against real fills. Hard-capped burn budget (~0.0102 BTC). <span style="color:var(--text3)">First real round-trip landed 2026-09-09 — put + call + future opened and closed for real. See Phase D below.</span>' },
   { mk:'pend', txt:'<em>E. Risk & inventory management</em> — margin-ratio monitor, unwind quoter, inventory limits. Mandatory before any extended live quoting.' },
   { mk:'pend', txt:'<em>F. Paper-live parallel → go/no-go</em> — a fill-rate reality check, then a written decision on real quoting.' },
 ];
@@ -987,6 +1025,74 @@ function initAccountDashboard() {
   if (stored) adTryUnlock(stored, { silent: true });
 }
 
+/* ─── PHASE D · REAL TRADE HISTORY (public) ───────────────────────────────
+   Unlike Account & Risk above, this reads a PUBLIC view (api.mm_trade_history
+   — settled fills only, no live position/margin exposure) so it needs no
+   key. KPIs are computed from the fetched rows themselves, including a
+   flat-check (net size per instrument nets to ~0 from the fills alone, no
+   dependency on the gated live position feed), so this section stays
+   accurate on its own as more budgeted fill tests land — nothing here is
+   hardcoded to today's specific numbers. */
+
+async function pdLoadTrades() {
+  return (await getJSON('mm_trade_history?order=trade_timestamp.asc')) || [];
+}
+
+function pdRender(trades) {
+  if (!trades.length) {
+    document.getElementById('pdBody').innerHTML =
+      '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:24px;letter-spacing:.1em">NO FILLS YET</td></tr>';
+    document.getElementById('pdLegs').textContent = '0';
+    document.getElementById('pdMeta').textContent = '—';
+    return;
+  }
+
+  document.getElementById('pdBody').innerHTML = trades.map(t => `
+    <tr>
+      <td>${hhmm(t.trade_timestamp)}</td>
+      <td class="t-inst" style="text-align:left">${t.instrument_name}</td>
+      <td>${adSidePill(t.direction)}</td>
+      <td>${btc4(t.price)}</td>
+      <td>${Number(t.amount).toFixed(4)}</td>
+      <td>${t.fee != null ? Number(t.fee).toFixed(6) : '—'}</td>
+      <td class="t-edge ${Number(t.profit_loss) >= 0 ? 'pos' : 'neg'}">${t.profit_loss != null ? sgn(Number(t.profit_loss)) : '—'}</td>
+    </tr>`).join('');
+
+  const instruments = [...new Set(trades.map(t => t.instrument_name))];
+  document.getElementById('pdLegs').textContent = trades.length;
+  document.getElementById('pdInstrumentsSub').textContent = `across ${instruments.length} instrument${instruments.length === 1 ? '' : 's'}`;
+
+  const netPnl = trades.reduce((s, t) => s + Number(t.profit_loss || 0), 0);
+  const totalFee = trades.reduce((s, t) => s + Number(t.fee || 0), 0);
+  const pnlEl = document.getElementById('pdPnl');
+  pnlEl.textContent = sgn(netPnl) + ' BTC';
+  pnlEl.className = 'kpi-val ' + (netPnl >= 0 ? 'pp-pos' : 'pp-neg');
+  document.getElementById('pdPnlSub').textContent = `₿${totalFee.toFixed(6)} in fees, separately`;
+
+  const t0 = new Date(trades[0].trade_timestamp).getTime();
+  const t1 = new Date(trades[trades.length - 1].trade_timestamp).getTime();
+  const spanS = (t1 - t0) / 1000;
+  document.getElementById('pdDuration').textContent =
+    spanS < 60 ? spanS.toFixed(1) + 's' : (spanS / 60).toFixed(1) + 'm';
+
+  const net = {};
+  trades.forEach(t => {
+    const sign = t.direction === 'buy' ? 1 : -1;
+    net[t.instrument_name] = (net[t.instrument_name] || 0) + sign * Number(t.amount);
+  });
+  const flat = Object.values(net).every(v => Math.abs(v) < 1e-6);
+  const flatEl = document.getElementById('pdFlat');
+  flatEl.textContent = flat ? 'FLAT' : 'OPEN';
+  flatEl.className = 'kpi-val ' + (flat ? 'pp-pos' : 'pp-neg');
+
+  const first = new Date(trades[0].trade_timestamp);
+  document.getElementById('pdMeta').textContent = `${first.toISOString().slice(0, 10)} · ${trades.length} fill${trades.length === 1 ? '' : 's'}`;
+}
+
+async function refreshPhaseD() {
+  pdRender(await pdLoadTrades());
+}
+
 /* ─── Renderers ─────────────────────────────────────────────────────────── */
 function renderTrades(rows) {
   // table shows newest first
@@ -1094,6 +1200,9 @@ function setSource(mock) {
   setInterval(refreshMarketDashboard, 30000);
 
   initAccountDashboard();
+
+  await refreshPhaseD();
+  setInterval(refreshPhaseD, 60000);
 })();
 </script>
 
