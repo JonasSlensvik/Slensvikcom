@@ -200,7 +200,6 @@
 <header class="topbar">
   <span class="crumb"><span class="glyph">◆</span>MARKET MAKER · PCP OPTIONS</span>
   <div data-intel-nav style="margin-left:auto"></div>
-  <span style="font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--text3)">DATA <strong id="srcTag" class="src-pill">—</strong></span>
 </header>
 
 <main>
@@ -464,48 +463,16 @@
         <div class="kpi"><div class="kpi-lbl">Net position</div><div class="kpi-val" id="pdFlat">—</div><div class="kpi-sub">computed from fills, not a live position read</div></div>
       </div>
 
-      <div class="tbl-wrap" style="margin-top:6px">
+      <div class="chart-lbl" style="margin-top:2px">Cumulative realized P&amp;L — real fills only</div>
+      <div style="height:220px"><canvas id="pdPnlCanvas"></canvas></div>
+
+      <div class="tbl-wrap" style="margin-top:16px">
         <table class="trades">
           <thead>
             <tr><th>Time (UTC)</th><th style="text-align:left">Instrument</th><th>Side</th><th>Price</th><th>Amount</th><th>Fee</th><th>P&amp;L</th></tr>
           </thead>
           <tbody id="pdBody">
             <tr><td colspan="7" style="text-align:center;color:var(--text3);padding:24px;letter-spacing:.1em">LOADING …</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-
-  <!-- ─── SECTION 2 · STRATEGY LIVE MOCKUP ─────────────────── -->
-  <div class="sec">
-    <div class="panel">
-      <div class="sec-head"><span class="glyph">▰</span>STRATEGY MOCKUP · PAPER PNL<span class="desc">Quotes the simulator would have rested and the edge they would have realized, marked profitable / not</span><span class="meta" id="ppAsOf">—</span></div>
-
-      <div class="kpis">
-        <div class="kpi"><div class="kpi-lbl">Paper P&amp;L</div><div class="kpi-val" id="kPnl">—</div><div class="kpi-sub" id="kPnlSub">cumulative, BTC-denominated</div></div>
-        <div class="kpi"><div class="kpi-lbl">Quotes filled</div><div class="kpi-val" id="kFills">—</div><div class="kpi-sub">paper conversions / reversals</div></div>
-        <div class="kpi"><div class="kpi-lbl">Hit rate</div><div class="kpi-val" id="kHit">—</div><div class="kpi-sub" id="kHitSub">net-of-cost profitable</div></div>
-        <div class="kpi"><div class="kpi-lbl">Avg realized edge</div><div class="kpi-val" id="kEdge">—</div><div class="kpi-sub">per filled quote</div></div>
-      </div>
-
-      <div style="height:280px"><canvas id="pnlCanvas"></canvas></div>
-    </div>
-  </div>
-
-  <div class="sec">
-    <div class="panel">
-      <div class="sec-head"><span class="glyph">≡</span>RECENT PAPER TRADES<span class="desc">Edge = parity fair value − quote price − modeled hedge cost − fees</span><span class="meta" id="tblMeta">—</span></div>
-      <div class="tbl-wrap">
-        <table class="trades">
-          <thead>
-            <tr>
-              <th>Time (UTC)</th><th>Strike / Expiry</th><th>Side</th>
-              <th>Quote</th><th>Parity fair</th><th>Hedge cost</th><th>Realized edge</th><th>Profitable</th>
-            </tr>
-          </thead>
-          <tbody id="tradeBody">
-            <tr><td colspan="8" style="text-align:center;color:var(--text3);padding:24px;letter-spacing:.1em">LOADING …</td></tr>
           </tbody>
         </table>
       </div>
@@ -703,69 +670,15 @@ function renderC3Attempts() {
 }
 
 /* ─── DATA LAYER ─────────────────────────────────────────────────────────────
-   SINGLE source-of-truth fetcher. Flip mock → live by simply making these
-   PostgREST endpoints return rows once the simulator persists to the api schema.
-
-   Assumed endpoints (to be created in the `api` schema, exposed via PostgREST):
-     • api.marketmaker_paper_trades  — one row per filled paper quote
-         { ts, strike, expiry, side, quote_price, parity_fair, hedge_cost,
-           realized_edge, profitable }            (BTC-denominated premiums)
-     • api.marketmaker_pnl           — cumulative paper-PnL time series
-         { ts, cum_pnl }
-
-   If either endpoint 404s / errors / is empty, we fall back to representative
-   MOCK data so the page is presentable today. `srcTag` shows MOCK vs LIVE.
+   Shared fetch helper — used by the live market dashboard, the key-gated
+   account dashboard, and the Phase D trade history below. Nothing on this
+   page is mock data anymore; a 404/empty response just means that section
+   has nothing to show yet, not a fallback to synthesize numbers.
 ─────────────────────────────────────────────────────────────────────────────── */
 
 async function getJSON(path) {
   const j = await INTEL.safeGet(path);      // 404 / 5xx / offline → null
   return Array.isArray(j) ? j : null;
-}
-
-// Deterministic mock so the page looks identical on every load (no jitter).
-function buildMock() {
-  const expiries = ['28JUN26', '28JUN26', '26JUL26', '28JUN26', '26JUL26'];
-  const strikes  = [62000, 64000, 60000, 66000, 58000, 65000, 63000, 61000];
-  let rng = 20260609;                       // seeded LCG
-  const rand = () => (rng = (rng * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
-
-  const trades = [];
-  let cum = 0;
-  const pnl = [];
-  const t0 = Date.UTC(2026, 5, 9, 8, 0, 0); // 2026-06-09 08:00 UTC
-  for (let i = 0; i < 26; i++) {
-    const ts = new Date(t0 + i * 23 * 60000); // ~23-min cadence
-    const strike = strikes[Math.floor(rand() * strikes.length)];
-    const expiry = expiries[Math.floor(rand() * expiries.length)];
-    const side   = rand() < 0.5 ? 'buy' : 'sell';
-    const parity = 0.045 + rand() * 0.06;     // fair value, BTC premium
-    // realized edge mostly positive (the gate only posts +EV quotes), with a
-    // realistic minority of losers from hedge slippage on the illiquid leg.
-    const win    = rand() < 0.73;
-    const edge   = win ? (0.00012 + rand() * 0.00060)
-                       : -(0.00008 + rand() * 0.00045);
-    const hedge  = 0.00030 + rand() * 0.00055;
-    const quote  = side === 'buy' ? parity - (edge + hedge) : parity + (edge + hedge);
-    cum += edge;
-    trades.push({
-      ts: ts.toISOString(), strike, expiry, side,
-      quote_price: quote, parity_fair: parity, hedge_cost: hedge,
-      realized_edge: edge, profitable: edge > 0,
-    });
-    pnl.push({ ts: ts.toISOString(), cum_pnl: cum });
-  }
-  return { trades, pnl, mock:true };
-}
-
-async function loadData() {
-  const [trades, pnl] = await Promise.all([
-    getJSON('marketmaker_paper_trades?order=ts.desc&limit=200'),
-    getJSON('marketmaker_pnl?order=ts.asc&limit=2000'),
-  ]);
-  if (trades && trades.length && pnl && pnl.length) {
-    return { trades, pnl, mock:false };
-  }
-  return buildMock();                       // <-- the one place mock kicks in
 }
 
 /* ─── Formatting helpers ────────────────────────────────────────────────── */
@@ -937,9 +850,14 @@ function adRender(d) {
   document.getElementById('adMarginSub').textContent = (a.initial_margin != null && a.maintenance_margin != null)
     ? `IM ₿${Number(a.initial_margin).toFixed(5)} · MM ₿${Number(a.maintenance_margin).toFixed(5)}` : '—';
 
-  document.getElementById('adDelta').textContent = a.options_delta != null ? Number(a.options_delta).toFixed(4) : '—';
+  // delta_total is the whole-account figure (options + futures/perps combined)
+  // — options_delta alone was shown here before, which reads like a naked
+  // options position even when a future is hedging it out; gamma/theta/vega
+  // are options-only in Deribit's account summary (a linear future/perp
+  // contributes ~0 to all three), so those stay as the options breakdown.
+  document.getElementById('adDelta').textContent = a.delta_total != null ? Number(a.delta_total).toFixed(4) : '—';
   document.getElementById('adGreeksSub').textContent = a.options_gamma != null
-    ? `γ ${Number(a.options_gamma).toFixed(4)} · θ ${Number(a.options_theta).toFixed(4)} · ν ${Number(a.options_vega).toFixed(4)}` : '—';
+    ? `options: δ ${Number(a.options_delta).toFixed(4)} · γ ${Number(a.options_gamma).toFixed(4)} · θ ${Number(a.options_theta).toFixed(4)} · ν ${Number(a.options_vega).toFixed(4)}` : '—';
 
   const positions = d.positions || [], orders = d.orders || [], fills = d.fills || [];
   document.getElementById('adCounts').textContent = `${orders.length} / ${positions.length}`;
@@ -1038,12 +956,53 @@ async function pdLoadTrades() {
   return (await getJSON('mm_trade_history?order=trade_timestamp.asc')) || [];
 }
 
+let pdPnlChart = null;
+// Compact date+time, not just hh:mm — Phase D fills are expected to span
+// multiple days as more budgeted tests land, and hh:mm alone would put two
+// different days' points at the same x-axis label.
+const pdLabel = iso => new Date(iso).toISOString().slice(5, 16).replace('T', ' ');
+
+function pdRenderPnlChart(trades) {
+  let cum = 0;
+  const points = trades.map(t => ({ x: pdLabel(t.trade_timestamp), y: (cum += Number(t.profit_loss || 0)) }));
+  if (pdPnlChart) { pdPnlChart.destroy(); pdPnlChart = null; }
+  pdPnlChart = new Chart(document.getElementById('pdPnlCanvas'), {
+    type: 'line',
+    data: {
+      labels: points.map(p => p.x),
+      datasets: [
+        { label: 'Cumulative realized P&L', data: points.map(p => p.y), borderColor: '#43e097',
+          backgroundColor: 'rgba(67,224,151,0.08)', borderWidth: 1.8, fill: true, tension: 0.15,
+          pointRadius: points.length < 8 ? 3 : 0, pointHoverRadius: 4, pointBackgroundColor: '#43e097' },
+        { label: 'Break-even', data: points.map(() => 0), borderColor: 'rgba(245,166,35,0.45)',
+          borderDash: [4, 4], borderWidth: 1, fill: false, pointRadius: 0 },
+      ],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      interaction: { intersect: false, mode: 'index' },
+      plugins: {
+        legend: { labels: { color: '#a4adbf', font: { family: 'IBM Plex Mono', size: 10 }, boxWidth: 12 } },
+        tooltip: { callbacks: { title: items => items.length ? items[0].label + ' UTC' : '',
+          label: ctx => `${ctx.dataset.label}: ${sgn(ctx.parsed.y)} BTC` } },
+      },
+      scales: {
+        x: { grid: { color: 'rgba(255,255,255,0.05)' },
+             ticks: { color: '#5a6377', font: { family: 'IBM Plex Mono', size: 9 }, autoSkip: true, maxTicksLimit: 8, maxRotation: 0 } },
+        y: { grid: { color: 'rgba(255,255,255,0.05)' },
+             ticks: { color: '#5a6377', font: { family: 'IBM Plex Mono', size: 9 }, callback: v => (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(5) } },
+      },
+    },
+  });
+}
+
 function pdRender(trades) {
   if (!trades.length) {
     document.getElementById('pdBody').innerHTML =
       '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:24px;letter-spacing:.1em">NO FILLS YET</td></tr>';
     document.getElementById('pdLegs').textContent = '0';
     document.getElementById('pdMeta').textContent = '—';
+    if (pdPnlChart) { pdPnlChart.destroy(); pdPnlChart = null; }
     return;
   }
 
@@ -1087,88 +1046,12 @@ function pdRender(trades) {
 
   const first = new Date(trades[0].trade_timestamp);
   document.getElementById('pdMeta').textContent = `${first.toISOString().slice(0, 10)} · ${trades.length} fill${trades.length === 1 ? '' : 's'}`;
+
+  pdRenderPnlChart(trades);
 }
 
 async function refreshPhaseD() {
   pdRender(await pdLoadTrades());
-}
-
-/* ─── Renderers ─────────────────────────────────────────────────────────── */
-function renderTrades(rows) {
-  // table shows newest first
-  const sorted = [...rows].sort((a,b) => new Date(b.ts) - new Date(a.ts));
-  document.getElementById('tradeBody').innerHTML = sorted.map(t => {
-    const edge = Number(t.realized_edge);
-    const prof = (t.profitable === true || t.profitable === 'true' || (t.profitable == null && edge > 0));
-    return `<tr>
-      <td>${hhmm(t.ts)}</td>
-      <td class="t-inst">${Number(t.strike).toLocaleString('en-US')} · ${t.expiry}</td>
-      <td><span class="t-side ${t.side}">${String(t.side).toUpperCase()}</span></td>
-      <td>${btc4(t.quote_price)}</td>
-      <td>${btc4(t.parity_fair)}</td>
-      <td>${btc4(t.hedge_cost)}</td>
-      <td class="t-edge ${edge>=0?'pos':'neg'}">${sgn(edge)}</td>
-      <td><span class="t-pf ${prof?'y':'n'}">${prof?'YES':'NO'}</span></td>
-    </tr>`;
-  }).join('');
-  document.getElementById('tblMeta').textContent = `${sorted.length} fills`;
-}
-
-let pnlChart = null;
-const PP_AXIS = {
-  grid:{ color:'rgba(255,255,255,0.05)' },
-  ticks:{ color:'#5a6377', font:{ family:'IBM Plex Mono', size:9 } },
-};
-function renderPnl(series) {
-  const labels = series.map(p => hhmm(p.ts));
-  const data   = series.map(p => Number(p.cum_pnl));
-  const ds = [
-    { label:'Cumulative paper P&L', data, borderColor:'#43e097',
-      backgroundColor:'rgba(67,224,151,0.08)', borderWidth:1.8, fill:true, tension:.18,
-      pointRadius: data.length < 8 ? 3 : 0, pointHoverRadius:4, pointBackgroundColor:'#43e097' },
-    { label:'Break-even', data: data.map(() => 0), borderColor:'rgba(245,166,35,0.45)',
-      borderDash:[4,4], borderWidth:1, fill:false, pointRadius:0 },
-  ];
-  if (pnlChart) { pnlChart.destroy(); pnlChart = null; }
-  pnlChart = new Chart(document.getElementById('pnlCanvas'), {
-    type:'line', data:{ labels, datasets:ds },
-    options:{ responsive:true, maintainAspectRatio:false, animation:false,
-      interaction:{ intersect:false, mode:'index' },
-      plugins:{ legend:{ labels:{ color:'#a4adbf', font:{ family:'IBM Plex Mono', size:10 }, boxWidth:12 } },
-        tooltip:{ callbacks:{ title: items => items[0].label,
-          label: c => c.dataset.label + ': ' + sgn(c.parsed.y) + ' BTC' } } },
-      scales:{ x:{ ...PP_AXIS, ticks:{ ...PP_AXIS.ticks, autoSkip:true, maxTicksLimit:9, maxRotation:0 } },
-               y:{ ...PP_AXIS, ticks:{ ...PP_AXIS.ticks, callback:v => (v>=0?'+':'−') + Math.abs(v).toFixed(4) } } } },
-  });
-}
-
-function renderKpis(trades, pnl) {
-  const fills = trades.length;
-  const cum   = pnl.length ? Number(pnl[pnl.length - 1].cum_pnl) : 0;
-  const wins  = trades.filter(t => (t.profitable === true || t.profitable === 'true' ||
-                                    (t.profitable == null && Number(t.realized_edge) > 0))).length;
-  const hit   = fills ? (100 * wins / fills) : 0;
-  const avg   = fills ? trades.reduce((s,t) => s + Number(t.realized_edge), 0) / fills : 0;
-
-  const pnlEl = document.getElementById('kPnl');
-  pnlEl.textContent = btc(cum);
-  pnlEl.className = 'kpi-val ' + (cum >= 0 ? 'pp-pos' : 'pp-neg');
-  document.getElementById('kPnlSub').textContent = `over ${fills} paper fills`;
-  document.getElementById('kFills').textContent = fills;
-  document.getElementById('kHit').textContent = hit.toFixed(0) + '%';
-  document.getElementById('kHitSub').textContent = `${wins} / ${fills} profitable`;
-  const edgeEl = document.getElementById('kEdge');
-  edgeEl.textContent = sgn(avg);
-  edgeEl.className = 'kpi-val ' + (avg >= 0 ? 'pp-pos' : 'pp-neg');
-}
-
-function setSource(mock) {
-  const el = document.getElementById('srcTag');
-  el.textContent = mock ? 'MOCK' : 'LIVE';
-  el.className = 'src-pill ' + (mock ? 'mock' : 'live');
-  const note = mock ? 'mock — endpoint not live yet' : 'live from PostgREST';
-  document.getElementById('ppAsOf').textContent = note;
-  document.getElementById('tblMeta').dataset.src = mock ? 'mock' : 'live';
 }
 
 /* ─── MAIN ──────────────────────────────────────────────────────────────── */
@@ -1177,19 +1060,6 @@ function setSource(mock) {
   renderGates();
   renderLiveOrderTest();
   renderC3Attempts();
-
-  async function refresh() {
-    const { trades, pnl, mock } = await loadData();
-    setSource(mock);
-    renderKpis(trades, pnl);
-    renderTrades(trades);
-    renderPnl(pnl);
-  }
-  await refresh();
-
-  // Poll for live data the same cadence galton uses for its live tracker.
-  // Once the api endpoints exist this seamlessly flips MOCK → LIVE on its own.
-  setInterval(refresh, 180000);
 
   async function refreshMarketDashboard() {
     renderMarketDashboard(await mdLoadData());
