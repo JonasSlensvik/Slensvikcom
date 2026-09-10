@@ -251,14 +251,16 @@
   <div class="alpha-banner">
     <span class="tag">Alpha · Hard-capped burn budget</span>
     <span>
-      <strong>Real fills landed for the first time on 2026-09-09.</strong> Three sections below show real activity
-      on Deribit production: a single-order latency test and a full bulk mass-quoting smoke test, both zero-fill by
-      design (post-only, far from the market, minimum size) — and Phase D, where a full put-call-parity package
-      (put, call, future hedge) was actually opened and closed for real, a small bounded loss against a hard-capped
-      ~0.0102 BTC burn budget, not the strategy resting live. Validation still follows a <em style="color:var(--text1)">live-first
-      ladder</em> (six phases, A–F, replacing the original testnet gate — Deribit testnet only shows other testnet
-      users, not a realistic live picture): prove mechanics live, in bounded and monitored steps, before any capital
-      is committed at scale. A written go/no-go is still the last step, not an early one.
+      <strong>Real fills landed for the first time on 2026-09-09, and a second package is currently held live.</strong>
+      Fredrik's 2026-09-09 operating policy explicitly permits holding a complete hedged package to expiry — no
+      strategy-level maximum holding time, no forced exit just because a review timer elapsed — so the open position
+      below is deliberate, not a leftover. A separate USD 25 cumulative pilot loss allowance (USD 10 per package)
+      now bounds this phase specifically, inside the existing ~0.0102 BTC campaign cap. Every quote sent elsewhere on
+      this page has been zero-fill by design (post-only, far from the market, minimum size). Validation still follows
+      a <em style="color:var(--text1)">live-first ladder</em> (six phases, A–F, replacing the original testnet gate —
+      Deribit testnet only shows other testnet users, not a realistic live picture): prove mechanics live, in bounded
+      and monitored steps, before any capital is committed at scale. A written go/no-go is still the last step, not
+      an early one.
     </span>
   </div>
 
@@ -375,7 +377,7 @@
           <div><div class="chart-lbl">Vega (options)</div><div style="height:140px"><canvas id="grkVegaCanvas"></canvas></div></div>
         </div>
 
-        <div class="kpi-lbl" style="margin:18px 0 8px">Margin ratio <span style="color:var(--text3);text-transform:none;letter-spacing:0">— maintenance / equity, thresholds per GUIDE.md §10.1</span></div>
+        <div class="kpi-lbl" style="margin:18px 0 8px">Margin ratio <span style="color:var(--text3);text-transform:none;letter-spacing:0">— maintenance / equity. Reference marks below are calibration candidates from GUIDE.md §10.1, not automated triggers — no automatic policy is installed</span></div>
         <div class="margin-gauge-track">
           <div class="margin-gauge-fill" id="marginGaugeFill" style="width:0%"></div>
           <div class="margin-gauge-mk" style="left:50%"></div>
@@ -383,9 +385,9 @@
           <div class="margin-gauge-mk" style="left:85%"></div>
         </div>
         <div style="position:relative;height:14px;margin-bottom:14px">
-          <span class="margin-gauge-lbl" style="left:50%">warn 50%</span>
-          <span class="margin-gauge-lbl" style="left:70%">de-risk 70%</span>
-          <span class="margin-gauge-lbl" style="left:85%">unwind 85%</span>
+          <span class="margin-gauge-lbl" style="left:50%">50% ref</span>
+          <span class="margin-gauge-lbl" style="left:70%">70% ref</span>
+          <span class="margin-gauge-lbl" style="left:85%">85% ref</span>
         </div>
         <div style="height:140px"><canvas id="marginCanvas"></canvas></div>
       </div>
@@ -395,16 +397,19 @@
   <!-- ─── SECTION · PHASE D (first real fills, Deribit production) ── -->
   <div class="sec">
     <div class="panel">
-      <div class="sec-head"><span class="glyph">⬥</span>PHASE D · REAL TRADES<span class="desc">Budgeted fill tests — a full parity package opened, hedged and closed for real, hard-capped burn budget</span><span class="meta" id="pdMeta">—</span></div>
+      <div class="sec-head"><span class="glyph">⬥</span>PHASE D · REAL TRADES<span class="desc">Budgeted fill tests — real parity packages opened and hedged, one closed same-day, one held live under an explicit policy</span><span class="meta" id="pdMeta">—</span></div>
 
       <div class="live-note">
         <span class="tag">Real · Production</span>
         <span>
-          <strong>The first fills this account has ever had.</strong> A full put-call-parity package — buy the put,
-          sell the call, hedge the delta with the future — opened and then closed again for real, on the live
-          25DEC26 30000-strike chain. Every row below is pulled live from Deribit's own trade history, not a mockup;
-          the KPIs are computed from it directly, including the flat check, so this section stays honest as more
-          budgeted tests land.
+          <strong>Two real parity packages so far, both on the 25DEC26 30000-strike chain.</strong> The first opened
+          and closed within a second, on 2026-09-09. The second opened the same day and is being <strong
+          style="color:var(--text1)">deliberately held</strong> — Fredrik's operating policy explicitly permits
+          holding a complete hedged package to expiry, and a same-day independent audit confirmed it correctly
+          hedged (300 future contracts = $3,000 notional against the 0.1 BTC option size) with delta held near zero
+          across 163 monitoring samples. Every row below is pulled live from Deribit's own trade history, not a
+          mockup; the KPIs are computed from it directly, including the flat check, so this section stays honest as
+          more budgeted tests land.
         </span>
       </div>
 
@@ -554,17 +559,17 @@ const MILESTONES = [
   { id:'M2', sub:'book module',       name:'<em>Order-book</em> module — snapshot + increments, structural integrity + session-level gap detection. <span style="color:var(--text3)">Built inside feed/, not a separate package.</span>', status:'done' },
   { id:'M3', sub:'pricing + costs',   name:'<em>Pricing + units + cost</em> model — parity engine, hedge slippage. <span style="color:var(--text3)">Landed 2026-08-11: currency-safe Btc/Usd units, parity engine, depth-walk slippage, verified 2026-08-01 Deribit fee schedule, honest edge gate (net = raw − slippage − fees − settlement − buffer).</span>', status:'done' },
   { id:'M4', sub:'paper simulator',   name:'<em>Paper-trading simulator</em> + honest edge gate. <span style="color:var(--text3)">Replay engine, post-only SimBroker, parity quoter, blotter — full 24h-capture backtest done (zero fills, zero hedge failures). Extended with a live-feed paper engine (pipeline-latency instrumentation, touch-inside-rate tracking) and a parameter-sweep tool, validated end-to-end against the real capture.</span>', status:'done' },
-  { id:'M5', sub:'persistence',       name:'<em>Persistence</em> to Postgres (api schema) for this page',        status:'pend' },
-  { id:'M6', sub:'this frontend',     name:'<em>Frontend</em> — milestone tracker + live paper-PnL mockup',      status:'done' },
-  { id:'M7', sub:'live validation',   name:'<em>Live-first validation ladder</em> (phases A–F, see Validation Gates) → written go/no-go. <span style="color:var(--text3)">Replaces the original testnet gate — Deribit testnet only shows other testnet users, not a realistic live picture. Phases A–C done; D in progress (first real fills 2026-09-09); E–F ahead.</span>', status:'prog' },
+  { id:'M5', sub:'persistence',       name:'<em>Persistence</em> to Postgres (api schema) for this page. <span style="color:var(--text3)">Done via the Pi account monitor — real account/position/order/fill snapshots and public market data, polled every 30s since 2026-09-08.</span>', status:'done' },
+  { id:'M6', sub:'this frontend',     name:'<em>Frontend</em> — an operations centre, not a mockup. <span style="color:var(--text3)">Live market dashboard, key-gated account/risk/Greeks/payoff view, and real trade history — the paper-PnL mockup this used to show was retired once real fills existed.</span>',      status:'done' },
+  { id:'M7', sub:'live validation',   name:'<em>Live-first validation ladder</em> (phases A–F, see Validation Gates) → written go/no-go. <span style="color:var(--text3)">Replaces the original testnet gate — Deribit testnet only shows other testnet users, not a realistic live picture. Phases A–D done; E (risk/inventory machinery, substantial but not fully released) and F (live-data paper operation, running, zero completed cycles yet) both in progress.</span>', status:'prog' },
 ];
 const GATES = [
   { mk:'done', txt:'<em>A. Live capture + replay sim</em> — a full 24h production capture replayed through the real engine: zero fills, zero hedge failures. Edge existence is still unproven either way; the parameter-sweep tool built to answer it (touch-inside rate, fill count, PnL vs. min_edge/buffer/size) is validated end-to-end against that same capture.' },
   { mk:'done', txt:'<em>B. Live feed + paper broker</em> — the real strategy loop wired to the live Deribit FIX feed in paper mode, with pipeline-latency instrumentation and no-quote-reason accounting.' },
   { mk:'done', txt:'<em>C. Far-OTC live orders</em> — bulk mass-quoting, MMP, proximity auto-cancel and the kill-switch, proven on Deribit <strong style="color:var(--text1)">production</strong>: 124 quote entries, 3 flushes of 30+, 41 edits, 0 fills, 0 orphans over a 30-minute window. See below.' },
-  { mk:'prog', txt:'<em>D. Budgeted fill tests</em> — scripted conversions on the cheapest liquid options, hedged immediately, calibrating the cost model against real fills. Hard-capped burn budget (~0.0102 BTC). <span style="color:var(--text3)">First real round-trip landed 2026-09-09 — put + call + future opened and closed for real. See Phase D below.</span>' },
-  { mk:'pend', txt:'<em>E. Risk & inventory management</em> — margin-ratio monitor, unwind quoter, inventory limits. Mandatory before any extended live quoting.' },
-  { mk:'pend', txt:'<em>F. Paper-live parallel → go/no-go</em> — a fill-rate reality check, then a written decision on real quoting.' },
+  { mk:'done', txt:'<em>D. Budgeted fill tests</em> — scripted conversions on the cheapest liquid options, hedged immediately, calibrating the cost model against real fills. Hard-capped burn budget (~0.0102 BTC), plus a USD 25 cumulative pilot loss allowance (USD 10/package) since 2026-09-09. <span style="color:var(--text3)">Two real conversions: one opened and closed within a second (net −0.0003 BTC); one opened and deliberately held per policy, independently audited as correctly hedged (300 contracts = $3,000 notional) with a 69.5% exchange-side hedge-speed improvement. See Phase D below.</span>' },
+  { mk:'prog', txt:'<em>E. Risk & inventory management</em> — margin-ratio monitor, unwind quoter, inventory limits. Mandatory before any extended live quoting. <span style="color:var(--text3)">Substantial machinery landed 2026-09-09: durable held-inventory supervision, account-wide margin/delta monitoring, a shadow-only capital-recycling planner (proposals only, nothing executable). Not yet released: the dedicated test monitor was found to silently die mid-session with no alert; no automated recovery; the old 50/70/85% thresholds are now documented as calibration candidates, not approved automatic actions.</span>' },
+  { mk:'prog', txt:'<em>F. Paper-live parallel → go/no-go</em> — a fill-rate reality check, then a written decision on real quoting. <span style="color:var(--text3)">Live-data paper operation started 2026-09-09, running continuously against real market data with simulated fills — zero paper cycles have completed naturally yet, so fill-rate and profitability remain unproven either way.</span>' },
 ];
 
 function renderMilestones() {
@@ -983,7 +988,19 @@ orders ${g.orderNotional.toFixed(4)} · positions ${g.posNotional.toFixed(4)}">
    expiry, fills within `gapSeconds` of each other. Every real test so far
    landed all its legs within ~1s, so 60s is generous, not tight; this is a
    heuristic, not an exchange-verified grouping, and is labeled as such in
-   the UI. */
+   the UI.
+
+   Known future limitation, not yet reachable: GUIDE.md §10.4 (2026-09-09)
+   describes allocating ONE shared expiry future across MULTIPLE option
+   packages at the same expiry, in which case this function's per-package
+   flat-check (net size across a package's own legs ~= 0) stops being a
+   valid test — a correctly-hedged package could legitimately show a
+   nonzero net future leg because part of that future belongs to a sibling
+   package. Not a live concern today: "multiple simultaneously netted
+   packages remain outside the first pilot's one-package scope" (same doc),
+   and exactly one package has ever existed at a time so far. Revisit this
+   grouping (probably needs the real allocation data, not just fill timing)
+   before that changes. */
 function mmGroupIntoPackages(fillsAsc, gapSeconds = 60) {
   const byExpiry = new Map();
   for (const f of fillsAsc) {
