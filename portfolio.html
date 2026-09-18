@@ -669,6 +669,7 @@ input[type=range].wi-slider::-moz-range-thumb {
     <div class="kpi"><div class="kpi-label">Total Value</div><div class="kpi-value" id="kpiValue">—</div><div class="kpi-sub" id="kpiValueSub"></div></div>
     <div class="kpi"><div class="kpi-label">Cost Basis</div><div class="kpi-value" id="kpiCost">—</div><div class="kpi-sub" id="kpiCostSub"></div></div>
     <div class="kpi" id="kpiPlCard"><div class="kpi-label">Unrealised P&L</div><div class="kpi-value" id="kpiPL">—</div><div class="kpi-sub" id="kpiPLSub"></div></div>
+    <div class="kpi" id="kpiRealizedCard"><div class="kpi-label">Realised P&L</div><div class="kpi-value" id="kpiRealized">—</div><div class="kpi-sub" id="kpiRealizedSub">all-time, closed trades</div></div>
     <div class="kpi"><div class="kpi-label">Positions</div><div class="kpi-value" id="kpiCount">—</div><div class="kpi-sub" id="kpiCountSub"></div></div>
     <div class="kpi"><div class="kpi-label">Yield on Cost</div><div class="kpi-value" id="kpiYoc">—</div><div class="kpi-sub" id="kpiYocSub">based on ex-dates</div></div>
   </div>
@@ -878,6 +879,30 @@ input[type=range].wi-slider::-moz-range-thumb {
     <div class="div-list" id="divList"><div class="loader">Loading …</div></div>
   </div>
 
+  <!-- Closed trades — realized P&L per exit, linked back to the radar signal
+       that motivated the entry where one was tagged. This is the section
+       that answers "what happened to that trade" once a position fully or
+       partially closes and stops showing up as a holding. -->
+  <div class="section" id="closedTradesSection">
+    <div class="section-head">
+      <div class="section-title">◆ Closed Trades</div>
+      <div class="section-desc">Realized P&L per exit — what a closed position actually earned</div>
+      <div class="section-count" id="closedTradesCount">—</div>
+    </div>
+    <div class="panel" id="closedTradesWrap">
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>TICKER</th><th>EXIT DATE</th><th class="r">QTY</th>
+            <th class="r">AVG COST</th><th class="r">EXIT PRICE</th>
+            <th class="r">REALIZED P&L</th><th class="r">P&L%</th><th>RADAR SIGNAL</th>
+          </tr></thead>
+          <tbody id="closedTradesBody"><tr><td colspan="8" class="loader">LOADING …</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
   <!-- Transaction journal -->
   <div class="section" id="journalSection">
     <div class="section-head">
@@ -911,7 +936,7 @@ input[type=range].wi-slider::-moz-range-thumb {
     </div>
     <div class="form-row">
       <div class="form-label">ISIN or Ticker</div>
-      <input id="txnIsin" class="form-input" type="text" placeholder="EQNR, NKR, or ISIN" list="isinList" autocomplete="off" spellcheck="false">
+      <input id="txnIsin" class="form-input" type="text" placeholder="EQNR, NKR, or ISIN" list="isinList" autocomplete="off" spellcheck="false" onchange="refreshSignalOptions()">
     </div>
     <div class="form-grid">
       <div class="form-row">
@@ -930,6 +955,12 @@ input[type=range].wi-slider::-moz-range-thumb {
     <div class="form-row">
       <div class="form-label">Notes (optional)</div>
       <input id="txnNotes" class="form-input" type="text" placeholder="e.g. Q1 results buy">
+    </div>
+    <div class="form-row">
+      <div class="form-label">Radar signal (optional)</div>
+      <select id="txnSignal" class="form-input">
+        <option value="">— not linked —</option>
+      </select>
     </div>
     <div class="form-error" id="txnError"></div>
     <div class="modal-actions">
@@ -976,7 +1007,9 @@ const DELETE = (table, params) =>
 // ── State ─────────────────────────────────────────────────────────────────
 let currentUser = null;
 let allTransactions = [];
-let positions = new Map();   // isin → { netQty, avgCost, totalCost, venue, lots[] }
+let positions = new Map();   // isin → { netQty, avgCost, totalCost, venue, lots[], realizedPnl }
+let closedTrades = [];       // realized-PnL ledger: one entry per SELL, oldest→newest
+let linkedSignals = {};      // "isin|entry_date|side" → api.conviction_entries row
 let marketData = {};         // isin → { latestPrice, darkBias, darkPct, signals, events, intel }
 let priceHistory = {};       // isin → [{ trade_date, modal_price }]
 let intradayData = {};       // isin → [{ dt, price }]
@@ -1187,6 +1220,7 @@ function hydrateFromBootCache() {
     document.getElementById('txnCount').textContent =
       `${allTransactions.length} transactions · syncing…`;
     renderTransactionLog();
+    renderClosedTrades();
     renderViewToggles();
     renderKPIs();
     renderDeck();
@@ -1215,6 +1249,7 @@ async function loadData() {
 
     computePositions();
     renderTransactionLog();
+    renderClosedTrades();   // doesn't need market data — safe before the isins-empty branch below
     intradayData = {}; // reset so 5D re-fetches after position changes
 
     const isins = [...positions.keys()];
@@ -1222,8 +1257,13 @@ async function loadData() {
       renderEmptyHoldings();
       renderViewToggles();
       renderDeck();
-      document.getElementById('deskCards').innerHTML =
-        '<div class="empty-state">No positions yet — add your first transaction above.</div>';
+      // Still render KPIs even with nothing currently open — a fully-closed
+      // history has real realized P&L to show (this is exactly the case
+      // that used to go dark: "I can't see any implications of that trade").
+      renderKPIs();
+      document.getElementById('deskCards').innerHTML = closedTrades.length
+        ? '<div class="empty-state">No open positions — see Closed Trades below for realized P&L.</div>'
+        : '<div class="empty-state">No positions yet — add your first transaction above.</div>';
       document.getElementById('deskNotes').innerHTML =
         '<div class="note-empty">The desk opens once you hold something.</div>';
       return;
@@ -1270,12 +1310,30 @@ async function loadData() {
   }
 }
 
+// Moving-average-cost accounting. A SELL realizes P&L against the position's
+// average cost basis AT THAT MOMENT, then shrinks totalCost proportionally —
+// so a partial sell leaves the correct (smaller) cost basis behind instead of
+// the old behavior of leaving totalCost frozen at the full cumulative buy
+// total (which overstated the cost basis, hence understated P&L, for any
+// position that had ever been partially sold). Every SELL is pushed onto
+// closedTrades as its own realized event before a fully-closed position is
+// deleted from `positions` — so a round-trip trade leaves a permanent record
+// instead of vanishing with zero trace, which is the whole point of this
+// function existing.
 function computePositions() {
   positions.clear();
-  for (const t of allTransactions) {
+  closedTrades = [];
+  // allTransactions is normally already time-ordered (loadData() requests
+  // order=transaction_time.asc), but the cached "instant paint" path doesn't
+  // guarantee that — and moving-average accounting is only correct processed
+  // in chronological order, so sort defensively rather than trust the caller.
+  const chronological = [...allTransactions].sort(
+    (a, b) => new Date(a.transaction_time) - new Date(b.transaction_time)
+  );
+  for (const t of chronological) {
     const isin = t.isin;
     if (!positions.has(isin)) {
-      positions.set(isin, { netQty: 0, totalCost: 0, venue: t.venue || 'XOSL', lots: [] });
+      positions.set(isin, { netQty: 0, totalCost: 0, venue: t.venue || 'XOSL', lots: [], realizedPnl: 0 });
     }
     const p = positions.get(isin);
     const qty = parseFloat(t.quantity);
@@ -1285,15 +1343,97 @@ function computePositions() {
       p.totalCost += qty * price;
       p.lots.push({ qty, price, time: t.transaction_time, type: 'BUY' });
     } else {
+      const avgCostBasis = p.netQty > 0.0001 ? p.totalCost / p.netQty : 0;
+      const realizedPnl = qty * (price - avgCostBasis);
+      p.realizedPnl += realizedPnl;
+      p.totalCost = Math.max(0, p.totalCost - qty * avgCostBasis);
       p.netQty -= qty;
-      p.lots.push({ qty, price, time: t.transaction_time, type: 'SELL' });
+      p.lots.push({ qty, price, time: t.transaction_time, type: 'SELL', avgCostBasis, realizedPnl });
+      closedTrades.push({
+        isin, venue: p.venue,
+        exitTime: t.transaction_time, exitPrice: price, qty,
+        avgCostBasis, realizedPnl,
+        realizedPct: avgCostBasis ? (price / avgCostBasis - 1) * 100 : null,
+        signalEntryDate: t.signal_entry_date || null,
+        signalSide: t.signal_side || null,
+        txnId: t.id,
+      });
     }
   }
-  // Remove fully sold positions; compute avg cost
+  // Remove fully sold positions; compute avg cost for what remains open
   for (const [isin, p] of positions) {
     if (p.netQty <= 0.0001) { positions.delete(isin); continue; }
     p.avgCost = p.totalCost / p.netQty;
   }
+}
+
+// For every closed trade tagged with a radar signal (signal_entry_date +
+// signal_side, set from the "link a signal" control in the add/edit modal),
+// fetch that exact api.conviction_entries row so the closed-trades table can
+// show what the radar actually said on the day the entry was made — not
+// today's (possibly since-changed) conviction for that name.
+async function fetchLinkedSignals() {
+  linkedSignals = {};
+  const wanted = closedTrades.filter(t => t.signalEntryDate && t.signalSide);
+  if (!wanted.length) return;
+  const seen = new Set();
+  const groups = [];
+  for (const t of wanted) {
+    const key = `${t.isin}|${t.signalEntryDate}|${t.signalSide}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    groups.push(`and(isin.eq.${t.isin},entry_date.eq.${t.signalEntryDate},side.eq.${t.signalSide})`);
+  }
+  try {
+    const rows = await GET('conviction_entries',
+      `or=(${groups.join(',')})&select=isin,entry_date,side,conviction,r5,r20`);
+    for (const r of rows) linkedSignals[`${r.isin}|${r.entry_date}|${r.side}`] = r;
+  } catch(e) { /* best-effort — table still renders without the badge */ }
+}
+
+function closedTradeRowHtml(t) {
+  const tk = ticker(t.isin) || t.isin;
+  const dt = t.exitTime ? new Date(t.exitTime).toLocaleDateString('nb-NO') : '—';
+  const cls = t.realizedPnl > 0 ? 'up' : t.realizedPnl < 0 ? 'dn' : '';
+  const sig = t.signalEntryDate && t.signalSide
+    ? linkedSignals[`${t.isin}|${t.signalEntryDate}|${t.signalSide}`]
+    : null;
+  const sigCell = sig
+    ? `<span class="badge badge-green" title="Radar hit conviction ${sig.conviction} (${sig.side}) on ${sig.entry_date}">◈ ${sig.conviction} · ${sig.entry_date}</span>`
+    : (t.signalEntryDate
+        ? `<span class="badge badge-dim" title="Tagged to ${t.signalEntryDate} but no matching conviction_entries row found">◈ ${t.signalEntryDate}</span>`
+        : '<span class="badge badge-dim">—</span>');
+  return `<tr>
+    <td>${INTEL.tkLink(t.isin, tk)}</td>
+    <td style="color:var(--text-dim)">${dt}</td>
+    <td class="r">${fmtNum(t.qty, t.qty % 1 === 0 ? 0 : 4)}</td>
+    <td class="r">${fmtNum(t.avgCostBasis)}</td>
+    <td class="r">${fmtNum(t.exitPrice)}</td>
+    <td class="r ${cls}">${t.realizedPnl >= 0 ? '+' : '−'}${fmtNOK(Math.abs(t.realizedPnl))}</td>
+    <td class="r ${cls}">${t.realizedPct != null ? fmtPct(t.realizedPct) : '—'}</td>
+    <td>${sigCell}</td>
+  </tr>`;
+}
+
+function renderClosedTrades() {
+  const body = document.getElementById('closedTradesBody');
+  const count = document.getElementById('closedTradesCount');
+  if (!body) return;
+  if (!closedTrades.length) {
+    document.getElementById('closedTradesSection').style.display = 'none';
+    return;
+  }
+  document.getElementById('closedTradesSection').style.display = '';
+  count.textContent = `${closedTrades.length} trade${closedTrades.length === 1 ? '' : 's'}`;
+
+  body.innerHTML = [...closedTrades].reverse().map(closedTradeRowHtml).join('');
+  fetchLinkedSignals().then(() => {
+    // Re-render once (cheap, ≤ a handful of rows) so badges upgrade from
+    // "tagged" to the real conviction score without blocking first paint.
+    if (Object.keys(linkedSignals).length) {
+      body.innerHTML = [...closedTrades].reverse().map(closedTradeRowHtml).join('');
+    }
+  });
 }
 
 async function fetchMarketData(isins) {
@@ -1450,14 +1590,20 @@ function portfolioTotals() {
   for (const [isin, p] of positions) {
     const price = marketData[isin]?.latestPrice;
     if (price) totalValue += p.netQty * price;
-    totalCost      += p.totalCost;                 // raw, never adjusted
+    totalCost      += p.totalCost;                 // now correctly shrinks on partial sells
     totalDivIncome += (p.divIncome || 0);
   }
-  const priceOnlyPL  = totalValue - totalCost;     // P&L from price moves alone
+  // All-time realized P&L from closed trades — kept as its own figure rather
+  // than blended into totalReturn/totalRetPct below: those are ratios against
+  // *currently open* cost basis, which a closed trade no longer has any of,
+  // so mixing realizedPnl into that numerator would inflate the % against a
+  // denominator that doesn't include the capital that produced it.
+  const totalRealizedPnl = closedTrades.reduce((s, ct) => s + ct.realizedPnl, 0);
+  const priceOnlyPL  = totalValue - totalCost;     // P&L from price moves alone, open positions only
   const priceOnlyPct = totalCost ? (priceOnlyPL / totalCost) * 100 : null;
   const totalReturn  = priceOnlyPL + totalDivIncome;   // includes dividends received
   const totalRetPct  = totalCost ? (totalReturn / totalCost) * 100 : null;
-  return { totalValue, totalCost, totalDivIncome, priceOnlyPL, priceOnlyPct, totalReturn, totalRetPct };
+  return { totalValue, totalCost, totalDivIncome, totalRealizedPnl, priceOnlyPL, priceOnlyPct, totalReturn, totalRetPct };
 }
 
 // Today's mark-to-market: netQty × (latest − prevClose), live-feed basis.
@@ -1488,6 +1634,13 @@ function renderKPIs() {
     : '';
   document.getElementById('kpiCount').textContent = positions.size;
   document.getElementById('kpiCountSub').textContent = `${allTransactions.length} transactions`;
+
+  INTEL.liveNumber(document.getElementById('kpiRealized'), closedTrades.length ? fmtNOK(t.totalRealizedPnl) : '—');
+  document.getElementById('kpiRealizedSub').textContent = closedTrades.length
+    ? `${closedTrades.length} closed trade${closedTrades.length === 1 ? '' : 's'}`
+    : 'all-time, closed trades';
+  const realizedCard = document.getElementById('kpiRealizedCard');
+  realizedCard.className = 'kpi' + (t.totalRealizedPnl > 0 ? ' up' : t.totalRealizedPnl < 0 ? ' down' : '');
 
   const plCard = document.getElementById('kpiPlCard');
   plCard.className = 'kpi' + (t.priceOnlyPL > 0 ? ' up' : t.priceOnlyPL < 0 ? ' down' : '');
@@ -4685,12 +4838,35 @@ function openAddModal() {
   document.getElementById('txnQty').value = '';
   document.getElementById('txnPrice').value = '';
   document.getElementById('txnNotes').value = '';
+  document.getElementById('txnSignal').innerHTML = '<option value="">— not linked —</option>';
   setTxnType('BUY');
   const now = new Date();
   now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
   document.getElementById('txnTime').value = now.toISOString().slice(0,16);
   document.getElementById('txnError').textContent = '';
   document.getElementById('addModal').style.display = 'flex';
+}
+
+// Populate the "Radar signal" dropdown with this ISIN's recent
+// api.conviction_entries rows (the persisted historical record — the live
+// api.conviction view has no memory of *when* a streak started, so it can't
+// answer "what did the radar say on the day I actually entered"). Called on
+// the ISIN field's onchange, and from editTransaction() for a pre-tagged row.
+async function refreshSignalOptions() {
+  const sel = document.getElementById('txnSignal');
+  const isin = resolveIsin(document.getElementById('txnIsin').value.trim());
+  sel.innerHTML = '<option value="">— not linked —</option>';
+  if (isin.length !== 12) return;   // not a resolved ISIN yet — nothing to look up
+  try {
+    const rows = await GET('conviction_entries',
+      `isin=eq.${isin}&order=entry_date.desc&limit=8&select=entry_date,side,conviction`);
+    for (const r of rows) {
+      const opt = document.createElement('option');
+      opt.value = `${r.entry_date}|${r.side}`;
+      opt.textContent = `${r.entry_date} · ${r.side} · conviction ${r.conviction}`;
+      sel.appendChild(opt);
+    }
+  } catch(e) { /* best-effort — linking is optional, form still works without it */ }
 }
 
 function closeModal() {
@@ -4700,7 +4876,7 @@ function closeModal() {
   document.querySelector('#addModal .btn-primary').textContent = 'CONFIRM';
 }
 
-function editTransaction(id) {
+async function editTransaction(id) {
   const t = allTransactions.find(x => x.id === id);
   if (!t) return;
   editingTxnId = id;
@@ -4716,6 +4892,21 @@ function editTransaction(id) {
   document.querySelector('#addModal .btn-primary').textContent = 'SAVE CHANGES';
   document.getElementById('txnError').textContent = '';
   document.getElementById('addModal').style.display = 'flex';
+  await refreshSignalOptions();
+  if (t.signal_entry_date && t.signal_side) {
+    const sel = document.getElementById('txnSignal');
+    const key = `${t.signal_entry_date}|${t.signal_side}`;
+    if (![...sel.options].some(o => o.value === key)) {
+      // Already-tagged date fell outside the "8 most recent" fetch — add it
+      // explicitly so saving without touching this field doesn't silently
+      // drop the existing link.
+      const opt = document.createElement('option');
+      opt.value = key;
+      opt.textContent = `${t.signal_entry_date} · ${t.signal_side} (currently linked)`;
+      sel.appendChild(opt);
+    }
+    sel.value = key;
+  }
 }
 
 async function deleteTransaction(id) {
@@ -4741,6 +4932,7 @@ async function submitTransaction() {
   const price = parseFloat(document.getElementById('txnPrice').value);
   const time = document.getElementById('txnTime').value;
   const notes = document.getElementById('txnNotes').value.trim();
+  const [signalEntryDate, signalSide] = (document.getElementById('txnSignal').value || '').split('|');
 
   if (!isin) { document.getElementById('txnError').textContent = 'Enter an ISIN or ticker.'; return; }
   if (!qty || qty <= 0) { document.getElementById('txnError').textContent = 'Enter a valid quantity.'; return; }
@@ -4761,6 +4953,8 @@ async function submitTransaction() {
       price,
       transaction_time: new Date(time).toISOString(),
       notes: notes || null,
+      signal_entry_date: signalEntryDate || null,
+      signal_side: signalSide || null,
     });
     closeModal();
     await loadData();
