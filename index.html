@@ -187,6 +187,78 @@
   }
   .gw:hover .gw-arrow { transform: translateX(4px); }
 
+  /* ─── Live pulse strip + brief line (World Intel feed) ─────────────────── */
+  .pulse { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; max-width: 1120px; margin: -26px 0 14px; }
+  .pl { display: inline-flex; align-items: baseline; gap: 8px; padding: 7px 12px; border: 1px solid var(--border2);
+        border-radius: 20px; background: rgba(5,8,16,0.62); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+        text-decoration: none; font-family: var(--mono); white-space: nowrap; transition: border-color .2s, background .2s; }
+  .pl:hover { border-color: var(--border3); background: rgba(17,22,31,0.8); }
+  .pl .k { font-size: 9px; letter-spacing: .16em; text-transform: uppercase; color: var(--text3); }
+  .pl b { font-size: 12px; font-weight: 600; color: var(--text1); font-variant-numeric: tabular-nums; }
+  .pl .c { font-size: 10.5px; font-variant-numeric: tabular-nums; }
+  .pl .c.up { color: var(--green); } .pl .c.dn { color: var(--red); } .pl .c.flat { color: var(--text3); }
+  .pl.regime { border-color: rgba(245,166,35,.4); }
+  .pl.regime b { letter-spacing: .08em; }
+  .pl.regime b.on { color: var(--green); } .pl.regime b.off { color: var(--red); } .pl.regime b.neu { color: var(--amber); }
+  .pl.skel { min-width: 118px; height: 31px; opacity: .5; }
+  .brief-line { display: flex; align-items: center; gap: 12px; max-width: 880px; width: 100%; margin: 0 0 40px; padding: 10px 14px;
+                border: 1px solid var(--border); border-left: 2px solid var(--amber); background: rgba(5,8,16,0.55);
+                backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); text-decoration: none; font-family: var(--mono);
+                transition: border-color .2s, background .2s; min-height: 40px; }
+  .brief-line:hover { background: rgba(17,22,31,0.78); border-color: var(--border2); border-left-color: var(--amber); }
+  .bl-k { font-size: 9px; letter-spacing: .22em; text-transform: uppercase; color: var(--amber); white-space: nowrap; }
+  .bl-h { flex: 1; font-size: 12px; color: var(--text1); line-height: 1.45; min-width: 0; }
+  .bl-h small { color: var(--text3); font-size: 10px; margin-left: 8px; letter-spacing: .04em; }
+  .bl-a { color: var(--text3); font-size: 13px; transition: transform .2s, color .2s; }
+  .brief-line:hover .bl-a { color: var(--amber); transform: translateX(3px); }
+  @media (prefers-reduced-motion: no-preference) { .bl-h { transition: opacity .45s; } .bl-h.fade { opacity: 0; } }
+
+  /* ─── Bento layout: World is the feature card ─────────────────────────── */
+  .gateways.bento { grid-template-columns: repeat(3, minmax(0, 1fr)); max-width: 1180px; }
+  .gw.span2 { grid-column: span 2; }
+  @media (max-width: 1080px) { .gateways.bento { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 720px)  { .gateways.bento { grid-template-columns: minmax(0, 1fr); max-width: 520px; } .gw.span2 { grid-column: span 1; } }
+  .gw.feature { border-color: rgba(79,195,247,0.28); background:
+      radial-gradient(ellipse 60% 90% at 88% 0%, rgba(79,195,247,0.10), transparent 60%),
+      radial-gradient(ellipse 50% 70% at 0% 100%, rgba(245,166,35,0.07), transparent 60%), rgba(11,15,23,0.82); }
+  .gw.feature::before { background: linear-gradient(90deg, transparent, var(--ice), var(--amber), transparent); height: 1px; opacity: .8; }
+  @media (prefers-reduced-motion: no-preference) {
+    .gw.feature::after { content: ''; position: absolute; inset: -1px; pointer-events: none; border-radius: inherit;
+      background: conic-gradient(from var(--ang, 0deg), transparent 0 70%, rgba(79,195,247,.35) 80%, rgba(245,166,35,.35) 88%, transparent 96%);
+      -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
+      mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); mask-composite: exclude;
+      padding: 1px; animation: gwspin 9s linear infinite; opacity: .9; }
+    @keyframes gwspin { to { --ang: 360deg; } }
+  }
+  @property --ang { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+  .gw-name small { font-size: 10px; letter-spacing: .14em; color: var(--text3); margin-left: 10px; font-weight: 400; }
+  .gw-new { font-family: var(--mono); font-size: 8.5px; letter-spacing: .18em; color: var(--bg0); background: var(--amber);
+            padding: 2px 6px; margin-left: 8px; vertical-align: 2px; }
+  .fx-board { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+  @media (max-width: 480px) { .fx-board { grid-template-columns: repeat(2, minmax(0, 1fr)); } .fx-board .mini:nth-child(3) { display: none; } }
+  .mini { border: 1px solid var(--border); background: rgba(5,8,16,0.45); padding: 9px 10px 7px; min-width: 0; }
+  .mini .mk { font-family: var(--mono); font-size: 9px; letter-spacing: .14em; text-transform: uppercase; color: var(--text3);
+              display: flex; justify-content: space-between; gap: 6px; }
+  .mini .mv { font-family: var(--mono); font-size: 15px; font-weight: 600; color: var(--text1); margin-top: 3px; font-variant-numeric: tabular-nums; }
+  .mini .mc { font-size: 9.5px; font-variant-numeric: tabular-nums; }
+  .mini .mc.up { color: var(--green); } .mini .mc.dn { color: var(--red); } .mini .mc.flat { color: var(--text3); }
+  .mini svg { display: block; width: 100%; height: 26px; margin-top: 4px; }
+  .gw-list { display: flex; flex-wrap: wrap; gap: 6px; font-family: var(--mono); font-size: 10px; }
+  .gw-list .tk { border: 1px solid var(--border2); padding: 2px 7px; color: var(--text1); letter-spacing: .06em; }
+  .gw-list .tk.l { border-color: rgba(67,224,151,.35); color: var(--green); }
+  .gw-list .tk.s { border-color: rgba(240,96,96,.35); color: var(--red); }
+  .gw-list .lab { color: var(--text3); letter-spacing: .12em; text-transform: uppercase; font-size: 9px; align-self: center; margin-right: 2px; }
+  .kbd-hint { margin-top: 30px; font-family: var(--mono); font-size: 10px; letter-spacing: .12em; color: var(--text3); text-transform: uppercase; }
+  .kbd-hint kbd { font-family: var(--mono); font-size: 10px; color: var(--text1); border: 1px solid var(--border2); border-bottom-width: 2px;
+                  padding: 1px 6px; margin: 0 3px; background: rgba(17,22,31,.7); }
+  .kbd-hint button { all: unset; cursor: pointer; }
+  .kbd-hint button:hover kbd { border-color: var(--amber); color: var(--amber); }
+  .foot .health { display: inline-flex; align-items: center; gap: 7px; }
+  .foot .health i { width: 6px; height: 6px; border-radius: 50%; background: var(--text4); display: inline-block; }
+  .foot .health.ok i { background: var(--green); box-shadow: 0 0 6px var(--green); }
+  .foot .health.warn i { background: var(--amber); box-shadow: 0 0 6px var(--amber); }
+  .foot .links { display: flex; gap: 16px; flex-wrap: wrap; }
+
   /* ─── Market constellation (three.js hero; replaces matrix when WebGL+data ok) ── */
   #constellation {
     position: fixed; inset: 0; z-index: 0; pointer-events: none;
@@ -223,6 +295,10 @@
     .topbar { padding: 14px 16px; flex-wrap: wrap; gap: 10px; }
     .hub { padding: 40px 16px 56px; }
     .subtitle { margin-bottom: 36px; }
+    .pulse { margin-top: -18px; gap: 6px; }
+    .pl { padding: 6px 10px; gap: 6px; } .pl b { font-size: 11px; }
+    .brief-line { margin-bottom: 28px; }
+    .kbd-hint { display: none; }
     .gw { min-height: 0; padding: 20px 18px 18px; }
     .foot { padding: 14px 16px 18px; flex-wrap: wrap; gap: 8px; }
   }
@@ -250,15 +326,45 @@
 
   <main class="hub">
 
-    <div class="eyebrow"><span class="glyph">◆</span>v3 · 2026</div>
-    <h1 class="title">Microstructure intelligence and <em>quantitative equity</em> tooling for Oslo Børs.</h1>
+    <div class="eyebrow"><span class="glyph">◆</span><span id="heroEyebrow">Live terminal · Oslo Børs and the world around it</span></div>
+    <h1 class="title">Microstructure intelligence and <em>quantitative tooling</em> for Oslo Børs — and the world that moves it.</h1>
     <p class="subtitle">
-      Three instruments sharing one data spine — MiFID II trade fidelity,
-      delayed snapshot fundamentals, and conviction tracking — sourced and
-      assembled to support a single human running real money.
+      Every Norwegian print, every dividend filing, every central bank and chokepoint — one data spine
+      running on an iMac, assembled to support a single human running real money.
     </p>
 
-    <nav class="gateways">
+    <div class="pulse" id="pulse" aria-label="Live market pulse">
+      <span class="pl skel"></span><span class="pl skel"></span><span class="pl skel"></span><span class="pl skel"></span><span class="pl skel"></span>
+    </div>
+    <a class="brief-line" id="briefLine" href="world.html#brief" aria-label="Today's top intel brief item">
+      <span class="bl-k">◉ Brief</span><span class="bl-h" id="briefHead">Loading the daily brief …</span><span class="bl-a">→</span>
+    </a>
+
+    <nav class="gateways bento">
+
+      <a class="gw span2 feature" href="world.html">
+        <div class="gw-head">
+          <span class="gw-glyph" style="color:var(--ice)">⊕</span>
+          <span class="gw-status live" id="worldStatus">LIVE</span>
+        </div>
+        <div class="gw-name">World Intel<span class="gw-new">NEW</span></div>
+        <p class="gw-desc">
+          The global picture on one board: a canvas globe, cross-asset matrix, sovereign curves, twenty-odd
+          central banks, conflict tension, shipping chokepoints, sanctions and the Norway lens — fused into a
+          ranked daily brief and refreshed every fifteen minutes from primary sources.
+        </p>
+        <div class="fx-board" id="worldBoard">
+          <div class="mini"><div class="mk"><span>OSEBX</span></div><div class="mv">—</div></div>
+          <div class="mini"><div class="mk"><span>Brent</span></div><div class="mv">—</div></div>
+          <div class="mini"><div class="mk"><span>USDNOK</span></div><div class="mv">—</div></div>
+        </div>
+        <div class="gw-meta">
+          <span>Regime <strong id="kpiWRegime">—</strong></span>
+          <span>Sources <strong id="kpiWSources">—</strong></span>
+          <span>Brief <strong id="kpiWBrief">—</strong></span>
+        </div>
+        <div class="gw-enter"><span>ENTER</span><span class="gw-arrow">→</span></div>
+      </a>
 
       <a class="gw" href="radar.html">
         <div class="gw-head">
@@ -271,9 +377,28 @@
           ceiling/floor break and cross-sectional dark-flow logic. Today's
           Book ranks long and short candidates by conviction.
         </p>
+        <div class="gw-list" id="radarTop"><span class="lab">Top conviction</span><span class="tk">—</span></div>
         <div class="gw-meta">
           <span>Universe <strong id="kpiMrUniverse">—</strong></span>
           <span>Signals/d <strong id="kpiMrSignals">—</strong></span>
+        </div>
+        <div class="gw-enter"><span>ENTER</span><span class="gw-arrow">→</span></div>
+      </a>
+
+      <a class="gw" href="portfolio.html">
+        <div class="gw-head">
+          <span class="gw-glyph">▤</span>
+          <span class="gw-status beta">PERSONAL</span>
+        </div>
+        <div class="gw-name">Portfolio</div>
+        <p class="gw-desc">
+          Mission control for your book: live P&amp;L, a risk lab, the action desk — and a dividend engine
+          that reconciles every Oslo Børs filing into what each holding has paid and will pay you.
+        </p>
+        <div class="gw-list" id="divSoon"><span class="lab">Ex-dates · 14d</span><span class="tk">—</span></div>
+        <div class="gw-meta">
+          <span>Dividends <strong id="kpiDivN">—</strong></span>
+          <span title="share of dividends since 2023 confirmed by at least two independent sources">Confirmed · 2023+ <strong id="kpiDivConf">—</strong></span>
         </div>
         <div class="gw-enter"><span>ENTER</span><span class="gw-arrow">→</span></div>
       </a>
@@ -296,25 +421,24 @@
         <div class="gw-enter"><span>ENTER</span><span class="gw-arrow">→</span></div>
       </a>
 
-      <a class="gw" href="portfolio.html">
+      <a class="gw" href="dossier.html">
         <div class="gw-head">
-          <span class="gw-glyph">▤</span>
-          <span class="gw-status beta">PERSONAL</span>
+          <span class="gw-glyph">◈</span>
+          <span class="gw-status beta">RESEARCH</span>
         </div>
-        <div class="gw-name">Portfolio Tracker</div>
+        <div class="gw-name">Company Dossier</div>
         <p class="gw-desc">
-          Your transactions, conviction overlay, dividend income tracking,
-          forward-event timeline and sector concentration. Cross-references
-          every holding against today's Markedsradar signal stack.
+          One page per listed company — price and flow, financials, insider trades, short interest,
+          events and dividends. Jump to any ticker from anywhere with <b style="color:var(--text1)">⌘K</b>.
         </p>
         <div class="gw-meta">
-          <span>Source <strong>Local</strong></span>
-          <span>Sync <strong>PostgREST</strong></span>
+          <span>Companies <strong id="kpiDosN">—</strong></span>
+          <span>Insider filings · 30d <strong id="kpiDosIns">—</strong></span>
         </div>
         <div class="gw-enter"><span>ENTER</span><span class="gw-arrow">→</span></div>
       </a>
 
-      <a class="gw gw-wide" href="marketmaker.html">
+      <a class="gw" href="marketmaker.html">
         <div class="gw-head">
           <span class="gw-glyph">⧉</span>
           <span class="gw-status acc">ALPHA · PAPER</span>
@@ -332,7 +456,7 @@
         <div class="gw-enter"><span>ENTER</span><span class="gw-arrow">→</span></div>
       </a>
 
-      <a class="gw gw-wide" href="fastrente.html">
+      <a class="gw span2" href="fastrente.html">
         <div class="gw-head">
           <span class="gw-glyph">▥</span>
           <span class="gw-status beta">RATES</span>
@@ -344,18 +468,22 @@
           right moment.
         </p>
         <div class="gw-meta">
-          <span>Curve <strong>NOK swap</strong></span>
-          <span>Horizon <strong>3–10y</strong></span>
+          <span>Policy rate <strong id="kpiNbRate">—</strong></span>
+          <span>NGB 3y <strong id="kpiNgb3">—</strong></span>
+          <span>NGB 10y <strong id="kpiNgb10">—</strong></span>
         </div>
         <div class="gw-enter"><span>ENTER</span><span class="gw-arrow">→</span></div>
       </a>
 
     </nav>
+
+    <div class="kbd-hint"><button type="button" onclick="INTEL.openPalette()">Press <kbd>⌘K</kbd> or <kbd>/</kbd> to jump to any ticker or page</button></div>
   </main>
 
   <footer class="foot">
     <span>SLENSVIK<span style="color:var(--amber)">·</span>COM · 2026</span>
-    <span><a href="fastrente.html">FASTRENTE →</a></span>
+    <a class="health" id="footHealth" href="world.html#health"><i></i><span>data health …</span></a>
+    <span class="links"><a href="world.html">WORLD</a><a href="radar.html">RADAR</a><a href="portfolio.html">PORTFOLIO</a><a href="dossier.html">DOSSIER</a><a href="fastrente.html">FASTRENTE →</a></span>
   </footer>
 </div>
 
@@ -506,35 +634,154 @@
   setInterval(tick, 30000);
 })();
 
-/* ─── Quick KPIs pulled from PostgREST (INTEL.safeGet from assets/intel.js) ── */
+/* ─── Live hub: pulse strip, rotating brief, card read-outs ───────────────────
+   Everything reads the public PostgREST API through INTEL.safeGet (resolves to
+   null on any failure, never throws) — a dead feed just leaves an em-dash.
+   Counts use HEAD + Prefer: count=exact (Content-Range), so no table is ever
+   downloaded just to be counted. */
 (async () => {
-  const safeGet = INTEL.safeGet;
-
-  // Markedsradar universe + signal count
-  const univ = await safeGet('daily_summary?select=isin&limit=10000');
-  if (univ) document.getElementById('kpiMrUniverse').textContent = new Set(univ.map(r => r.isin)).size || '—';
-
-  const latest = await safeGet('smart_signals?select=trade_date&order=trade_date.desc&limit=1');
-  if (latest && latest.length) {
-    const d = latest[0].trade_date;
-    const sigs = await safeGet(`smart_signals?trade_date=eq.${d}&select=id`);
-    if (sigs) document.getElementById('kpiMrSignals').textContent = sigs.length;
+  const G = INTEL.safeGet, $ = id => document.getElementById(id);
+  const esc = v => String(v ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const iso = d => d.toISOString().slice(0, 10);
+  const dayShift = n => iso(new Date(Date.now() + n * 864e5));
+  const REDUCE = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const set = (id, v) => { const el = $(id); if (el && v != null && v !== '') el.textContent = v; };
+  async function count(path) {
+    try {
+      const r = await fetch(`${INTEL.API}/${path}`, { method: 'HEAD', headers: { Prefer: 'count=exact', Range: '0-0' } });
+      const n = +((r.headers.get('content-range') || '').split('/')[1]);
+      return isFinite(n) ? n : null;
+    } catch (e) { return null; }
+  }
+  const lvl = r => r && r.last != null
+    ? (+r.last).toLocaleString('en-US', { minimumFractionDigits: r.decimals ?? 2, maximumFractionDigits: r.decimals ?? 2 }) : '—';
+  const chg = r => {
+    if (!r || r.chg_1d == null) return '';
+    const v = +r.chg_1d, sg = v > 0 ? '+' : v < 0 ? '−' : '';
+    return r.chg_mode === 'bp' ? `${sg}${Math.abs(v).toFixed(1)} bp` : `${sg}${Math.abs(v).toFixed(2)}%`;
+  };
+  const cls = r => !r || r.chg_1d == null || Math.abs(r.chg_1d) < 1e-9 ? 'flat' : r.chg_1d > 0 ? 'up' : 'dn';
+  function spark(arr, up) {
+    const v = (arr || []).filter(x => x != null && isFinite(x)).slice(-60);
+    if (v.length < 3) return '';
+    const lo = Math.min(...v), hi = Math.max(...v), span = hi - lo || 1, W = 120, H = 26;
+    const pts = v.map((x, i) => [i / (v.length - 1) * W, H - 2 - (x - lo) / span * (H - 4)]);
+    const line = pts.map(p => p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ');
+    const col = up ? '#43e097' : '#f06060';
+    return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">
+      <polygon points="0,${H} ${line} ${W},${H}" fill="${col}" opacity=".10"/>
+      <polyline points="${line}" fill="none" stroke="${col}" stroke-width="1.4" vector-effect="non-scaling-stroke"/></svg>`;
   }
 
-  // Galton: universe size + weeks of data accumulated
-  const dc = await safeGet('daily_close?select=isin,trade_date&order=trade_date.asc');
-  if (dc && dc.length) {
-    const isins = new Set(dc.map(r => r.isin));
-    const dates = [...new Set(dc.map(r => r.trade_date))].sort();
-    document.getElementById('kpiGalUniverse').textContent = isins.size;
-    const weeks = Math.floor(dates.length / 5);  // ~5 trading days per week
-    document.getElementById('kpiGalWeeks').textContent = `${weeks}/52`;
-    if (weeks >= 52) {
-      const st = document.getElementById('galtonStatus');
-      st.className = 'gw-status live';
-      st.textContent = 'LIVE';
+  set('heroEyebrow', 'Live terminal · ' + new Intl.DateTimeFormat('en-GB',
+    { timeZone: 'Europe/Oslo', weekday: 'long', day: 'numeric', month: 'long' }).format(new Date()));
+
+  /* ── World: board, regime, brief, source health ── */
+  const IDS = ['eq.osebx', 'fx.usdnok', 'cmd.brent', 'vol.vix', 'eq.spx', 'yc.no.3y', 'yc.no.10y', 'pol.no'];
+  const [board, regime, brief, health] = await Promise.all([
+    G(`world_board?series_id=in.(${IDS.join(',')})&select=series_id,short,last,chg_1d,chg_mode,decimals,spark`),
+    G('world_regime?order=obs_date.desc&limit=1&select=obs_date,label,score'),
+    G('world_brief?order=brief_date.desc,rank.asc&limit=16&select=brief_date,rank,severity,category,headline,anchor'),
+    G('world_source_health?select=source,last_status'),
+  ]);
+  const B = Object.fromEntries((board || []).map(r => [r.series_id, r]));
+  const rg = regime && regime[0];
+  const rgCls = rg ? (/ON/.test(rg.label) ? 'on' : /OFF/.test(rg.label) ? 'off' : 'neu') : '';
+  const pills = [];
+  if (rg) pills.push(`<a class="pl regime" href="world.html#regime" title="Cross-asset risk regime (World Intel)"><span class="k">Regime</span><b class="${rgCls}">${esc(rg.label)}</b><span class="c flat">${(+rg.score >= 0 ? '+' : '−') + Math.abs(+rg.score).toFixed(2)}</span></a>`);
+  for (const id of ['eq.osebx', 'fx.usdnok', 'cmd.brent', 'vol.vix', 'eq.spx']) {
+    const r = B[id];
+    if (r) pills.push(`<a class="pl" href="world.html#matrix"><span class="k">${esc(r.short)}</span><b>${lvl(r)}</b><span class="c ${cls(r)}">${chg(r)}</span></a>`);
+  }
+  $('pulse').innerHTML = pills.join('') || '';
+  if (!pills.length) $('pulse').style.display = 'none';
+
+  const mini = (id, label) => {
+    const r = B[id];
+    return `<div class="mini"><div class="mk"><span>${label}</span><span class="mc ${cls(r)}">${chg(r)}</span></div>
+      <div class="mv">${lvl(r)}</div>${r ? spark(r.spark, (r.chg_1d || 0) >= 0) : ''}</div>`;
+  };
+  $('worldBoard').innerHTML = mini('eq.osebx', 'OSEBX') + mini('cmd.brent', 'Brent') + mini('fx.usdnok', 'USDNOK');
+  if (rg) { const el = $('kpiWRegime'); el.textContent = rg.label; el.style.color = rgCls === 'on' ? 'var(--green)' : rgCls === 'off' ? 'var(--red)' : 'var(--amber)'; }
+  if (health && health.length) {
+    const ok = health.filter(h => h.last_status === 'ok').length;
+    set('kpiWSources', `${ok}/${health.length} ok`);
+    const fh = $('footHealth');
+    fh.className = 'health ' + (ok / health.length >= 0.9 ? 'ok' : 'warn');
+    fh.querySelector('span').textContent = `data health · ${ok}/${health.length} feeds ok`;
+  }
+  const pol = B['pol.no'], n3 = B['yc.no.3y'], n10 = B['yc.no.10y'];
+  if (pol) set('kpiNbRate', (+pol.last).toFixed(2) + '%');
+  if (n3) set('kpiNgb3', (+n3.last).toFixed(2) + '%');
+  if (n10) set('kpiNgb10', (+n10.last).toFixed(2) + '%');
+
+  const bd = brief && brief.length ? brief[0].brief_date : null;
+  const items = (brief || []).filter(b => b.brief_date === bd).slice(0, 6);
+  set('kpiWBrief', items.length ? `${(brief || []).filter(b => b.brief_date === bd).length} items` : null);
+  if (items.length) {
+    const line = $('briefLine'), head = $('briefHead');
+    let k = 0;
+    const show = () => {
+      const it = items[k % items.length];
+      head.innerHTML = `${esc(it.headline)}<small>${esc(it.category)} · #${it.rank}</small>`;
+      line.href = 'world.html#' + (it.anchor || 'brief');
+    };
+    show();
+    if (!REDUCE && items.length > 1) setInterval(() => {
+      if (document.hidden) return;
+      head.classList.add('fade');
+      setTimeout(() => { k++; show(); head.classList.remove('fade'); }, 460);
+    }, 6500);
+  } else {
+    $('briefHead').textContent = 'Open the World board for today’s brief';
+  }
+
+  /* ── Radar ── */
+  (async () => {
+    const top = await G('conviction?select=isin,side,conviction&order=conviction.desc,direction_score.desc&limit=5');
+    if (top && top.length) {
+      const tk = await G(`instruments?select=isin,ticker&isin=in.(${top.map(r => r.isin).join(',')})`);
+      const T = Object.fromEntries((tk || []).map(r => [r.isin, r.ticker]));
+      $('radarTop').innerHTML = '<span class="lab">Top conviction</span>' + top.slice(0, 4).map(r =>
+        `<span class="tk ${r.side === 'SHORT' ? 's' : 'l'}" title="${esc(r.side)} · conviction ${r.conviction}">${esc(T[r.isin] || r.isin.slice(-5))}</span>`).join('');
     }
-  }
+    const ds = await G('daily_summary?select=trade_date&order=trade_date.desc&limit=1');
+    if (ds && ds[0]) set('kpiMrUniverse', await count(`daily_summary?trade_date=eq.${ds[0].trade_date}&select=isin`));
+    const latest = await G('smart_signals?select=trade_date&order=trade_date.desc&limit=1');
+    if (latest && latest[0]) set('kpiMrSignals', await count(`smart_signals?trade_date=eq.${latest[0].trade_date}&select=id`));
+  })();
+
+  /* ── Portfolio: the dividend engine, market-wide ── */
+  (async () => {
+    const soon = await G(`dividend_calendar?ex_date=gte.${dayShift(0)}&ex_date=lte.${dayShift(14)}&ticker=not.is.null&select=ticker,ex_date,event_yield_pct,kind&order=ex_date.asc&limit=12`);
+    const el = $('divSoon');
+    if (soon) el.innerHTML = '<span class="lab">Ex-dates · 14d</span>' + (soon.length
+      ? soon.slice(0, 5).map(d => `<span class="tk" title="goes ex ${d.ex_date}${d.event_yield_pct != null ? ' · ' + (+d.event_yield_pct).toFixed(2) + '% of price' : ''}">${esc(d.ticker)} <span style="color:var(--text3)">${+d.ex_date.slice(8, 10)}.${+d.ex_date.slice(5, 7)}</span></span>`).join('')
+      : '<span class="tk" style="color:var(--text3)">none</span>');
+    const [n, n23, c23] = await Promise.all([count('dividends?select=isin'), count('dividends?select=isin&ex_date=gte.2023-01-01'),
+      count('dividends?select=isin&ex_date=gte.2023-01-01&confirmed=is.true')]);
+    if (n != null) set('kpiDivN', n.toLocaleString('en-US'));
+    if (n23 && c23 != null) set('kpiDivConf', Math.round(c23 / n23 * 100) + '%');
+  })();
+
+  /* ── Galton: universe on the latest close, weeks of history (Equinor's row count ≈ trading days) ── */
+  (async () => {
+    const last = await G('daily_close?select=trade_date&order=trade_date.desc&limit=1');
+    if (!last || !last[0]) return;
+    set('kpiGalUniverse', await count(`daily_close?trade_date=eq.${last[0].trade_date}&select=isin`));
+    const days = await count('daily_close?isin=eq.NO0010096985&select=trade_date');
+    if (days != null) {
+      const weeks = Math.floor(days / 5);
+      set('kpiGalWeeks', `${Math.min(weeks, 52)}/52`);
+      if (weeks >= 52) { const st = $('galtonStatus'); st.className = 'gw-status live'; st.textContent = 'LIVE'; }
+    }
+  })();
+
+  /* ── Dossier ── */
+  (async () => {
+    const [n, ins] = await Promise.all([count('instruments?select=isin'), count(`insider_trades?trade_date=gte.${dayShift(-30)}&select=id`)]);
+    set('kpiDosN', n); set('kpiDosIns', ins);
+  })();
 })();
 
 /* ─── Market constellation ─────────────────────────────────────────────────

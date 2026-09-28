@@ -63,30 +63,77 @@ body { background: var(--bg); color: var(--text); font-family: var(--body); font
 .auth-note { font-size: 11px; color: var(--text-dim); margin-top: 20px; line-height: 1.6; }
 .auth-error { color: var(--red); font-family: var(--mono); font-size: 11px; margin-top: 12px; min-height: 16px; }
 
-/* ── Header ──────────────────────────────────────────────────────────────── */
-header {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 28px 0 20px; border-bottom: 1px solid var(--border); margin-bottom: 18px; gap: 16px; flex-wrap: wrap;
-}
-.logo { font-family: var(--sans); font-weight: 800; font-size: 22px; color: var(--text-bright); }
+/* ── Header (World shell) ────────────────────────────────────────────────── */
+:root { --rail-h: 38px; }
+html { scroll-padding-top: calc(var(--rail-h) + 14px); }
+header { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding: 34px 0 20px; }
+.logo-block { display: flex; flex-direction: column; gap: 4px; }
+.logo { font-family: var(--sans); font-weight: 800; font-size: 28px; letter-spacing: -0.5px; color: var(--text1); }
 .logo span { color: var(--ice); }
-.logo .logo-tail { color: var(--text-bright); }
-.logo-sub { font-family: var(--mono); font-size: 10px; color: var(--text-dim); letter-spacing: 2px; text-transform: uppercase; margin-top: 2px; }
-.header-right { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-header [data-intel-nav] { order: 3; flex-basis: 100%; }
-header [data-intel-nav] .site-nav { justify-content: flex-end; }
-.user-pill { font-family: var(--mono); font-size: 11px; background: var(--ice-dim); border: 1px solid var(--ice); color: var(--ice); border-radius: 20px; padding: 4px 14px; }
-.btn-sm { font-family: var(--mono); font-size: 11px; letter-spacing: 1px; padding: 7px 16px; border-radius: 5px; cursor: pointer; border: none; }
-.btn-add { background: var(--green); color: var(--bg); }
-.btn-add:hover { background: #6ef7bc; }
-.btn-out { background: transparent; color: var(--text-dim); border: 1px solid var(--border); }
-.btn-out:hover { color: var(--red); border-color: var(--red); }
-.fx-toggle {
-  font-family: var(--mono); font-size: 11px; letter-spacing: 1px;
-  color: var(--text-dim); background: transparent; border: 1px solid var(--border);
-  border-radius: 5px; padding: 7px 12px; cursor: pointer; transition: all 0.15s;
+.logo-sub { font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em; color: var(--text3); text-transform: uppercase; }
+.header-meta { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.meta-pill { font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; padding: 5px 12px; border-radius: 20px;
+             border: 1px solid var(--border2); color: var(--text3); white-space: nowrap; display: inline-flex; gap: 7px;
+             align-items: center; text-decoration: none; }
+a.meta-pill:hover { color: var(--text1); border-color: var(--border3); }
+.meta-pill .led { width: 6px; height: 6px; border-radius: 50%; background: var(--text4); }
+.meta-pill.ok .led { background: var(--green); box-shadow: 0 0 8px rgba(67,224,151,.7); }
+.meta-pill.warn .led { background: var(--amber); box-shadow: 0 0 8px rgba(245,166,35,.7); }
+.meta-pill b { color: var(--text1); font-weight: 600; }
+#pillIncome { color: var(--amber); border-color: rgba(245,166,35,.35); }
+#pillIncome b { color: var(--text1); }
+.user-pill { font-family: var(--mono); font-size: 10px; letter-spacing: .08em; background: var(--ice-dim); border: 1px solid rgba(79,195,247,.45); color: var(--ice); border-radius: 20px; padding: 5px 12px; }
+.hbtn { font-family: var(--mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; padding: 6px 12px; border-radius: 5px;
+        cursor: pointer; background: transparent; color: var(--text3); border: 1px solid var(--border2); transition: all .15s; }
+.hbtn:hover { color: var(--ice); border-color: rgba(79,195,247,.45); }
+.hbtn-add { background: var(--green); color: var(--bg0); border-color: var(--green); font-weight: 600; }
+.hbtn-add:hover { background: #6ef7bc; color: var(--bg0); border-color: #6ef7bc; }
+.hbtn-out:hover { color: var(--red); border-color: var(--red); }
+
+/* ── section rail (sticky, scrollspy) ────────────────────────────────────── */
+.rail { position: sticky; top: 0; z-index: 40; margin: 0 -24px 14px; padding: 0 24px; height: var(--rail-h);
+        display: flex; align-items: center; gap: 2px; overflow-x: auto; scrollbar-width: none;
+        background: rgba(5,8,16,0.82); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+        border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.rail::-webkit-scrollbar { display: none; }
+.rail a { font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text3); text-decoration: none;
+          padding: 5px 9px; border-radius: 3px; white-space: nowrap; transition: color .15s, background .15s; }
+.rail a:hover { color: var(--text1); background: var(--bg3); }
+.rail a.on { color: var(--amber); background: rgba(245,166,35,0.08); }
+.rail .rail-asof { margin-left: auto; font-family: var(--mono); font-size: 9.5px; color: var(--text4); letter-spacing: .08em; white-space: nowrap; padding-left: 12px; }
+
+/* ── holdings strip (marquee) ────────────────────────────────────────────── */
+.hstrip { position: relative; overflow: hidden; border: 1px solid var(--border); border-radius: 6px; height: 34px;
+          background: rgba(11,15,23,0.6); margin-bottom: 14px;
+          -webkit-mask-image: linear-gradient(90deg, transparent, #000 4%, #000 96%, transparent);
+                  mask-image: linear-gradient(90deg, transparent, #000 4%, #000 96%, transparent); }
+.hstrip-track { display: inline-flex; white-space: nowrap; height: 100%; align-items: center; will-change: transform; }
+.hs-item { display: inline-flex; align-items: baseline; gap: 7px; padding: 0 18px; font-family: var(--mono); font-size: 11px;
+           border-right: 1px solid var(--border); text-decoration: none; color: inherit; }
+.hs-item .tk { color: var(--text2); letter-spacing: .06em; font-size: 10px; font-weight: 600; }
+.hs-item .v { color: var(--text1); font-variant-numeric: tabular-nums; }
+.hs-item .c { font-variant-numeric: tabular-nums; font-size: 10.5px; }
+.hs-item .c.up { color: var(--green); } .hs-item .c.dn { color: var(--red); } .hs-item .c.flat { color: var(--text3); }
+.hs-item .dv { color: var(--amber); font-size: 9.5px; letter-spacing: .04em; }
+.hs-item:hover .tk { color: var(--ice); }
+@media (prefers-reduced-motion: no-preference) {
+  .hstrip-track.run { animation: hstrip var(--strip-dur, 90s) linear infinite; }
+  .hstrip:hover .hstrip-track.run { animation-play-state: paused; }
+  @keyframes hstrip { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 }
-.fx-toggle:hover { color: var(--ice); border-color: var(--ice-dim); }
+@media (prefers-reduced-motion: reduce) { .hstrip { overflow-x: auto; } }
+
+/* ── deck HUD (top-left copy, World hero idiom) ──────────────────────────── */
+.deck-copy { position: absolute; left: 20px; top: 18px; z-index: 4; max-width: 300px; pointer-events: none; }
+.hero-kicker { font-family: var(--mono); font-size: 9px; letter-spacing: .32em; color: var(--amber); text-transform: uppercase; }
+.deck-title { font-family: var(--sans); font-weight: 800; font-size: 22px; line-height: 1.1; color: var(--text1); margin: 7px 0 4px; letter-spacing: -0.02em; }
+.hero-chip { margin-top: 10px; display: inline-flex; align-items: center; gap: 10px; pointer-events: auto;
+             border: 1px solid rgba(245,166,35,.32); border-radius: 6px; padding: 7px 11px; background: rgba(5,8,16,.62);
+             text-decoration: none; transition: border-color .15s, background .15s; }
+.hero-chip:hover { border-color: rgba(245,166,35,.6); background: rgba(245,166,35,.06); }
+.hero-chip .lab { font-family: var(--mono); font-size: 8.5px; letter-spacing: .18em; color: var(--text3); text-transform: uppercase; }
+.hero-chip .val { font-family: var(--mono); font-size: 11.5px; font-weight: 600; color: var(--text1); letter-spacing: .03em; font-variant-numeric: tabular-nums; }
+.hero-chip .val .amt { color: var(--green); }
 
 /* ═══ COMMAND DECK — the portfolio as a living system ═════════════════════ */
 .deck {
@@ -161,14 +208,23 @@ header [data-intel-nav] .site-nav { justify-content: flex-end; }
      first links aren't clipped off-screen */
   header [data-intel-nav] .site-nav { justify-content: flex-start; }
 }
+@media (max-width: 860px) {
+  header [data-intel-nav] { flex: 1 1 100%; order: 3; }
+  .deck-copy { left: 14px; top: 12px; max-width: 60%; }
+  .deck-title { font-size: 17px; }
+}
 @media (max-width: 480px) {
-  header { padding: 14px 0 12px; gap: 10px; }
-  .logo { font-size: 18px; }
-  .logo .logo-tail { display: none; }   /* Syne-800 is wide; the sub-line keeps the context */
-  .logo-sub { font-size: 8.5px; letter-spacing: 1.4px; }
-  .header-right { gap: 8px; }
-  .btn-sm, .fx-toggle { font-size: 10px; padding: 6px 10px; }
-  .deck { height: 320px; }
+  header { padding: 16px 0 12px; gap: 10px; }
+  .logo { font-size: 22px; }
+  .logo-sub { font-size: 8.5px; letter-spacing: .1em; }
+  .header-meta { gap: 6px; }
+  .meta-pill, .user-pill, .hbtn { font-size: 9px; padding: 5px 9px; }
+  #pillLive { display: none; }
+  .deck { height: 340px; }
+  .deck-copy { max-width: 70%; }
+  .deck-title { display: none; }
+  .hero-chip { margin-top: 6px; padding: 5px 8px; gap: 7px; }
+  .hero-chip .lab { display: none; }
   .deck-hint { display: none; }
   .deck-center { max-width: 230px; }
   .deck-stats { font-size: 10.5px; }
@@ -248,12 +304,17 @@ tbody tr:last-child td { border-bottom: none; }
 .badge-purple { background: #2d1f5e;          color: var(--purple); }
 .badge-dim    { background: var(--bg3);       color: var(--text-dim); }
 
-/* ── Sections (ported) ───────────────────────────────────────────────────── */
-.section { margin-bottom: 28px; }
-.section-head { display: flex; align-items: baseline; gap: 16px; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
-.section-title { font-family: var(--sans); font-weight: 600; font-size: 13px; letter-spacing: 2px; text-transform: uppercase; color: var(--text-bright); }
-.section-desc { font-size: 12px; color: var(--text-dim); }
-.section-count { font-family: var(--mono); font-size: 11px; color: var(--amber); margin-left: auto; }
+/* ── Sections (World chrome: display title + amber glyph + lede) ──────────── */
+.section { margin: 40px 0 0; }
+.section-head { display: flex; align-items: baseline; gap: 14px; margin-bottom: 14px; flex-wrap: wrap; }
+.section-title { font-family: var(--sans); font-weight: 700; font-size: 20px; letter-spacing: -0.01em; color: var(--text1); white-space: nowrap; }
+.section-title .g { color: var(--amber); font-family: var(--mono); font-weight: 400; margin-right: 8px; font-size: 15px; }
+.section-desc { flex: 1 1 360px; font-family: var(--mono); font-size: 11px; color: var(--text3); line-height: 1.6; }
+.section-count { font-family: var(--mono); font-size: 10px; color: var(--text3); letter-spacing: .06em; margin-left: auto; white-space: nowrap; }
+.risk-strip { margin-top: 22px; }
+a.kpi-link { text-decoration: none; color: inherit; display: block; }
+a.kpi-link:hover { border-color: rgba(245,166,35,.4); }
+a.kpi-link .kpi-value { color: var(--amber); }
 
 /* ── Intelligence cards (ported) ─────────────────────────────────────────── */
 .intel-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px,1fr)); gap: 12px; }
@@ -388,13 +449,120 @@ tbody tr:last-child td { border-bottom: none; }
 .sector-name { color: var(--text); flex: 1; }
 .sector-pct  { color: var(--text-dim); }
 
-/* ── Dividend calendar (ported) ──────────────────────────────────────────── */
-.div-list { display: flex; flex-direction: column; gap: 8px; }
-.div-row { display: flex; align-items: center; gap: 14px; background: var(--bg3); border: 1px solid var(--border); border-radius: 6px; padding: 12px 16px; }
-.div-date { font-family: var(--mono); font-size: 11px; color: var(--amber); min-width: 80px; }
-.div-ticker { font-family: var(--mono); font-size: 13px; font-weight: 600; color: var(--text-bright); min-width: 60px; }
-.div-title { font-size: 12px; color: var(--text-dim); flex: 1; }
-.div-yield { font-family: var(--mono); font-size: 11px; color: var(--green); text-align: right; }
+/* ═══ INCOME ═══════════════════════════════════════════════════════════════
+   Encoding: two hues × two textures — green = earned (solid paid, hatched
+   pending payment), amber = ahead (solid announced, hatched projected). The
+   status is always also written (chip / tooltip / legend), never colour-alone. */
+.inc-tiles { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
+.itile { position: relative; border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px 10px 16px;
+         background: rgba(11,15,23,.92); min-width: 0; overflow: hidden; }
+.itile::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 2px; background: var(--acc, var(--border2)); }
+.itile .tl { font-family: var(--mono); font-size: 9px; letter-spacing: .14em; text-transform: uppercase; color: var(--text3);
+             white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.itile .tv { font-family: var(--mono); font-size: 20px; font-weight: 600; color: var(--text1); margin: 5px 0 2px;
+             font-variant-numeric: tabular-nums; letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.itile .tv small { font-size: 11px; color: var(--text3); font-weight: 500; margin-left: 4px; }
+.itile .ts { font-family: var(--mono); font-size: 9.5px; color: var(--text3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.itile .ts b { color: var(--text2); font-weight: 500; }
+.itile svg { display: block; margin-top: 6px; }
+.inc-grid  { display: grid; grid-template-columns: minmax(0, 1.85fr) minmax(0, 1fr); gap: 14px; margin-bottom: 14px; }
+.inc-grid2 { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 14px; margin-bottom: 14px; }
+.inc-grid > .panel, .inc-grid2 > .panel { min-width: 0; margin-bottom: 0; }
+.ih3 { font-family: var(--mono); font-size: 9.5px; font-weight: 500; letter-spacing: .18em; text-transform: uppercase; color: var(--text3);
+       margin-bottom: 12px; display: flex; justify-content: space-between; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.ih3 .g { color: var(--amber); margin-right: 6px; }
+.ih3 small { font-size: 9px; letter-spacing: .06em; text-transform: none; color: var(--text4); font-weight: 400; }
+.ichart { position: relative; width: 100%; }
+.ichart svg { display: block; width: 100%; overflow: visible; font-family: var(--mono); }
+.ichart .itt { position: absolute; z-index: 20; pointer-events: none; display: none; background: rgba(9,13,21,.97);
+               border: 1px solid var(--border2); border-radius: 6px; padding: 9px 11px; font-family: var(--mono); font-size: 10.5px;
+               white-space: nowrap; box-shadow: 0 10px 30px rgba(0,0,0,.5); min-width: 190px; }
+.itt .td { color: var(--text2); font-size: 10px; letter-spacing: .06em; margin-bottom: 5px; }
+.itt .tr { display: flex; align-items: center; gap: 8px; line-height: 1.75; justify-content: space-between; }
+.itt .tr span { color: var(--text3); display: inline-flex; align-items: center; gap: 7px; }
+.itt .tr b { color: var(--text1); font-weight: 600; font-variant-numeric: tabular-nums; }
+.itt .sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; }
+.itt .sep { border-top: 1px solid var(--border); margin: 5px 0 4px; }
+.itt .mut { color: var(--text4); font-size: 9.5px; }
+.legend-row { display: flex; gap: 14px; flex-wrap: wrap; font-family: var(--mono); font-size: 9.5px; color: var(--text3); margin: -4px 0 8px; }
+.legend-row span { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.legend-row .sw { display: inline-block; width: 12px; height: 10px; border-radius: 2px; }
+.sw-paid { background: #43e097; }
+.sw-pending { background: repeating-linear-gradient(135deg, rgba(67,224,151,.85) 0 2px, transparent 2px 5px); box-shadow: inset 0 0 0 1px rgba(67,224,151,.8); }
+.sw-announced { background: #cb7f00; }
+.sw-projected { background: repeating-linear-gradient(135deg, rgba(245,166,35,.6) 0 2px, transparent 2px 5px); box-shadow: inset 0 0 0 1px rgba(245,166,35,.55); }
+/* status chips */
+.st { font-family: var(--mono); font-size: 8.5px; letter-spacing: .12em; text-transform: uppercase; padding: 2px 6px; border-radius: 3px; white-space: nowrap; display: inline-block; }
+.st-paid { color: var(--green); background: var(--green-dim); }
+.st-pending { color: var(--green); box-shadow: inset 0 0 0 1px rgba(67,224,151,.45); }
+.st-announced { color: var(--amber); background: var(--amber-dim); }
+.st-projected { color: var(--text3); box-shadow: inset 0 0 0 1px var(--border2); }
+.bas { font-family: var(--mono); font-size: 8px; letter-spacing: .1em; text-transform: uppercase; color: var(--text4); border-bottom: 1px dotted var(--text4); cursor: help; }
+.conf { color: var(--green); font-size: 10px; cursor: help; } .conf.one { color: var(--text4); }
+/* next up */
+.nx-row { display: grid; grid-template-columns: 50px minmax(0, 1fr) auto; gap: 11px; align-items: center; padding: 8px 2px; border-bottom: 1px solid var(--border); }
+.nx-row:last-child { border-bottom: 0; }
+.nx-date { text-align: center; border: 1px solid var(--border2); border-radius: 6px; padding: 5px 0 4px; font-family: var(--mono); }
+.nx-date .d { font-size: 17px; font-weight: 600; color: var(--text1); line-height: 1; font-variant-numeric: tabular-nums; }
+.nx-date .m { font-size: 8.5px; letter-spacing: .16em; color: var(--text3); text-transform: uppercase; margin-top: 2px; }
+.nx-row.cash .nx-date { border-color: rgba(67,224,151,.45); } .nx-row.cash .nx-date .d { color: var(--green); }
+.nx-row.ex .nx-date { border-color: rgba(245,166,35,.45); }
+.nx-main { min-width: 0; font-family: var(--mono); }
+.nx-main .t { color: var(--text1); font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nx-main .t b { font-weight: 600; letter-spacing: .04em; }
+.nx-main .s { color: var(--text3); font-size: 9.5px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nx-amt { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.nx-amt b { color: var(--green); font-size: 13px; font-weight: 600; } .nx-amt.fut b { color: var(--amber); }
+.nx-amt small { display: block; color: var(--text4); font-size: 9px; margin-top: 2px; }
+/* profile table */
+table.itab { width: 100%; border-collapse: collapse; min-width: 640px; }
+.itab th { font-family: var(--mono); font-size: 8.5px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; color: var(--text3);
+           text-align: right; padding: 7px 7px; border-bottom: 1px solid var(--border2); white-space: nowrap; cursor: pointer; user-select: none; }
+.itab th:first-child, .itab td:first-child { text-align: left; }
+.itab th.on { color: var(--amber); }
+.itab td { font-family: var(--mono); font-size: 11px; padding: 6px 7px; border-bottom: 1px solid var(--border); text-align: right;
+           font-variant-numeric: tabular-nums; white-space: nowrap; }
+.itab tbody tr:hover { background: var(--bg3); cursor: default; }
+.itab td .sub { display: block; color: var(--text4); font-size: 9px; margin-top: 1px; }
+.itab tr.closed td { color: var(--text3); }
+.ybar { display: inline-block; width: 44px; height: 5px; border-radius: 3px; background: var(--bg3); position: relative; vertical-align: middle; margin-left: 6px; overflow: hidden; }
+.ybar i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 3px; background: var(--amber); }
+/* ledger */
+.lg-row { display: grid; grid-template-columns: 72px 58px minmax(0, 1fr) 96px; gap: 10px; padding: 6px 2px; border-bottom: 1px solid var(--border);
+          font-family: var(--mono); font-size: 10.5px; align-items: baseline; }
+.lg-row .d { color: var(--text3); font-size: 10px; }
+.lg-row .k { color: var(--text1); font-weight: 600; letter-spacing: .04em; }
+.lg-row .m { color: var(--text3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lg-row .a { text-align: right; color: var(--green); font-variant-numeric: tabular-nums; }
+.lg-row.pending .a { color: var(--text2); }
+.lg-yr { font-family: var(--mono); font-size: 9px; letter-spacing: .2em; color: var(--amber); padding: 10px 2px 4px; display: flex; justify-content: space-between; }
+.lg-yr b { color: var(--text2); font-weight: 500; letter-spacing: .04em; }
+.lg-more { margin-top: 8px; font-family: var(--mono); font-size: 9.5px; letter-spacing: .12em; text-transform: uppercase; background: none;
+           border: 1px solid var(--border2); color: var(--text3); border-radius: 4px; padding: 5px 10px; cursor: pointer; }
+.lg-more:hover { color: var(--ice); border-color: rgba(79,195,247,.45); }
+.lg-scroll { max-height: 440px; overflow-y: auto; }
+/* market calendar */
+.mk-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 8px; }
+.mk-card { border: 1px solid var(--border); border-radius: 7px; padding: 9px 11px 8px; background: rgba(17,22,31,.55); font-family: var(--mono); min-width: 0; }
+.mk-card.held { border-color: rgba(245,166,35,.45); background: rgba(245,166,35,.05); }
+.mk-h { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.mk-tk { color: var(--text1); font-size: 12px; font-weight: 600; letter-spacing: .04em; }
+.mk-tk .hold { color: var(--amber); margin-right: 5px; }
+.mk-y { font-size: 11px; color: var(--amber); font-variant-numeric: tabular-nums; }
+.mk-nm { font-size: 9.5px; color: var(--text3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 1px 0 5px; }
+.mk-d { display: flex; justify-content: space-between; gap: 6px; font-size: 9.5px; color: var(--text3); font-variant-numeric: tabular-nums; }
+.mk-d b { color: var(--text2); font-weight: 500; }
+.mk-amt { font-size: 10.5px; color: var(--text2); margin-bottom: 4px; font-variant-numeric: tabular-nums; }
+@media (max-width: 1180px) {
+  .inc-tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .inc-grid, .inc-grid2 { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 600px) {
+  .inc-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .itile .tv { font-size: 17px; }
+  .lg-row { grid-template-columns: 64px 52px minmax(0, 1fr) 80px; gap: 6px; }
+  .section-title { font-size: 17px; }
+}
 
 /* ── Transaction log (ported) ────────────────────────────────────────────── */
 .txn-row { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 12px; }
@@ -506,6 +674,7 @@ tbody tr:last-child td { border-bottom: none; }
 
 @media (max-width: 600px) {
   .page { padding: 0 14px 48px; }
+  .rail { margin: 0 -14px 12px; padding: 0 14px; }
   header { padding-top: 18px; }
   .deck-value { font-size: 24px; }
   #deckRibbon { width: 160px; }
@@ -543,26 +712,6 @@ input[type=range].wi-slider::-moz-range-thumb {
 .wi-reset { font-family: var(--mono); font-size: 9px; letter-spacing: 1px; padding: 4px 10px; border-radius: 4px; cursor: pointer; background: transparent; color: var(--text-dim); border: 1px solid var(--border); }
 .wi-reset:hover { color: var(--ice); border-color: var(--ice-dim); }
 .wi-note { font-family: var(--mono); font-size: 9px; color: var(--text-dim); margin-top: 10px; letter-spacing: .04em; }
-
-/* ═══ INCOME CALENDAR ══════════════════════════════════════════════════════ */
-.inc-scroll { overflow-x: auto; padding-bottom: 6px; }
-.inc-track { display: flex; gap: 8px; align-items: stretch; min-width: min-content; }
-.inc-month { flex: 1; min-width: 86px; display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: 6px; background: var(--bg2); overflow: hidden; }
-.inc-month.now { border-color: var(--amber); }
-.inc-barzone { position: relative; height: 64px; display: flex; align-items: flex-end; justify-content: center; gap: 3px; padding: 4px 6px 0; }
-.inc-bar { width: 16px; border-radius: 2px 2px 0 0; background: var(--green); opacity: .85; }
-.inc-bar.future { background: transparent; border: 1px dashed var(--amber); opacity: .9; }
-.inc-body { padding: 6px 8px 8px; font-family: var(--mono); }
-.inc-mlabel { font-size: 8.5px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--text-dim); margin-bottom: 4px; }
-.inc-mtotal { font-size: 11.5px; font-weight: 600; color: var(--text-bright); font-variant-numeric: tabular-nums; }
-.inc-mtotal.future { color: var(--amber); }
-.inc-items { margin-top: 5px; display: flex; flex-direction: column; gap: 2px; }
-.inc-item { font-size: 9px; color: var(--text-dim); white-space: nowrap; font-variant-numeric: tabular-nums; }
-.inc-item b { color: var(--text); font-weight: 500; }
-.inc-item.future { color: var(--amber); opacity: .85; }
-.inc-cum { margin-top: auto; padding: 5px 8px; border-top: 1px solid var(--border); font-family: var(--mono); font-size: 8.5px; color: var(--text-dim); font-variant-numeric: tabular-nums; }
-.inc-cum b { color: var(--green); font-weight: 600; }
-.inc-cum.future b { color: var(--amber); }
 
 /* ═══ TRANSACTION JOURNAL ══════════════════════════════════════════════════ */
 .txn-controls { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
@@ -619,22 +768,39 @@ input[type=range].wi-slider::-moz-range-thumb {
 <div class="page">
 
   <header>
-    <div>
-      <div class="logo">SLENS<span>VIK</span><span class="logo-tail"> / MISSION CONTROL</span></div>
-      <div class="logo-sub">The portfolio as a living system</div>
+    <div class="logo-block">
+      <div class="logo">Slensvik<span>portfolio</span></div>
+      <div class="logo-sub">Mission control · the book as a living system</div>
     </div>
     <div data-intel-nav></div>
-    <div class="header-right">
+    <div class="header-meta">
+      <div class="meta-pill" id="pillLive"><span class="led"></span><span id="pillLiveT">Connecting …</span></div>
+      <a class="meta-pill" id="pillIncome" href="#income" title="Dividend income — forward 12 months">◇ <span id="pillIncomeT">income —</span></a>
       <span class="user-pill" id="userPill">—</span>
-      <button class="btn-sm btn-add" onclick="openAddModal()">+ ADD POSITION</button>
-      <button class="fx-toggle" id="fxToggle" onclick="toggleDeckFx()">◉ DECK</button>
-      <button class="btn-sm btn-out" onclick="logout()">LOGOUT</button>
+      <button class="hbtn hbtn-add" onclick="openAddModal()">+ Add trade</button>
+      <button class="hbtn" id="fxToggle" onclick="toggleDeckFx()" title="Deck animation on/off">◉ Deck</button>
+      <button class="hbtn hbtn-out" onclick="logout()">Logout</button>
     </div>
   </header>
+
+  <nav class="rail" id="rail" aria-label="Sections">
+    <a href="#deckSection">Deck</a><a href="#tapeSection">Equity</a><a href="#deskSection">Desk</a>
+    <a href="#income">Income</a><a href="#sectorSection">Sectors</a><a href="#allocSection">Allocation</a>
+    <a href="#riskLabSection">Risk lab</a><a href="#riskSection">Drift</a><a href="#intelligenceSection">Intel</a>
+    <a href="#closedTradesSection">Trades</a><a href="#journalSection">Journal</a>
+    <span class="rail-asof" id="railAsof"></span>
+  </nav>
+
+  <div class="hstrip" id="hStrip" aria-label="Holdings ticker"><div class="hstrip-track" id="hStripTrack"></div></div>
 
   <!-- ═══ COMMAND DECK ═══ -->
   <section class="deck" id="deckSection" aria-label="Command deck — holdings orbit map">
     <canvas id="deckCanvas"></canvas>
+    <div class="deck-copy">
+      <div class="hero-kicker">◉ Mission control</div>
+      <div class="deck-title" id="deckTitle">Your book, live.</div>
+      <a class="hero-chip" href="#income" id="deckIncome"><span class="lab">Next dividend</span><span class="val" id="deckIncomeVal">—</span></a>
+    </div>
     <div class="deck-center">
       <div class="deck-label">Portfolio Value</div>
       <div class="deck-value" id="deckValue">—</div>
@@ -671,11 +837,11 @@ input[type=range].wi-slider::-moz-range-thumb {
     <div class="kpi" id="kpiPlCard"><div class="kpi-label">Unrealised P&L</div><div class="kpi-value" id="kpiPL">—</div><div class="kpi-sub" id="kpiPLSub"></div></div>
     <div class="kpi" id="kpiRealizedCard"><div class="kpi-label">Realised P&L</div><div class="kpi-value" id="kpiRealized">—</div><div class="kpi-sub" id="kpiRealizedSub">all-time, closed trades</div></div>
     <div class="kpi"><div class="kpi-label">Positions</div><div class="kpi-value" id="kpiCount">—</div><div class="kpi-sub" id="kpiCountSub"></div></div>
-    <div class="kpi"><div class="kpi-label">Yield on Cost</div><div class="kpi-value" id="kpiYoc">—</div><div class="kpi-sub" id="kpiYocSub">based on ex-dates</div></div>
+    <a class="kpi kpi-link" href="#income"><div class="kpi-label">Dividends · fwd 12m</div><div class="kpi-value" id="kpiYoc">—</div><div class="kpi-sub" id="kpiYocSub">—</div></a>
   </div>
 
   <!-- ═══ EQUITY TAPE ═══ -->
-  <div class="panel" style="margin-bottom:20px">
+  <div class="panel" style="margin-bottom:20px" id="tapeSection">
     <div class="chart-controls">
       <div>
         <div class="panel-title" style="margin-bottom:6px"><span class="glyph">▤</span>Equity Tape <span class="panel-meta" id="pcMeta"></span></div>
@@ -714,7 +880,7 @@ input[type=range].wi-slider::-moz-range-thumb {
   <!-- Live intraday P&L (ported) -->
   <div class="section" id="intradaySection" style="display:none">
     <div class="section-head">
-      <div class="section-title">▦ Live Intraday P&amp;L</div>
+      <div class="section-title"><span class="g">▦</span>Live Intraday P&amp;L</div>
       <div class="section-desc">Today's mark-to-market move and per-holding contribution — iMac 15-min feed</div>
       <div class="section-count" id="intradayAsOf">—</div>
     </div>
@@ -733,7 +899,7 @@ input[type=range].wi-slider::-moz-range-thumb {
   <!-- ═══ ACTION DESK ═══ -->
   <div class="section" id="deskSection">
     <div class="section-head">
-      <div class="section-title">⚑ Action Desk</div>
+      <div class="section-title"><span class="g">⚑</span>Action Desk</div>
       <div class="section-desc">Holdings ranked by what needs your attention right now</div>
       <div class="desk-tabs" style="margin-left:auto">
         <span style="font-family:var(--mono);font-size:8.5px;letter-spacing:.14em;color:var(--text4)">SORT</span>
@@ -769,10 +935,51 @@ input[type=range].wi-slider::-moz-range-thumb {
   <!-- Risk metrics strip (ported) -->
   <div class="risk-strip" id="riskStrip"></div>
 
+  <!-- ═══ INCOME — dividends from api.dividends (reconciled NewsWeb filings + Yahoo) ═══ -->
+  <div class="section" id="income">
+    <div class="section-head">
+      <div class="section-title"><span class="g">◇</span>Income</div>
+      <div class="section-desc">Every dividend your book has earned or will earn — per-share amounts reconciled from Oslo Børs
+        filings (key information, ex-date notices, NOK conversions) and Yahoo, times the shares you held going into each ex-date.
+        Positions you have since sold keep what they paid you.</div>
+      <div class="section-count" id="incCount">—</div>
+    </div>
+    <div class="inc-tiles" id="incTiles"></div>
+    <div class="inc-grid">
+      <div class="panel" id="incBarsPanel">
+        <div class="ih3"><span><span class="g">▥</span>Cash calendar · by payment month</span><small id="incBarsNote"></small></div>
+        <div class="legend-row" id="incLegend"></div>
+        <div class="ichart" id="incBars" style="height:250px"></div>
+      </div>
+      <div class="panel">
+        <div class="ih3"><span><span class="g">◷</span>Next up</span><small id="incNextNote"></small></div>
+        <div id="incNext"><div class="empty-state">Loading …</div></div>
+      </div>
+    </div>
+    <div class="panel" style="margin-bottom:14px">
+      <div class="ih3"><span><span class="g">⟶</span>Payment runway · buy-by → ex-date → cash</span><small id="incRunNote"></small></div>
+      <div class="ichart" id="incRunway"><div class="empty-state">Loading …</div></div>
+    </div>
+    <div class="inc-grid2">
+      <div class="panel">
+        <div class="ih3"><span><span class="g">◈</span>Dividend profile · per holding</span><small>trailing 12 months · NOK per share</small></div>
+        <div class="table-wrap"><table class="itab" id="incProfile"><tbody><tr><td class="empty-state">Loading …</td></tr></tbody></table></div>
+      </div>
+      <div class="panel">
+        <div class="ih3"><span><span class="g">◆</span>Ledger · what each dividend paid you</span><small id="incLedgerNote"></small></div>
+        <div id="incLedger"><div class="empty-state">Loading …</div></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="ih3"><span><span class="g">⊞</span>Oslo Børs ex-dates · next 45 days</span><small>whole market · ● = you hold it · buy by the cum-date to qualify</small></div>
+      <div id="incMarket"><div class="empty-state">Loading …</div></div>
+    </div>
+  </div>
+
   <!-- Sector concentration ring (ported) -->
   <div class="section" id="sectorSection">
     <div class="section-head">
-      <div class="section-title">⬢ Sector Concentration</div>
+      <div class="section-title"><span class="g">⬢</span>Sector Concentration</div>
       <div class="section-desc">Portfolio weight by sector — quick risk-awareness view</div>
       <div class="section-count" id="sectorCount">—</div>
     </div>
@@ -787,7 +994,7 @@ input[type=range].wi-slider::-moz-range-thumb {
   <!-- Allocation map + contribution attribution (ported) -->
   <div class="section" id="allocSection">
     <div class="section-head">
-      <div class="section-title">⬗ Allocation &amp; Attribution</div>
+      <div class="section-title"><span class="g">⬗</span>Allocation &amp; Attribution</div>
       <div class="section-desc">Position sizing by value, and who drove the period's P&amp;L</div>
       <div class="section-count" id="allocPeriodLabel">—</div>
     </div>
@@ -806,7 +1013,7 @@ input[type=range].wi-slider::-moz-range-thumb {
   <!-- ═══ RISK LAB — correlation web + what-if bench ═══ -->
   <div class="section" id="riskLabSection">
     <div class="section-head">
-      <div class="section-title">◉ Risk Lab</div>
+      <div class="section-title"><span class="g">◉</span>Risk Lab</div>
       <div class="section-desc">How your names move together — and what the book looks like if you resize them</div>
       <div class="desk-tabs" style="margin-left:auto">
         <button class="desk-tab on-ice" id="corrV_graph" onclick="setCorrView('graph')">WEB</button>
@@ -841,7 +1048,7 @@ input[type=range].wi-slider::-moz-range-thumb {
   <!-- Rebalancing & seasonality (ported) -->
   <div class="section" id="riskSection">
     <div class="section-head">
-      <div class="section-title">◷ Rebalancing &amp; Seasonality</div>
+      <div class="section-title"><span class="g">◷</span>Rebalancing &amp; Seasonality</div>
       <div class="section-desc">How far weights have drifted from target, and the monthly return record</div>
     </div>
     <div class="alloc-grid">
@@ -859,24 +1066,11 @@ input[type=range].wi-slider::-moz-range-thumb {
   <!-- Market intelligence (ported) -->
   <div class="section" id="intelligenceSection">
     <div class="section-head">
-      <div class="section-title">╳ Market Intelligence</div>
+      <div class="section-title"><span class="g">╳</span>Market Intelligence</div>
       <div class="section-desc">Dark flow, signals and catalyst alerts for your holdings</div>
       <div class="section-count" id="intelCount">—</div>
     </div>
     <div class="intel-grid" id="intelGrid"><div class="loader">Loading …</div></div>
-  </div>
-
-  <!-- Dividend & income calendar -->
-  <div class="section" id="dividendSection">
-    <div class="section-head">
-      <div class="section-title">◇ Income Calendar</div>
-      <div class="section-desc">Dividend income on a timeline — paid (solid) and upcoming ex-dates (dashed), with running total</div>
-      <div class="section-count" id="divCount">—</div>
-    </div>
-    <div class="panel" style="margin-bottom:14px" id="incomePanel">
-      <div id="incomeTimeline"><div class="empty-state">Loading …</div></div>
-    </div>
-    <div class="div-list" id="divList"><div class="loader">Loading …</div></div>
   </div>
 
   <!-- Closed trades — realized P&L per exit, linked back to the radar signal
@@ -885,7 +1079,7 @@ input[type=range].wi-slider::-moz-range-thumb {
        partially closes and stops showing up as a holding. -->
   <div class="section" id="closedTradesSection">
     <div class="section-head">
-      <div class="section-title">◆ Closed Trades</div>
+      <div class="section-title"><span class="g">◆</span>Closed Trades</div>
       <div class="section-desc">Realized P&L per exit — what a closed position actually earned</div>
       <div class="section-count" id="closedTradesCount">—</div>
     </div>
@@ -906,7 +1100,7 @@ input[type=range].wi-slider::-moz-range-thumb {
   <!-- Transaction journal -->
   <div class="section" id="journalSection">
     <div class="section-head">
-      <div class="section-title">▣ Transaction Journal</div>
+      <div class="section-title"><span class="g">▣</span>Transaction Journal</div>
       <div class="section-desc">Every trade with its context and how it has aged</div>
       <div class="section-count" id="txnCount">—</div>
     </div>
@@ -1118,6 +1312,7 @@ async function loadInstruments() {
 // ── Init ──────────────────────────────────────────────────────────────────
 function init() {
   initDecks();
+  scrollSpy();
   loadInstruments();
   const saved = localStorage.getItem('pfUser');
   if (saved) { currentUser = saved; showDashboard(); }
@@ -1189,13 +1384,13 @@ function showDashboard() {
    load per user and paint the whole dashboard from it instantly; loadData's
    network refresh then re-renders over it. Derived state (positions,
    dividend income, daily-series memo) is recomputed, never cached. */
-const BOOT_CACHE_V = 1, BOOT_CACHE_TTL = 7 * 864e5;
+const BOOT_CACHE_V = 2, BOOT_CACHE_TTL = 7 * 864e5;   // v2: + divRows/divMarket
 
 function saveBootCache() {
   try {
     const payload = JSON.stringify({
       v: BOOT_CACHE_V, ts: Date.now(),
-      allTransactions, marketData, priceHistory, marketIndex,
+      allTransactions, marketData, priceHistory, marketIndex, divRows, divMarket,
     });
     if (payload.length > 2.5e6) return;   // stay well clear of the 5MB quota
     localStorage.setItem('pfBoot:' + currentUser, payload);
@@ -1213,10 +1408,12 @@ function hydrateFromBootCache() {
     marketData      = c.marketData   || {};
     priceHistory    = c.priceHistory || {};
     marketIndex     = c.marketIndex  || [];
+    divRows         = c.divRows      || [];
+    divMarket       = c.divMarket    || [];
     _pdsCache.clear();
     computePositions();
     if (!positions.size) return false;
-    applyDividendIncome();
+    computeDividendLedger();
     document.getElementById('txnCount').textContent =
       `${allTransactions.length} transactions · syncing…`;
     renderTransactionLog();
@@ -1227,7 +1424,8 @@ function hydrateFromBootCache() {
     renderHoldingsView();
     renderTape();
     renderIntelligence();
-    renderDividends();
+    renderHeaderPills();
+    renderHoldingStrip();
     lazyRender('risk',     'riskStrip',      renderRiskMetrics);
     lazyRender('sector',   'sectorSection',  renderSectorRing);
     lazyRender('treemap',  'treemap',        renderTreemap);
@@ -1235,7 +1433,7 @@ function hydrateFromBootCache() {
     lazyRender('risklab',  'riskLabSection', renderRiskLab);
     lazyRender('drift',    'rebalDrift',     renderRebalDrift);
     lazyRender('monthly',  'monthlyHeatmap', renderMonthly);
-    lazyRender('income',   'incomePanel',    renderIncomeCalendar);
+    lazyRender('income',   'income',         renderIncome);
     return true;
   } catch(e) { return false; }
 }
@@ -1253,7 +1451,14 @@ async function loadData() {
     intradayData = {}; // reset so 5D re-fetches after position changes
 
     const isins = [...positions.keys()];
+    // dividends are fetched for every isin ever held (a sold position keeps what it paid)
+    const divP = Promise.all([fetchDividends(), fetchDividendMarket()])
+      .catch(e => console.warn('dividends load failed', e));
     if (isins.length === 0) {
+      await divP;
+      computeDividendLedger();
+      renderIncome();
+      renderHeaderPills();
       renderEmptyHoldings();
       renderViewToggles();
       renderDeck();
@@ -1271,6 +1476,8 @@ async function loadData() {
 
     fetchNews();   // independent of market data — runs in parallel with it
     await fetchMarketData(isins);
+    await divP;
+    computeDividendLedger();       // needs prices (projection cap, yields) — and feeds the KPI strip + deck chip
     await fetchDeckTicks(isins);   // today's ticks for the deck ribbon
     renderViewToggles();
     renderKPIs();
@@ -1282,7 +1489,8 @@ async function loadData() {
     }
     renderTape();
     renderIntelligence();
-    renderDividends();          // eager — also feeds the above-fold YoC KPI
+    renderHeaderPills();
+    renderHoldingStrip();
     renderTransactionLog();     // re-render now that prices exist (P&L-since-trade)
     // Below-the-fold panels render on first scroll-into-view:
     lazyRender('risk',     'riskStrip',      renderRiskMetrics);
@@ -1292,7 +1500,7 @@ async function loadData() {
     lazyRender('risklab',  'riskLabSection', renderRiskLab);
     lazyRender('drift',    'rebalDrift',     renderRebalDrift);
     lazyRender('monthly',  'monthlyHeatmap', renderMonthly);
-    lazyRender('income',   'incomePanel',    renderIncomeCalendar);
+    lazyRender('income',   'income',         renderIncome);
     saveBootCache();
     startLiveRefresh();
     startNewsRefresh();
@@ -1442,20 +1650,17 @@ async function fetchMarketData(isins) {
   const today    = new Date().toISOString().slice(0,10);
   const since90  = new Date(Date.now() - 90 *864e5).toISOString().slice(0,10);
   const sincePx  = new Date(Date.now() - HIST_DAYS*864e5).toISOString().slice(0,10); // deep price history for 1Y/ALL
-  const since3y  = new Date(Date.now() - 1095*864e5).toISOString().slice(0,10);  // past ex-dates for div basis
 
-  const [darkRows, signals, catalysts, upcoming, pastDivs, whales, instruments, conviction, idxRows, livePrices, tickerIntel, analystCons, finRows] = await Promise.all([
+  const [darkRows, signals, catalysts, upcoming, whales, instruments, conviction, idxRows, livePrices, tickerIntel, analystCons, finRows] = await Promise.all([
     GET_ALL('dark_flow_summary',
       `isin=in.(${isinStr})&trade_date=gte.${sincePx}&select=isin,trade_date,modal_price,dark_pct,dark_side_bias,dark_evidence,bias_confirmed,mid_trades,dark_trades_classified,dark_impact_bps&order=isin.asc,trade_date.asc`),
     GET('smart_signals',
       `isin=in.(${isinStr})&trade_date=gte.${since90}&order=trade_date.desc&limit=200`),
     GET('signal_event_proximity',
       `isin=in.(${isinStr})&event_type=in.(RESULTS,EARNINGS_CALL,WARNING)&event_date=gte.${today}&days_to_event=gte.0&order=days_to_event.asc&limit=60`).catch(()=>[]),
+    // ex-dates come from api.dividends (see syncDividendEvents) — the reconciled record, not NewsWeb titles
     GET('corporate_events',
-      `isin=in.(${isinStr})&event_date=gte.${today}&event_type=in.(EX_DATE,RESULTS,EARNINGS_CALL,WARNING,AGM)&order=event_date.asc&limit=80`).catch(()=>[]),
-    // PAST ex-dates — used for dividend-adjusted cost basis (persists forever)
-    GET('corporate_events',
-      `isin=in.(${isinStr})&event_type=eq.EX_DATE&event_date=gte.${since3y}&event_date=lt.${today}&order=event_date.asc&limit=400`).catch(()=>[]),
+      `isin=in.(${isinStr})&event_date=gte.${today}&event_type=in.(RESULTS,EARNINGS_CALL,WARNING,AGM)&order=event_date.asc&limit=80`).catch(()=>[]),
     GET('whale_alerts',
       `isin=in.(${isinStr})&trade_date=gte.${since90}&order=trade_date.desc&limit=80`).catch(()=>[]),
     GET('instruments', `isin=in.(${isinStr})`).catch(()=>[]),
@@ -1500,7 +1705,6 @@ async function fetchMarketData(isins) {
   for (const s of signals)   marketData[s.isin]?.signals.push(s);
   for (const c of catalysts) marketData[c.isin]?.catalysts.push(c);
   for (const e of upcoming)  marketData[e.isin]?.events.push(e);
-  for (const e of pastDivs)  marketData[e.isin]?.pastDivs.push(e);
   for (const w of whales)    marketData[w.isin]?.whales.push(w);
   for (const c of conviction) marketData[c.isin] && (marketData[c.isin].conviction = c);
   for (const t of (tickerIntel || [])) marketData[t.isin] && (marketData[t.isin].intel = t);
@@ -1509,25 +1713,51 @@ async function fetchMarketData(isins) {
 
   // ── Best-available price: prefer today's live tick over the daily modal ──
   applyLatestPrices(livePrices);
-
-  // ── Track dividend income (Model A: cost basis untouched) ──────────────
-  applyDividendIncome();
 }
 
-/* ─── Persistent dividend-adjusted cost basis ──────────────────────────────
-   For every past EX_DATE on a held ISIN, parse the NOK amount from the title
-   and subtract (dividend × shares held at that time) from totalCost.
+/* ═══ DIVIDENDS — data layer ═══════════════════════════════════════════════
+   Source: api.dividends, the reconciled record built by ENEXT's worldintel
+   "dividends" source (NewsWeb key-information filings + same-day ex notices +
+   NOK conversion notices, cross-checked against Yahoo). One row per
+   (isin, ex_date): declared amount + currency, NOK per share and how it was
+   obtained (declared | announced | yahoo | fx_est), record/payment dates
+   (pay_date_est when the issuer gave none) and which sources agreed.
 
-   This is computed deterministically from the events archive so it persists
-   across page reloads forever — no extra DB writes needed. Shares-on-ex-date
-   is reconstructed by walking transactions up to the ex-date.
-*/
-function parseDivAmount(title) {
-  if (!title) return null;
-  const m = title.match(/NOK\s+([\d.,]+)/i) || title.match(/([\d.,]+)\s+NOK/i);
-  if (!m) return null;
-  const v = parseFloat(m[1].replace(/\s/g,'').replace(',', '.'));
-  return isFinite(v) && v > 0 && v < 10000 ? v : null;
+   Income = NOK/share × shares held going into the ex-date, replayed over the
+   WHOLE transaction history — a position sold since still keeps what it
+   paid. Cost basis is untouched (Model A: dividends are a separate income
+   stream, as in Norwegian tax accounting and bank trackers).
+   Replaces the old path that regex'd amounts out of NewsWeb *titles* in
+   api.corporate_events (feed from 2026-04, categories 1101/1104 only, often
+   no amount) — it caught almost nothing. */
+let divRows = [];     // api.dividends for every isin ever transacted, ascending ex_date
+let divMarket = [];   // api.dividend_calendar — whole market, next 45 days
+let divLedger = [];   // one entry per dividend × holding that qualified (+ projections)
+let divStats = null;  // headline totals, see computeDividendLedger
+const DIV_COLS = 'isin,ex_date,last_cum_date,record_date,pay_date,pay_date_est,amount,currency,amount_nok,amount_nok_basis,kind,status,sources,confirmed,note';
+const DIV_BASIS_TIP = {
+  declared: 'NOK amount declared in the Oslo Børs filing',
+  announced: 'NOK amount announced by the issuer after conversion (e.g. Equinor’s NOK notice)',
+  yahoo: 'NOK amount from Yahoo (converted from the declared currency)',
+  fx_est: 'estimated: declared amount × today’s FX — the issuer has not announced the NOK amount yet',
+  projected: 'projection: last year’s dividend repeated — nothing announced yet',
+};
+const isoDay = d => d.toISOString().slice(0, 10);
+const todayIso = () => isoDay(new Date());
+
+async function fetchDividends() {
+  const isins = [...new Set(allTransactions.map(t => t.isin))];
+  if (!isins.length) { divRows = []; return; }
+  const first = allTransactions.reduce((m, t) => (t.transaction_time || '9999') < m ? t.transaction_time : m, '9999').slice(0, 10);
+  const back2y = addDays(todayIso(), -760);           // the profile needs two years for growth / frequency
+  const since = first < back2y ? first : back2y;
+  divRows = await GET_ALL('dividends', `isin=in.(${isins.join(',')})&ex_date=gte.${since}&order=ex_date.asc&select=${DIV_COLS}`);
+}
+
+async function fetchDividendMarket() {
+  const t = todayIso();
+  divMarket = await GET('dividend_calendar',
+    `ex_date=gte.${t}&ex_date=lte.${addDays(t, 45)}&order=ex_date.asc&limit=300`).catch(() => divMarket || []);
 }
 
 function sharesHeldAt(isin, asOfDate) {
@@ -1542,45 +1772,110 @@ function sharesHeldAt(isin, asOfDate) {
   return qty;
 }
 
-/* ─── Dividend income tracking (Model A: cost basis untouched) ──────────────
-   Dividends are recorded as a separate income stream per position. Cost basis
-   stays at what was actually paid for the shares — matches Norwegian tax
-   accounting and what your bank's tracker shows.
-*/
-// Oslo Børs sometimes publishes the same ex-date twice (Norwegian + English).
-// Dedupe by (event_date, parsed NOK/share) — true duplicates produce the
-// same amount; a legitimately revised dividend changes the amount and stays.
-function dedupeExDates(events) {
-  const out = [];
-  const seen = new Set();
-  for (const e of events) {
-    if (e.event_type && e.event_type !== 'EX_DATE') { out.push(e); continue; }
-    const div = parseDivAmount(e.title);
-    const key = e.event_date + '|' + (div != null ? div.toFixed(4) : 'na');
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push(e);
-  }
-  return out;
+// paid (cash in) · pending (went ex, cash not yet in) · announced (ex-date ahead)
+function divState(d, today) {
+  if (d.ex_date > today) return 'announced';
+  if (d.pay_date && d.pay_date > today) return 'pending';
+  return 'paid';
 }
 
-function applyDividendIncome() {
+function computeDividendLedger() {
+  const today = todayIso();
+  const yearStart = today.slice(0, 4) + '-01-01';
+  const yearAgo = addDays(today, -365), yearAhead = addDays(today, 365);
+  divLedger = [];
+  const byIsin = new Map();
+  for (const d of divRows) {
+    if (!byIsin.has(d.isin)) byIsin.set(d.isin, []);
+    byIsin.get(d.isin).push(d);
+    if (d.amount_nok == null) continue;                  // e.g. an in-kind distribution without a value
+    const st = divState(d, today);
+    const shares = st === 'announced' ? (positions.get(d.isin)?.netQty || 0) : sharesHeldAt(d.isin, d.ex_date);
+    if (!(shares > 1e-6)) continue;
+    const per = +d.amount_nok;
+    divLedger.push({ ...d, st, shares, per, total: per * shares, basis: d.amount_nok_basis });
+  }
+  // Projections: each open holding's dividends of the last 12 months recur a year later unless the issuer has
+  // already announced one near that date. Payouts above 20 % of today's price (liquidation-style returns of
+  // capital) and in-kind distributions are not extrapolated.
   for (const [isin, p] of positions) {
-    p.divIncome      = 0;
-    p.divIncomeYTD   = 0;
-    p.divHistory     = [];
-    const yearStart  = new Date().getFullYear() + '-01-01';
-    const past = dedupeExDates(marketData[isin]?.pastDivs || []);
-    for (const e of past) {
-      const div = parseDivAmount(e.title);
-      if (!div) continue;
-      const sharesOnExDate = sharesHeldAt(isin, e.event_date);
-      if (sharesOnExDate <= 0) continue;
-      const amount = div * sharesOnExDate;
-      p.divIncome += amount;
-      if (e.event_date >= yearStart) p.divIncomeYTD += amount;
-      p.divHistory.push({ date: e.event_date, divPerShare: div, shares: sharesOnExDate, amount });
+    const rows = byIsin.get(isin) || [];
+    const px = marketData[isin]?.latestPrice;
+    const known = rows.filter(d => d.ex_date > today).map(d => d.ex_date);
+    for (const d of rows) {
+      if (d.ex_date <= yearAgo || d.ex_date > today || d.amount_nok == null || d.kind === 'in_kind') continue;
+      if (px && +d.amount_nok > 0.2 * px) continue;
+      const ex = addDays(d.ex_date, 364);
+      if (ex <= today || known.some(k => Math.abs((new Date(k) - new Date(ex)) / 864e5) <= 45)) continue;
+      const lag = d.pay_date ? Math.max(0, Math.round((new Date(d.pay_date) - new Date(d.ex_date)) / 864e5)) : 10;
+      const per = +d.amount_nok;
+      divLedger.push({ isin, ex_date: ex, pay_date: addDays(ex, lag), pay_date_est: true, last_cum_date: null,
+                       amount: d.amount, currency: d.currency, amount_nok: per, kind: d.kind, sources: [], confirmed: false,
+                       st: 'projected', shares: p.netQty, per, total: per * p.netQty, basis: 'projected', from: d.ex_date });
     }
+  }
+  divLedger.sort((a, b) => (a.pay_date || a.ex_date).localeCompare(b.pay_date || b.ex_date));
+
+  // per-position fields other panels read (holdings table note, tape markers, total return)
+  for (const [isin, p] of positions) { p.divIncome = 0; p.divIncomeYTD = 0; p.divHistory = []; }
+  const s = { paidAll: 0, paidYTD: 0, paidTTM: 0, pending: 0, announced: 0, projected: 0, fwd: 0,
+              nPaid: 0, first: null, next: null, nextEx: null, byIsinEarned: new Map() };
+  for (const e of divLedger) {
+    const pay = e.pay_date || e.ex_date;
+    if (e.st === 'paid' || e.st === 'pending') {
+      s.byIsinEarned.set(e.isin, (s.byIsinEarned.get(e.isin) || 0) + e.total);
+      const p = positions.get(e.isin);
+      if (p) {
+        p.divIncome += e.total;
+        if (e.ex_date >= yearStart) p.divIncomeYTD += e.total;
+        p.divHistory.push({ date: e.ex_date, divPerShare: e.per, shares: e.shares, amount: e.total });
+      }
+    }
+    if (e.st === 'paid') {
+      s.paidAll += e.total; s.nPaid++;
+      if (!s.first || pay < s.first) s.first = pay;
+      if (pay >= yearStart) s.paidYTD += e.total;
+      if (pay > yearAgo) s.paidTTM += e.total;
+    } else if (pay <= yearAhead) {
+      s[e.st] += e.total;
+      s.fwd += e.total;
+      if (e.st !== 'projected' && (!s.next || pay < (s.next.pay_date || s.next.ex_date))) s.next = e;
+      if (e.st === 'announced' && (!s.nextEx || e.ex_date < s.nextEx.ex_date)) s.nextEx = e;
+    }
+  }
+  let cost = 0, value = 0;
+  for (const [isin, p] of positions) {
+    cost += p.totalCost || 0;
+    const px = marketData[isin]?.latestPrice;
+    if (px) value += p.netQty * px;
+  }
+  s.cost = cost; s.value = value;
+  s.yoc = cost ? s.fwd / cost * 100 : null;
+  s.yld = value ? s.fwd / value * 100 : null;
+  divStats = s;
+  syncDividendEvents();
+}
+
+/* Feed the reconciled ex-dates into the event plumbing the rest of the page
+   already reads (next-event chips, tape ribbons, deck moons, event timeline). */
+function syncDividendEvents() {
+  const today = todayIso();
+  const byIsin = new Map();
+  for (const d of divRows) {
+    if (!byIsin.has(d.isin)) byIsin.set(d.isin, []);
+    byIsin.get(d.isin).push(d);
+  }
+  for (const [isin, md] of Object.entries(marketData)) {
+    md.events = (md.events || []).filter(e => e.event_type !== 'EX_DATE');
+    md.pastDivs = [];
+    for (const d of byIsin.get(isin) || []) {
+      const amt = d.amount != null ? `${d.currency || 'NOK'} ${fmtNum(+d.amount, +d.amount < 1 ? 4 : 2)}` : '';
+      const ev = { isin, event_type: 'EX_DATE', event_date: d.ex_date, payment_date: d.pay_date,
+                   title: `Ex-dividend ${amt}`.trim() };
+      if (d.ex_date >= today) md.events.push(ev);
+      else if (d.pay_date && d.pay_date >= addDays(today, -DIV_GRACE_DAYS)) md.pastDivs.push(ev);
+    }
+    md.events.sort((a, b) => (a.event_date || '').localeCompare(b.event_date || ''));
   }
 }
 
@@ -1644,6 +1939,16 @@ function renderKPIs() {
 
   const plCard = document.getElementById('kpiPlCard');
   plCard.className = 'kpi' + (t.priceOnlyPL > 0 ? ' up' : t.priceOnlyPL < 0 ? ' down' : '');
+
+  // dividends: forward 12 months of cash (in transit + announced + projected), yield on cost, earned to date
+  const ds = divStats, yocEl = document.getElementById('kpiYoc'), yocSub = document.getElementById('kpiYocSub');
+  if (ds && (ds.fwd > 0 || ds.paidAll > 0 || ds.pending > 0)) {
+    INTEL.liveNumber(yocEl, fmtNOK(ds.fwd));
+    yocSub.textContent = (ds.yoc != null ? `${ds.yoc.toFixed(2)}% on cost · ` : '') + `${fmtNOK(ds.paidAll + ds.pending)} earned`;
+  } else {
+    yocEl.textContent = '—';
+    yocSub.textContent = ds ? 'no dividends on file yet' : 'loading dividends …';
+  }
 }
 
 const EVT_GLYPH_P = {
@@ -2454,7 +2759,7 @@ function initDecks() {
 
 function updateFxToggle() {
   const b = document.getElementById('fxToggle');
-  if (b) b.innerHTML = deckFxOn ? '◉ DECK' : '⊘ DECK';
+  if (b) b.innerHTML = deckFxOn ? '◉ Deck' : '⊘ Deck';
 }
 function toggleDeckFx() {
   deckFxOn = !deckFxOn;
@@ -3638,6 +3943,8 @@ async function refreshLive() {
     renderHoldings();
     renderIntraday();
     refreshTapeData();
+    renderHoldingStrip();
+    renderHeaderPills();
 
     let maxAsOf = null;
     for (const isin of isins) {
@@ -4533,197 +4840,499 @@ function renderSectorRing() {
   });
 }
 
-function renderDividends() {
-  // Upcoming ex-dates with both yield framings
-  //   - directYield = div / current price (what a new buyer gets)
-  //   - yieldOnCost = div / avg cost     (what you, with your purchase price, get)
-  const upcoming = [];
-  for (const [isin, md] of Object.entries(marketData)) {
-    const seenIsinDate = new Set();   // (date, amount) — dedupe bilingual dups
-    for (const e of dedupeExDates((md.events || []).filter(x => x.event_type === 'EX_DATE'))) {
-      const p = positions.get(isin);
-      const divAmt = parseDivAmount(e.title);
-      const directYield = (divAmt && md.latestPrice) ? (divAmt / md.latestPrice * 100) : null;
-      const yieldOnCost = (divAmt && p?.avgCost)     ? (divAmt / p.avgCost     * 100) : null;
-      upcoming.push({
-        isin, ticker: ticker(isin), date: e.event_date, title: e.title || '',
-        divAmt, directYield, yieldOnCost,
-      });
-    }
-  }
-  upcoming.sort((a, b) => a.date.localeCompare(b.date));
+/* ═══ INCOME — rendering ═══════════════════════════════════════════════════
+   Six tiles, a cash calendar (stacked by status, by payment month), the next
+   payments, a runway (buy-by → ex-date → cash per upcoming dividend), a
+   per-holding profile, the ledger, and the whole market's ex-dates ahead.
+   Charts are hand-rolled SVG sized to their container (re-drawn on resize);
+   every mark has a hover readout and every status is written, not just coloured. */
+const MON3 = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const monthAdd = (ym, k) => new Date(Date.UTC(+ym.slice(0, 4), +ym.slice(5, 7) - 1 + k, 1)).toISOString().slice(0, 7);
+const fmtDM = iso => iso ? `${+iso.slice(8, 10)} ${MON3[+iso.slice(5, 7) - 1]}` : '—';
+const dayDiff = (a, b) => Math.round((new Date(b + 'T00:00:00Z') - new Date(a + 'T00:00:00Z')) / 864e5);
+const cmp = v => v == null || isNaN(v) ? '—' : Math.abs(v) < 1000 ? String(Math.round(v)) : INTEL.fmtCompact(v);
+const escH = v => String(v ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const ST_ORDER = ['paid', 'pending', 'announced', 'projected'];
+const ST_FILL = { paid: '#43e097', pending: 'url(#incHG)', announced: '#cb7f00', projected: 'url(#incHA)' };
+const ST_TEXT = { paid: 'paid', pending: 'pending payment', announced: 'announced', projected: 'projected' };
+const SVG_DEFS = `<defs>
+  <pattern id="incHG" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(135)"><rect width="5" height="5" fill="rgba(67,224,151,.12)"/><rect width="2" height="5" fill="rgba(67,224,151,.85)"/></pattern>
+  <pattern id="incHA" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(135)"><rect width="5" height="5" fill="rgba(245,166,35,.06)"/><rect width="2" height="5" fill="rgba(245,166,35,.55)"/></pattern>
+</defs>`;
+let incProfileSort = 'yield';
+let incLedgerAll = false;
 
-  // Past dividend income history (cost basis unchanged; this is RECEIVED income)
-  const income = [];
-  for (const [isin, p] of positions) {
-    for (const h of (p.divHistory || [])) {
-      income.push({ ticker: ticker(isin), ...h });
-    }
-  }
-  income.sort((a, b) => b.date.localeCompare(a.date));
-
-  const totalIncome  = income.reduce((s, x) => s + x.amount, 0);
-  const expectedNOK  = upcoming.reduce((s, d) => {
-    const p = positions.get(d.isin);
-    return d.divAmt && p ? s + d.divAmt * p.netQty : s;
-  }, 0);
-  document.getElementById('divCount').textContent =
-    `${upcoming.length} upcoming · ${income.length} past · NOK ${fmtNum(totalIncome, 0)} received`;
-
-  const upcomingHTML = upcoming.length
-    ? upcoming.map(d => {
-        const direct = d.directYield != null
-          ? `<span style="color:var(--ice)">Direct ${d.directYield.toFixed(2)}%</span>`
-          : '';
-        const yoc = d.yieldOnCost != null
-          ? `<span style="color:var(--amber)">YoC ${d.yieldOnCost.toFixed(2)}%</span>`
-          : '';
-        const sep = direct && yoc ? ' · ' : '';
-        return `<div class="div-row">
-          <span class="div-date">◇ ${d.date}</span>
-          <span class="div-ticker">${INTEL.tkLink(d.isin, d.ticker)}</span>
-          <span class="div-title">${d.title}</span>
-          <span class="div-yield">${direct}${sep}${yoc}</span>
-        </div>`;
-      }).join('')
-    : `<div class="empty-state" style="padding:14px">No upcoming ex-dates.</div>`;
-
-  const incomeHTML = income.length
-    ? `<div style="margin-top:14px;padding-top:10px;border-top:1px solid var(--border)">
-        <div style="font-family:var(--mono);font-size:10px;letter-spacing:.12em;color:var(--text-dim);margin-bottom:8px">
-          PAID — DIVIDEND INCOME RECEIVED (cost basis unchanged)
-        </div>
-        ${income.slice(0, 20).map(x =>
-          `<div class="div-row" style="opacity:0.85">
-            <span class="div-date" style="color:var(--text-dim)">◆ ${x.date}</span>
-            <span class="div-ticker">${x.ticker}</span>
-            <span class="div-title">NOK ${fmtNum(x.divPerShare)} × ${fmtNum(x.shares, 0)} shares</span>
-            <span class="div-yield" style="color:var(--green)">+NOK ${fmtNum(x.amount, 0)}</span>
-          </div>`
-        ).join('')}
-      </div>`
-    : '';
-  document.getElementById('divList').innerHTML = upcomingHTML + incomeHTML;
-
-  // YoC KPI: prefer forward 12m expected (known ex-dates); when none are loaded,
-  // fall back to trailing-12-month dividends actually received so a portfolio with
-  // a paid-out history still shows a yield instead of "—".
-  let totalCost = 0;
-  for (const p of positions.values()) totalCost += p.totalCost;
-  const yocEl = document.getElementById('kpiYoc');
-  const yocSub = document.getElementById('kpiYocSub');
-  let yocCash = expectedNOK, yocBasis = 'forward 12m ex-dates';
-  if (!yocCash) {
-    const cutoff = new Date(); cutoff.setFullYear(cutoff.getFullYear() - 1);
-    const cutoffStr = cutoff.toISOString().slice(0, 10);
-    yocCash = income.reduce((s, x) => x.date >= cutoffStr ? s + x.amount : s, 0);
-    yocBasis = 'trailing 12m received';
-  }
-  if (yocCash && totalCost) {
-    yocEl.textContent = (yocCash / totalCost * 100).toFixed(2) + '%';
-    if (yocSub) yocSub.textContent = yocBasis;
-  } else {
-    yocEl.textContent = '—';
-    if (yocSub) yocSub.textContent = 'no dividend data';
-  }
+function renderIncome() {
+  if (!divStats) return;
+  renderIncomeTiles();
+  renderIncomeBars();
+  renderIncomeNext();
+  renderIncomeRunway();
+  renderIncomeProfile();
+  renderIncomeLedger();
+  renderIncomeMarket();
+  const n = divLedger.filter(e => e.st === 'paid' || e.st === 'pending').length;
+  document.getElementById('incCount').textContent =
+    `${n} payment${n === 1 ? '' : 's'} earned · ${divRows.length} dividends on file`;
 }
 
-/* ═══ INCOME CALENDAR — dividends on a horizontal month axis ═══════════════
-   Paid (◆ solid green bars, from the reconstructed divHistory) + upcoming
-   ex-dates (◇ dashed amber, parsed amount × current shares), grouped per
-   month with a cumulative running total along the bottom of each column. */
-function renderIncomeCalendar() {
-  const el = document.getElementById('incomeTimeline');
+function incTip(el) {
+  let t = el.querySelector('.itt');
+  if (!t) { t = document.createElement('div'); t.className = 'itt'; el.appendChild(t); }
+  return t;
+}
+function placeTip(el, tip, x, y) {
+  tip.style.display = 'block';
+  const bw = el.clientWidth, tw = tip.offsetWidth, th = tip.offsetHeight;
+  let tx = x + 14, ty = y - th - 10;
+  if (tx + tw > bw - 4) tx = x - tw - 14;
+  if (ty < -40) ty = y + 16;
+  tip.style.left = Math.max(-6, tx) + 'px';
+  tip.style.top = ty + 'px';
+}
+
+function renderIncomeTiles() {
+  const s = divStats, el = document.getElementById('incTiles');
   if (!el) return;
-  const todayStr = new Date().toISOString().slice(0, 10);
-  const items = [];
-  for (const [isin, p] of positions) {
-    for (const h of (p.divHistory || [])) {
-      items.push({ date: h.date, tk: ticker(isin), amount: h.amount, paid: true });
-    }
-    const md = marketData[isin] || {};
-    for (const e of dedupeExDates((md.events || []).filter(x => x.event_type === 'EX_DATE'))) {
-      const d = (e.event_date || '').slice(0, 10);
-      const div = parseDivAmount(e.title);
-      if (!d || d < todayStr || !div) continue;
-      items.push({ date: d, tk: ticker(isin), amount: div * p.netQty, paid: false });
-    }
-  }
-  if (!items.length) {
-    el.innerHTML = `<div class="empty-state">No dividend history or upcoming ex-dates for your holdings yet.</div>`;
-    return;
-  }
-  items.sort((a, b) => a.date.localeCompare(b.date));
+  const yr = todayIso().slice(0, 4);
+  const lastPend = divLedger.filter(e => e.st === 'pending').map(e => e.pay_date).sort().pop();
+  const nx = s.next;
+  const tile = (label, value, sub, acc, title = '') =>
+    `<div class="itile" style="--acc:${acc}"${title ? ` title="${escH(title)}"` : ''}><div class="tl">${label}</div><div class="tv">${value}</div><div class="ts">${sub}</div></div>`;
+  el.innerHTML = [
+    tile('Received · all time', fmtNOK(s.paidAll),
+         s.nPaid ? `${s.nPaid} payment${s.nPaid === 1 ? '' : 's'} since ${MON3[+s.first.slice(5, 7) - 1]} ${s.first.slice(0, 4)}` : 'nothing paid out yet', 'var(--green)'),
+    tile(`Received · ${yr}`, fmtNOK(s.paidYTD), `trailing 12 months <b>${fmtNOK(s.paidTTM)}</b>`, 'var(--green)'),
+    tile('In transit', fmtNOK(s.pending), s.pending ? `went ex · cash by ${fmtDM(lastPend)}` : 'nothing between ex-date and payment',
+         'rgba(67,224,151,.45)', 'Dividends you are entitled to (the ex-date has passed) that have not been paid out yet'),
+    tile('Forward 12 months', fmtNOK(s.fwd), `announced <b>${cmp(s.announced + s.pending)}</b> · projected <b>${cmp(s.projected)}</b>`,
+         'var(--amber)', 'Cash expected over the next year: in transit + announced + last year’s dividends repeated where nothing is announced yet'),
+    tile('Forward yield', s.yld != null ? s.yld.toFixed(2) + '<small>% on value</small>' : '—',
+         s.yoc != null ? `on cost <b>${s.yoc.toFixed(2)}%</b>` : '—', 'var(--amber)'),
+    tile('Next payment', nx ? fmtNOK(nx.total) : '—',
+         nx ? `<b>${escH(ticker(nx.isin))}</b> · ${fmtDM(nx.pay_date || nx.ex_date)}${nx.pay_date_est ? ' (est.)' : ''} · ${ST_TEXT[nx.st]}` : 'none scheduled', 'var(--ice)'),
+  ].join('');
+}
 
-  // Month axis: cap to 12 months back and 6 months forward of today.
-  const thisMonth = todayStr.slice(0, 7);
-  const monthAdd = (ym, k) => {
-    const d = new Date(+ym.slice(0, 4), +ym.slice(5, 7) - 1 + k, 1);
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-  };
-  const lo = monthAdd(thisMonth, -12), hi = monthAdd(thisMonth, 6);
-  const shown = items.filter(x => { const m = x.date.slice(0, 7); return m >= lo && m <= hi; });
-  if (!shown.length) {
-    el.innerHTML = `<div class="empty-state">No dividend events in the last 12 / next 6 months.</div>`;
-    return;
-  }
-  let mFirst = shown[0].date.slice(0, 7), mLast = shown[shown.length - 1].date.slice(0, 7);
-  if (mFirst > thisMonth) mFirst = thisMonth;
-  if (mLast < thisMonth) mLast = thisMonth;
+function renderIncomeBars() {
+  const el = document.getElementById('incBars');
+  if (!el) return;
+  const today = todayIso(), thisM = today.slice(0, 7);
+  const firstTxn = allTransactions.reduce((m, t) => (t.transaction_time || '9999') < m ? t.transaction_time : m, '9999').slice(0, 7);
+  let m0 = firstTxn > monthAdd(thisM, -23) ? firstTxn : monthAdd(thisM, -23);
+  if (m0 > monthAdd(thisM, -5)) m0 = monthAdd(thisM, -5);
+  const m1 = monthAdd(thisM, 12);
   const months = [];
-  for (let m = mFirst; m <= mLast && months.length < 20; m = monthAdd(m, 1)) months.push(m);
-
-  const byMonth = new Map(months.map(m => [m, []]));
-  for (const x of shown) {
-    const arr = byMonth.get(x.date.slice(0, 7));
-    if (arr) arr.push(x);
+  for (let m = m0; m <= m1; m = monthAdd(m, 1)) months.push(m);
+  const B = new Map(months.map(m => [m, { m, paid: 0, pending: 0, announced: 0, projected: 0, items: [] }]));
+  for (const e of divLedger) {
+    const b = B.get((e.pay_date || e.ex_date).slice(0, 7));
+    if (!b) continue;
+    b[e.st] += e.total;
+    b.items.push(e);
   }
-  const totals = months.map(m => {
-    const arr = byMonth.get(m);
-    return {
-      paid: arr.reduce((s, x) => s + (x.paid ? x.amount : 0), 0),
-      fut:  arr.reduce((s, x) => s + (!x.paid ? x.amount : 0), 0),
-    };
-  });
-  const maxTot = Math.max(...totals.map(t => t.paid + t.fut), 1);
-  const mname = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+  const cols = [...B.values()];
+  const tot = c => c.paid + c.pending + c.announced + c.projected;
+  const maxT = Math.max(1, ...cols.map(tot));
+  document.getElementById('incLegend').innerHTML = ST_ORDER.map(k =>
+    `<span><i class="sw sw-${k}"></i>${ST_TEXT[k]}</span>`).join('') + '<span style="color:var(--text4)">· bars sit in the month the cash arrives</span>';
+  const pastSum = cols.filter(c => c.m <= thisM).reduce((a, c) => a + c.paid + c.pending, 0);
+  const fwdSum = cols.filter(c => c.m >= thisM).reduce((a, c) => a + c.announced + c.projected + (c.m > thisM ? c.pending : 0), 0);
+  document.getElementById('incBarsNote').textContent = `${fmtNOK(pastSum)} earned · ${fmtNOK(fwdSum)} ahead`;
 
-  let cum = 0;
-  const cols = months.map((m, k) => {
-    const arr = byMonth.get(m);
-    const t = totals[k];
-    cum += t.paid + t.fut;
-    const isFut = m > thisMonth || (m === thisMonth && t.paid === 0 && t.fut > 0);
-    const hPaid = Math.round(t.paid / maxTot * 56);
-    const hFut  = Math.round(t.fut  / maxTot * 56);
-    const [yy, mm] = m.split('-');
-    const itemsHTML = arr.slice(0, 4).map(x =>
-      `<div class="inc-item ${x.paid ? '' : 'future'}" title="${x.tk} · ${x.date} · NOK ${fmtNum(x.amount, 0)}">${x.paid ? '◆' : '◇'} <b>${x.tk}</b> ${INTEL.fmtCompact(x.amount)}</div>`
-    ).join('') + (arr.length > 4 ? `<div class="inc-item">+${arr.length - 4} more</div>` : '');
-    return `<div class="inc-month ${m === thisMonth ? 'now' : ''}">
-      <div class="inc-barzone">
-        ${hPaid > 0 ? `<div class="inc-bar" style="height:${Math.max(3, hPaid)}px" title="paid NOK ${fmtNum(t.paid, 0)}"></div>` : ''}
-        ${hFut > 0 ? `<div class="inc-bar future" style="height:${Math.max(3, hFut)}px" title="expected NOK ${fmtNum(t.fut, 0)}"></div>` : ''}
-      </div>
-      <div class="inc-body">
-        <div class="inc-mlabel">${mname[+mm - 1]} '${yy.slice(2)}</div>
-        <div class="inc-mtotal ${t.paid === 0 && t.fut > 0 ? 'future' : ''}">${t.paid + t.fut > 0 ? 'NOK ' + fmtNum(t.paid + t.fut, 0) : '—'}</div>
-        <div class="inc-items">${itemsHTML}</div>
-      </div>
-      <div class="inc-cum ${isFut ? 'future' : ''}">Σ <b>${INTEL.fmtCompact(cum)}</b></div>
+  const W = Math.max(320, el.clientWidth || 700), H = 250;
+  const pl = 46, pr = 4, pt = 16, pb = 34;
+  const iw = W - pl - pr, ih = H - pt - pb;
+  const bw = iw / cols.length, gap = bw > 18 ? 4 : 2, w = Math.max(2, bw - gap);
+  // nice y ticks
+  const raw = maxT / 4, mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  const step = [1, 2, 2.5, 5, 10].map(k => k * mag).find(v => v >= raw) || raw;
+  const yMax = Math.ceil(maxT / step) * step;
+  const Y = v => pt + ih - v / yMax * ih;
+  let g = '';
+  for (let v = 0; v <= yMax + 1e-9; v += step) {
+    g += `<line x1="${pl}" x2="${W - pr}" y1="${Y(v).toFixed(1)}" y2="${Y(v).toFixed(1)}" stroke="rgba(255,255,255,${v ? .055 : .16})"/>` +
+         `<text x="${pl - 7}" y="${(Y(v) + 3).toFixed(1)}" text-anchor="end" font-size="9" fill="#5a6377">${v ? cmp(v) : '0'}</text>`;
+  }
+  // "ahead" band behind future months + today marker
+  const iNow = cols.findIndex(c => c.m === thisM);
+  if (iNow >= 0) {
+    const frac = (+today.slice(8, 10) - 1) / 30.5;
+    const xNow = pl + (iNow + frac) * bw;
+    g += `<rect x="${xNow.toFixed(1)}" y="${pt - 6}" width="${(W - pr - xNow).toFixed(1)}" height="${ih + 6}" fill="rgba(245,166,35,.035)"/>` +
+         `<line x1="${xNow.toFixed(1)}" x2="${xNow.toFixed(1)}" y1="${pt - 8}" y2="${pt + ih}" stroke="rgba(245,166,35,.55)" stroke-dasharray="3 3"/>` +
+         `<text x="${(xNow + 4).toFixed(1)}" y="${pt - 1}" font-size="8.5" fill="#f5a623" letter-spacing=".12em">TODAY ▸</text>`;
+  }
+  const every = bw >= 30 ? 1 : bw >= 16 ? 2 : 3;
+  cols.forEach((c, i) => {
+    const x = pl + i * bw + gap / 2;
+    let y = pt + ih;
+    const segs = ST_ORDER.filter(k => c[k] > 0);
+    segs.forEach((k, j) => {
+      const h = c[k] / yMax * ih;
+      const top = j === segs.length - 1;
+      const yy = y - h + (j ? 1 : 0), hh = Math.max(1, h - (j ? 1 : 0));
+      const r = top ? Math.min(3, w / 2, hh) : 0;
+      const d = r
+        ? `M${x.toFixed(1)},${(yy + hh).toFixed(1)}V${(yy + r).toFixed(1)}Q${x.toFixed(1)},${yy.toFixed(1)} ${(x + r).toFixed(1)},${yy.toFixed(1)}H${(x + w - r).toFixed(1)}Q${(x + w).toFixed(1)},${yy.toFixed(1)} ${(x + w).toFixed(1)},${(yy + r).toFixed(1)}V${(yy + hh).toFixed(1)}Z`
+        : `M${x.toFixed(1)},${(yy + hh).toFixed(1)}V${yy.toFixed(1)}H${(x + w).toFixed(1)}V${(yy + hh).toFixed(1)}Z`;
+      const stroke = k === 'pending' ? ' stroke="rgba(67,224,151,.8)" stroke-width="1"' : k === 'projected' ? ' stroke="rgba(245,166,35,.55)" stroke-width="1" stroke-dasharray="3 2"' : '';
+      g += `<path d="${d}" fill="${ST_FILL[k]}"${stroke}/>`;
+      y -= h;
+    });
+    const T = tot(c);
+    if (T > 0 && bw >= 30) g += `<text x="${(x + w / 2).toFixed(1)}" y="${(Y(T) - 4).toFixed(1)}" text-anchor="middle" font-size="8.5" fill="#a4adbf">${cmp(T)}</text>`;
+    if (c.m === thisM || (i % every === 0 && (iNow < 0 || Math.abs(i - iNow) >= every))) {
+      const mm = +c.m.slice(5, 7);
+      g += `<text x="${(x + w / 2).toFixed(1)}" y="${pt + ih + 13}" text-anchor="middle" font-size="9" fill="${c.m === thisM ? '#f5a623' : '#5a6377'}">${MON3[mm - 1].toUpperCase()}</text>`;
+      if (mm === 1 || i === 0) g += `<text x="${(x + w / 2).toFixed(1)}" y="${pt + ih + 25}" text-anchor="middle" font-size="8.5" fill="#3a4252">${c.m.slice(0, 4)}</text>`;
+    }
+    g += `<rect class="hit" data-i="${i}" x="${(pl + i * bw).toFixed(1)}" y="${pt - 8}" width="${bw.toFixed(1)}" height="${ih + 8}" fill="transparent"/>`;
+  });
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" height="${H}" role="img" aria-label="Dividend cash by payment month">${SVG_DEFS}${g}</svg>`;
+  const tip = incTip(el);
+  el.querySelectorAll('rect.hit').forEach(r => {
+    r.addEventListener('mousemove', ev => {
+      const c = cols[+r.dataset.i];
+      const [yy, mm] = c.m.split('-');
+      let html = `<div class="td">${MON3[+mm - 1]} ${yy}</div>`;
+      for (const k of ST_ORDER) if (c[k] > 0) html += `<div class="tr"><span><i class="sw sw-${k}"></i>${ST_TEXT[k]}</span><b>${fmtNOK(c[k])}</b></div>`;
+      if (!tot(c)) html += '<div class="mut">no dividend cash this month</div>';
+      const byTk = new Map();
+      for (const e of c.items) byTk.set(e.isin, (byTk.get(e.isin) || 0) + e.total);
+      const top = [...byTk.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6);
+      if (top.length) html += '<div class="sep"></div>' + top.map(([i, v]) => `<div class="tr"><span>${escH(ticker(i))}</span><b>${fmtNOK(v)}</b></div>`).join('') +
+        (byTk.size > 6 ? `<div class="mut">+${byTk.size - 6} more</div>` : '');
+      tip.innerHTML = html;
+      const box = el.getBoundingClientRect();
+      placeTip(el, tip, ev.clientX - box.left, ev.clientY - box.top);
+    });
+    r.addEventListener('mouseleave', () => { tip.style.display = 'none'; });
+  });
+}
+
+function renderIncomeNext() {
+  const el = document.getElementById('incNext');
+  if (!el) return;
+  const today = todayIso();
+  // upcoming moments: cash landing (pending / announced) and ex-dates you must hold through
+  const ev = [];
+  for (const e of divLedger) {
+    if (e.st === 'projected') continue;
+    if (e.st === 'announced' && e.ex_date >= today) ev.push({ kind: 'ex', date: e.ex_date, e });
+    if ((e.st === 'pending' || e.st === 'announced') && e.pay_date && e.pay_date >= today) ev.push({ kind: 'cash', date: e.pay_date, e });
+  }
+  ev.sort((a, b) => a.date.localeCompare(b.date) || (a.kind === 'ex' ? -1 : 1));
+  const shown = ev.slice(0, 7);
+  document.getElementById('incNextNote').textContent = ev.length ? `${ev.length} dated events ahead` : '';
+  if (!shown.length) {
+    const pj = divLedger.find(e => e.st === 'projected' && e.ex_date >= today);
+    el.innerHTML = `<div class="empty-state" style="padding:26px 10px">Nothing announced yet.${pj ? `<br><br>Next expected: <b style="color:var(--text2)">${escH(ticker(pj.isin))}</b> around ${fmtDM(pj.ex_date)} (projected from last year).` : ''}</div>`;
+    return;
+  }
+  el.innerHTML = shown.map(({ kind, date, e }) => {
+    const dd = dayDiff(today, date);
+    const when = dd === 0 ? 'today' : dd === 1 ? 'tomorrow' : `in ${dd} days`;
+    const main = kind === 'cash'
+      ? `<div class="t"><b>${escH(ticker(e.isin))}</b> pays out</div><div class="s">${when}${e.pay_date_est ? ' · date estimated' : ''} · NOK ${fmtNum(e.per, e.per < 1 ? 4 : 2)} × ${fmtNum(e.shares, e.shares % 1 ? 2 : 0)}</div>`
+      : `<div class="t"><b>${escH(ticker(e.isin))}</b> goes ex-dividend</div><div class="s">${when} · hold through ${e.last_cum_date ? fmtDM(e.last_cum_date) : 'the day before'} to qualify</div>`;
+    return `<div class="nx-row ${kind}">
+      <div class="nx-date"><div class="d">${+date.slice(8, 10)}</div><div class="m">${MON3[+date.slice(5, 7) - 1]}</div></div>
+      <div class="nx-main">${main}</div>
+      <div class="nx-amt ${kind === 'cash' ? '' : 'fut'}"><b>${fmtNOK(e.total)}</b><small>${kind === 'cash' ? (e.st === 'pending' ? 'in transit' : 'announced') : e.currency && e.currency !== 'NOK' ? `${e.currency} ${fmtNum(+e.amount, 2)}/sh` : 'announced'}</small></div>
     </div>`;
   }).join('');
-
-  const totPaid = shown.reduce((s, x) => s + (x.paid ? x.amount : 0), 0);
-  const totFut  = shown.reduce((s, x) => s + (!x.paid ? x.amount : 0), 0);
-  el.innerHTML = `
-    <div style="display:flex;gap:18px;flex-wrap:wrap;font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-bottom:10px;letter-spacing:.06em">
-      <span>◆ <b style="color:var(--green)">NOK ${fmtNum(totPaid, 0)}</b> received</span>
-      <span>◇ <b style="color:var(--amber)">NOK ${fmtNum(totFut, 0)}</b> announced upcoming</span>
-      <span>Σ cumulative income running along the foot of each month</span>
-    </div>
-    <div class="inc-scroll"><div class="inc-track">${cols}</div></div>`;
 }
+
+function renderIncomeRunway() {
+  const el = document.getElementById('incRunway');
+  if (!el) return;
+  const today = todayIso(), horizon = addDays(today, 120);
+  const items = divLedger.filter(e => e.st !== 'paid' && (e.pay_date || e.ex_date) >= today && e.ex_date <= horizon)
+    .sort((a, b) => a.ex_date.localeCompare(b.ex_date) || b.total - a.total);
+  document.getElementById('incRunNote').textContent = items.length
+    ? `next 120 days · ${items.filter(e => e.st !== 'projected').length} announced / in transit, ${items.filter(e => e.st === 'projected').length} projected` : '';
+  if (!items.length) {
+    el.innerHTML = '<div class="empty-state">No dividends announced or expected in the next 120 days.</div>';
+    return;
+  }
+  const W = Math.max(340, el.clientWidth || 900), narrow = W < 620;
+  const labW = narrow ? 84 : 150, amtW = narrow ? 62 : 104, rowH = 24, top = 26;
+  const H = top + items.length * rowH + 8;
+  const t0 = addDays(today, -10);
+  let t1 = items.reduce((m, e) => { const d = e.pay_date || e.ex_date; return d > m ? d : m; }, addDays(today, 40));
+  if (t1 > addDays(horizon, 30)) t1 = addDays(horizon, 30);
+  const span = Math.max(1, dayDiff(t0, t1));
+  const x0 = labW, x1 = W - amtW - 10;
+  const X = iso => x0 + Math.min(1.02, Math.max(-0.02, dayDiff(t0, iso) / span)) * (x1 - x0);
+  let g = '';
+  // month grid + labels
+  for (let m = t0.slice(0, 7); m <= t1.slice(0, 7); m = monthAdd(m, 1)) {
+    const d = m + '-01';
+    if (d < t0) continue;
+    const x = X(d);
+    g += `<line x1="${x.toFixed(1)}" x2="${x.toFixed(1)}" y1="${top - 8}" y2="${H - 4}" stroke="rgba(255,255,255,.05)"/>` +
+         `<text x="${(x + 4).toFixed(1)}" y="${top - 12}" font-size="9" fill="#5a6377">${MON3[+m.slice(5, 7) - 1].toUpperCase()}</text>`;
+  }
+  const xT = X(today);
+  g += `<line x1="${xT.toFixed(1)}" x2="${xT.toFixed(1)}" y1="${top - 20}" y2="${H - 4}" stroke="rgba(245,166,35,.6)" stroke-dasharray="3 3"/>` +
+       `<text x="${(xT - 4).toFixed(1)}" y="${top - 12}" text-anchor="end" font-size="8.5" fill="#f5a623" letter-spacing=".12em">TODAY</text>`;
+  items.forEach((e, i) => {
+    const y = top + i * rowH + rowH / 2;
+    const col = e.st === 'pending' ? '#43e097' : e.st === 'announced' ? '#f5a623' : '#5a6377';
+    const xe = X(e.ex_date), xp = X(e.pay_date || addDays(e.ex_date, 10));
+    if (i % 2 === 0) g += `<rect x="0" y="${(y - rowH / 2).toFixed(1)}" width="${W}" height="${rowH}" fill="rgba(255,255,255,.015)"/>`;
+    g += `<text x="4" y="${(y + 3.5).toFixed(1)}" font-size="11" font-weight="600" fill="${e.st === 'projected' ? '#5a6377' : '#e8eef7'}">${escH(ticker(e.isin))}</text>`;
+    if (!narrow) g += `<text x="58" y="${(y + 3.5).toFixed(1)}" font-size="9.5" fill="#5a6377">${fmtNum(e.per, e.per < 1 ? 3 : 2)}×${fmtNum(e.shares, e.shares % 1 ? 1 : 0)}</text>`;
+    // buy-by tick
+    if (e.last_cum_date) {
+      const xb = X(e.last_cum_date);
+      g += `<line x1="${xb.toFixed(1)}" x2="${xb.toFixed(1)}" y1="${(y - 6).toFixed(1)}" y2="${(y + 6).toFixed(1)}" stroke="${col}" stroke-width="1.5" opacity=".7"/>`;
+    }
+    g += `<line x1="${xe.toFixed(1)}" x2="${xp.toFixed(1)}" y1="${y.toFixed(1)}" y2="${y.toFixed(1)}" stroke="${col}" stroke-width="2"${e.st === 'projected' || e.pay_date_est ? ' stroke-dasharray="3 3"' : ''} opacity=".85"/>`;
+    g += `<path d="M${xe.toFixed(1)},${(y - 5).toFixed(1)}L${(xe + 5).toFixed(1)},${y.toFixed(1)}L${xe.toFixed(1)},${(y + 5).toFixed(1)}L${(xe - 5).toFixed(1)},${y.toFixed(1)}Z" fill="${e.st === 'pending' ? '#0b0f17' : col}" stroke="${col}" stroke-width="1.5"/>`;
+    g += `<circle cx="${xp.toFixed(1)}" cy="${y.toFixed(1)}" r="4.5" fill="${e.st === 'announced' ? '#0b0f17' : e.st === 'pending' ? col : '#0b0f17'}" stroke="${col}" stroke-width="1.5"${e.pay_date_est ? ' stroke-dasharray="2 1.5"' : ''}/>`;
+    g += `<text x="${W - 4}" y="${(y + 3.5).toFixed(1)}" text-anchor="end" font-size="11" font-weight="600" fill="${e.st === 'pending' ? '#43e097' : e.st === 'announced' ? '#f5a623' : '#5a6377'}">${narrow ? cmp(e.total) : fmtNOK(e.total)}</text>`;
+    g += `<rect class="hit" data-i="${i}" x="0" y="${(y - rowH / 2).toFixed(1)}" width="${W}" height="${rowH}" fill="transparent"/>`;
+  });
+  const legend = `<div class="legend-row" style="margin:0 0 8px">
+      <span><svg width="10" height="12"><line x1="5" x2="5" y1="1" y2="11" stroke="#a4adbf" stroke-width="1.5"/></svg>last day to buy (cum)</span>
+      <span><svg width="12" height="12"><path d="M6,1L11,6L6,11L1,6Z" fill="#f5a623"/></svg>ex-date</span>
+      <span><svg width="12" height="12"><circle cx="6" cy="6" r="4.5" fill="#43e097"/></svg>cash (dashed = estimated date)</span>
+      <span style="color:#43e097">■ in transit</span><span style="color:#f5a623">■ announced</span><span style="color:#5a6377">■ projected</span></div>`;
+  el.innerHTML = legend + `<svg viewBox="0 0 ${W} ${H}" height="${H}" role="img" aria-label="Upcoming dividend runway">${g}</svg>`;
+  const tip = incTip(el);
+  el.querySelectorAll('rect.hit').forEach(r => {
+    r.addEventListener('mousemove', ev => {
+      const e = items[+r.dataset.i];
+      const src = (e.sources || []).join(' · ') || 'projection';
+      tip.innerHTML = `<div class="td">${escH(ticker(e.isin))} · <span class="st st-${e.st}">${ST_TEXT[e.st]}</span></div>
+        ${e.last_cum_date ? `<div class="tr"><span>last day to buy</span><b>${fmtDM(e.last_cum_date)}</b></div>` : ''}
+        <div class="tr"><span>ex-date</span><b>${fmtDM(e.ex_date)} ${e.ex_date.slice(0, 4)}</b></div>
+        ${e.record_date ? `<div class="tr"><span>record date</span><b>${fmtDM(e.record_date)}</b></div>` : ''}
+        <div class="tr"><span>payment</span><b>${fmtDM(e.pay_date)}${e.pay_date_est ? ' (est.)' : ''}</b></div>
+        <div class="sep"></div>
+        <div class="tr"><span>per share</span><b>${e.currency && e.currency !== 'NOK' && e.amount != null ? `${e.currency} ${fmtNum(+e.amount, 4)} ≈ ` : ''}NOK ${fmtNum(e.per, 4)}</b></div>
+        <div class="tr"><span>× shares</span><b>${fmtNum(e.shares, e.shares % 1 ? 2 : 0)}</b></div>
+        <div class="tr"><span>you receive</span><b style="color:${e.st === 'pending' ? 'var(--green)' : 'var(--amber)'}">${fmtNOK(e.total)}</b></div>
+        <div class="sep"></div>
+        <div class="mut">${escH(DIV_BASIS_TIP[e.basis] || '')}${e.from ? ` (${fmtDM(e.from)} ${e.from.slice(0, 4)})` : ''}</div>
+        <div class="mut">sources: ${escH(src)}${e.confirmed ? ' · confirmed' : ''}</div>`;
+      const box = el.getBoundingClientRect();
+      placeTip(el, tip, ev.clientX - box.left, ev.clientY - box.top);
+    });
+    r.addEventListener('mouseleave', () => { tip.style.display = 'none'; });
+  });
+}
+
+function incProfileRows() {
+  const today = todayIso(), yearAgo = addDays(today, -365), twoAgo = addDays(today, -730);
+  const isins = new Set([...positions.keys(), ...divStats.byIsinEarned.keys()]);
+  const byIsin = new Map();
+  for (const d of divRows) {
+    if (d.amount_nok == null) continue;
+    if (!byIsin.has(d.isin)) byIsin.set(d.isin, []);
+    byIsin.get(d.isin).push(d);
+  }
+  const rows = [];
+  for (const isin of isins) {
+    const ds = byIsin.get(isin) || [];
+    const ttmRows = ds.filter(d => d.ex_date > yearAgo && d.ex_date <= today);
+    const ttm = ttmRows.reduce((a, d) => a + +d.amount_nok, 0);
+    const prev = ds.filter(d => d.ex_date > twoAgo && d.ex_date <= yearAgo).reduce((a, d) => a + +d.amount_nok, 0);
+    const n = ttmRows.length;
+    const p = positions.get(isin), px = marketData[isin]?.latestPrice;
+    const last = [...ds].reverse().find(d => d.ex_date <= today);
+    const next = ds.find(d => d.ex_date > today) ||
+      divLedger.find(e => e.isin === isin && e.st === 'projected' && e.ex_date > today);
+    rows.push({
+      isin, tk: ticker(isin), open: !!p, ttm, n,
+      freq: n >= 10 ? 'monthly' : n >= 3 ? 'quarterly' : n === 2 ? 'semi-annual' : n === 1 ? 'annual' : '—',
+      yld: px && ttm ? ttm / px * 100 : null,
+      yoc: p && p.avgCost && ttm ? ttm / p.avgCost * 100 : null,
+      growth: prev > 0 && ttm > 0 ? (ttm / prev - 1) * 100 : null,
+      last, next, earned: divStats.byIsinEarned.get(isin) || 0,
+      conf: ttmRows.filter(d => d.confirmed).length,
+    });
+  }
+  const key = { yield: r => r.yld ?? -1, yoc: r => r.yoc ?? -1, ttm: r => r.ttm, growth: r => r.growth ?? -1e9,
+                earned: r => r.earned, next: r => r.next ? -new Date(r.next.ex_date) : -Infinity, tk: r => r.tk }[incProfileSort];
+  rows.sort((a, b) => (b.open - a.open) || (incProfileSort === 'tk' ? a.tk.localeCompare(b.tk) : key(b) - key(a)));
+  return rows;
+}
+
+function setIncProfileSort(k) { incProfileSort = k; renderIncomeProfile(); }
+
+function renderIncomeProfile() {
+  const el = document.getElementById('incProfile');
+  if (!el) return;
+  const rows = incProfileRows();
+  if (!rows.length) { el.innerHTML = '<tbody><tr><td class="empty-state">No holdings yet.</td></tr></tbody>'; return; }
+  const maxY = Math.max(1, ...rows.map(r => r.yld || 0));
+  const th = (k, label, title) => `<th class="${incProfileSort === k ? 'on' : ''}" onclick="setIncProfileSort('${k}')" title="${title}">${label}</th>`;
+  const head = `<thead><tr>${th('tk', 'Holding', 'Sort by ticker')}${th('ttm', 'TTM / sh', 'NOK per share, ex-dates in the last 12 months')}
+    ${th('yield', 'Yield', 'trailing-12m dividends ÷ today’s price')}${th('yoc', 'On cost', 'trailing-12m dividends ÷ your average cost')}
+    <th title="payments in the last 12 months">Rhythm</th>${th('growth', 'Growth', 'last 12 months vs the 12 before')}
+    <th>Last ex</th>${th('next', 'Next ex', 'announced, or ~ projected from last year')}${th('earned', 'Earned', 'what this position has earned you in dividends')}</tr></thead>`;
+  const body = rows.map(r => {
+    const conf = r.n ? `<span class="conf${r.conf === r.n ? '' : ' one'}" title="${r.conf} of ${r.n} trailing dividends confirmed by ≥ 2 independent sources">${r.conf === r.n ? '✓' : '◌'}</span>` : '';
+    const nx = r.next
+      ? (r.next.st === 'projected'
+          ? `<span style="color:var(--text3)">~${fmtDM(r.next.ex_date)}</span><span class="sub">~NOK ${fmtNum(r.next.per, 2)} · projected</span>`
+          : `<span style="color:var(--amber)">${fmtDM(r.next.ex_date)}</span><span class="sub">NOK ${fmtNum(+r.next.amount_nok, 2)}${r.next.amount_nok_basis === 'fx_est' ? ' est.' : ''}</span>`)
+      : '<span style="color:var(--text4)">—</span>';
+    return `<tr class="${r.open ? '' : 'closed'}" title="${r.open ? '' : 'position closed — dividends it earned while held'}">
+      <td>${INTEL.tkLink(r.isin, escH(r.tk))} ${conf}${r.open ? '' : '<span class="sub">closed</span>'}</td>
+      <td>${r.ttm ? fmtNum(r.ttm, 2) : '—'}</td>
+      <td>${r.yld != null ? r.yld.toFixed(2) + '%' : '—'}${r.yld != null ? `<span class="ybar"><i style="width:${Math.min(100, r.yld / maxY * 100).toFixed(0)}%"></i></span>` : ''}</td>
+      <td>${r.yoc != null ? r.yoc.toFixed(2) + '%' : '—'}</td>
+      <td style="color:var(--text3)">${r.freq}</td>
+      <td class="${r.growth == null ? '' : r.growth >= 0 ? 'up' : 'dn'}" style="color:${r.growth == null ? 'var(--text4)' : r.growth >= 0 ? 'var(--green)' : 'var(--red)'}">${r.growth == null ? '—' : (r.growth >= 0 ? '+' : '−') + Math.abs(r.growth).toFixed(0) + '%'}</td>
+      <td>${r.last ? fmtDM(r.last.ex_date) + `<span class="sub">${r.last.ex_date.slice(0, 4)} · NOK ${fmtNum(+r.last.amount_nok, 2)}</span>` : '—'}</td>
+      <td>${nx}</td>
+      <td style="color:${r.earned ? 'var(--green)' : 'var(--text4)'}">${r.earned ? fmtNOK(r.earned) : '—'}</td>
+    </tr>`;
+  }).join('');
+  el.innerHTML = head + '<tbody>' + body + '</tbody>';
+}
+
+function toggleIncLedger() { incLedgerAll = !incLedgerAll; renderIncomeLedger(); }
+
+function renderIncomeLedger() {
+  const el = document.getElementById('incLedger');
+  if (!el) return;
+  const items = divLedger.filter(e => e.st === 'paid' || e.st === 'pending')
+    .sort((a, b) => (b.pay_date || b.ex_date).localeCompare(a.pay_date || a.ex_date));
+  document.getElementById('incLedgerNote').textContent = items.length ? `${items.length} payments · newest first` : '';
+  if (!items.length) {
+    el.innerHTML = '<div class="empty-state" style="padding:26px 10px">No dividends earned yet — they land here the day a holding goes ex-dividend.</div>';
+    return;
+  }
+  const shown = incLedgerAll ? items : items.slice(0, 14);
+  const yearTot = new Map();
+  for (const e of items) { const y = (e.pay_date || e.ex_date).slice(0, 4); yearTot.set(y, (yearTot.get(y) || 0) + e.total); }
+  let html = '', curY = null;
+  for (const e of shown) {
+    const d = e.pay_date || e.ex_date, y = d.slice(0, 4);
+    if (y !== curY) { curY = y; html += `<div class="lg-yr"><span>${y}</span><b>${fmtNOK(yearTot.get(y))}</b></div>`; }
+    const tipB = DIV_BASIS_TIP[e.basis] || '';
+    html += `<div class="lg-row ${e.st}" title="ex ${e.ex_date} · paid ${e.pay_date || '—'}${e.pay_date_est ? ' (est.)' : ''}${e.note ? ' · ' + escH(e.note) : ''}">
+      <span class="d">${fmtDM(d)}</span>
+      <span class="k">${escH(ticker(e.isin))}</span>
+      <span class="m">${fmtNum(e.per, e.per < 1 ? 4 : 2)} × ${fmtNum(e.shares, e.shares % 1 ? 2 : 0)} <span class="bas" title="${escH(tipB)}">${e.basis === 'declared' ? '' : escH(e.basis)}</span>${e.st === 'pending' ? ' <span class="st st-pending">in transit</span>' : ''}${e.kind && e.kind !== 'ordinary' ? ` <span class="st st-projected">${escH(e.kind.replace(/_/g, ' '))}</span>` : ''}</span>
+      <span class="a">+${fmtNOK(e.total)}</span>
+    </div>`;
+  }
+  el.innerHTML = `<div class="${incLedgerAll ? 'lg-scroll' : ''}">${html}</div>` +
+    (items.length > 14 ? `<button class="lg-more" onclick="toggleIncLedger()">${incLedgerAll ? 'Show recent only' : `Show all ${items.length}`}</button>` : '');
+}
+
+function renderIncomeMarket() {
+  const el = document.getElementById('incMarket');
+  if (!el) return;
+  const today = todayIso();
+  const rows = (divMarket || []).filter(d => d.ex_date >= today && d.ticker);
+  if (!rows.length) { el.innerHTML = '<div class="empty-state">No ex-dates announced on Oslo Børs for the next 45 days.</div>'; return; }
+  el.innerHTML = `<div class="mk-grid">${rows.slice(0, 48).map(d => {
+    const held = positions.get(d.isin);
+    const amt = d.amount != null ? `${d.currency || 'NOK'} ${fmtNum(+d.amount, +d.amount < 1 ? 4 : 2)}` : '—';
+    const nok = d.currency && d.currency !== 'NOK' && d.amount_nok != null ? ` ≈ NOK ${fmtNum(+d.amount_nok, 2)}` : '';
+    const mine = held && d.amount_nok != null ? ` · you: <b style="color:var(--amber)">${fmtNOK(+d.amount_nok * held.netQty)}</b>` : '';
+    const dd = dayDiff(today, d.ex_date);
+    return `<div class="mk-card${held ? ' held' : ''}">
+      <div class="mk-h"><span class="mk-tk">${held ? '<span class="hold">●</span>' : ''}${INTEL.tkLink(d.isin, escH(d.ticker))}</span>
+        <span class="mk-y" title="this dividend ÷ latest price">${d.event_yield_pct != null ? (+d.event_yield_pct).toFixed(2) + '%' : ''}</span></div>
+      <div class="mk-nm">${escH(d.name || '')}${d.kind && d.kind !== 'ordinary' ? ' · ' + escH(d.kind.replace(/_/g, ' ')) : ''}</div>
+      <div class="mk-amt">${amt}${nok}${mine}</div>
+      <div class="mk-d"><span>buy by <b>${d.last_cum_date ? fmtDM(d.last_cum_date) : '—'}</b></span><span>ex <b>${fmtDM(d.ex_date)}</b> <span style="color:var(--text4)">${dd === 0 ? 'today' : dd + 'd'}</span></span><span>pay <b>${fmtDM(d.pay_date)}</b>${d.pay_date_est ? '*' : ''}</span></div>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+/* ═══ SHELL — header pills, holdings strip, scrollspy ═══════════════════════ */
+function renderHeaderPills() {
+  const s = divStats;
+  const pi = document.getElementById('pillIncomeT');
+  if (pi) pi.innerHTML = s && (s.fwd || s.paidAll) ? `<b>${fmtNOK(s.fwd)}</b> fwd 12m` : 'income —';
+  const day = portfolioDayPnl();
+  const pill = document.getElementById('pillLive'), txt = document.getElementById('pillLiveT');
+  if (pill && txt) {
+    const open = marketIsOpenOslo();
+    pill.className = 'meta-pill ' + (day.anyLive ? 'ok' : open ? 'warn' : '');
+    txt.textContent = day.anyLive ? 'Live · 15-min feed' : open ? 'Session open · awaiting ticks' : 'Oslo closed · last close';
+  }
+  const v = document.getElementById('deckIncomeVal');
+  if (v) {
+    const nx = s && s.next;
+    v.innerHTML = nx
+      ? `${escH(ticker(nx.isin))} · ${fmtDM(nx.pay_date || nx.ex_date)} · <span class="amt">${fmtNOK(nx.total)}</span>`
+      : (s && s.fwd ? `${fmtNOK(s.fwd)} expected in 12m` : 'none scheduled');
+  }
+  const title = document.getElementById('deckTitle');
+  if (title) {
+    const payers = new Set(divLedger.filter(e => positions.has(e.isin) && e.st !== 'projected').map(e => e.isin)).size;
+    title.textContent = positions.size
+      ? `${positions.size} holding${positions.size === 1 ? '' : 's'}${payers ? ` · ${payers} paying dividends` : ''}`
+      : 'Your book, live.';
+  }
+  const ra = document.getElementById('railAsof');
+  if (ra) ra.textContent = day.asOf
+    ? 'prices ' + new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Oslo', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(day.asOf)) + ' Oslo'
+    : '';
+}
+
+function renderHoldingStrip() {
+  const wrap = document.getElementById('hStrip'), track = document.getElementById('hStripTrack');
+  if (!wrap || !track) return;
+  const today = todayIso(), soon = addDays(today, 21);
+  const rows = [...positions.entries()].map(([isin, p]) => {
+    const md = marketData[isin] || {};
+    const ex = (md.events || []).find(e => e.event_type === 'EX_DATE' && e.event_date >= today && e.event_date <= soon);
+    return { isin, tk: ticker(isin), px: md.latestPrice, ch: holdingDayPct(isin), val: (md.latestPrice || 0) * p.netQty, ex };
+  }).filter(r => r.px).sort((a, b) => b.val - a.val);
+  if (!rows.length) { wrap.style.display = 'none'; return; }
+  wrap.style.display = '';
+  const html = rows.map(r => {
+    const cls = r.ch == null ? 'flat' : r.ch > 0.005 ? 'up' : r.ch < -0.005 ? 'dn' : 'flat';
+    const exd = r.ex ? dayDiff(today, r.ex.event_date) : null;
+    return `<a class="hs-item" href="${INTEL.dossierHref(r.isin)}"><span class="tk">${escH(r.tk)}</span><span class="v">${fmtNum(r.px, r.px < 10 ? 3 : 2)}</span>` +
+      `<span class="c ${cls}">${r.ch == null ? '—' : fmtPct(r.ch)}</span>${r.ex ? `<span class="dv" title="goes ex-dividend ${r.ex.event_date}">◇ ex ${exd === 0 ? 'today' : exd + 'd'}</span>` : ''}</a>`;
+  }).join('');
+  const key = html.length + '|' + rows.length;
+  if (track.__key === key && track.innerHTML) {       // same shape: swap text in place so the scroll doesn't jump
+    track.innerHTML = html + (DECK_REDUCE ? '' : html);
+    return;
+  }
+  track.__key = key;
+  track.classList.remove('run');
+  track.innerHTML = html + (DECK_REDUCE ? '' : html);
+  if (!DECK_REDUCE) requestAnimationFrame(() => {
+    track.style.setProperty('--strip-dur', Math.max(30, Math.round(track.scrollWidth / 2 / 36)) + 's');
+    track.classList.add('run');
+  });
+}
+
+function scrollSpy() {
+  const links = [...document.querySelectorAll('#rail a')];
+  if (!('IntersectionObserver' in window) || !links.length) return;
+  const vis = new Map();
+  const io = new IntersectionObserver(es => {
+    for (const e of es) vis.set(e.target.id, e.isIntersecting ? e.intersectionRatio : 0);
+    let best = null, br = 0;
+    for (const [id, r] of vis) if (r > br) { br = r; best = id; }
+    links.forEach(a => a.classList.toggle('on', a.getAttribute('href') === '#' + best));
+  }, { threshold: [0, 0.15, 0.4, 0.7], rootMargin: '-40px 0px -40% 0px' });
+  for (const a of links) { const s = document.getElementById(a.getAttribute('href').slice(1)); if (s) io.observe(s); }
+}
+
+let _incResizeT = null;
+window.addEventListener('resize', () => {
+  clearTimeout(_incResizeT);
+  _incResizeT = setTimeout(() => {
+    const rec = _lazyReg.get('income');
+    if (divStats && (!rec || rec.ready)) { renderIncomeBars(); renderIncomeRunway(); }
+  }, 180);
+});
 
 /* ═══ TRANSACTION JOURNAL ══════════════════════════════════════════════════
    Each trade annotated with its position context (NEW/ADD/TRIM/EXIT, from
