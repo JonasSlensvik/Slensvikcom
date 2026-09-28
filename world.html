@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>World · Slensvik</title>
+<meta name="description" content="A curated global markets snapshot — sovereign yields, FX, equities, indices, and crypto — demonstrating the reach of data slensvik.com can now pull in beyond Oslo Børs.">
+<link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/intel.css">
+<script src="assets/intel.js?v=20260902"></script>
+
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body { background: var(--bg0); color: var(--text2); font-family: var(--mono); font-size: 13px; line-height: 1.5; min-height: 100vh; overflow-x: hidden; }
+
+.page { max-width: 1440px; margin: 0 auto; padding: 0 24px 64px; }
+
+header { display: flex; align-items: flex-end; justify-content: space-between; padding: 40px 0 32px; border-bottom: 1px solid var(--border); margin-bottom: 28px; flex-wrap: wrap; gap: 16px; }
+.logo-block { display: flex; flex-direction: column; gap: 4px; }
+.logo { font-family: var(--sans); font-weight: 800; font-size: 28px; letter-spacing: -0.5px; color: var(--text1); }
+.logo span { color: var(--ice); }
+.logo-sub { font-size: 11px; letter-spacing: 0.08em; color: var(--text3); text-transform: uppercase; }
+.header-meta { display: flex; gap: 8px; flex-wrap: wrap; }
+.meta-pill { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; padding: 5px 12px; border-radius: 20px; border: 1px solid var(--border2); color: var(--text3); }
+.meta-pill.live { color: var(--ice); border-color: var(--ice-dim); background: var(--ice-dim); }
+
+.intro { font-family: var(--sans); font-size: 14px; line-height: 1.7; color: var(--text2); max-width: 760px; margin-bottom: 36px; }
+.intro b { color: var(--text1); font-weight: 600; }
+
+.section { margin-bottom: 36px; }
+.section-head { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; margin-bottom: 14px; }
+.section-title { font-family: var(--sans); font-weight: 700; font-size: 16px; color: var(--text1); }
+.section-desc { font-size: 11px; color: var(--text3); flex: 1 1 320px; }
+.section-count { font-size: 10px; color: var(--text3); letter-spacing: 0.06em; }
+
+.wm-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(176px, 1fr)); gap: var(--space-3); }
+.wm-tile { background: var(--bg1); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px 18px; position: relative; overflow: hidden; transition: border-color 0.2s; }
+.wm-tile:hover { border-color: var(--border3); }
+.wm-tile::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--text4); }
+.wm-tile.up::before { background: var(--green); }
+.wm-tile.down::before { background: var(--red); }
+.wm-symbol { font-size: 10px; letter-spacing: 0.1em; color: var(--text3); text-transform: uppercase; margin-bottom: 6px; }
+.wm-name { font-size: 10px; color: var(--text4); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 10px; }
+.wm-value { font-size: 22px; font-weight: 600; color: var(--text1); letter-spacing: -0.02em; margin-bottom: 6px; font-variant-numeric: tabular-nums; }
+.wm-sub { font-size: 11px; font-weight: 600; }
+.wm-sub.up { color: var(--green); }
+.wm-sub.down { color: var(--red); }
+.wm-sub.flat { color: var(--text3); }
+.wm-asof { font-size: 9px; color: var(--text4); margin-top: 6px; }
+
+.empty-state { grid-column: 1 / -1; padding: 28px; text-align: center; color: var(--text3); font-size: 12px; border: 1px dashed var(--border2); border-radius: var(--radius-lg); }
+
+.footnote { font-size: 10px; color: var(--text4); line-height: 1.7; margin-top: 8px; padding-top: 28px; border-top: 1px solid var(--border); }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <header>
+    <div class="logo-block">
+      <div class="logo">Slensvik<span>world</span></div>
+      <div class="logo-sub">Global markets snapshot</div>
+    </div>
+    <div data-intel-nav></div>
+    <div class="header-meta">
+      <div class="meta-pill live" id="asOfPill">LOADING …</div>
+    </div>
+  </header>
+
+  <p class="intro">A curated snapshot across five asset classes — <b>sovereign yields</b>, <b>FX</b>,
+  <b>equities</b>, <b>indices</b>, and <b>crypto</b> — refreshed once daily via
+  <a href="https://github.com/OpenBB-finance/OpenBB" style="color:var(--ice)">OpenBB</a> (FRED + Yahoo Finance
+  providers). This is deliberately narrow: a handful of names per category, chosen to demonstrate reach across
+  geographies and asset types rather than depth within any one of them.</p>
+
+  <div class="section" id="sec-yields">
+    <div class="section-head">
+      <div class="section-title">◇ Sovereign Yields</div>
+      <div class="section-desc">10-year government bond yield, one representative market per region.</div>
+      <div class="section-count" id="yieldsCount">—</div>
+    </div>
+    <div class="wm-grid" id="yieldsGrid"><div class="empty-state">Loading …</div></div>
+  </div>
+
+  <div class="section" id="sec-fx">
+    <div class="section-head">
+      <div class="section-title">⇄ FX</div>
+      <div class="section-desc">G10-ish crosses, vs. USD unless noted.</div>
+      <div class="section-count" id="fxCount">—</div>
+    </div>
+    <div class="wm-grid" id="fxGrid"><div class="empty-state">Loading …</div></div>
+  </div>
+
+  <div class="section" id="sec-indices">
+    <div class="section-head">
+      <div class="section-title">▤ Indices</div>
+      <div class="section-desc">Major benchmarks, US through Asia — and Oslo, for a home reference point.</div>
+      <div class="section-count" id="indicesCount">—</div>
+    </div>
+    <div class="wm-grid" id="indicesGrid"><div class="empty-state">Loading …</div></div>
+  </div>
+
+  <div class="section" id="sec-equities">
+    <div class="section-head">
+      <div class="section-title">▣ Equities</div>
+      <div class="section-desc">A curated large-cap spread — US, Europe, Asia, Norway.</div>
+      <div class="section-count" id="equitiesCount">—</div>
+    </div>
+    <div class="wm-grid" id="equitiesGrid"><div class="empty-state">Loading …</div></div>
+  </div>
+
+  <div class="section" id="sec-crypto">
+    <div class="section-head">
+      <div class="section-title">◈ Crypto</div>
+      <div class="section-desc">Spot price vs. USD.</div>
+      <div class="section-count" id="cryptoCount">—</div>
+    </div>
+    <div class="wm-grid" id="cryptoGrid"><div class="empty-state">Loading …</div></div>
+  </div>
+
+  <div class="footnote">
+    Sourced via OpenBB's FRED and Yahoo Finance providers, pulled once daily by a scheduled GitHub Actions job
+    (<code>global_markets_scraper.py</code>) — not a live feed. Yahoo-sourced fields (FX, equities, indices,
+    crypto) are unofficial and can lag or gap; treat this page as illustrative, not a trading terminal.
+    OECD-sourced sovereign yields (all but the US) update monthly, not daily.
+  </div>
+
+</div>
+
+<script>
+const API_URL = 'https://api.slensvik.com';
+const GET = (table, params = '') =>
+  fetch(`${API_URL}/${table}?${params}`, { headers: { Accept: 'application/json' } })
+    .then(r => { if (!r.ok) throw new Error(`${r.status}`); return r.json(); });
+
+const fmtPct = v => v == null ? '—' : (v >= 0 ? '+' : '') + v.toFixed(2) + '%';
+const fmtNum = (v, dp = 2) => v == null ? '—' : v.toLocaleString('en-US', { minimumFractionDigits: dp, maximumFractionDigits: dp });
+
+// rows arrive order=as_of_date.desc — keep the first (most recent) row per key.
+function latestByKey(rows, keyField) {
+  const seen = new Map();
+  for (const r of rows) {
+    if (!seen.has(r[keyField])) seen.set(r[keyField], r);
+  }
+  return seen;
+}
+
+function tile({ symbol, name, value, sub, subCls, asOf }) {
+  const cls = subCls ? ` ${subCls}` : '';
+  return `<div class="wm-tile${cls}">
+    <div class="wm-symbol">${symbol}</div>
+    ${name ? `<div class="wm-name" title="${name}">${name}</div>` : ''}
+    <div class="wm-value">${value}</div>
+    ${sub != null ? `<div class="wm-sub${cls}">${sub}</div>` : ''}
+    ${asOf ? `<div class="wm-asof">as of ${asOf}</div>` : ''}
+  </div>`;
+}
+
+const YIELD_ORDER = ['US', 'DE', 'GB', 'JP', 'NO'];
+const YIELD_NAMES = { US: 'United States', DE: 'Germany', GB: 'United Kingdom', JP: 'Japan', NO: 'Norway' };
+
+async function renderYields() {
+  try {
+    const rows = await GET('global_yields', 'order=as_of_date.desc&limit=200');
+    const latest = latestByKey(rows, 'series_id');
+    const byCountry = new Map();
+    for (const r of latest.values()) byCountry.set(r.country, r);
+    const grid = document.getElementById('yieldsGrid');
+    const present = YIELD_ORDER.filter(c => byCountry.has(c));
+    document.getElementById('yieldsCount').textContent = `${present.length}/${YIELD_ORDER.length} markets`;
+    if (!present.length) { grid.innerHTML = '<div class="empty-state">No data yet — the daily scraper hasn\'t run.</div>'; return; }
+    grid.innerHTML = present.map(c => {
+      const r = byCountry.get(c);
+      return tile({ symbol: `${c} · ${r.tenor}`, name: YIELD_NAMES[c], value: fmtNum(r.rate_pct) + '%', asOf: r.as_of_date });
+    }).join('');
+  } catch (e) {
+    document.getElementById('yieldsGrid').innerHTML = `<div class="empty-state">Could not load: ${e.message}</div>`;
+  }
+}
+
+const FX_ORDER = ['EURUSD', 'GBPUSD', 'USDJPY', 'USDNOK', 'USDCHF', 'AUDUSD', 'USDCAD', 'NZDUSD'];
+
+async function renderFx() {
+  try {
+    const rows = await GET('global_fx', 'order=as_of_date.desc&limit=400');
+    const latest = latestByKey(rows, 'pair');
+    const grid = document.getElementById('fxGrid');
+    const present = FX_ORDER.filter(p => latest.has(p));
+    document.getElementById('fxCount').textContent = `${present.length}/${FX_ORDER.length} pairs`;
+    if (!present.length) { grid.innerHTML = '<div class="empty-state">No data yet — the daily scraper hasn\'t run.</div>'; return; }
+    grid.innerHTML = present.map(p => {
+      const r = latest.get(p);
+      const cls = r.change_pct > 0 ? 'up' : r.change_pct < 0 ? 'down' : 'flat';
+      return tile({ symbol: p, value: fmtNum(r.rate, 4), sub: fmtPct(r.change_pct), subCls: cls, asOf: r.as_of_date });
+    }).join('');
+  } catch (e) {
+    document.getElementById('fxGrid').innerHTML = `<div class="empty-state">Could not load: ${e.message}</div>`;
+  }
+}
+
+const INDEX_ORDER = ['^GSPC', '^IXIC', '^FTSE', '^GDAXI', '^N225', '^HSI', '^OSEAX'];
+const INDEX_NAMES = { '^GSPC': 'S&P 500', '^IXIC': 'Nasdaq Composite', '^FTSE': 'FTSE 100', '^GDAXI': 'DAX', '^N225': 'Nikkei 225', '^HSI': 'Hang Seng', '^OSEAX': 'Oslo Børs All-Share' };
+const EQUITY_ORDER = ['AAPL', 'MSFT', 'NVDA', 'ASML', 'TSM', '7203.T', 'EQNR.OL', '005930.KS'];
+
+async function renderQuotes() {
+  const grid = { index: document.getElementById('indicesGrid'), equity: document.getElementById('equitiesGrid') };
+  try {
+    const rows = await GET('global_quotes', 'order=as_of_date.desc&limit=400');
+    const latest = latestByKey(rows, 'symbol');
+
+    const idxPresent = INDEX_ORDER.filter(s => latest.has(s));
+    document.getElementById('indicesCount').textContent = `${idxPresent.length}/${INDEX_ORDER.length} indices`;
+    grid.index.innerHTML = idxPresent.length ? idxPresent.map(s => quoteTile(latest.get(s), INDEX_NAMES[s])).join('')
+      : '<div class="empty-state">No data yet — the daily scraper hasn\'t run.</div>';
+
+    const eqPresent = EQUITY_ORDER.filter(s => latest.has(s));
+    document.getElementById('equitiesCount').textContent = `${eqPresent.length}/${EQUITY_ORDER.length} names`;
+    grid.equity.innerHTML = eqPresent.length ? eqPresent.map(s => quoteTile(latest.get(s))).join('')
+      : '<div class="empty-state">No data yet — the daily scraper hasn\'t run.</div>';
+  } catch (e) {
+    grid.index.innerHTML = grid.equity.innerHTML = `<div class="empty-state">Could not load: ${e.message}</div>`;
+  }
+}
+
+function quoteTile(r, fallbackName) {
+  const cls = r.change_pct > 0 ? 'up' : r.change_pct < 0 ? 'down' : 'flat';
+  const dp = r.last_price != null && r.last_price < 20 ? 4 : 2;
+  return tile({
+    symbol: r.symbol, name: r.name || fallbackName,
+    value: (r.currency ? r.currency + ' ' : '') + fmtNum(r.last_price, dp),
+    sub: fmtPct(r.change_pct), subCls: cls, asOf: r.as_of_date,
+  });
+}
+
+const CRYPTO_ORDER = ['BTC-USD', 'ETH-USD', 'SOL-USD', 'XRP-USD'];
+
+async function renderCrypto() {
+  try {
+    const rows = await GET('global_crypto', 'order=as_of_date.desc&limit=200');
+    const latest = latestByKey(rows, 'symbol');
+    const grid = document.getElementById('cryptoGrid');
+    const present = CRYPTO_ORDER.filter(s => latest.has(s));
+    document.getElementById('cryptoCount').textContent = `${present.length}/${CRYPTO_ORDER.length} assets`;
+    if (!present.length) { grid.innerHTML = '<div class="empty-state">No data yet — the daily scraper hasn\'t run.</div>'; return; }
+    grid.innerHTML = present.map(s => {
+      const r = latest.get(s);
+      const cls = r.change_pct > 0 ? 'up' : r.change_pct < 0 ? 'down' : 'flat';
+      return tile({ symbol: s.replace('-USD', ''), value: 'USD ' + fmtNum(r.price, r.price < 10 ? 4 : 2), sub: fmtPct(r.change_pct), subCls: cls, asOf: r.as_of_date });
+    }).join('');
+  } catch (e) {
+    document.getElementById('cryptoGrid').innerHTML = `<div class="empty-state">Could not load: ${e.message}</div>`;
+  }
+}
+
+async function updateAsOfPill() {
+  try {
+    const rows = await GET('global_quotes', 'order=as_of_date.desc&limit=1&select=as_of_date');
+    document.getElementById('asOfPill').textContent = rows.length ? `AS OF ${rows[0].as_of_date}` : 'NO DATA YET';
+  } catch (e) {
+    document.getElementById('asOfPill').textContent = 'SYNC FAILED';
+  }
+}
+
+function init() {
+  updateAsOfPill();
+  renderYields();
+  renderFx();
+  renderQuotes();
+  renderCrypto();
+}
+init();
+</script>
+</body>
+</html>
