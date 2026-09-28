@@ -19,9 +19,18 @@ backend architecture, scheduled jobs, DB access, and working agreements.
   minute-level resolution (cold-start seeds `prev_close` at week-open, then merges
   `api.intraday_live`; refreshes every 3 min, paused during what-if slider previews).
 - `fastrente.html` — savings/rate tool.
+- `world.html` + `assets/world.js` — World Intel: canvas globe (d3-geo + topojson, layers: tension,
+  policy/real rates, inflation, growth, FX, equities, sanctions; chokepoints, disasters, market beacons,
+  day/night), ranked intel brief, risk regime, cross-asset matrix, curves, central-bank map, FX,
+  commodities/vol, geopolitics, chokepoints, sanctions, Norway lens, live data-health table. Reads the
+  ENEXT `api.world_*` tables (see `../ENEXT/docs/world-intel.md`); `?static=1` freezes animation for
+  screenshots.
 
 ## Useful API views
 
+- World Intel: `api.world_board` (every series + snapshot metrics), `api.world_brief`, `api.world_regime`,
+  `api.world_country_snapshot`, `api.world_hotspots`, `api.world_chokepoint_snapshot`,
+  `api.world_source_health`, `rpc/world_history?ids={a,b}&since=YYYY-MM-DD` (compact arrays).
 - `api.latest_price` — per-ISIN best price (live tick > EOD), `fidelity` = 'live'|'eod'.
 - `api.intraday_live` — 15-min delayed live ticks (`isin, ts, price`), today's session.
 - `api.conviction`, `api.galton_weights` / `api.galton_metrics` / `api.galton_matrices`.

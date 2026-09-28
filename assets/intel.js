@@ -258,7 +258,7 @@
     { kind: 'page', glyph: '◆', tick: 'GALTON',      name: 'Galton strategy — weekly long/short book',  href: 'galton.html' },
     { kind: 'page', glyph: '◈', tick: 'DOSSIER',     name: 'Company intelligence dossier',              href: 'dossier.html' },
     { kind: 'page', glyph: '⧉', tick: 'MARKETMAKER', name: 'Deribit options market maker',              href: 'marketmaker.html' },
-    { kind: 'page', glyph: '⊕', tick: 'WORLD',       name: 'World markets — yields, FX, equities, crypto', href: 'world.html' },
+    { kind: 'page', glyph: '⊕', tick: 'WORLD',       name: 'World intelligence — markets, rates, conflict, shipping, sanctions', href: 'world.html' },
     { kind: 'page', glyph: '▥', tick: 'FASTRENTE',   name: 'Fixed-rate mortgage strategy',              href: 'fastrente.html' },
     { kind: 'page', glyph: '◇', tick: 'TERMINAL',    name: 'Front page — instrument gateway',           href: 'index.html' },
   ];

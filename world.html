@@ -4,275 +4,750 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>World · Slensvik</title>
-<meta name="description" content="A curated global markets snapshot — sovereign yields, FX, equities, indices, and crypto — demonstrating the reach of data slensvik.com can now pull in beyond Oslo Børs.">
+<meta name="description" content="Global intelligence board — cross-asset markets, sovereign curves, central banks, geopolitical tension, shipping chokepoints, sanctions and the Norway lens, fused into one daily picture and a ranked intel brief.">
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/intel.css">
-<script src="assets/intel.js?v=20260902"></script>
+<script src="assets/intel.js?v=20260928"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js" defer></script>
+<script src="assets/world.js?v=20260928" defer></script>
 
 <style>
+/* ═══ WORLD — page-local layer on top of assets/intel.css ═══════════════════
+   Chart colours: categorical slots were snapped from the brand hues into the
+   dark lightness band and validated (dataviz six checks, --pairs all, surface
+   #0b0f17): worst CVD ΔE 11.7, normal-vision ΔE 21.9, all ≥ 3:1 contrast.
+   Up/down keep the site's green/red (CVD ΔE 12.6 between the poles) and are
+   never colour-alone: every value is signed text, every chart has a readout. */
+:root {
+  --s1: #23a2d5;          /* series 1 — ice   */
+  --s2: #cb7f00;          /* series 2 — amber */
+  --s3: #c14489;          /* series 3 — magenta */
+  --s-muted: #3a4252;     /* de-emphasis / context series */
+  --grid: rgba(255,255,255,0.055);
+  --axis: rgba(255,255,255,0.16);
+  --up: var(--green); --dn: var(--red);
+  --panel: rgba(11,15,23,0.72);
+  --rail-h: 38px;
+}
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { scroll-behavior: smooth; }
-body { background: var(--bg0); color: var(--text2); font-family: var(--mono); font-size: 13px; line-height: 1.5; min-height: 100vh; overflow-x: hidden; }
+html { scroll-behavior: smooth; scroll-padding-top: calc(var(--rail-h) + 14px); }
+body { background: var(--bg0); color: var(--text2); font-family: var(--mono); font-size: 12px; line-height: 1.5;
+       min-height: 100vh; overflow-x: hidden; -webkit-font-smoothing: antialiased; }
+a { color: inherit; }
+button { font: inherit; color: inherit; }
+.page { max-width: 1480px; margin: 0 auto; padding: 0 24px 72px; position: relative; }
+.num { font-variant-numeric: tabular-nums; }
+.up { color: var(--up); } .dn { color: var(--dn); } .flat { color: var(--text3); }
+.muted { color: var(--text3); } .faint { color: var(--text4); }
 
-.page { max-width: 1440px; margin: 0 auto; padding: 0 24px 64px; }
-
-header { display: flex; align-items: flex-end; justify-content: space-between; padding: 40px 0 32px; border-bottom: 1px solid var(--border); margin-bottom: 28px; flex-wrap: wrap; gap: 16px; }
+/* ── header ──────────────────────────────────────────────────────────────── */
+header { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+         padding: 34px 0 20px; }
 .logo-block { display: flex; flex-direction: column; gap: 4px; }
 .logo { font-family: var(--sans); font-weight: 800; font-size: 28px; letter-spacing: -0.5px; color: var(--text1); }
 .logo span { color: var(--ice); }
-.logo-sub { font-size: 11px; letter-spacing: 0.08em; color: var(--text3); text-transform: uppercase; }
+.logo-sub { font-size: 10px; letter-spacing: 0.14em; color: var(--text3); text-transform: uppercase; }
 .header-meta { display: flex; gap: 8px; flex-wrap: wrap; }
-.meta-pill { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; padding: 5px 12px; border-radius: 20px; border: 1px solid var(--border2); color: var(--text3); }
-.meta-pill.live { color: var(--ice); border-color: var(--ice-dim); background: var(--ice-dim); }
+.meta-pill { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; padding: 5px 12px; border-radius: 20px;
+             border: 1px solid var(--border2); color: var(--text3); white-space: nowrap; display: inline-flex; gap: 7px;
+             align-items: center; }
+.meta-pill .led { width: 6px; height: 6px; border-radius: 50%; background: var(--text4); }
+.meta-pill.ok .led { background: var(--green); box-shadow: 0 0 8px rgba(67,224,151,.7); }
+.meta-pill.warn .led { background: var(--amber); box-shadow: 0 0 8px rgba(245,166,35,.7); }
+.meta-pill.bad .led { background: var(--red); box-shadow: 0 0 8px rgba(240,96,96,.7); }
+.meta-pill b { color: var(--text1); font-weight: 600; }
 
-.intro { font-family: var(--sans); font-size: 14px; line-height: 1.7; color: var(--text2); max-width: 760px; margin-bottom: 36px; }
-.intro b { color: var(--text1); font-weight: 600; }
+/* ── section rail (sticky, scrollspy) ────────────────────────────────────── */
+.rail { position: sticky; top: 0; z-index: 40; margin: 0 -24px 18px; padding: 0 24px; height: var(--rail-h);
+        display: flex; align-items: center; gap: 2px; overflow-x: auto; scrollbar-width: none;
+        background: rgba(5,8,16,0.82); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+        border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.rail::-webkit-scrollbar { display: none; }
+.rail a { font-size: 9.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text3); text-decoration: none;
+          padding: 5px 9px; border-radius: 3px; white-space: nowrap; transition: color .15s, background .15s; }
+.rail a:hover { color: var(--text1); background: var(--bg3); }
+.rail a.on { color: var(--amber); background: rgba(245,166,35,0.08); }
+.rail .rail-asof { margin-left: auto; font-size: 9.5px; color: var(--text4); letter-spacing: .08em; white-space: nowrap; padding-left: 12px; }
 
-.section { margin-bottom: 36px; }
-.section-head { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; margin-bottom: 14px; }
-.section-title { font-family: var(--sans); font-weight: 700; font-size: 16px; color: var(--text1); }
-.section-desc { font-size: 11px; color: var(--text3); flex: 1 1 320px; }
-.section-count { font-size: 10px; color: var(--text3); letter-spacing: 0.06em; }
+/* ── ticker tape ─────────────────────────────────────────────────────────── */
+.tape { position: relative; overflow: hidden; border: 1px solid var(--border); border-radius: 6px; height: 34px;
+        background: rgba(11,15,23,0.6); margin-bottom: 18px;
+        -webkit-mask-image: linear-gradient(90deg, transparent, #000 4%, #000 96%, transparent);
+                mask-image: linear-gradient(90deg, transparent, #000 4%, #000 96%, transparent); }
+.tape-track { display: inline-flex; white-space: nowrap; height: 100%; align-items: center; will-change: transform; }
+.tape-item { display: inline-flex; align-items: baseline; gap: 7px; padding: 0 18px; font-size: 11px;
+             border-right: 1px solid var(--border); cursor: default; }
+.tape-item .tk { color: var(--text3); letter-spacing: .06em; font-size: 10px; text-transform: uppercase; }
+.tape-item .v { color: var(--text1); font-variant-numeric: tabular-nums; }
+.tape-item .c { font-variant-numeric: tabular-nums; font-size: 10.5px; }
+@media (prefers-reduced-motion: no-preference) {
+  .tape-track.run { animation: tape var(--tape-dur, 120s) linear infinite; }
+  .tape:hover .tape-track.run { animation-play-state: paused; }
+  @keyframes tape { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+}
+@media (prefers-reduced-motion: reduce) { .tape { overflow-x: auto; } }
 
-.wm-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(176px, 1fr)); gap: var(--space-3); }
-.wm-tile { background: var(--bg1); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px 18px; position: relative; overflow: hidden; transition: border-color 0.2s; }
-.wm-tile:hover { border-color: var(--border3); }
-.wm-tile::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--text4); }
-.wm-tile.up::before { background: var(--green); }
-.wm-tile.down::before { background: var(--red); }
-.wm-symbol { font-size: 10px; letter-spacing: 0.1em; color: var(--text3); text-transform: uppercase; margin-bottom: 6px; }
-.wm-name { font-size: 10px; color: var(--text4); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 10px; }
-.wm-value { font-size: 22px; font-weight: 600; color: var(--text1); letter-spacing: -0.02em; margin-bottom: 6px; font-variant-numeric: tabular-nums; }
-.wm-sub { font-size: 11px; font-weight: 600; }
-.wm-sub.up { color: var(--green); }
-.wm-sub.down { color: var(--red); }
-.wm-sub.flat { color: var(--text3); }
-.wm-asof { font-size: 9px; color: var(--text4); margin-top: 6px; }
+/* ── globe hero ──────────────────────────────────────────────────────────── */
+.hero { position: relative; height: 660px; border: 1px solid var(--border); border-radius: 12px; overflow: hidden;
+        background: radial-gradient(ellipse 70% 90% at 58% 50%, rgba(14,24,40,0.55), rgba(3,6,12,0.97)), var(--bg0);
+        margin-bottom: 14px; touch-action: pan-y; }
+#globeCanvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: grab; outline: none; }
+#globeCanvas.dragging { cursor: grabbing; }
+#globeCanvas:focus-visible { box-shadow: inset 0 0 0 1px rgba(79,195,247,.5); }
+.hero-copy { position: absolute; left: 22px; top: 20px; z-index: 3; max-width: 360px; pointer-events: none; }
+.hero-kicker { font-size: 9px; letter-spacing: .32em; color: var(--amber); text-transform: uppercase; }
+.hero-title { font-family: var(--sans); font-weight: 800; font-size: 30px; line-height: 1.05; color: var(--text1);
+              margin: 8px 0 8px; letter-spacing: -0.02em; }
+.hero-lede { font-family: var(--sans); font-size: 12.5px; line-height: 1.55; color: var(--text2); }
+.hero-regime { margin-top: 14px; display: inline-flex; align-items: center; gap: 10px; pointer-events: auto;
+               border: 1px solid var(--border2); border-radius: 6px; padding: 8px 12px; background: rgba(5,8,16,.55);
+               text-decoration: none; }
+.hero-regime .lab { font-size: 9px; letter-spacing: .18em; color: var(--text3); text-transform: uppercase; }
+.hero-regime .val { font-size: 13px; font-weight: 600; color: var(--text1); letter-spacing: .06em; }
+.hero-regime .sc { font-size: 11px; }
+.layers { position: absolute; right: 16px; top: 16px; z-index: 4; display: flex; flex-direction: column; gap: 3px;
+          align-items: stretch; }
+.layers .lt { font-size: 8.5px; letter-spacing: .24em; color: var(--text4); text-transform: uppercase; margin: 0 0 3px 2px; }
+.layer-btn { font-size: 9.5px; letter-spacing: .12em; text-transform: uppercase; text-align: left; cursor: pointer;
+             color: var(--text3); background: rgba(5,8,16,.62); border: 1px solid var(--border); border-radius: 4px;
+             padding: 5px 10px; min-width: 142px; transition: all .15s; }
+.layer-btn:hover { color: var(--text1); border-color: var(--border2); }
+.layer-btn[aria-pressed="true"] { color: var(--amber); border-color: rgba(245,166,35,.45); background: rgba(245,166,35,.09); }
+.legend { position: absolute; left: 20px; bottom: 18px; z-index: 3; width: 300px; pointer-events: none;
+          background: rgba(5,8,16,.55); border: 1px solid var(--border); border-radius: 6px; padding: 9px 11px 8px; }
+.legend .lg-t { font-size: 9px; letter-spacing: .16em; text-transform: uppercase; color: var(--text2); margin-bottom: 6px;
+                display: flex; flex-direction: column; gap: 2px; }
+.legend .lg-t i { font-style: normal; color: var(--text4); letter-spacing: .06em; text-transform: none; }
+.legend canvas { width: 100%; height: 8px; display: block; border-radius: 2px; }
+.legend .lg-ticks { display: flex; justify-content: space-between; font-size: 9px; color: var(--text3); margin-top: 4px; }
+.legend .lg-nd { font-size: 9px; color: var(--text4); margin-top: 5px; display: flex; gap: 12px; flex-wrap: wrap; }
+.legend .lg-nd span::before { content: ''; display: inline-block; width: 8px; height: 8px; margin-right: 5px;
+                              vertical-align: -1px; background: #141b27; border: 1px solid rgba(160,190,230,.2); }
+.legend .lg-nd .k-choke::before { background: none; border: none; width: 0; height: 0; margin-right: 8px;
+                                  border-left: 4px solid transparent; border-right: 4px solid transparent;
+                                  border-bottom: 7px solid var(--ice); }
+.legend .lg-nd .k-beacon::before { border-radius: 50%; background: var(--green); border: none; }
+.legend .lg-nd .k-hz::before { border-radius: 50%; background: none; border: 1.5px solid var(--red); }
+.toggles { position: absolute; right: 16px; bottom: 16px; z-index: 4; display: flex; gap: 4px; flex-wrap: wrap;
+           justify-content: flex-end; max-width: 520px; }
+.tg { font-size: 9px; letter-spacing: .12em; text-transform: uppercase; cursor: pointer; color: var(--text3);
+      background: rgba(5,8,16,.62); border: 1px solid var(--border); border-radius: 3px; padding: 4px 8px; }
+.tg[aria-pressed="true"] { color: var(--ice); border-color: rgba(79,195,247,.35); }
+.tg:hover { color: var(--text1); }
+.globe-status { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%); z-index: 2; font-size: 10px;
+                letter-spacing: .2em; color: var(--text4); text-transform: uppercase; pointer-events: none; }
+.flyout { position: absolute; z-index: 6; pointer-events: none; display: none; min-width: 230px; max-width: 290px;
+          background: rgba(9,13,21,.96); border: 1px solid var(--border2); border-radius: 8px; padding: 11px 13px 10px;
+          box-shadow: 0 16px 44px rgba(0,0,0,.55); font-size: 10.5px; line-height: 1.65; }
+.flyout .fn { font-family: var(--sans); font-weight: 700; font-size: 14px; color: var(--text1); }
+.flyout .fr { font-size: 9px; color: var(--text4); letter-spacing: .1em; text-transform: uppercase; margin-bottom: 6px; }
+.flyout .row { display: flex; justify-content: space-between; gap: 14px; }
+.flyout .row span:first-child { color: var(--text3); }
+.flyout .row b { font-weight: 500; color: var(--text1); font-variant-numeric: tabular-nums; }
+.flyout .row.hl span:first-child { color: var(--amber); }
+.flyout .hint { color: var(--text4); font-size: 9px; margin-top: 6px; letter-spacing: .08em; }
+.hero-hint { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 3; font-size: 9px;
+             letter-spacing: .14em; color: var(--text4); text-transform: uppercase; pointer-events: none; white-space: nowrap; }
 
-.empty-state { grid-column: 1 / -1; padding: 28px; text-align: center; color: var(--text3); font-size: 12px; border: 1px dashed var(--border2); border-radius: var(--radius-lg); }
+/* country table view (the globe's accessible twin) */
+.ctable-wrap { display: none; margin: -2px 0 20px; max-height: 520px; overflow: auto; border: 1px solid var(--border);
+               border-radius: 8px; }
+.ctable-wrap.open { display: block; }
+.ctable-wrap th { position: sticky; top: 0; cursor: pointer; }
 
-.footnote { font-size: 10px; color: var(--text4); line-height: 1.7; margin-top: 8px; padding-top: 28px; border-top: 1px solid var(--border); }
+/* ── generic section chrome ──────────────────────────────────────────────── */
+.sec { margin-top: 44px; }
+.sec-title { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; margin-bottom: 14px; }
+.sec-title h2 { font-family: var(--sans); font-weight: 700; font-size: 20px; color: var(--text1); letter-spacing: -0.01em; }
+.sec-title h2 .g { color: var(--amber); font-family: var(--mono); font-weight: 400; margin-right: 8px; font-size: 15px; }
+.sec-title p { flex: 1 1 360px; font-size: 11px; color: var(--text3); line-height: 1.6; }
+.sec-title .asof { font-size: 10px; color: var(--text4); letter-spacing: .06em; }
+.grid { display: grid; gap: 14px; }
+.g2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.g3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.g12 { grid-template-columns: repeat(12, minmax(0, 1fr)); }
+.span4 { grid-column: span 4; } .span5 { grid-column: span 5; } .span6 { grid-column: span 6; }
+.span7 { grid-column: span 7; } .span8 { grid-column: span 8; } .span12 { grid-column: span 12; }
+.panel { padding: 16px 18px; min-width: 0; }
+.panel h3 { font-size: 9.5px; font-weight: 500; letter-spacing: .18em; text-transform: uppercase; color: var(--text3);
+            margin-bottom: 12px; display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+.panel h3 .g { color: var(--amber); margin-right: 6px; }
+.panel h3 small { font-size: 9px; letter-spacing: .06em; text-transform: none; color: var(--text4); font-weight: 400; }
+.note { font-size: 10px; color: var(--text4); line-height: 1.6; margin-top: 10px; }
+.empty { padding: 26px; text-align: center; color: var(--text4); font-size: 10.5px; letter-spacing: .08em;
+         border: 1px dashed var(--border2); border-radius: 6px; }
+.chart { position: relative; width: 100%; }
+.chart svg { display: block; width: 100%; overflow: visible; }
+.chart .tt { position: absolute; z-index: 20; pointer-events: none; display: none; background: rgba(9,13,21,.96);
+             border: 1px solid var(--border2); border-radius: 6px; padding: 8px 10px; font-size: 10.5px; white-space: nowrap;
+             box-shadow: 0 10px 30px rgba(0,0,0,.5); }
+.tt .td { color: var(--text3); font-size: 9.5px; letter-spacing: .06em; margin-bottom: 4px; }
+.tt .tr { display: flex; align-items: center; gap: 8px; line-height: 1.7; }
+.tt .tr i { display: inline-block; width: 12px; height: 2px; border-radius: 1px; }
+.tt .tr b { color: var(--text1); font-weight: 600; font-variant-numeric: tabular-nums; min-width: 54px; }
+.tt .tr span { color: var(--text3); }
+.legend-row { display: flex; gap: 14px; flex-wrap: wrap; font-size: 9.5px; color: var(--text3); margin: -4px 0 8px; }
+.legend-row span { display: inline-flex; align-items: center; gap: 6px; }
+.legend-row i { display: inline-block; width: 14px; height: 2px; border-radius: 1px; }
+.legend-row i.band { height: 8px; width: 12px; border-radius: 2px; }
+.chips { display: flex; gap: 4px; flex-wrap: wrap; }
+.chip { font-size: 9.5px; letter-spacing: .12em; text-transform: uppercase; cursor: pointer; color: var(--text3);
+        background: transparent; border: 1px solid var(--border2); border-radius: 3px; padding: 4px 9px; }
+.chip:hover { color: var(--text1); }
+.chip[aria-pressed="true"] { color: var(--amber); border-color: rgba(245,166,35,.45); background: rgba(245,166,35,.08); }
+.table-toggle { font-size: 9px; letter-spacing: .12em; text-transform: uppercase; cursor: pointer; color: var(--text4);
+                background: none; border: 0; padding: 0; }
+.table-toggle:hover { color: var(--ice); }
+
+/* ── brief ───────────────────────────────────────────────────────────────── */
+.brief { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.bcard { position: relative; border: 1px solid var(--border); border-radius: 8px; padding: 14px 15px 12px 17px;
+         background: var(--panel); overflow: hidden; display: flex; flex-direction: column; gap: 7px; min-width: 0;
+         text-decoration: none; transition: border-color .2s, transform .2s, background .2s; }
+.bcard:hover { border-color: var(--border2); background: rgba(17,22,31,.8); }
+@media (prefers-reduced-motion: no-preference) { .bcard:hover { transform: translateY(-1px); } }
+.bcard::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--sev, var(--ice)); }
+.bcard.lead { grid-column: span 2; }
+.bcard.lead .bh { font-size: 17px; }
+.bmeta { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 9px; letter-spacing: .14em;
+         text-transform: uppercase; color: var(--text3); }
+.bmeta .cat { display: inline-flex; gap: 6px; align-items: center; }
+.bmeta .cat b { color: var(--sev, var(--ice)); font-weight: 500; }
+.bsev { display: inline-flex; gap: 2px; }
+.bsev i { width: 4px; height: 9px; border-radius: 1px; background: var(--bg3); }
+.bsev i.on { background: var(--sev, var(--ice)); }
+.bh { font-family: var(--sans); font-weight: 700; font-size: 14px; line-height: 1.3; color: var(--text1); letter-spacing: -0.005em; }
+.bd { font-size: 10.5px; line-height: 1.6; color: var(--text2); }
+.bfoot { margin-top: auto; display: flex; justify-content: space-between; align-items: flex-end; gap: 10px; padding-top: 4px; }
+.bfoot .asof { font-size: 9px; color: var(--text4); letter-spacing: .06em; }
+.bfoot svg { flex: 0 0 auto; }
+.brief-bar { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+.brief-bar select { background: var(--bg2); color: var(--text2); border: 1px solid var(--border2); border-radius: 4px;
+                    font: inherit; font-size: 10px; padding: 4px 8px; }
+
+/* ── regime ──────────────────────────────────────────────────────────────── */
+.regime-now { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.regime-label { font-family: var(--sans); font-weight: 800; font-size: 26px; letter-spacing: .02em; }
+.regime-score { font-size: 12px; color: var(--text2); }
+.comp-row { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) 54px; gap: 10px; align-items: center;
+            font-size: 10.5px; padding: 5px 0; border-bottom: 1px solid var(--border); }
+.comp-row:last-child { border-bottom: 0; }
+.comp-row .cl { color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.comp-row .cz { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* ── matrix ──────────────────────────────────────────────────────────────── */
+.mx-bar { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+.mx-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; background: var(--panel); }
+table.mx { width: 100%; border-collapse: collapse; min-width: 980px; }
+.mx th { font-size: 9px; font-weight: 500; letter-spacing: .14em; text-transform: uppercase; color: var(--text3);
+         text-align: right; padding: 9px 8px; background: var(--bg2); border-bottom: 1px solid var(--border2);
+         position: sticky; top: 0; z-index: 1; cursor: pointer; white-space: nowrap; }
+.mx th:first-child { text-align: left; }
+.mx td { font-size: 11px; padding: 0 8px; height: 30px; border-bottom: 1px solid var(--border); text-align: right;
+         font-variant-numeric: tabular-nums; white-space: nowrap; }
+.mx td:first-child { text-align: left; }
+.mx tr.grp td { background: rgba(255,255,255,0.02); font-size: 9px; letter-spacing: .2em; text-transform: uppercase;
+                color: var(--amber); height: 26px; }
+.mx tr.row:hover td { background: var(--bg3); }
+/* the instrument column stays put while the grid scrolls sideways (phones) */
+.mx tr.row td:first-child, .mx th:first-child { position: sticky; left: 0; z-index: 2; background: #0b0f17; }
+.mx th:first-child { z-index: 3; background: var(--bg2); }
+.mx tr.row:hover td:first-child { background: var(--bg3); }
+.mx .nm { color: var(--text1); }
+.mx .nm small { color: var(--text4); font-size: 9.5px; margin-left: 6px; }
+.mx td.hc { position: relative; }
+.mx td.hc span { position: relative; z-index: 1; }
+.mx td.hc::before { content: ''; position: absolute; inset: 3px 2px; border-radius: 3px; background: var(--hc, transparent); }
+.mx .zc { font-size: 10px; }
+.rng { display: inline-block; position: relative; width: 84px; height: 6px; border-radius: 3px; background: var(--bg3);
+       vertical-align: middle; }
+.rng i { position: absolute; top: -2px; width: 3px; height: 10px; border-radius: 1px; background: var(--text1); }
+.stale-tag { font-size: 8.5px; color: var(--amber); letter-spacing: .1em; margin-left: 6px; }
+.roll-tag { font-size: 8.5px; color: var(--ice); letter-spacing: .1em; margin-left: 6px; cursor: help; }
+.sm-lab { font-size: 9px; letter-spacing: .12em; text-transform: uppercase; color: var(--text3); margin: 6px 0 2px; }
+
+/* ── tiles ───────────────────────────────────────────────────────────────── */
+.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 10px; }
+.tile { border: 1px solid var(--border); border-radius: 8px; padding: 11px 13px 9px; background: var(--panel); min-width: 0; overflow: hidden; }
+.tile .tl { font-size: 9px; letter-spacing: .14em; text-transform: uppercase; color: var(--text3); white-space: nowrap;
+            overflow: hidden; text-overflow: ellipsis; }
+.tile .tv { font-size: 19px; font-weight: 600; color: var(--text1); margin: 4px 0 1px; letter-spacing: -0.01em; }
+.tile .ts { font-size: 10px; display: flex; justify-content: space-between; gap: 6px; }
+.tile svg { margin-top: 6px; display: block; }
+
+/* ── policy board ────────────────────────────────────────────────────────── */
+table.pb { width: 100%; border-collapse: collapse; }
+.pb th { font-size: 9px; font-weight: 500; letter-spacing: .14em; text-transform: uppercase; color: var(--text3); text-align: right;
+         padding: 7px 8px; border-bottom: 1px solid var(--border2); white-space: nowrap; }
+.pb th:first-child, .pb td:first-child { text-align: left; }
+.pb td { font-size: 11px; padding: 5px 8px; border-bottom: 1px solid var(--border); text-align: right;
+         font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pb tr.hl td { background: rgba(245,166,35,0.06); }
+.pb .bk { color: var(--text1); }
+.pb .bk small { color: var(--text4); margin-left: 6px; }
+.scroll-y { max-height: 460px; overflow-y: auto; }
+
+/* ── lists ───────────────────────────────────────────────────────────────── */
+.hs-row { display: grid; grid-template-columns: 22px minmax(0, 1.4fr) 110px 64px 120px; gap: 12px; align-items: center;
+          padding: 8px 4px; border-bottom: 1px solid var(--border); cursor: pointer; }
+.hs-row:hover { background: var(--bg3); }
+.hs-rk { color: var(--text4); font-size: 10px; text-align: right; }
+.hs-nm { color: var(--text1); font-size: 12px; }
+.hs-sub { color: var(--text3); font-size: 9.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hs-sub a { color: var(--text3); text-decoration: none; border-bottom: 1px dotted var(--text4); }
+.hs-sub a:hover { color: var(--ice); }
+.tbar { height: 6px; border-radius: 3px; background: var(--bg3); position: relative; overflow: hidden; }
+.tbar i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 3px; }
+.spk { font-size: 10.5px; text-align: right; font-variant-numeric: tabular-nums; }
+.cp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
+.cp { border: 1px solid var(--border); border-radius: 8px; padding: 12px 13px 10px; background: var(--panel); }
+.cp-h { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.cp-n { font-size: 12px; color: var(--text1); }
+.cp-s { font-size: 8.5px; letter-spacing: .14em; text-transform: uppercase; padding: 2px 6px; border-radius: 3px; }
+.cp-s.normal { color: var(--text3); background: var(--bg3); }
+.cp-s.disrupted { color: var(--red); background: var(--red-dim); }
+.cp-s.surging { color: var(--amber); background: var(--amber-dim); }
+.cp-s.thin { color: var(--text4); background: var(--bg2); }
+.cp-v { display: flex; gap: 12px; margin: 6px 0 2px; font-size: 10.5px; flex-wrap: wrap; }
+.cp-v b { font-size: 16px; color: var(--text1); font-weight: 600; margin-right: 3px; }
+.sl { font-size: 10.5px; }
+.sl-row { display: grid; grid-template-columns: 76px minmax(0, 1fr) 150px; gap: 10px; padding: 6px 2px;
+          border-bottom: 1px solid var(--border); align-items: baseline; }
+.sl-row .d { color: var(--text4); font-size: 9.5px; }
+.sl-row .n { color: var(--text1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sl-row .n small { color: var(--text4); margin-left: 6px; }
+.sl-row .p { color: var(--text3); font-size: 9.5px; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hz-row { display: flex; gap: 10px; align-items: baseline; padding: 6px 2px; border-bottom: 1px solid var(--border); font-size: 10.5px; }
+.hz-lv { font-size: 8.5px; letter-spacing: .12em; text-transform: uppercase; padding: 2px 6px; border-radius: 3px; flex: 0 0 auto; }
+.hz-lv.Red { color: var(--red); background: var(--red-dim); }
+.hz-lv.Orange { color: var(--amber); background: var(--amber-dim); }
+.hz-n { color: var(--text1); }
+.hz-s { color: var(--text3); font-size: 9.5px; }
+
+/* ── health ──────────────────────────────────────────────────────────────── */
+table.ht { width: 100%; border-collapse: collapse; }
+.ht th { font-size: 9px; font-weight: 500; letter-spacing: .14em; text-transform: uppercase; color: var(--text3); text-align: left;
+         padding: 7px 8px; border-bottom: 1px solid var(--border2); white-space: nowrap; }
+.ht td { font-size: 10.5px; padding: 6px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+.ht td.r { text-align: right; font-variant-numeric: tabular-nums; }
+.led { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 7px; vertical-align: 0; }
+.led.ok { background: var(--green); box-shadow: 0 0 6px rgba(67,224,151,.6); }
+.led.warn { background: var(--amber); box-shadow: 0 0 6px rgba(245,166,35,.6); }
+.led.bad { background: var(--red); box-shadow: 0 0 6px rgba(240,96,96,.6); }
+.ht .src { color: var(--text1); }
+.ht .src small { display: block; color: var(--text4); font-size: 9.5px; }
+.ht .err { color: var(--red); font-size: 9.5px; }
+.method { columns: 2; column-gap: 28px; font-size: 10.5px; line-height: 1.7; color: var(--text3); }
+.method p { break-inside: avoid; margin-bottom: 10px; }
+.method b { color: var(--text2); font-weight: 500; }
+
+/* ── country drawer ──────────────────────────────────────────────────────── */
+.drawer-scrim { position: fixed; inset: 0; z-index: 90; background: rgba(3,5,10,.5); display: none; }
+.drawer { position: fixed; top: 0; right: 0; bottom: 0; z-index: 91; width: min(440px, 100vw); overflow-y: auto;
+          background: rgba(9,13,21,.97); border-left: 1px solid var(--border2); box-shadow: -24px 0 60px rgba(0,0,0,.5);
+          transform: translateX(105%); transition: transform .28s cubic-bezier(.2,.8,.2,1); padding: 22px 22px 40px; }
+.drawer.open { transform: none; }
+.drawer-scrim.open { display: block; }
+.dr-x { position: absolute; right: 14px; top: 14px; background: none; border: 1px solid var(--border2); color: var(--text3);
+        border-radius: 4px; width: 28px; height: 28px; cursor: pointer; font-size: 14px; }
+.dr-x:hover { color: var(--text1); }
+.dr-name { font-family: var(--sans); font-weight: 800; font-size: 24px; color: var(--text1); letter-spacing: -0.01em; padding-right: 36px; }
+.dr-reg { font-size: 9.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--text3); margin: 2px 0 16px; }
+.dr-sec { margin-top: 18px; }
+.dr-sec h4 { font-size: 9px; font-weight: 500; letter-spacing: .2em; text-transform: uppercase; color: var(--amber); margin-bottom: 8px; }
+.kv { display: flex; justify-content: space-between; gap: 12px; font-size: 11px; padding: 4px 0; border-bottom: 1px solid var(--border); }
+.kv span:first-child { color: var(--text3); }
+.kv b { font-weight: 500; color: var(--text1); font-variant-numeric: tabular-nums; text-align: right; }
+
+/* ── footer ──────────────────────────────────────────────────────────────── */
+.foot { margin-top: 48px; padding-top: 22px; border-top: 1px solid var(--border); font-size: 10px; color: var(--text4); line-height: 1.8; }
+.foot a { color: var(--text3); }
+
+/* ── responsive ──────────────────────────────────────────────────────────── */
+@media (max-width: 1180px) {
+  .brief { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .g12 > * { grid-column: span 12 !important; }
+  .g3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 860px) {
+  .page { padding: 0 16px 56px; }
+  .rail { margin: 0 -16px 14px; padding: 0 16px; }
+  header [data-intel-nav] { flex: 1 1 100%; order: 3; }
+  .hero { height: 540px; }
+  .hero-copy { max-width: 70%; }
+  .hero-title { font-size: 22px; }
+  .hero-lede { display: none; }
+  .layers { top: auto; bottom: 58px; right: 10px; flex-direction: row; flex-wrap: wrap; justify-content: flex-end; max-width: 92%; }
+  .layers .lt { display: none; }
+  .layer-btn { min-width: 0; padding: 4px 7px; font-size: 8.5px; }
+  .legend { left: 10px; bottom: 10px; width: 200px; }
+  .toggles { display: none; }
+  .hero-hint { display: none; }
+  .g2, .g3 { grid-template-columns: minmax(0, 1fr); }
+  .method { columns: 1; }
+  .hs-row { grid-template-columns: 18px minmax(0, 1fr) 70px 54px; }
+  .hs-row .spkcol { display: none; }
+  .sl-row { grid-template-columns: 64px minmax(0, 1fr); }
+  .sl-row .p { display: none; }
+}
+@media (max-width: 600px) {
+  .brief { grid-template-columns: minmax(0, 1fr); }
+  .bcard.lead { grid-column: span 1; }
+  /* hero stacks: copy on top, globe in the middle, legend + one scrollable row of layer chips at the bottom */
+  .hero { height: 640px; }
+  .hero-copy { left: 14px; right: 14px; top: 14px; max-width: none; }
+  .hero-kicker { font-size: 8.5px; }
+  .hero-title { font-size: 20px; margin: 6px 0 4px; }
+  .hero-regime { margin-top: 6px; padding: 6px 10px; }
+  .layers { top: auto; bottom: 10px; left: 10px; right: 10px; max-width: none; flex-direction: row; flex-wrap: nowrap;
+            justify-content: flex-start; overflow-x: auto; scrollbar-width: none; }
+  .layers::-webkit-scrollbar { display: none; }
+  .layer-btn { flex: 0 0 auto; }
+  .legend { left: 10px; right: 10px; width: auto; bottom: 48px; padding: 7px 10px 6px; }
+  .legend .lg-nd { display: none; }
+  .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .sec-title h2 { font-size: 17px; }
+}
 </style>
 </head>
 <body>
-
 <div class="page">
 
   <header>
     <div class="logo-block">
       <div class="logo">Slensvik<span>world</span></div>
-      <div class="logo-sub">Global markets snapshot</div>
+      <div class="logo-sub">Global intelligence · markets · rates · conflict · trade</div>
     </div>
     <div data-intel-nav></div>
     <div class="header-meta">
-      <div class="meta-pill live" id="asOfPill">LOADING …</div>
+      <div class="meta-pill" id="pillHealth"><span class="led"></span><span id="pillHealthT">Connecting …</span></div>
+      <div class="meta-pill" id="pillAsof">—</div>
     </div>
   </header>
 
-  <p class="intro">A curated snapshot across five asset classes — <b>sovereign yields</b>, <b>FX</b>,
-  <b>equities</b>, <b>indices</b>, and <b>crypto</b> — refreshed once daily via
-  <a href="https://github.com/OpenBB-finance/OpenBB" style="color:var(--ice)">OpenBB</a> (FRED + Yahoo Finance
-  providers). This is deliberately narrow: a handful of names per category, chosen to demonstrate reach across
-  geographies and asset types rather than depth within any one of them.</p>
+  <nav class="rail" id="rail" aria-label="Sections">
+    <a href="#globe">Globe</a><a href="#brief">Brief</a><a href="#regime">Regime</a><a href="#matrix">Matrix</a>
+    <a href="#rates">Rates</a><a href="#policy">Central banks</a><a href="#fx">FX</a><a href="#commodities">Commodities</a>
+    <a href="#geopolitics">Geopolitics</a><a href="#shipping">Shipping</a><a href="#sanctions">Sanctions</a>
+    <a href="#norway">Norway</a><a href="#health">Data health</a>
+    <span class="rail-asof" id="railAsof"></span>
+  </nav>
 
-  <div class="section" id="sec-yields">
-    <div class="section-head">
-      <div class="section-title">◇ Sovereign Yields</div>
-      <div class="section-desc">10-year government bond yield, one representative market per region.</div>
-      <div class="section-count" id="yieldsCount">—</div>
+  <div class="tape" id="tape" aria-label="Market ticker"><div class="tape-track" id="tapeTrack"></div></div>
+
+  <!-- ═══ GLOBE ══════════════════════════════════════════════════════════ -->
+  <section class="hero" id="globe" aria-label="Interactive globe — country layers, chokepoints, disaster alerts and market beacons">
+    <canvas id="globeCanvas" role="img" aria-label="Globe"></canvas>
+    <div class="globe-status" id="globeStatus">Loading globe …</div>
+    <div class="hero-copy">
+      <div class="hero-kicker">◉ Global intelligence</div>
+      <h1 class="hero-title">The world, one picture.</h1>
+      <p class="hero-lede">Markets, rates, central banks, conflict, shipping and sanctions from primary sources,
+        refreshed every 15 minutes and fused into a ranked daily brief. Drag to turn the globe; click a country for its dossier.</p>
+      <a class="hero-regime" href="#regime" id="heroRegime"><span class="lab">Risk regime</span><span class="val" id="heroRegimeVal">—</span><span class="sc num" id="heroRegimeSc"></span></a>
     </div>
-    <div class="wm-grid" id="yieldsGrid"><div class="empty-state">Loading …</div></div>
+    <div class="layers" id="layers" role="group" aria-label="Globe layer"><div class="lt">Colour countries by</div></div>
+    <div class="legend" id="legend" aria-live="polite"></div>
+    <div class="toggles" id="toggles" role="group" aria-label="Globe overlays"></div>
+    <div class="hero-hint">Drag to rotate · double-click to zoom · click a country</div>
+    <div class="flyout" id="flyout"></div>
+  </section>
+  <div style="display:flex;justify-content:flex-end;margin:-6px 0 8px">
+    <button class="table-toggle" id="ctableBtn" aria-expanded="false" aria-controls="ctable">◫ Country table view</button>
   </div>
+  <div class="ctable-wrap" id="ctable"></div>
 
-  <div class="section" id="sec-fx">
-    <div class="section-head">
-      <div class="section-title">⇄ FX</div>
-      <div class="section-desc">G10-ish crosses, vs. USD unless noted.</div>
-      <div class="section-count" id="fxCount">—</div>
+  <!-- ═══ BRIEF ══════════════════════════════════════════════════════════ -->
+  <section class="sec" id="brief">
+    <div class="sec-title">
+      <h2><span class="g">✦</span>Intel brief</h2>
+      <p>Ranked by severity from rules that read every panel below — σ-moves, regime shifts, curve events, policy
+        moves, conflict spikes, chokepoint disruption, sanctions waves, hazards and the Norway lens. Cross-asset patterns
+        absorb the single moves they explain.</p>
     </div>
-    <div class="wm-grid" id="fxGrid"><div class="empty-state">Loading …</div></div>
-  </div>
-
-  <div class="section" id="sec-indices">
-    <div class="section-head">
-      <div class="section-title">▤ Indices</div>
-      <div class="section-desc">Major benchmarks, US through Asia — and Oslo, for a home reference point.</div>
-      <div class="section-count" id="indicesCount">—</div>
+    <div class="brief-bar">
+      <div class="asof" id="briefAsof">—</div>
+      <label class="muted" style="font-size:10px">Brief for <select id="briefDay" aria-label="Brief date"></select></label>
     </div>
-    <div class="wm-grid" id="indicesGrid"><div class="empty-state">Loading …</div></div>
-  </div>
+    <div class="brief" id="briefGrid"><div class="empty" style="grid-column:1/-1">Loading brief …</div></div>
+  </section>
 
-  <div class="section" id="sec-equities">
-    <div class="section-head">
-      <div class="section-title">▣ Equities</div>
-      <div class="section-desc">A curated large-cap spread — US, Europe, Asia, Norway.</div>
-      <div class="section-count" id="equitiesCount">—</div>
+  <!-- ═══ REGIME ═════════════════════════════════════════════════════════ -->
+  <section class="sec" id="regime">
+    <div class="sec-title">
+      <h2><span class="g">◐</span>Risk regime</h2>
+      <p>Nine market-implied signals, each z-scored against its own trailing year and signed so positive = risk-on:
+        equity and rates volatility, high-yield spreads, S&amp;P trend, global breadth, copper/gold, the dollar, EM
+        currencies and bitcoin momentum.</p>
     </div>
-    <div class="wm-grid" id="equitiesGrid"><div class="empty-state">Loading …</div></div>
-  </div>
-
-  <div class="section" id="sec-crypto">
-    <div class="section-head">
-      <div class="section-title">◈ Crypto</div>
-      <div class="section-desc">Spot price vs. USD.</div>
-      <div class="section-count" id="cryptoCount">—</div>
+    <div class="grid g12">
+      <div class="panel span4">
+        <h3><span><span class="g">◐</span>Now</span><small id="regimeAsof"></small></h3>
+        <div class="chart" id="regimeGauge" style="height:170px"></div>
+        <div class="regime-now"><div class="regime-label" id="regimeLabel">—</div><div class="regime-score num" id="regimeScore"></div></div>
+      </div>
+      <div class="panel span8">
+        <h3><span><span class="g">∿</span>Score, two years</span><small>bands: ±0.45 = regime thresholds</small></h3>
+        <div class="chart" id="regimeHist" style="height:230px"></div>
+      </div>
+      <div class="panel span12">
+        <h3><span><span class="g">≡</span>Components today</span><small>z-score vs trailing year · bar = contribution (z × weight)</small></h3>
+        <div id="regimeComps" class="grid g3" style="gap:0 28px"></div>
+      </div>
     </div>
-    <div class="wm-grid" id="cryptoGrid"><div class="empty-state">Loading …</div></div>
-  </div>
+  </section>
 
-  <div class="footnote">
-    Sourced via OpenBB's FRED and Yahoo Finance providers, pulled once daily by a scheduled GitHub Actions job
-    (<code>global_markets_scraper.py</code>) — not a live feed. Yahoo-sourced fields (FX, equities, indices,
-    crypto) are unofficial and can lag or gap; treat this page as illustrative, not a trading terminal.
-    OECD-sourced sovereign yields (all but the US) update monthly, not daily.
-  </div>
+  <!-- ═══ MATRIX ═════════════════════════════════════════════════════════ -->
+  <section class="sec" id="matrix">
+    <div class="sec-title">
+      <h2><span class="g">▦</span>Cross-asset matrix</h2>
+      <p>Every tracked instrument on one grid. Cell colour is volatility-adjusted — a move is shaded by how unusual it is
+        for <em>that</em> asset, so a 0.3% bond day and a 4% crypto day are comparable. σ = today's move ÷ its typical
+        daily move over the last 60 sessions (robust: median absolute deviation, so one wild day can't distort it).</p>
+    </div>
+    <div class="mx-bar">
+      <div class="chips" id="mxFilter" role="group" aria-label="Asset class filter"></div>
+      <div class="chips" id="mxMode" role="group" aria-label="Colour mode"></div>
+    </div>
+    <div class="mx-wrap"><table class="mx" id="mxTable"><tbody><tr><td class="empty">Loading …</td></tr></tbody></table></div>
+    <div class="note">Yields, spreads and policy rates move in basis points; everything else in %. Weekly series (NFCI, Fed
+      balance sheet, salmon) show week-on-week in the 1D column. Range bar = position inside the 52-week high/low.
+      Amber <span style="color:var(--amber)">STALE</span> = older than its normal publication rhythm.
+      <span style="color:var(--ice)">↻ ROLL</span> = the futures contract rolled today; the 1D move is the new contract's
+      own change, not the price gap between delivery months.</div>
+  </section>
 
+  <!-- ═══ RATES ══════════════════════════════════════════════════════════ -->
+  <section class="sec" id="rates">
+    <div class="sec-title">
+      <h2><span class="g">∿</span>Rates</h2>
+      <p>Sovereign curves straight from the issuers — US Treasury, Bundesbank, Bank of England, Japan's MoF, Norges Bank,
+        Riksbank, Bank of Canada, the ECB and the RBA — plus the spreads that carry the macro story.</p>
+    </div>
+    <div class="grid g12">
+      <div class="panel span7">
+        <h3><span><span class="g">∿</span>US Treasury curve</span><small id="ustAsof"></small></h3>
+        <div class="legend-row" id="ustLegend"></div>
+        <div class="chart" id="ustCurve" style="height:260px"></div>
+      </div>
+      <div class="panel span5">
+        <h3><span><span class="g">≋</span>10-year yields, one year</span><small>hover a line to lift it</small></h3>
+        <div class="legend-row" id="g10Legend"></div>
+        <div class="chart" id="g10Chart" style="height:260px"></div>
+      </div>
+      <div class="panel span12">
+        <h3><span><span class="g">⇕</span>Curve, inflation &amp; cross-market spreads</span><small>last · 1-month change · 120-day trace</small></h3>
+        <div class="tiles" id="spreadTiles"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ POLICY ═════════════════════════════════════════════════════════ -->
+  <section class="sec" id="policy">
+    <div class="sec-title">
+      <h2><span class="g">▣</span>Central banks</h2>
+      <p>Policy rates for ~38 central banks from the BIS (Norges Bank direct). The map plots where each bank is in its
+        cycle: 12-month net change against the real policy rate (policy minus the IMF's inflation estimate for this year).</p>
+    </div>
+    <div class="grid g12">
+      <div class="panel span6">
+        <h3><span><span class="g">⊹</span>Policy map</span><small id="policyTilt"></small></h3>
+        <div class="chart" id="policyMap" style="height:380px"></div>
+      </div>
+      <div class="panel span6">
+        <h3><span><span class="g">≡</span>Policy board</span><small>click a header to sort</small></h3>
+        <div class="scroll-y" style="max-height:398px"><table class="pb" id="policyBoard"></table></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ FX ═════════════════════════════════════════════════════════════ -->
+  <section class="sec" id="fx">
+    <div class="sec-title">
+      <h2><span class="g">⇄</span>Currencies</h2>
+      <p>Every currency's move against the US dollar, signed so positive = the currency strengthened — the view a
+        Norwegian importer or exporter actually cares about.</p>
+    </div>
+    <div class="grid g12">
+      <div class="panel span7">
+        <h3><span><span class="g">⇄</span>Strength vs USD</span><span class="chips" id="fxWin"></span></h3>
+        <div class="chart" id="fxBars" style="height:420px"></div>
+      </div>
+      <div class="panel span5">
+        <h3><span><span class="g">◈</span>Dollar &amp; EM</span><small>one year</small></h3>
+        <div class="legend-row" id="dxyLegend"></div>
+        <div class="chart" id="dxyChart" style="height:200px"></div>
+        <div class="tiles" id="fxTiles" style="margin-top:14px"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ COMMODITIES ════════════════════════════════════════════════════ -->
+  <section class="sec" id="commodities">
+    <div class="sec-title">
+      <h2><span class="g">◈</span>Commodities &amp; volatility</h2>
+      <p>Front-month futures (Yahoo) and implied-volatility gauges; the percentile places today's level inside five years
+        of history.</p>
+    </div>
+    <div class="tiles" id="cmdTiles"></div>
+    <h3 class="muted" style="font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;margin:22px 0 10px">Implied volatility</h3>
+    <div class="tiles" id="volTiles"></div>
+  </section>
+
+  <!-- ═══ GEOPOLITICS ════════════════════════════════════════════════════ -->
+  <section class="sec" id="geopolitics">
+    <div class="sec-title">
+      <h2><span class="g">⊕</span>Geopolitics</h2>
+      <p>From the GDELT Project's daily event files — every event in the world's news, CAMEO-coded and weighted by
+        the number of articles. Tension = how violence-dominated a country's coverage is (fighting, assault, mass
+        violence), scaled by how big the story is; spike = the last three days vs its 60-day norm.</p>
+      <span class="asof" id="geoAsof"></span>
+    </div>
+    <div class="grid g12">
+      <div class="panel span7">
+        <h3><span><span class="g">⊕</span>Hotspots</span><small>tension · spike · 90-day conflict share</small></h3>
+        <div id="hotList"></div>
+      </div>
+      <div class="panel span5">
+        <h3><span><span class="g">∿</span>Global event pulse</span><small>articles/day · 180 days · line = 7-day mean</small></h3>
+        <div id="pulse" class="grid g2" style="gap:12px 16px"></div>
+      </div>
+      <div class="panel span12">
+        <h3><span><span class="g">⚠&#xFE0E;</span>Disaster alerts</span><small>GDACS orange &amp; red, current</small></h3>
+        <div id="hazList"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ SHIPPING ═══════════════════════════════════════════════════════ -->
+  <section class="sec" id="shipping">
+    <div class="sec-title">
+      <h2><span class="g">◎</span>Chokepoints</h2>
+      <p>Daily vessel transits from IMF PortWatch (satellite AIS). Each card compares the latest week with the same
+        week last year, and with 2023 — the last full year before the Red Sea attacks rerouted Suez traffic around the Cape.</p>
+      <span class="asof" id="shipAsof"></span>
+    </div>
+    <div class="legend-row"><span><i style="background:var(--s1)"></i>7-day average, last 180 days</span><span><i style="background:var(--s-muted)"></i>same period a year earlier</span></div>
+    <div class="cp-grid" id="chokeGrid"></div>
+  </section>
+
+  <!-- ═══ SANCTIONS ══════════════════════════════════════════════════════ -->
+  <section class="sec" id="sanctions">
+    <div class="sec-title">
+      <h2><span class="g">⊘</span>Sanctions</h2>
+      <p>The US Treasury's SDN list (OFAC), parsed from the official enhanced XML: every designation with its listing
+        date, programme and linked countries.</p>
+      <span class="asof" id="sancAsof"></span>
+    </div>
+    <div class="grid g12">
+      <div class="panel span8">
+        <h3><span><span class="g">▥</span>Designations per week</span><small>two years</small></h3>
+        <div class="chart" id="sancWeekly" style="height:220px"></div>
+      </div>
+      <div class="panel span4">
+        <h3><span><span class="g">≡</span>Programmes</span><small>new designations, 12 months</small></h3>
+        <div class="chart" id="sancProgs" style="height:220px"></div>
+      </div>
+      <div class="panel span4">
+        <h3><span><span class="g">⊕</span>Linked countries</span><small>12 months</small></h3>
+        <div class="chart" id="sancCountries" style="height:300px"></div>
+      </div>
+      <div class="panel span8">
+        <h3><span><span class="g">⊘</span>Latest designations</span></h3>
+        <div class="sl scroll-y" id="sancList" style="max-height:300px"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ NORWAY ═════════════════════════════════════════════════════════ -->
+  <section class="sec" id="norway">
+    <div class="sec-title">
+      <h2><span class="g">◇</span>Norway lens</h2>
+      <p>The global picture as it lands on Norway: Norges Bank, the krone and oil, day-ahead power by bidding zone, hydro
+        storage against its 30-year norm, and the salmon price.</p>
+    </div>
+    <div class="tiles" id="noTiles" style="margin-bottom:14px"></div>
+    <div class="grid g12">
+      <div class="panel span7">
+        <h3><span><span class="g">⇄</span>Krone vs oil</span><small>each indexed = 100 a year ago · own scales</small></h3>
+        <div class="sm-lab">NOK vs USD <span class="faint">(↑ = stronger krone)</span></div>
+        <div class="chart" id="nokIdx" style="height:112px"></div>
+        <div class="sm-lab">Brent crude</div>
+        <div class="chart" id="brentIdx" style="height:112px"></div>
+        <div class="sm-lab">60-day correlation of daily moves <span class="faint">(+1 = krone strengthens when oil rises)</span></div>
+        <div class="chart" id="nokCorr" style="height:78px"></div>
+      </div>
+      <div class="panel span5">
+        <h3><span><span class="g">ϟ</span>Day-ahead power</span><span class="chips" id="pwrZones"></span></h3>
+        <div class="chart" id="pwrHourly" style="height:150px"></div>
+        <div class="chart" id="pwrDaily" style="height:140px;margin-top:10px"></div>
+      </div>
+      <div class="panel span7">
+        <h3><span><span class="g">≈</span>Hydro reservoirs — Norway</span><small id="resAsof"></small></h3>
+        <div class="legend-row" id="resLegend"></div>
+        <div class="chart" id="resChart" style="height:240px"></div>
+      </div>
+      <div class="panel span5">
+        <h3><span><span class="g">◈</span>Salmon export price</span><small>NOK/kg, fresh farmed, weekly (SSB)</small></h3>
+        <div class="chart" id="salmonChart" style="height:240px"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ HEALTH ═════════════════════════════════════════════════════════ -->
+  <section class="sec" id="health">
+    <div class="sec-title">
+      <h2><span class="g">◉</span>Data health &amp; method</h2>
+      <p>Every source runs on its own cadence on the slensvik.com server; each is isolated, retried with backoff, and
+        validated before anything is written (non-finite values, implausible levels and isolated bad FX/index prints are
+        rejected). What you see here is the live state of that pipeline.</p>
+      <span class="asof" id="healthAsof"></span>
+    </div>
+    <div class="panel" style="padding:6px 10px 10px"><div style="overflow-x:auto"><table class="ht" id="healthTable"></table></div></div>
+    <div class="panel" style="margin-top:14px">
+      <h3><span><span class="g">≡</span>Method</span></h3>
+      <div class="method">
+        <p><b>Moves &amp; σ.</b> Prices move in %, yields/spreads/policy rates in basis points. σ-move = the latest move ÷
+          1.4826 × the median absolute deviation of the previous 60 moves (a robust standard deviation); a brief card
+          needs ≥ 2.8σ. "Largest since" scans the full stored history for an equal or bigger move in the same direction.</p>
+        <p><b>Futures rolls.</b> Front-month futures switch contract near expiry, and in a steep curve the switch looks
+          like a price move (Brent's Nov→Dec roll on 28 Sep 2026 read −6.4% on a +0.3% day). Rolls are detected every
+          run and divided out of daily moves, σ, volatility, correlations and spreads; levels stay the quoted front month.</p>
+        <p><b>Risk regime.</b> Nine signals z-scored against their own trailing 252 days (clipped ±3), signed so + =
+          risk-on, weight-averaged. ≥ +0.45 = RISK-ON, ≤ −0.45 = RISK-OFF; STRESS adds an absolute override (VIX ≥ 30 or
+          high-yield spreads in their top decile of five years).</p>
+        <p><b>Tension.</b> GDELT articles on fighting, assault and mass violence (CAMEO 18–20) as a share of all articles
+          about a country over 7 days — shrunk toward the global share with a 2 000-article prior, mapped 2.5%→0 … 16%→1 —
+          scaled by volume (log of violence articles per day). Spike = median of the last 3 days ÷ the 60-day median.
+          It measures news coverage, not casualties: under-reported wars score lower than they deserve.</p>
+        <p><b>Chokepoints.</b> IMF PortWatch daily transit counts (AIS). Status "disrupted" = the 7-day average at least 30%
+          below the same week last year and 10% below the prior 90 days; "surging" is the mirror image.</p>
+        <p><b>Correlations</b> use daily moves on a union calendar (holidays = no move); markets that close at different
+          hours understate same-day correlation between Asia and the US.</p>
+        <p><b>Brief.</b> A deterministic rules engine — no language model. Every figure in a card is read from stored
+          data, so any brief can be reproduced from the database.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="foot">
+    Sources: Yahoo Finance (market prices, unofficial) · US Treasury · Deutsche Bundesbank · Bank of England · Japan
+    Ministry of Finance · Norges Bank · Sveriges Riksbank · Bank of Canada · ECB · Reserve Bank of Australia · FRED /
+    ICE BofA indices · BIS central bank policy rates · IMF World Economic Outlook · IMF PortWatch · GDELT Project ·
+    US Treasury OFAC · GDACS (EC JRC / UN OCHA) · Deribit DVOL · Nord Pool via hvakosterstrommen.no · NVE ·
+    Statistics Norway (SSB). Country codes: datasets/country-codes. Map: Natural Earth via world-atlas.
+    Illustrative intelligence, not investment advice.
+  </div>
 </div>
 
-<script>
-const API_URL = 'https://api.slensvik.com';
-const GET = (table, params = '') =>
-  fetch(`${API_URL}/${table}?${params}`, { headers: { Accept: 'application/json' } })
-    .then(r => { if (!r.ok) throw new Error(`${r.status}`); return r.json(); });
-
-const fmtPct = v => v == null ? '—' : (v >= 0 ? '+' : '') + v.toFixed(2) + '%';
-const fmtNum = (v, dp = 2) => v == null ? '—' : v.toLocaleString('en-US', { minimumFractionDigits: dp, maximumFractionDigits: dp });
-
-// rows arrive order=as_of_date.desc — keep the first (most recent) row per key.
-function latestByKey(rows, keyField) {
-  const seen = new Map();
-  for (const r of rows) {
-    if (!seen.has(r[keyField])) seen.set(r[keyField], r);
-  }
-  return seen;
-}
-
-function tile({ symbol, name, value, sub, subCls, asOf }) {
-  const cls = subCls ? ` ${subCls}` : '';
-  return `<div class="wm-tile${cls}">
-    <div class="wm-symbol">${symbol}</div>
-    ${name ? `<div class="wm-name" title="${name}">${name}</div>` : ''}
-    <div class="wm-value">${value}</div>
-    ${sub != null ? `<div class="wm-sub${cls}">${sub}</div>` : ''}
-    ${asOf ? `<div class="wm-asof">as of ${asOf}</div>` : ''}
-  </div>`;
-}
-
-const YIELD_ORDER = ['US', 'DE', 'GB', 'JP', 'NO'];
-const YIELD_NAMES = { US: 'United States', DE: 'Germany', GB: 'United Kingdom', JP: 'Japan', NO: 'Norway' };
-
-async function renderYields() {
-  try {
-    const rows = await GET('global_yields', 'order=as_of_date.desc&limit=200');
-    const latest = latestByKey(rows, 'series_id');
-    const byCountry = new Map();
-    for (const r of latest.values()) byCountry.set(r.country, r);
-    const grid = document.getElementById('yieldsGrid');
-    const present = YIELD_ORDER.filter(c => byCountry.has(c));
-    document.getElementById('yieldsCount').textContent = `${present.length}/${YIELD_ORDER.length} markets`;
-    if (!present.length) { grid.innerHTML = '<div class="empty-state">No data yet — the daily scraper hasn\'t run.</div>'; return; }
-    grid.innerHTML = present.map(c => {
-      const r = byCountry.get(c);
-      return tile({ symbol: `${c} · ${r.tenor}`, name: YIELD_NAMES[c], value: fmtNum(r.rate_pct) + '%', asOf: r.as_of_date });
-    }).join('');
-  } catch (e) {
-    document.getElementById('yieldsGrid').innerHTML = `<div class="empty-state">Could not load: ${e.message}</div>`;
-  }
-}
-
-const FX_ORDER = ['EURUSD', 'GBPUSD', 'USDJPY', 'USDNOK', 'USDCHF', 'AUDUSD', 'USDCAD', 'NZDUSD'];
-
-async function renderFx() {
-  try {
-    const rows = await GET('global_fx', 'order=as_of_date.desc&limit=400');
-    const latest = latestByKey(rows, 'pair');
-    const grid = document.getElementById('fxGrid');
-    const present = FX_ORDER.filter(p => latest.has(p));
-    document.getElementById('fxCount').textContent = `${present.length}/${FX_ORDER.length} pairs`;
-    if (!present.length) { grid.innerHTML = '<div class="empty-state">No data yet — the daily scraper hasn\'t run.</div>'; return; }
-    grid.innerHTML = present.map(p => {
-      const r = latest.get(p);
-      const cls = r.change_pct > 0 ? 'up' : r.change_pct < 0 ? 'down' : 'flat';
-      return tile({ symbol: p, value: fmtNum(r.rate, 4), sub: fmtPct(r.change_pct), subCls: cls, asOf: r.as_of_date });
-    }).join('');
-  } catch (e) {
-    document.getElementById('fxGrid').innerHTML = `<div class="empty-state">Could not load: ${e.message}</div>`;
-  }
-}
-
-const INDEX_ORDER = ['^GSPC', '^IXIC', '^FTSE', '^GDAXI', '^N225', '^HSI', 'OSEBX.OL'];
-const INDEX_NAMES = { '^GSPC': 'S&P 500', '^IXIC': 'Nasdaq Composite', '^FTSE': 'FTSE 100', '^GDAXI': 'DAX', '^N225': 'Nikkei 225', '^HSI': 'Hang Seng', 'OSEBX.OL': 'Oslo Børs Benchmark' };
-const EQUITY_ORDER = ['AAPL', 'MSFT', 'NVDA', 'ASML', 'TSM', '7203.T', 'EQNR.OL', '005930.KS'];
-
-async function renderQuotes() {
-  const grid = { index: document.getElementById('indicesGrid'), equity: document.getElementById('equitiesGrid') };
-  try {
-    const rows = await GET('global_quotes', 'order=as_of_date.desc&limit=400');
-    const latest = latestByKey(rows, 'symbol');
-
-    const idxPresent = INDEX_ORDER.filter(s => latest.has(s));
-    document.getElementById('indicesCount').textContent = `${idxPresent.length}/${INDEX_ORDER.length} indices`;
-    grid.index.innerHTML = idxPresent.length ? idxPresent.map(s => quoteTile(latest.get(s), INDEX_NAMES[s])).join('')
-      : '<div class="empty-state">No data yet — the daily scraper hasn\'t run.</div>';
-
-    const eqPresent = EQUITY_ORDER.filter(s => latest.has(s));
-    document.getElementById('equitiesCount').textContent = `${eqPresent.length}/${EQUITY_ORDER.length} names`;
-    grid.equity.innerHTML = eqPresent.length ? eqPresent.map(s => quoteTile(latest.get(s))).join('')
-      : '<div class="empty-state">No data yet — the daily scraper hasn\'t run.</div>';
-  } catch (e) {
-    grid.index.innerHTML = grid.equity.innerHTML = `<div class="empty-state">Could not load: ${e.message}</div>`;
-  }
-}
-
-function quoteTile(r, fallbackName) {
-  const cls = r.change_pct > 0 ? 'up' : r.change_pct < 0 ? 'down' : 'flat';
-  const dp = r.last_price != null && r.last_price < 20 ? 4 : 2;
-  return tile({
-    symbol: r.symbol, name: r.name || fallbackName,
-    value: (r.currency ? r.currency + ' ' : '') + fmtNum(r.last_price, dp),
-    sub: fmtPct(r.change_pct), subCls: cls, asOf: r.as_of_date,
-  });
-}
-
-const CRYPTO_ORDER = ['BTC-USD', 'ETH-USD', 'SOL-USD', 'XRP-USD'];
-
-async function renderCrypto() {
-  try {
-    const rows = await GET('global_crypto', 'order=as_of_date.desc&limit=200');
-    const latest = latestByKey(rows, 'symbol');
-    const grid = document.getElementById('cryptoGrid');
-    const present = CRYPTO_ORDER.filter(s => latest.has(s));
-    document.getElementById('cryptoCount').textContent = `${present.length}/${CRYPTO_ORDER.length} assets`;
-    if (!present.length) { grid.innerHTML = '<div class="empty-state">No data yet — the daily scraper hasn\'t run.</div>'; return; }
-    grid.innerHTML = present.map(s => {
-      const r = latest.get(s);
-      const cls = r.change_pct > 0 ? 'up' : r.change_pct < 0 ? 'down' : 'flat';
-      return tile({ symbol: s.replace('-USD', ''), value: 'USD ' + fmtNum(r.price, r.price < 10 ? 4 : 2), sub: fmtPct(r.change_pct), subCls: cls, asOf: r.as_of_date });
-    }).join('');
-  } catch (e) {
-    document.getElementById('cryptoGrid').innerHTML = `<div class="empty-state">Could not load: ${e.message}</div>`;
-  }
-}
-
-async function updateAsOfPill() {
-  try {
-    const rows = await GET('global_quotes', 'order=as_of_date.desc&limit=1&select=as_of_date');
-    document.getElementById('asOfPill').textContent = rows.length ? `AS OF ${rows[0].as_of_date}` : 'NO DATA YET';
-  } catch (e) {
-    document.getElementById('asOfPill').textContent = 'SYNC FAILED';
-  }
-}
-
-function init() {
-  updateAsOfPill();
-  renderYields();
-  renderFx();
-  renderQuotes();
-  renderCrypto();
-}
-init();
-</script>
+<div class="drawer-scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" aria-label="Country dossier" aria-hidden="true">
+  <button class="dr-x" id="drawerX" aria-label="Close">×</button>
+  <div id="drawerBody"></div>
+</aside>
 </body>
 </html>
