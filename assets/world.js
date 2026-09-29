@@ -1079,9 +1079,13 @@
       if (st === 'ok') ok++; else if (st === 'warn') warn++; else bad++;
     }
     const pill = $('#pillHealth');
-    pill.className = 'meta-pill ' + (bad ? 'bad' : warn ? 'warn' : 'ok');
-    $('#pillHealthT').innerHTML = h.length ? `<b>${ok}/${h.length}</b> sources healthy` : 'No health data';
     const last = S.lastRun ? S.lastRun.finished_at || S.lastRun.started_at : null;
+    // the scheduler's own heartbeat outranks per-source states: a stalled pipeline can't be "healthy"
+    const pipe = INTEL.pipelineHealth(last, now);
+    pill.className = 'meta-pill ' + (pipe.state === 'bad' || bad ? 'bad' : pipe.state === 'warn' || warn ? 'warn' : 'ok');
+    $('#pillHealthT').innerHTML = pipe.state === 'bad'
+      ? `<b>Pipeline stalled</b> · last run ${ago(last)}`
+      : h.length ? `<b>${ok}/${h.length}</b> sources healthy` : 'No health data';
     $('#pillAsof').textContent = last ? 'Updated ' + ago(last) : '—';
     $('#railAsof').textContent = last ? 'pipeline ' + ago(last) : '';
     const rg = S.regimeNow;
@@ -1676,15 +1680,8 @@
   }
 
   /* ── health ── */
-  function healthState(x, now) {
-    if (x.last_status === 'error' && (x.consecutive_failures || 0) >= 1) {
-      const staleMs = (x.stale_after_min || 1440) * 6e4;
-      return x.last_success && now - new Date(x.last_success) < staleMs ? 'warn' : 'bad';
-    }
-    if (!x.last_success) return 'bad';
-    if (now - new Date(x.last_success) > (x.stale_after_min || 1440) * 6e4) return 'warn';
-    return x.last_status === 'partial' ? 'warn' : 'ok';
-  }
+  // shared rule (assets/intel.js): late after ~2 missed cycles, stale past stale_after_min, failing
+  function healthState(x, now) { return INTEL.sourceHealth(x, now).state; }
   const ORDER = ['yahoo', 'deribit', 'treasury', 'treasury_real', 'bundesbank', 'boe', 'mof', 'norgesbank', 'riksbank', 'boc', 'ecb', 'rba',
     'fred', 'bis', 'power', 'nve', 'ssb', 'gdacs', 'portwatch', 'gdelt', 'ofac', 'imf', 'countries', 'analytics'];
   function renderHealth() {
@@ -1696,7 +1693,7 @@
       rows.map((x) => {
         const st = healthState(x, now);
         return `<tr><td class="src">${esc(x.label || x.source)}<small>${esc(x.provider || '')}</small></td>
-          <td><span class="led ${st}"></span>${esc(x.last_status || '—')}${x.consecutive_failures ? ` <span class="faint">×${x.consecutive_failures}</span>` : ''}</td>
+          <td><span class="led ${st}"></span>${esc(x.last_status || '—')}${x.consecutive_failures ? ` <span class="faint">×${x.consecutive_failures}</span>` : ''}${st !== 'ok' ? `<div class="err">${esc(INTEL.sourceHealth(x, now).why)}</div>` : ''}</td>
           <td>${esc(ago(x.last_success))}</td><td>${esc(x.latest_data ? dLong(pDate(x.latest_data)) : '—')}</td>
           <td>${esc(cad(x.cadence_min || 0))}</td><td class="r">${fmt(x.last_rows, 0)}</td><td class="r">${isNum(x.last_duration_ms) ? fmt(x.last_duration_ms / 1000, 1) + 's' : '—'}</td>
           <td>${x.last_error && st !== 'ok' ? `<div class="err">${esc(x.last_error)}</div>` : ''}<span class="faint">${esc(x.notes || '')}</span></td></tr>`;
@@ -1835,11 +1832,17 @@
     lazy('geopolitics', async () => { await loadGeoGlobal(); renderGeo(); });
     lazy('sanctions', renderSanctions);
     lazy('norway', renderNorway);
-    // live refresh: the pipeline runs every 15 min — re-read every 5
-    setInterval(async () => {
-      if (document.hidden) return;
-      try { await loadCore(); renderAll(); if (S.geoGlobal.length) renderGeo(); } catch (e) { /* keep last frame */ }
-    }, 5 * 60 * 1000);
+    // live refresh: the pipeline runs every 15 min — re-read every 5 while visible, and at once when a
+    // backgrounded tab comes back (it used to wait for the next tick, showing hours-old data meanwhile)
+    let lastLoad = Date.now();
+    const refresh = async () => {
+      try { await loadCore(); lastLoad = Date.now(); renderAll(); if (S.geoGlobal.length) renderGeo(); } catch (e) { /* keep last frame */ }
+    };
+    setInterval(() => { if (!document.hidden) refresh(); }, 5 * 60 * 1000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden && Date.now() - lastLoad > 60 * 1000) refresh(); });
+    window.addEventListener('pageshow', (e) => { if (e.persisted) refresh(); });
+    // keep "… ago" and the health states honest between data refreshes
+    setInterval(() => { if (!document.hidden) { renderHeader(); renderHealth(); } }, 60 * 1000);
   }
   async function init2() { try { await loadCore(); renderAll(); } catch (e) { setTimeout(init2, 60000); } }
 

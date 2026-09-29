@@ -306,7 +306,7 @@
 </head>
 <body>
 
-<script src="assets/intel.js?v=20260929"></script>
+<script src="assets/intel.js?v=20260929b"></script>
 
 <canvas id="matrix-bg"></canvas>
 <div class="vignette"></div>
@@ -678,11 +678,12 @@
 
   /* ── World: board, regime, brief, source health ── */
   const IDS = ['eq.osebx', 'fx.usdnok', 'cmd.brent', 'vol.vix', 'eq.spx', 'yc.no.3y', 'yc.no.10y', 'pol.no'];
-  const [board, regime, brief, health] = await Promise.all([
+  const [board, regime, brief, health, runs] = await Promise.all([
     G(`world_board?series_id=in.(${IDS.join(',')})&select=series_id,short,last,chg_1d,chg_mode,decimals,spark`),
     G('world_regime?order=obs_date.desc&limit=1&select=obs_date,label,score'),
     G('world_brief?order=brief_date.desc,rank.asc&limit=16&select=brief_date,rank,severity,category,headline,anchor'),
-    G('world_source_health?select=source,last_status'),
+    G('world_source_health?select=source,last_status,last_success,cadence_min,stale_after_min,consecutive_failures'),
+    G('world_runs?select=started_at,finished_at&order=run_id.desc&limit=1'),
   ]);
   const B = Object.fromEntries((board || []).map(r => [r.series_id, r]));
   const rg = regime && regime[0];
@@ -704,11 +705,22 @@
   $('worldBoard').innerHTML = mini('eq.osebx', 'OSEBX') + mini('cmd.brent', 'Brent') + mini('fx.usdnok', 'USDNOK');
   if (rg) { const el = $('kpiWRegime'); el.textContent = rg.label; el.style.color = rgCls === 'on' ? 'var(--green)' : rgCls === 'off' ? 'var(--red)' : 'var(--amber)'; }
   if (health && health.length) {
-    const ok = health.filter(h => h.last_status === 'ok').length;
-    set('kpiWSources', `${ok}/${health.length} ok`);
+    // same rule as the World page (INTEL.sourceHealth): late, stale and failing all count against "ok"
+    const now = Date.now();
+    const ok = health.filter(h => INTEL.sourceHealth(h, now).state === 'ok').length;
+    const lastRun = runs && runs[0] ? (runs[0].finished_at || runs[0].started_at) : null;
+    const pipe = INTEL.pipelineHealth(lastRun, now);
     const fh = $('footHealth');
-    fh.className = 'health ' + (ok / health.length >= 0.9 ? 'ok' : 'warn');
-    fh.querySelector('span').textContent = `data health · ${ok}/${health.length} feeds ok`;
+    if (pipe.state === 'bad') {
+      set('kpiWSources', 'stalled');
+      $('kpiWSources').style.color = 'var(--red)';
+      fh.className = 'health warn';
+      fh.querySelector('span').textContent = `data pipeline stalled · last run ${pipe.ageMin != null ? Math.round(pipe.ageMin / 60) + ' h' : '—'} ago`;
+    } else {
+      set('kpiWSources', `${ok}/${health.length} ok`);
+      fh.className = 'health ' + (ok === health.length ? 'ok' : 'warn');
+      fh.querySelector('span').textContent = `data health · ${ok}/${health.length} feeds ok`;
+    }
   }
   const pol = B['pol.no'], n3 = B['yc.no.3y'], n10 = B['yc.no.10y'];
   if (pol) set('kpiNbRate', (+pol.last).toFixed(2) + '%');

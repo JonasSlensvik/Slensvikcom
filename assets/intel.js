@@ -670,6 +670,31 @@
     return parts;
   }
 
+  // World Intel data health — one rule for every page (world.html, index.html).
+  // A job is LATE once it has missed about two cycles (3 × cadence + 10 min);
+  // its data is STALE past the source's stale_after_min; failing is FAILING.
+  // Before 2026-09-29 only staleness was checked, and Yahoo's stale window is
+  // 26 h — a 15-minute job could stop for hours and still read green.
+  function sourceHealth(x, now = Date.now()) {
+    const cadMs = (x.cadence_min || 60) * 6e4, staleMs = (x.stale_after_min || 1440) * 6e4;
+    const since = x.last_success ? now - new Date(x.last_success).getTime() : Infinity;
+    const age = m => m >= 1440 ? Math.round(m / 1440) + ' d' : m >= 90 ? Math.round(m / 60) + ' h' : Math.round(m) + ' min';
+    if (x.last_status === 'error' && (x.consecutive_failures || 0) >= 1)
+      return since < staleMs ? { state: 'warn', why: `failing ×${x.consecutive_failures} — serving data from ${age(since / 6e4)} ago` }
+                             : { state: 'bad', why: `failing ×${x.consecutive_failures}, data stale` };
+    if (!x.last_success) return { state: 'bad', why: 'never succeeded' };
+    if (since > staleMs) return { state: 'bad', why: `stale — last success ${age(since / 6e4)} ago` };
+    if (since > 3 * cadMs + 10 * 6e4) return { state: 'warn', why: `late — last success ${age(since / 6e4)} ago, runs every ${age(cadMs / 6e4)}` };
+    if (x.last_status === 'partial') return { state: 'warn', why: 'partial run' };
+    return { state: 'ok', why: '' };
+  }
+  // The scheduler itself (launchd, every 15 min): stalled once the newest run is 45 min old.
+  function pipelineHealth(lastRunTs, now = Date.now()) {
+    if (!lastRunTs) return { state: 'bad', ageMin: null };
+    const ageMin = (now - new Date(lastRunTs).getTime()) / 6e4;
+    return { state: ageMin > 45 ? 'bad' : ageMin > 25 ? 'warn' : 'ok', ageMin };
+  }
+
   // Catalyst radar breakdown — the itemized component scores behind
   // api.catalyst_radar's single catalyst_score (ENEXT sql/catalyst_radar.sql,
   // the s_* columns × their fixed weights: insider .25, dark .20, signal
@@ -720,5 +745,5 @@
                    toggleDensity, mood,
                    analystRead, finHealth, healthBand,
                    analystChip, healthChip, leverageChip, fcfChip,
-                   convictionBreakdown, catalystBreakdown };
+                   convictionBreakdown, catalystBreakdown, sourceHealth, pipelineHealth };
 })();
