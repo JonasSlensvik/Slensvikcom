@@ -615,15 +615,38 @@
       `Free cash flow ${fmtCompact(h.fcf)} ${h.ccy} · no dividend paid · FY ${String(h.period).slice(0, 4)}`);
   }
 
-  // Conviction score breakdown — the itemized point-components behind
-  // api.conviction's single number (ENEXT sql/conviction_view.sql v3, the
-  // pts_* columns). Works unmodified against either a live api.conviction
-  // row or an api.conviction_snapshot row — both carry the same columns.
-  // Zero-value components are omitted; [label, points] pairs, in the
-  // formula's own order.
+  // Conviction score breakdown — why a conviction number. Mirrors ENEXT
+  // conviction_alerts.py's conviction_breakdown() exactly (labels, order,
+  // allocation) so the page and the email never disagree. Returns
+  // [label, points] pairs; works on live api.conviction rows and on
+  // api.conviction_snapshot / conviction_entries rows of either model.
+  //  v4 (model 'v4', ENEXT sql/conviction_v4.sql): the score is a bounded
+  //   function of agreeing evidence, not a sum — the conviction the evidence
+  //   would give without conflicts is allocated across the families pointing
+  //   the flagged way, and conflicting evidence shows as the points it cost,
+  //   so the bars always sum to the score.
+  //  v3 rows (before 2026-09-29): the itemized pts_* components.
   function convictionBreakdown(row) {
-    const dir = row.side === 'LONG' ? 1 : -1;
     const n = v => v == null ? 0 : Number(v);
+    if (row.model === 'v4') {
+      const sgn = row.side === 'LONG' ? 1 : -1;
+      const fam = [
+        [n(row.ev_dark), `Dark flow: ${sgn > 0 ? n(row.dark_buy_days) : n(row.dark_sell_days)} ${sgn > 0 ? 'buy' : 'sell'}-impact day(s)`],
+        [n(row.ev_insider), `${n(row.insider_buyers_14d)} insider buyer(s), 14d`],
+        [n(row.ev_short), `Short interest ${n(row.short_pct).toFixed(2)}% (${n(row.short_pct_change) >= 0 ? '+' : ''}${n(row.short_pct_change).toFixed(2)} pp, 2 weeks)`],
+      ];
+      const aligned = fam.filter(([v]) => v * sgn > 0).map(([v, l]) => [l, Math.abs(v)]);
+      const opposed = fam.filter(([v]) => v * sgn < 0).reduce((a, [v]) => a + Math.abs(v), 0);
+      const tot = aligned.reduce((a, [, v]) => a + v, 0);
+      if (!tot) return [];
+      const breadth = 1 + 0.25 * Math.max(aligned.length - 1, 0);
+      const noConflict = Math.round(100 * (1 - Math.exp(-tot * breadth / 2.5)));
+      const parts = aligned.map(([l, v]) => [l, Math.round(noConflict * v / tot)]);
+      const cost = noConflict - n(row.conviction);
+      if (opposed && cost > 0) parts.push(['Conflicting evidence', -cost]);
+      return parts;
+    }
+    const dir = row.side === 'LONG' ? 1 : -1;
     const parts = [];
     if (n(row.pts_direction_strength))
       parts.push(['Signal direction & strength', n(row.pts_direction_strength)]);

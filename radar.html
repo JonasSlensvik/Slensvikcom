@@ -11,7 +11,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
 <link rel="stylesheet" href="assets/intel.css">
-<script src="assets/intel.js?v=20260928"></script>
+<script src="assets/intel.js?v=20260929"></script>
 
 <style>
 /* ─── Variables ──────────────────────────────────────────────────────────
@@ -602,7 +602,7 @@ table.wt { width: 100%; border-collapse: collapse; font-family: var(--mono); fon
   <div class="section" id="sec-conviction">
     <div class="section-head">
       <div class="section-title">▣ Today's Book</div>
-      <div class="section-desc">Ranked by signal stack × direction × persistence × event proximity × insiders × short-flow. Click any card for the dossier.</div>
+      <div class="section-desc">Ranked by agreeing evidence from informed participants — dark-pool impact, insiders buying, short sellers building. Conflicting evidence costs points and no single source can max the score. Click any card for the dossier.</div>
       <div class="section-count" id="convictionCount">—</div>
     </div>
     <div class="section-body">
@@ -660,8 +660,8 @@ table.wt { width: 100%; border-collapse: collapse; font-family: var(--mono); fon
   <!-- ═══ Max Conviction Entries — first-hit-only entry study (in-sample) ──── -->
   <div class="section" id="sec-conv-entries">
     <div class="section-head">
-      <div class="section-title">◇ Max Conviction Entries · In-Sample</div>
-      <div class="section-desc">Buy the day conviction first hits 100, hold for N days — one entry per name per streak, not one row for every day it lingered at the top.</div>
+      <div class="section-title">◇ Conviction Entries · In-Sample</div>
+      <div class="section-desc">Buy the day conviction first reaches 60, hold for N days — one entry per name per streak, not one row for every day it lingered at the top.</div>
       <div class="section-count" id="ceCount">—</div>
     </div>
     <div class="section-body">
@@ -669,7 +669,7 @@ table.wt { width: 100%; border-collapse: collapse; font-family: var(--mono); fon
       <div class="table-wrap"><table class="perf-table"><thead><tr>
         <th>Horizon</th><th>Long N</th><th>Long hit</th><th>Long med excess</th><th>Short N</th><th>Short hit</th><th>Short med excess</th>
       </tr></thead><tbody id="ceTable"><tr><td colspan="7" class="perf-empty">LOADING …</td></tr></tbody></table></div>
-      <div class="ir-note" id="ceNote">Reconstructed with today's formula applied to each historical day — in-sample, not proof, same caveat as Backtest Regrade above. Conviction=100 only, so N is small by design: treat every row here as a lead, not a verdict.</div>
+      <div class="ir-note" id="ceNote">Reconstructed with today's point-in-time formula (conviction v4, live since 2026-09-29) applied to each historical day — in-sample, not proof, same caveat as Backtest Regrade above. Conviction ≥ 60 only (about one name a day), so N is small by design: treat every row here as a lead, not a verdict.</div>
     </div>
   </div>
 
@@ -822,11 +822,19 @@ function renderConvictionCard(r, side) {
     : '';
   // Impact-confirmed dark flow: net buyer/seller-initiated dark volume over the
   // window that *predicted* subsequent price drift (informed-money marker).
+  const isV4 = r.model === 'v4';
+  const dDays = isV4 ? Number((side === 'long' ? r.dark_buy_days : r.dark_sell_days) || 0) : 0;
   const ndir = Number(r.net_dark_dir || 0);
   const darkDir = ndir > 0 ? 'BUY' : ndir < 0 ? 'SELL' : null;
-  const darkChip = (Number(r.confirmed_days || 0) > 0 && darkDir)
-    ? `<span class="conv-chip dark ${darkDir === 'BUY' ? 'up' : 'dn'} confirmed" title="Impact-confirmed dark flow on ${r.confirmed_days} day(s)"><span class="g">◧</span>DARK ${darkDir} ✓${r.confirmed_days}d</span>`
-    : '';
+  const darkChip = isV4
+    ? (dDays > 0 ? `<span class="conv-chip dark ${side === 'long' ? 'up' : 'dn'}" title="Dark mid-point prints followed by ${side === 'long' ? 'rising' : 'falling'} prices on ${dDays} of the last 10 sessions"><span class="g">◧</span>DARK ${side === 'long' ? 'BUY' : 'SELL'} ${dDays}d</span>` : '')
+    : (Number(r.confirmed_days || 0) > 0 && darkDir)
+      ? `<span class="conv-chip dark ${darkDir === 'BUY' ? 'up' : 'dn'} confirmed" title="Impact-confirmed dark flow on ${r.confirmed_days} day(s)"><span class="g">◧</span>DARK ${darkDir} ✓${r.confirmed_days}d</span>`
+      : '';
+  const insChip = isV4 && Number(r.ev_insider || 0) > 0
+    ? `<span class="conv-chip up" title="Distinct insiders buying in the last 14 days (employee/incentive programmes excluded)"><span class="g">◐</span>${r.insider_buyers_14d} INSIDER${Number(r.insider_buyers_14d) === 1 ? '' : 'S'} BUYING</span>` : '';
+  const siBuild = isV4 && Number(r.ev_short || 0) < 0 && r.short_pct_change != null
+    ? `<span class="conv-chip dn" title="Disclosed short interest change over ~2 weeks"><span class="g">⊖</span>SHORTS +${Number(r.short_pct_change).toFixed(2)}pp</span>` : '';
   const move = (r.day_close != null && r.modal_price != null && Number(r.modal_price) > 0)
     ? ((Number(r.day_close) - Number(r.modal_price)) / Number(r.modal_price) * 100)
     : null;
@@ -847,8 +855,8 @@ function renderConvictionCard(r, side) {
   ].filter(Boolean).join('');
   const fundRow = fundChips
     ? `<div class="conv-signals" style="margin-top:5px">${fundChips}</div>` : '';
-  // Driver transparency: the itemized point-components behind this number
-  // (api.conviction v3's pts_* columns — see ENEXT sql/conviction_view.sql).
+  // Driver transparency: why this number (INTEL.convictionBreakdown — the v4
+  // evidence families allocated over the score; v3's pts_* for older rows).
   // stopPropagation is required: the whole card navigates on click, and
   // without it expanding <details> would also fire drillIntoISIN.
   const breakdown = INTEL.convictionBreakdown(r);
@@ -862,8 +870,11 @@ function renderConvictionCard(r, side) {
         <div class="conv-break-track"><div class="conv-break-fill${pts < 0 ? ' neg' : ''}" style="width:${w.toFixed(0)}%"></div></div>
         <span class="conv-break-val">${pts > 0 ? '+' : ''}${pts}</span></div>`;
     }).join('');
-    const capNote = sum > r.conviction
-      ? `<div class="conv-break-cap">Components sum to ${sum.toFixed(0)} — score is capped at 100.</div>` : '';
+    const capNote = isV4
+      ? `<div class="conv-break-cap">${r.families} independent source${Number(r.families) === 1 ? '' : 's'} agree · agreement ${Math.round(Number(r.agreement || 0) * 100)}%` +
+        `${r.info_event_date ? ` · ${r.info_event_type} ${r.info_event_date}` : ''}</div>`
+      : sum > r.conviction
+        ? `<div class="conv-break-cap">Components sum to ${sum.toFixed(0)} — score is capped at 100.</div>` : '';
     breakRow = `
       <details class="conv-break" onclick="event.stopPropagation()">
         <summary>why ${r.conviction}?</summary>
@@ -879,7 +890,7 @@ function renderConvictionCard(r, side) {
         <span class="conv-score">${r.conviction}</span>
       </div>
       <div class="conv-bar"><div class="conv-bar-fill ${side}" style="width:${r.conviction}%"></div></div>
-      <div class="conv-signals">${sigChips}${evChip}${siChip}${darkChip}</div>
+      <div class="conv-signals">${isV4 ? darkChip + insChip + siBuild + siChip + evChip : sigChips + evChip + siChip + darkChip}</div>
       ${fundRow}
       <div class="conv-footer">${wall}${vw}${darkPct}${moveStr}</div>
       ${breakRow}
@@ -889,10 +900,15 @@ function renderConvictionCard(r, side) {
 function renderBookKpis(longs, shorts) {
   const all = [...longs, ...shorts];
   const avgConv = all.length ? Math.round(all.reduce((s,r) => s + (r.conviction||0), 0) / all.length) : null;
-  const sigCounts = {};
-  for (const r of all) for (const t of (r.signal_types || []))
-    sigCounts[t] = (sigCounts[t] || 0) + 1;
-  const topSig = Object.entries(sigCounts).sort((a,b) => b[1] - a[1])[0];
+  // what the book is built on: v4 evidence families pointing each name's way
+  // (raw signal types are context only since v4 and would mislead here)
+  const famCounts = {};
+  for (const r of all) {
+    const sgn = r.side === 'LONG' ? 1 : -1;
+    for (const [k, lbl] of [['ev_dark', 'DARK FLOW'], ['ev_insider', 'INSIDER BUYING'], ['ev_short', 'SHORTS BUILDING']])
+      if (Number(r[k] || 0) * sgn > 0) famCounts[lbl] = (famCounts[lbl] || 0) + 1;
+  }
+  const topSig = Object.entries(famCounts).sort((a,b) => b[1] - a[1])[0];
   const kpi = (label, value, sub) => `
     <div class="book-kpi">
       <div class="book-kpi-label">${label}</div>
@@ -903,7 +919,7 @@ function renderBookKpis(longs, shorts) {
     kpi('LONG SIGNALS',  longs.length,  longs.length  ? 'top conviction ' + longs[0].conviction  : 'none today') +
     kpi('SHORT SIGNALS', shorts.length, shorts.length ? 'top conviction ' + shorts[0].conviction : 'none today') +
     kpi('AVG CONVICTION', avgConv != null ? avgConv : '—', `across ${all.length} names`) +
-    kpi('TOP SIGNAL', topSig ? topSig[0].replace(/_/g,' ') : '—', topSig ? `${topSig[1]}× fired` : '');
+    kpi('TOP EVIDENCE', topSig ? topSig[0] : '—', topSig ? `behind ${topSig[1]} of ${all.length} names` : '');
 }
 
 // Fundamentals lookups for conviction cards (filled per load): analyst
@@ -912,9 +928,12 @@ let _convCons = {}, _convFin = {};
 
 async function loadConviction() {
   try {
-    const data = await API('conviction', 'order=conviction.desc&limit=40');
-    const longs  = data.filter(r => r.side === 'LONG' ).slice(0, 10);
-    const shorts = data.filter(r => r.side === 'SHORT').slice(0, 10);
+    // one query per side: a shared top-N let a busy LONG side crowd shorts out
+    // entirely (2026-09-29: a top-40 showed 4 of the 9 SHORT names)
+    const [longs, shorts] = await Promise.all([
+      API('conviction', 'side=eq.LONG&order=conviction.desc,score.desc&limit=10'),
+      API('conviction', 'side=eq.SHORT&order=conviction.desc,score.desc&limit=10'),
+    ]);
     document.getElementById('longCount').textContent  = longs.length;
     document.getElementById('shortCount').textContent = shorts.length;
     document.getElementById('convictionCount').textContent = `${longs.length}L · ${shorts.length}S`;
@@ -1025,17 +1044,18 @@ async function loadIntelReport() {
         winners (and their hangovers) dominate the averages.`);
     const db = league.find(r => r.signal_type === 'DARK_BLOCK');
     if (db && Number(db.med_x10_bps) > 150)
-      reads.push(`<b>The strongest drift sits in DARK BLOCK</b> (+${Number(db.med_x10_bps).toFixed(0)} bps
-        median, ${Number(db.up10_pct).toFixed(0)}% up at 10d) — a signal the conviction score currently
-        treats as direction-neutral. Worth a weighting review.`);
+      reads.push(`<b>DARK BLOCK's raw drift</b> (+${Number(db.med_x10_bps).toFixed(0)} bps median at 10d) is not
+        size-neutral: measured against same-size peers from the next close it had no edge out of sample
+        (Jul–Sep 2026), which is why conviction v4 scores it neutral.`);
     document.getElementById('irReads').innerHTML = reads.map(r => `<div class="ir-read">${r}</div>`).join('');
 
     document.getElementById('irNote').textContent =
-      `Method: the daily book is reconstructed as-of each historical date with the CURRENT (v2) scoring — ` +
-      `dark-block direction credit, insider windows, short-interest deltas — then graded on dividend-adjusted ` +
-      `closes vs the cap-weighted market index. Caveats: v2's weights were motivated by this very sample, so ` +
-      `history here is in-sample validation, not proof; overlapping 14-day windows mean calls are not ` +
-      `independent; ${days.size} trading days is a small sample. The honest test is forward performance.`;
+      `Method: the daily book is rebuilt as of each historical date by the same point-in-time function that ` +
+      `drives the live book (conviction v4: dark-pool impact, insider buying dated by publication, fresh short-` +
+      `interest building), then graded on dividend-adjusted closes vs the cap-weighted market index from the call ` +
+      `day's close. Caveats: v4's components were chosen with this period in view, so history here is in-sample ` +
+      `validation, not proof; overlapping windows mean calls are not independent; ${days.size} trading days is a ` +
+      `small sample. The honest test is the forward record below.`;
   } catch (e) {
     console.error('intel report failed', e);
     document.getElementById('irCount').textContent = 'DATA UNAVAILABLE';
@@ -1051,7 +1071,7 @@ function toggleSection(id) {
 
 /* ═══ Max Conviction Entries — api.conviction_entries, first-hit-only ══════
    Same reconstruction as Backtest Regrade (in-sample, not proof), but each
-   name's first day at conviction=100 is one entry — buy-and-hold for N days
+   name's first day at conviction ≥ 60 (v4) is one entry — buy-and-hold for N days
    — not one row for every day it stayed there. The raw/excess columns on
    each row are the underlying's own return (radar_calls' convention, a
    fraction, not a percent); SHORT rows get sign-flipped here, in JS, same
@@ -1119,9 +1139,15 @@ const FR_HORIZONS = [1, 5, 20, 60, 120];
 
 async function loadForwardRecord() {
   try {
-    const cols = ['snapshot_date', 'isin', 'side',
+    const cols = ['snapshot_date', 'isin', 'side', 'model',
       ...FR_HORIZONS.flatMap(n => [`excess_return_t${n}_pct`])].join(',');
-    const rows = await API('conviction_snapshot', `select=${cols}&order=snapshot_date.asc`);
+    const all = await API('conviction_snapshot', `select=${cols}&order=snapshot_date.asc`);
+    // the forward record keeps model eras apart: show the live model once it has matured calls,
+    // otherwise the retired v3 era (clearly labelled) while v4 accumulates
+    const v4rows = all.filter(r => r.model === 'v4');
+    const v4Matured = v4rows.some(r => r.excess_return_t5_pct != null);
+    const era = v4Matured ? 'v4' : 'v3';
+    const rows = all.filter(r => (r.model || 'v3') === era);
     const tbl = document.getElementById('frTable');
     if (!rows.length) {
       document.getElementById('frCount').textContent = 'NO DATA YET';
@@ -1132,7 +1158,7 @@ async function loadForwardRecord() {
 
     const days = new Set(rows.map(r => r.snapshot_date));
     const firstDay = [...days].sort()[0];
-    document.getElementById('frCount').textContent = `${days.size} DAY${days.size === 1 ? '' : 'S'} TRACKED · ${rows.length} CALLS`;
+    document.getElementById('frCount').textContent = `${era.toUpperCase()} · ${days.size} DAY${days.size === 1 ? '' : 'S'} TRACKED · ${rows.length} CALLS`;
 
     const pct = v => v == null ? '—' : v.toFixed(0) + '%';
     // conviction_snapshot's excess_return_tN_pct is already a PERCENT
@@ -1164,14 +1190,18 @@ async function loadForwardRecord() {
     }).join('');
 
     const anyMatured = perHorizon.some(h => h.long.n + h.short.n > 0);
-    document.getElementById('frNote').textContent = anyMatured
+    const eraNote = era === 'v3'
+      ? `Showing the retired v3 era (${days.size} days to ${[...days].sort().pop()}). Conviction v4 went live 2026-09-29` +
+        (v4rows.length ? ` — ${new Set(v4rows.map(r => r.snapshot_date)).size} day(s) snapshotted, first returns mature after 5 trading days. ` : '. ')
+      : 'Conviction v4 (live since 2026-09-29). ';
+    document.getElementById('frNote').textContent = eraNote + (anyMatured
       ? `Method: api.conviction_snapshot freezes the full universe's conviction score, plus a price and market-index ` +
         `anchor, once — live, the day the call is made, never revised afterward. Excess return is vs the dividend-` +
         `adjusted, cap-weighted market index. ${days.size} day${days.size === 1 ? '' : 's'} of live snapshots since ` +
         `${firstDay}. The 60/120-trading-day columns need ~3-6 months of calendar time to start filling in — that's ` +
         `expected, not a gap.`
       : `Live tracking since ${firstDay} — nothing has reached even the T+1 horizon yet; check back after the next ` +
-        `trading session.`;
+        `trading session.`);
   } catch (e) {
     console.error('forward record failed', e);
     document.getElementById('frCount').textContent = 'DATA UNAVAILABLE';

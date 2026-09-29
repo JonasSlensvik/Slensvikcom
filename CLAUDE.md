@@ -46,7 +46,12 @@ backend architecture, scheduled jobs, DB access, and working agreements.
   record/pay dates, `pay_date_est`, `status`, `sources`, `confirmed`), `api.dividend_calendar` (−14…+120 days,
   ticker, price, event yield), `api.dividend_profile` (TTM, frequency, growth, next), `api.dividend_announcements`.
 - `api.intraday_live` — 15-min delayed live ticks (`isin, ts, price`), today's session.
-- `api.conviction`, `api.galton_weights` / `api.galton_metrics` / `api.galton_matrices`.
+- `api.conviction` — radar book, conviction v4 since 2026-09-29 (`model`, `score`, `ev_dark` / `ev_insider` /
+  `ev_short`, `agreement`, `families`; v3's `pts_*` are NULL). "Why N?" breakdowns go through
+  `INTEL.convictionBreakdown` (mirrored in ENEXT `conviction_alerts.py`) — keep the two identical.
+  Query each side separately (`side=eq.LONG` / `side=eq.SHORT`): a shared top-N crowds shorts out.
+  Formula + evidence: `../ENEXT/docs/conviction-v4.md`.
+- `api.galton_weights` / `api.galton_metrics` / `api.galton_matrices`.
 - `api.catalyst_radar` — one row per (isin, upcoming event ≤35d), fused insider/dark/signal/whale/volume/trend/
   short precursor score (`catalyst_score` 0-100) + `direction_score`. Defined in ENEXT `sql/catalyst_radar.sql`.
 
