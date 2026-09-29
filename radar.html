@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Radar · Slensvik</title>
-<meta name="description" content="Catalyst horizon for Oslo Børs — precursor evidence (insider flow, dark pools, whale prints, smart-money signals) accumulating ahead of scheduled corporate events, from the Euronext trade tape.">
+<meta name="description" content="Event radar for Oslo Børs — dark-pool flow, short sellers, insiders and analysts lined up against every upcoming quarterly report, and graded on the reaction.">
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=Syne:wght@400;600;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
@@ -224,57 +224,129 @@ header {
 .orb-flyout .dim { color: var(--text-dim); font-size: 9px; }
 @media (max-width: 768px) { .orbital { height: 420px; } .orb-hint { display: none; } }
 
-/* ═══ CATALYST RADAR (approach-vector scanner) ═════════════════════════════
-   Same sky as the orbital hero — shared starfield/glow/meteor — different
-   geometry: linear, not polar. NOW is the left edge; the 35d horizon is the
-   right. Lane = event type (fixed, so it's learnable), not a fit-avoidance
-   jitter. */
-.cr-scan {
-  position: relative; height: 300px; margin-bottom: 18px;
-  border: 1px solid var(--border); border-radius: 8px;
-  background:
-    radial-gradient(ellipse 55% 90% at 6% 50%, rgba(15,22,34,0.55), rgba(4,7,14,0.95)),
-    var(--bg, #050810);
-  overflow: hidden;
+/* ═══ EVENT RADAR — every report ahead and the dots leading into it ════════
+   One row per company reporting inside 35 days, on a shared calendar axis
+   (8 weeks back → the horizon) so the season's shape is visible: the dark
+   run-up window, dark-pool days, insiders' last open-window trades, the
+   30-day closed period and the report itself. Solid chips are scored
+   (dark flow, short sellers); dashed chips are context. */
+.er-controls { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0 10px; }
+.er-axis, .er-row { display: grid; grid-template-columns: 206px minmax(0, 1fr); column-gap: 18px; }
+.er-axis {
+  position: sticky; top: 0; z-index: 4; background: var(--bg);
+  padding: 7px 0 5px; border-bottom: 1px solid var(--border);
 }
-#crCanvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
-.cr-hint {
-  font-family: var(--mono); font-size: 9px; letter-spacing: .1em; color: var(--text-dim); text-transform: uppercase;
-  text-align: right; margin: 6px 2px 16px;
+.er-axis-lbl { font-size: 9px; letter-spacing: .16em; text-transform: uppercase; color: var(--text-dim); align-self: end; }
+.er-axis-track { position: relative; height: 16px; }
+.er-tick {
+  position: absolute; top: 1px; transform: translateX(-50%);
+  font-size: 9px; color: var(--text-dim); letter-spacing: .04em; white-space: nowrap; font-variant-numeric: tabular-nums;
 }
-.cr-flyout {
-  position: absolute; z-index: 5; pointer-events: none; display: none;
-  background: rgba(13,18,28,0.95); border: 1px solid var(--border-bright, var(--border));
-  border-radius: 7px; padding: 9px 12px;
-  font-family: var(--mono); font-size: 10px; color: var(--text); line-height: 1.7; white-space: nowrap;
-  box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+.er-tick::after { content: ''; position: absolute; left: 50%; top: 14px; width: 1px; height: 4px; background: var(--border2); }
+.er-tick.now { color: var(--amber); font-weight: 500; }
+.er-tick.now::after { background: var(--amber); }
+.er-list { display: flex; flex-direction: column; }
+.er-row {
+  grid-template-areas: "meta track" "meta chips";
+  padding: 11px 0 10px; border-bottom: 1px solid var(--border);
+  cursor: pointer; transition: background .15s;
 }
-.cr-flyout .tk { font-size: 12.5px; font-weight: 600; color: var(--text-bright); letter-spacing: .06em; }
-.cr-flyout .up { color: var(--green, #43e097); } .cr-flyout .dn { color: var(--red, #f06060); } .cr-flyout .dim { color: var(--text-dim); }
-@media (max-width: 680px) { .cr-scan { height: 240px; } .cr-hint { display: none; } }
+.er-row:hover { background: rgba(255,255,255,0.018); }
+.er-meta { grid-area: meta; min-width: 0; border-left: 2px solid var(--border2); padding-left: 10px; }
+.er-row.long  .er-meta { border-left-color: var(--green); }
+.er-row.short .er-meta { border-left-color: var(--red); }
+.er-l1 { display: flex; align-items: baseline; gap: 8px; }
+.er-arrow { font-size: 11px; line-height: 1; }
+.er-arrow.long { color: var(--green); } .er-arrow.short { color: var(--red); } .er-arrow.none { color: var(--text4); }
+.er-tk { font-size: 13px; font-weight: 500; color: var(--text-bright); letter-spacing: .04em; }
+.er-tk a { color: inherit; text-decoration: none; }
+.er-pos {
+  margin-left: auto; font-size: 19px; font-weight: 500; color: var(--amber);
+  letter-spacing: -0.02em; font-variant-numeric: tabular-nums; cursor: help;
+}
+.er-pos.none { color: var(--text4); font-size: 12px; letter-spacing: .1em; }
+.er-name { font-family: var(--sans); font-size: 10.5px; color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.er-when { font-size: 10px; color: var(--text); letter-spacing: .04em; margin-top: 4px; font-variant-numeric: tabular-nums; }
+.er-when b { color: var(--amber); font-weight: 500; }
+.er-src { font-size: 8px; color: var(--text-dim); border: 1px solid var(--border2); padding: 0 4px; margin-left: 5px; letter-spacing: .12em; vertical-align: 1px; }
+.er-bar { height: 2px; background: var(--bg3); margin-top: 7px; overflow: hidden; }
+.er-bar i { display: block; height: 100%; }
+.er-bar i.long  { background: linear-gradient(90deg, var(--green), #86efac); }
+.er-bar i.short { background: linear-gradient(90deg, var(--red), #fda4af); }
 
-.cr-list { display: flex; flex-direction: column; gap: 8px; }
-.cr-card {
-  border: 1px solid var(--border); background: var(--bg2, #0d1218);
-  padding: 10px 12px 9px; cursor: pointer; transition: all 0.15s;
+.er-track { grid-area: track; position: relative; height: 36px; }
+.er-base { position: absolute; left: 0; right: 0; top: 18px; height: 1px; background: rgba(255,255,255,0.08); }
+.er-win {
+  position: absolute; top: 8px; height: 20px;
+  background: rgba(79,195,247,0.07); border-left: 1px solid rgba(79,195,247,0.3);
 }
-.cr-card:hover { background: var(--bg3); border-color: rgba(255,255,255,0.12); }
-.cr-row1 { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 5px; }
-.cr-evt {
-  font-family: var(--mono); font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--amber);
+.er-closed {
+  position: absolute; top: 3px; height: 30px;
+  background: repeating-linear-gradient(135deg, rgba(245,166,35,0.11) 0 2px, transparent 2px 7px);
+  border-left: 1px dashed rgba(245,166,35,0.4);
 }
-.cr-tminus { font-family: var(--mono); font-size: 9.5px; color: var(--text-dim); font-variant-numeric: tabular-nums; }
-.cr-row2 { display: flex; align-items: baseline; gap: 10px; }
-.cr-arrow { font-size: 11px; line-height: 1; }
-.cr-arrow.up { color: var(--green, #4ade80); } .cr-arrow.dn { color: var(--red, #f87171); } .cr-arrow.dim { color: var(--text-dim); }
-.cr-ticker { font-family: var(--mono); font-size: 13px; font-weight: 500; color: var(--text-bright); letter-spacing: .04em; }
-.cr-name { font-family: var(--sans); font-size: 11px; color: var(--text-dim); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cr-score { font-family: var(--mono); font-size: 20px; font-weight: 500; color: var(--amber); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
-.cr-bar { height: 2px; background: var(--bg3); margin: 7px 0 2px; overflow: hidden; }
-.cr-bar-fill { height: 100%; background: linear-gradient(90deg, var(--amber), #ffd27a); }
-.cr-bar-fill.up { background: linear-gradient(90deg, var(--green, #4ade80), #86efac); }
-.cr-bar-fill.dn { background: linear-gradient(90deg, var(--red, #f87171), #fda4af); }
-.cr-more { text-align: center; margin-top: 12px; }
+.er-now { position: absolute; top: 0; bottom: 0; width: 1px; background: rgba(245,166,35,0.6); }
+.er-dot { position: absolute; width: 8px; height: 8px; border-radius: 50%; transform: translate(-50%, -50%); }
+.er-dot.b { top: 13px; background: var(--green); color: var(--green); }
+.er-dot.s { top: 23px; background: var(--red); color: var(--red); }
+.er-dot.top { width: 10px; height: 10px; box-shadow: 0 0 0 2px var(--bg), 0 0 0 3px currentColor; }
+.er-ins {
+  position: absolute; width: 7px; height: 7px; transform: translate(-50%, -50%) rotate(45deg);
+  border: 1.5px solid; background: var(--bg);
+}
+.er-ins.b { top: 5px; border-color: var(--green); }
+.er-ins.s { top: 31px; border-color: var(--red); }
+.er-prev { position: absolute; top: 10px; height: 16px; width: 2px; margin-left: -1px; background: var(--text3); }
+.er-rep {
+  position: absolute; top: 18px; transform: translate(-50%, -50%);
+  width: 11px; height: 11px; rotate: 45deg; background: var(--amber);
+  box-shadow: 0 0 0 2px var(--bg), 0 0 12px rgba(245,166,35,0.45);
+}
+.er-rep.est { background: transparent; border: 1.5px dashed var(--amber); box-shadow: 0 0 0 2px var(--bg); }
+.er-early { position: absolute; left: 0; top: 0; font-size: 8px; color: var(--text-dim); letter-spacing: .04em; }
+
+.er-chips { grid-area: chips; display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
+.er-chip {
+  font-size: 9px; letter-spacing: .07em; color: var(--text);
+  background: var(--bg2); border: 1px solid var(--border2); padding: 2px 6px; white-space: nowrap;
+}
+.er-chip.ctx { border-style: dashed; background: transparent; }
+.er-chip.up { color: var(--green); border-color: rgba(67,224,151,0.4); }
+.er-chip.dn { color: var(--red); border-color: rgba(240,96,96,0.4); }
+.er-chip.amber { color: var(--amber); border-color: rgba(245,166,35,0.45); }
+.er-chip.dim { color: var(--text-dim); border-color: var(--border); }
+.er-legend {
+  display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 12px 0 0;
+  font-size: 9px; letter-spacing: .08em; color: var(--text-dim); text-transform: uppercase;
+}
+.er-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.er-legend .k { position: relative; display: inline-block; width: 14px; height: 12px; }
+.er-legend .k .er-dot, .er-legend .k .er-ins, .er-legend .k .er-rep { top: 6px !important; left: 7px; }
+.er-legend .k .er-closed, .er-legend .k .er-win { top: 0; height: 12px; left: 0; width: 14px; }
+.er-more { text-align: center; margin-top: 12px; }
+.er-note { font-size: 9.5px; color: var(--text-dim); letter-spacing: .04em; line-height: 1.7; margin-top: 10px; }
+@media (max-width: 700px) {
+  .er-axis, .er-row { grid-template-columns: minmax(0, 1fr); }
+  .er-row { grid-template-areas: "meta" "track" "chips"; }
+  .er-axis-lbl { display: none; }
+  .er-track { margin-top: 8px; }
+}
+
+/* ═══ REPORT REACTIONS — did the dots call it? ═════════════════════════════ */
+.rs-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+.rs-grid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+@media (max-width: 900px) { .rs-grid { grid-template-columns: minmax(0, 1fr); } }
+.rs-plot svg { width: 100%; height: auto; display: block; overflow: visible; }
+.rs-plot .ax { stroke: rgba(255,255,255,0.14); stroke-width: 1; }
+.rs-plot .grid { stroke: rgba(255,255,255,0.05); stroke-width: 1; }
+.rs-plot text { font-family: var(--mono); font-size: 9px; fill: var(--text3); letter-spacing: .06em; }
+.rs-plot circle { stroke: var(--bg); stroke-width: 1.5; }
+.rs-plot circle:hover { stroke: var(--text1); }
+.perf-table td.lbl-ctx { color: var(--text-dim); }
+.rs-empty { border: 1px dashed var(--border2); padding: 26px 14px; text-align: center; font-size: 10.5px; color: var(--text-dim); letter-spacing: .06em; line-height: 1.8; }
+.rs-plot circle.l { fill: var(--green); }
+.rs-plot circle.s { fill: var(--red); }
+.rs-plot circle.n { fill: rgba(122,132,153,0.45); }
 .conv-break-fill.signal { background: var(--purple, #a78bfa); }
 
 /* ═══ MARKET INTELLIGENCE ══════════════════════════════════════════════════ */
@@ -540,7 +612,7 @@ table.wt { width: 100%; border-collapse: collapse; font-family: var(--mono); fon
   <header>
     <div class="logo-block">
       <div class="logo">Slensvik<span>radar</span></div>
-      <div class="logo-sub">Catalyst Intelligence · XOSL / MERK</div>
+      <div class="logo-sub">Event Intelligence · XOSL / MERK</div>
     </div>
     <div data-intel-nav></div>
     <div class="header-meta">
@@ -550,7 +622,7 @@ table.wt { width: 100%; border-collapse: collapse; font-family: var(--mono); fon
   </header>
 
   <!-- ═══ ACT I — ORBITAL CATALYST RADAR ═══════════════════════════════════ -->
-  <section class="orbital" id="orbitalSection" aria-label="Orbital catalyst radar — flagged names by days to event">
+  <section class="orbital" id="orbitalSection" aria-label="Event horizon — every company reporting in the next 35 days, by days to its report">
     <canvas id="orbCanvas"></canvas>
     <div class="orb-center">
       <div class="orb-now">◉ Event Horizon</div>
@@ -558,25 +630,66 @@ table.wt { width: 100%; border-collapse: collapse; font-family: var(--mono); fon
       <div class="orb-counts" id="orbCounts">—</div>
     </div>
     <div class="orb-status" id="orbStatus"></div>
-    <div class="orb-hint">ring = days to catalyst · size = conviction · colour = side · pulse = dark share · trail = day move · click a body for its dossier</div>
+    <div class="orb-hint">ring = days to report · size = positioning · colour = direction · pulse = dark-pool days · trail = run-up · click a body for its dossier</div>
     <div class="orb-flyout" id="orbFlyout"></div>
   </section>
 
-  <!-- ═══ CATALYST RADAR — event-first precursor scanner ═══════════════════ -->
-  <div class="section" id="sec-catalyst">
+  <!-- ═══ EVENT RADAR — every report ahead and the dots leading into it ═════ -->
+  <div class="section" id="sec-events">
     <div class="section-head">
-      <div class="section-title">◬ Catalyst Radar</div>
-      <div class="section-desc">Every scheduled event in the next 35 days, ranked by how much insider, dark-pool, whale, and signal evidence is stacking up ahead of it.</div>
-      <div class="section-count" id="crCount">—</div>
+      <div class="section-title">◬ Event Radar · Reporting Season</div>
+      <div class="section-desc">Every company reporting in the next five weeks and the dots leading into it — dark-pool pressure since the last report, short sellers building, insiders' last trades before their 30-day closed period, analysts, the run-up. Positioning scores the two groups that can trade right up to the report: dark-pool flow and short sellers.</div>
+      <div class="section-count" id="erCount">—</div>
     </div>
     <div class="section-body">
-      <div class="cr-scan" id="catalystSection" aria-label="Catalyst radar — upcoming events by days to catalyst and precursor evidence">
-        <canvas id="crCanvas"></canvas>
-        <div class="cr-flyout" id="crFlyout"></div>
+      <div class="book-kpis" id="erKpis"></div>
+      <div class="er-controls" id="erFilters">
+        <button class="wt-filter on" data-f="positioned">Positioned</button>
+        <button class="wt-filter" data-f="date">All by date</button>
+        <button class="wt-filter" data-f="long">▲ Long</button>
+        <button class="wt-filter" data-f="short">▼ Short</button>
+        <button class="wt-filter" data-f="week">Next 7 days</button>
+        <button class="wt-filter" data-f="insiders">Insider trades</button>
       </div>
-      <div class="cr-hint">lane = event type · size = catalyst score · colour = precursor direction · click a contact for its dossier</div>
-      <div class="cr-list" id="crList"><div class="conv-empty">LOADING …</div></div>
-      <div class="cr-more"><button class="wt-filter" id="crMore" style="display:none">Show all events</button></div>
+      <div class="er-axis" id="erAxis"><div class="er-axis-lbl">Report · positioning</div><div class="er-axis-track"></div></div>
+      <div class="er-list" id="erList"><div class="conv-empty">LOADING THE CALENDAR …</div></div>
+      <div class="er-more"><button class="wt-filter" id="erMore" style="display:none">Show all</button></div>
+      <div class="er-legend">
+        <span><span class="k"><span class="er-dot b"></span></span>Dark-pool buy day</span>
+        <span><span class="k"><span class="er-dot s"></span></span>Dark-pool sell day</span>
+        <span><span class="k"><span class="er-dot b top"></span></span>Top-decile dark day</span>
+        <span><span class="k"><span class="er-ins b"></span></span>Insider buy / <span class="k"><span class="er-ins s"></span></span>sell (published)</span>
+        <span><span class="k"><span class="er-win"></span></span>Run-up since last report</span>
+        <span><span class="k"><span class="er-closed"></span></span>Closed period (30d)</span>
+        <span><span class="k"><span class="er-rep"></span></span>Report · <span class="k"><span class="er-rep est"></span></span>estimated date</span>
+      </div>
+      <div class="er-note" id="erNote"></div>
+    </div>
+  </div>
+
+  <!-- ═══ REPORT REACTIONS — season scoreboard ══════════════════════════════ -->
+  <div class="section" id="sec-reactions">
+    <div class="section-head">
+      <div class="section-title">◈ Report Reactions · Season Scoreboard</div>
+      <div class="section-desc">Did the dots call it? Every report graded on its reaction — the close before it to the close after it, and four sessions on — against same-size peers, with the positioning read two sessions before: the last evening you could still act on.</div>
+      <div class="section-count" id="rsCount">—</div>
+    </div>
+    <div class="section-body">
+      <div class="rs-tabs" id="rsTabs"></div>
+      <div class="ir-kpis" id="rsKpis"></div>
+      <div class="rs-grid">
+        <div>
+          <div class="ir-sub">Report-day reaction vs same-size peers, by what the radar saw two sessions before</div>
+          <div class="table-wrap"><table class="perf-table"><thead><tr>
+            <th>Evidence before the report</th><th>N</th><th>Day mean</th><th>Day median</th><th>+5d mean</th><th>Called</th>
+          </tr></thead><tbody id="rsTable"><tr><td colspan="6" class="perf-empty">LOADING …</td></tr></tbody></table></div>
+        </div>
+        <div>
+          <div class="ir-sub">Each report · positioning (◂ short · long ▸) vs report-day move</div>
+          <div class="rs-plot" id="rsPlot"></div>
+        </div>
+      </div>
+      <div class="ir-note" id="rsNote" style="margin-top:12px"></div>
     </div>
   </div>
 
@@ -602,7 +715,7 @@ table.wt { width: 100%; border-collapse: collapse; font-family: var(--mono); fon
   <div class="section" id="sec-conviction">
     <div class="section-head">
       <div class="section-title">▣ Today's Book</div>
-      <div class="section-desc">Ranked by agreeing evidence from informed participants — dark-pool impact, insiders buying, short sellers building. Conflicting evidence costs points and no single source can max the score. Click any card for the dossier.</div>
+      <div class="section-desc">The event-agnostic book, beside the calendar: ranked by agreeing evidence from informed participants — dark-pool impact, insiders buying, short sellers building. Conflicting evidence costs points and no single source can max the score. Click any card for the dossier.</div>
       <div class="section-count" id="convictionCount">—</div>
     </div>
     <div class="section-body">
@@ -1221,12 +1334,14 @@ const fmtPct = v => v == null ? '—' : (v >= 0 ? '+' : '') + Number(v).toFixed(
 const fmtBn  = v => v == null ? '—' : (v / 1e9).toFixed(2) + 'bn';
 const fmtMn  = v => v == null ? '—' : (v / 1e6).toFixed(0) + 'M';
 
-/* ═══ ACT I — ORBITAL CATALYST RADAR ═══════════════════════════════════════
-   Polar starfield: the centre is now; rings are days-to-catalyst (7/14/21/
-   28d, eventless names on the outer rim). Body size = conviction, colour =
-   side, pulse = dark share, comet trail = today's move. Engine follows the
-   portfolio command deck: pre-rendered sprites, 30fps cap, static frame
-   under prefers-reduced-motion, pauses off-screen. */
+/* ═══ ACT I — THE EVENT HORIZON ═══════════════════════════════════════════
+   Polar starfield: the centre is now; rings are days to each company's next
+   report (7/14/21/28/35d). Body size = event-radar positioning, colour =
+   direction (grey = quiet), pulse = dark-pool days in the run-up, comet
+   trail = run-up vs peers. Fed by loadEventRadar (api.report_radar). Engine
+   follows the portfolio command deck: pre-rendered sprites, 30fps cap,
+   static frame under prefers-reduced-motion, pauses off-screen. */
+const ORB_HORIZON = 35;
 const ORB_REDUCE = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)
   || new URLSearchParams(location.search).has('static');   // ?static=1 → single frame (screenshot/capture mode)
 const ORB_COARSE = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
@@ -1290,28 +1405,29 @@ function makeOrbital(canvas) {
     const inner = 0.22;   // innermost ring fraction (imminent events hug the core)
     return { cx, cy, maxRx, maxRy, inner };
   }
-  // rows: {isin, tk, side, conviction, days_to_event, dark_pct, change_pct,
-  //        signals, insiders, evt}
+  // rows: {isin, tk, side LONG|SHORT|NONE, size 0–100 (positioning), days (to the report),
+  //        pulse 0–1 (dark-pool days in the run-up), trail 0–1 (run-up vs peers), row}
   function setBodies(rows) {
     bodies = rows.map(b => {
       const h = orbHash(b.isin);
-      const q = Math.round((b.conviction || 0) / 8) * 8;   // sprite-cache friendly
+      const q = Math.round((b.size || 0) / 8) * 8;   // sprite-cache friendly
       const col = b.side === 'LONG'
         ? `rgb(${50 - Math.round(q * 0.1)},${170 + Math.round(q * 0.54)},${120 + Math.round(q * 0.31)})`
-        : `rgb(${200 + Math.round(q * 0.55)},${100 - Math.round(q * 0.3)},${96 - Math.round(q * 0.3)})`;
-      // days → radial fraction: 0d at inner ring, 28d+ near rim, no event on the rim
-      const frac = b.days_to_event == null ? 1
-        : Math.min(1, Math.pow(Math.min(b.days_to_event, 30) / 30, 0.8)) * 0.88;
+        : b.side === 'SHORT'
+        ? `rgb(${200 + Math.round(q * 0.55)},${100 - Math.round(q * 0.3)},${96 - Math.round(q * 0.3)})`
+        : 'rgb(104,118,146)';
+      // days → radial fraction: tomorrow hugs the core, the 35-day horizon sits near the rim
+      const frac = Math.min(1, Math.pow(Math.max(0, Math.min(b.days, ORB_HORIZON)) / ORB_HORIZON, 0.8)) * 0.92;
       return {
         ...b, col,
         frac,
         a0: h * Math.PI * 2,
         omega: (0.05 + 0.05 * h) * (h > 0.5 ? 1 : -1),
-        R: 4.5 + (b.conviction || 0) / 100 * 11,
-        darkAmp: Math.min(1, (b.dark_pct || 0) / 12),
-        pulseW: 0.8 + Math.min(2.6, (b.dark_pct || 0) / 10 * 2),
+        R: 4 + (b.size || 0) / 100 * 12,
+        darkAmp: b.pulse || 0,
+        pulseW: 0.8 + 2.6 * (b.pulse || 0),
         ph: h * Math.PI * 2,
-        dim: b.days_to_event == null,
+        dim: b.side === 'NONE',
         x: 0, y: 0,
       };
     });
@@ -1336,11 +1452,11 @@ function makeOrbital(canvas) {
     ctx.drawImage(orbGlowSprite('rgb(245,166,35)'), cx - coreR, cy - coreR * 0.8, coreR * 2, coreR * 1.6);
     ctx.globalAlpha = 1;
 
-    // time rings: 7 / 14 / 21 / 28 days + the eventless rim
+    // time rings: 7 / 14 / 21 / 28 / 35 days to the report
     ctx.font = '500 9px IBM Plex Mono, monospace';
     ctx.textAlign = 'left';
-    for (const dday of [7, 14, 21, 28]) {
-      const f = Math.min(1, Math.pow(dday / 30, 0.8)) * 0.88;
+    for (const dday of [7, 14, 21, 28, 35]) {
+      const f = Math.min(1, Math.pow(dday / ORB_HORIZON, 0.8)) * 0.92;
       const rx = maxRx * (inner + (1 - inner) * f), ry = maxRy * (inner + (1 - inner) * f);
       ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
       ctx.strokeStyle = 'rgba(255,255,255,0.055)'; ctx.lineWidth = 1; ctx.stroke();
@@ -1349,8 +1465,6 @@ function makeOrbital(canvas) {
     }
     ctx.beginPath(); ctx.ellipse(cx, cy, maxRx, maxRy, 0, 0, Math.PI * 2);
     ctx.setLineDash([2, 6]); ctx.strokeStyle = 'rgba(255,255,255,0.07)'; ctx.stroke(); ctx.setLineDash([]);
-    ctx.fillStyle = 'rgba(122,132,153,0.45)';
-    ctx.fillText('no catalyst', cx + maxRx * 0.7071 + 5, cy - maxRy * 0.7071 - 4);
 
     // sweep beam — a faint radar sweep, because it is a radar
     if (!ORB_REDUCE) {
@@ -1376,8 +1490,8 @@ function makeOrbital(canvas) {
       b.x = x; b.y = y;
       const baseA = b.dim ? 0.55 : 1;
 
-      // comet trail — behind the direction of travel, longer on big day moves
-      const tl = 0.14 + Math.min(0.7, Math.abs(b.change_pct || 0) * 0.12);
+      // comet trail — behind the direction of travel, longer on a big run-up into the report
+      const tl = 0.14 + 0.7 * Math.min(1, b.trail || 0);
       const tw = Math.min(2.6, 1 + b.R * 0.12);
       for (let k = 0; k < 3; k++) {
         ctx.beginPath();
@@ -1462,32 +1576,7 @@ function makeOrbital(canvas) {
   return { setBodies, hitTest, get bodies() { return bodies; }, setHover(i) { hoverIdx = i; if (!raf) draw(performance.now()); } };
 }
 
-let orbital = null, moversByIsin = {};
-async function loadOrbital() {
-  try {
-    const [conv, movers] = await Promise.all([
-      API('conviction', 'order=conviction.desc&limit=44'),
-      API('movers', 'select=isin,ticker,name,close,change_pct,dark_pct,insider_7d&order=turnover.desc&limit=300').catch(() => []),
-    ]);
-    for (const m of movers) moversByIsin[m.isin] = Object.assign(moversByIsin[m.isin] || {}, m);
-    const rows = conv.map(r => ({
-      isin: r.isin, tk: isinTicker(r.isin), side: r.side,
-      conviction: r.conviction, days_to_event: r.days_to_event,
-      evt: r.next_event_type, dark_pct: r.dark_pct != null ? +r.dark_pct : null,
-      change_pct: moversByIsin[r.isin] ? +moversByIsin[r.isin].change_pct : 0,
-      signals: (r.signal_types || []).length,
-      insiders: r.insider_buyers_14d || 0,
-      short_chg: r.short_pct_change != null ? +r.short_pct_change : null,
-    }));
-    orbital.setBodies(rows);
-    const L = rows.filter(r => r.side === 'LONG').length, Sh = rows.filter(r => r.side === 'SHORT').length;
-    document.getElementById('orbCounts').innerHTML =
-      `<span class="L">▲ ${L} long</span> · <span class="S">▼ ${Sh} short</span>`;
-    const imminent = rows.filter(r => r.days_to_event != null && r.days_to_event <= 7).length;
-    document.getElementById('orbStatus').innerHTML =
-      `<div class="meta-pill">${imminent} INSIDE 7D</div>`;
-  } catch (e) { console.error('orbital load failed', e); }
-}
+let orbital = null;
 function initOrbital() {
   const cv = document.getElementById('orbCanvas');
   if (!cv) return;
@@ -1495,17 +1584,13 @@ function initOrbital() {
   const fly = document.getElementById('orbFlyout');
   const sec = document.getElementById('orbitalSection');
   const showFly = (i) => {
-    const b = orbital.bodies[i];
-    const info = ISIN_MAP[b.isin] || {};
-    const mv = moversByIsin[b.isin] || {};
-    const cls = (b.change_pct || 0) >= 0 ? 'up' : 'dn';
-    fly.innerHTML = `<span class="tk">${b.tk}</span> <span class="dim">${info.n || mv.name || ''}</span><br>
-      <span class="${b.side === 'LONG' ? 'up' : 'dn'}">${b.side} ${b.conviction}</span>
-      · ${mv.close != null ? Number(mv.close).toFixed(2) : '—'} <span class="${cls}">${fmtPct(b.change_pct)}</span><br>
-      <span class="dim">${b.signals} signal type${b.signals === 1 ? '' : 's'} 14d
-      ${b.evt ? ` · ${b.evt} T−${b.days_to_event}` : ' · no catalyst inside 14d'}
-      ${b.dark_pct != null ? ` · dark ${b.dark_pct.toFixed(1)}%` : ''}</span><br>
-      <span class="dim">${b.insiders ? `◐ ${b.insiders} insider buyer${b.insiders > 1 ? 's' : ''} · ` : ''}${b.short_chg != null ? `SI Δ ${b.short_chg > 0 ? '+' : ''}${b.short_chg.toFixed(2)}pp · ` : ''}${ORB_COARSE ? 'tap again' : 'click'} for dossier</span>`;
+    const b = orbital.bodies[i], r = b.row || {};
+    const cls = b.side === 'LONG' ? 'up' : b.side === 'SHORT' ? 'dn' : 'dim';
+    fly.innerHTML = `<span class="tk">${erEsc(b.tk)}</span> <span class="dim">${erEsc(r.name || isinName(b.isin) || '')}</span><br>
+      ${r.period || 'Report'} · ${erDate(r.report_date)} · T−${r.days_to_report}d <span class="dim">${r.date_source === 'calendar' ? 'filed calendar' : 'estimated date'}</span><br>
+      <span class="${cls}">${b.side === 'NONE' ? 'quiet — no positioning' : `${b.side} ${b.size}`}</span>
+      · dark ▲${r.dark_buy_days || 0} ▼${r.dark_sell_days || 0}${r.si_level != null ? ` · SI ${(+r.si_level).toFixed(2)}%${r.si_change != null ? ` (${erSigned(r.si_change, 2)}pp)` : ''}` : ''}<br>
+      <span class="dim">${r.ins_open_buyers ? `◐ ${r.ins_open_buyers} insider buyer${r.ins_open_buyers > 1 ? 's' : ''} · ` : ''}${r.in_closed_period ? 'closed period · ' : ''}${r.runup_pct != null ? `run-up ${erSigned(r.runup_pct, 1)}% · ` : ''}${ORB_COARSE ? 'tap again' : 'click'} for dossier</span>`;
     fly.style.display = 'block';
     fly.style.left = Math.max(4, Math.min(b.x + 20, sec.clientWidth - 280)) + 'px';
     fly.style.top = Math.max(8, b.y - 16) + 'px';
@@ -1528,308 +1613,364 @@ function initOrbital() {
   });
 }
 
-/* ═══ CATALYST RADAR — approach-vector scanner ═════════════════════════════
-   Linear, not polar: NOW is the left edge, the 35-day horizon is the right.
-   Lane = event type (fixed — a repeat visitor learns "AGMs live in lane 3").
-   Body size = catalyst_score, colour = precursor direction, glow pulse =
-   how much evidence is stacking up. Shares the orbital's starfield + glow
-   sprite + meteor mechanic — same sky, different instrument. */
-const CR_LANES = [
-  { t: 'EARNINGS_CALL', lbl: 'EARNINGS CALL' },
-  { t: 'RESULTS',       lbl: 'RESULTS' },
-  { t: 'AGM',            lbl: 'AGM' },
-  { t: 'EX_DATE',        lbl: 'EX-DIV' },
-  { t: 'WARNING',        lbl: 'WARNING' },
-];
-const CR_HORIZON = 35;
+/* ═══ EVENT RADAR — every report ahead and the dots leading into it ════════
+   api.report_radar (ENEXT sql/event_radar.sql, docs/event-radar.md): one row
+   per company with a results report inside 35 days, point in time as of the
+   last session. Shared calendar axis — 8 weeks back (insiders' open window,
+   the dark run-up) to the 35-day horizon — so the season's shape shows.
+   Positioning scores dark-pool flow + short sellers (the traders who can act
+   right up to the report); insiders, analysts and the run-up are context. */
+const ER_BACK = 56, ER_AHEAD = 35, ER_VISIBLE = 14;
+const ER_COLS = 'isin,ticker,name,report_date,fiscal_year,period,date_source,days_to_report,closed_from,' +
+  'in_closed_period,prev_report,runup_from,runup_sessions,dark_buy_days,dark_sell_days,dark_top_days,ev_dark,' +
+  'dark_days,si_level,si_change,si_date,ev_short,ins_open_buyers,ins_open_sellers,ins_closed_trades,ins_trades,' +
+  'analyst_score,analyst_n,analyst_change,runup_pct,vol_ratio,agreement,families,positioning,direction,asof_date,' +
+  'target_upside_pct,target_n,conviction_side,conviction';
+let erRows = [], erFilter = 'positioned', erShowAll = false, erAsof = 0;
 
-function makeCatalystScanner(canvas) {
-  const ctx = canvas.getContext('2d');
-  let bodies = [], W = 0, H = 0, raf = 0, hoverIdx = -1, inView = true, lastDraw = 0;
-  let stars = null, starsFar = null, meteor = null;
-  let nextMeteorAt = performance.now() + 9000 + Math.random() * 18000;
-  const t0 = performance.now();
+const erDay = s => { const [y, m, d] = String(s).slice(0, 10).split('-').map(Number); return Date.UTC(y, m - 1, d) / 864e5; };
+const erIso = d => new Date(d * 864e5).toISOString().slice(0, 10);
+const erX = s => Math.max(0, Math.min(100, (erDay(s) - erAsof + ER_BACK) / (ER_BACK + ER_AHEAD) * 100));
+const erIn = s => { const t = erDay(s) - erAsof; return t >= -ER_BACK && t <= ER_AHEAD; };
+const erDate = (s, wd = true) => new Date(erDay(s) * 864e5).toLocaleDateString('en-GB',
+  wd ? { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' } : { day: 'numeric', month: 'short', timeZone: 'UTC' });
+const erSigned = (v, dp = 1) => v == null || isNaN(v) ? '—' : (+v > 0 ? '+' : +v < 0 ? '−' : '') + Math.abs(+v).toFixed(dp);
+const erRec = a => a < 1.5 ? 'STRONG BUY' : a < 2.5 ? 'BUY' : a < 3.5 ? 'HOLD' : a < 4.5 ? 'SELL' : 'STRONG SELL';
+const erEsc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-  function resize() {
-    const r = canvas.getBoundingClientRect();
-    W = r.width || canvas.parentElement.clientWidth; H = r.height || canvas.parentElement.clientHeight;
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    canvas.width = W * dpr; canvas.height = H * dpr;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    stars = starsFar = null;
-    if (!raf) draw(performance.now());
+function erAxis() {
+  const track = document.querySelector('#erAxis .er-axis-track');
+  const w = track.clientWidth || 600;
+  const step = w < 420 ? 3 : w < 640 ? 2 : 1;            // weeks per label, so labels never collide
+  const out = [];
+  let k = 0;
+  for (let d = erAsof - ER_BACK; d <= erAsof + ER_AHEAD; d++) {
+    if (new Date(d * 864e5).getUTCDay() !== 1) continue;  // Mondays
+    const x = erX(erIso(d));
+    if (k++ % step || Math.abs(d - erAsof) < 3 * step || x < 3 || x > 97) continue;   // keep labels off the edges
+    out.push(`<span class="er-tick" style="left:${x}%">${erDate(erIso(d), false)}</span>`);
   }
-  function geom() {
-    const padL = W > 560 ? 100 : 54, padR = 20, padT = 22, padB = 22;
-    return { x0: padL, x1: W - padR, padT, padB, laneH: (H - padT - padB) / CR_LANES.length };
-  }
-  const xOf = (days, g) => g.x0 + Math.min(Math.max(days || 0, 0), CR_HORIZON) / CR_HORIZON * (g.x1 - g.x0);
-
-  function setBodies(rows) {
-    bodies = rows.map(b => {
-      const h = orbHash(b.isin + '|' + b.event_type + '|' + b.event_date);
-      const laneIdx = Math.max(0, CR_LANES.findIndex(l => l.t === b.event_type));
-      const dir = b.direction_score || 0;
-      const col = dir > 0.15 ? 'rgb(67,224,151)' : dir < -0.15 ? 'rgb(240,96,96)' : 'rgb(168,163,150)';
-      return {
-        ...b, col, laneIdx,
-        R: 4 + Math.min(b.catalyst_score || 0, 100) / 100 * 10,
-        ph: h * Math.PI * 2,
-        bobAmp: 3 + h * 4,
-        pulseW: 0.9 + Math.min(2.2, (b.catalyst_score || 0) / 100 * 2),
-        x: 0, y: 0,
-      };
-    });
-    if (!raf) draw(performance.now());
-  }
-
-  function draw(now) {
-    if (W < 80 || H < 80) return;
-    const s = !ORB_REDUCE ? (now - t0) / 1000 : 12.7;
-    const g = geom();
-    ctx.clearRect(0, 0, W, H);
-
-    if (!stars) { stars = starLayer(W, H, 9000, true); starsFar = starLayer(W, H, 2700, false); }
-    ctx.globalAlpha = 0.5 + 0.2 * Math.sin(s * 0.28);
-    ctx.drawImage(starsFar, 0, 0, W, H);
-    ctx.globalAlpha = 0.7 + 0.2 * Math.sin(1.3 + s * 0.19);
-    ctx.drawImage(stars, 0, 0, W, H);
-    ctx.globalAlpha = 1;
-
-    // NOW edge — amber core, echoes the orbital's centre glow
-    const nowR = Math.max(40, g.laneH * 1.15);
-    ctx.globalAlpha = 0.5 + 0.2 * Math.sin(s * 0.55);
-    ctx.drawImage(orbGlowSprite('rgb(245,166,35)'), g.x0 - nowR, H / 2 - nowR, nowR * 2, nowR * 2);
-    ctx.globalAlpha = 1;
-
-    // sweep — a soft band drifting in from the horizon, because it's still a radar
-    if (!ORB_REDUCE) {
-      const span = g.x1 - g.x0 + 160;
-      const sweepX = g.x1 - ((s * 38) % span);
-      const grad = ctx.createLinearGradient(sweepX - 70, 0, sweepX + 70, 0);
-      grad.addColorStop(0, 'rgba(79,195,247,0)');
-      grad.addColorStop(0.5, 'rgba(79,195,247,0.07)');
-      grad.addColorStop(1, 'rgba(79,195,247,0)');
-      ctx.fillStyle = grad;
-      ctx.fillRect(g.x0, g.padT - 6, g.x1 - g.x0, H - g.padT - g.padB + 6);
-    }
-
-    // day gridlines + NOW/HORIZON labels
-    ctx.font = '500 9px IBM Plex Mono, monospace';
-    ctx.textAlign = 'center';
-    for (const d of [0, 7, 14, 21, 28, 35]) {
-      const x = xOf(d, g);
-      ctx.beginPath(); ctx.moveTo(x, g.padT - 6); ctx.lineTo(x, H - g.padB);
-      ctx.strokeStyle = d === 0 ? 'rgba(245,166,35,0.28)' : 'rgba(255,255,255,0.055)';
-      ctx.lineWidth = 1; ctx.stroke();
-      ctx.fillStyle = d === 0 ? 'rgba(245,166,35,0.85)' : 'rgba(122,132,153,0.55)';
-      ctx.fillText(d === 0 ? 'NOW' : d + 'd', x, H - 8);
-    }
-    ctx.textAlign = 'right';
-    ctx.fillStyle = 'rgba(122,132,153,0.45)';
-    ctx.fillText('35D HORIZON', g.x1, g.padT - 10);
-
-    // lanes
-    ctx.textAlign = 'left';
-    for (let i = 0; i < CR_LANES.length; i++) {
-      const y = g.padT + g.laneH * (i + 0.5);
-      ctx.beginPath(); ctx.moveTo(g.x0 - (W > 560 ? 8 : 4), y); ctx.lineTo(g.x1, y);
-      ctx.strokeStyle = 'rgba(255,255,255,0.035)'; ctx.lineWidth = 1; ctx.stroke();
-      if (W > 560) {
-        ctx.fillStyle = 'rgba(122,132,153,0.65)';
-        ctx.fillText((EVT_GLYPH[CR_LANES[i].t] || '▌') + ' ' + CR_LANES[i].lbl, 0, y + 3);
-      }
-    }
-
-    // bodies
-    ctx.textAlign = 'center';
-    for (let i = 0; i < bodies.length; i++) {
-      const b = bodies[i];
-      const laneCenter = g.padT + g.laneH * (b.laneIdx + 0.5);
-      const x = xOf(b.days_to_event, g);
-      const y = laneCenter + Math.sin(s * 0.6 + b.ph) * b.bobAmp * 0.4;
-      b.x = x; b.y = y;
-
-      const pulse = 0.5 + 0.5 * Math.sin(s * b.pulseW + b.ph);
-      const gR = b.R * (2.1 + 0.7 * pulse);
-      ctx.globalAlpha = 0.14 + 0.28 * pulse;
-      ctx.drawImage(orbGlowSprite(b.col), x - gR, y - gR, gR * 2, gR * 2);
-      ctx.globalAlpha = 1;
-      ctx.fillStyle = b.col;
-      ctx.beginPath(); ctx.arc(x, y, b.R, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = i === hoverIdx ? 'rgba(232,238,247,0.95)' : 'rgba(232,238,247,0.22)';
-      ctx.lineWidth = i === hoverIdx ? 1.5 : 1;
-      ctx.stroke();
-
-      if (W > 680 && (b.R >= 9.5 || i === hoverIdx)) {
-        ctx.fillStyle = i === hoverIdx ? 'rgba(232,238,247,0.95)' : 'rgba(164,173,191,0.65)';
-        ctx.fillText(b.tk || '', x, y - b.R - 7);
-      }
-    }
-
-    // shooting star — same mechanic as the orbital, ties the two skies together
-    if (!ORB_REDUCE) {
-      if (!meteor && now >= nextMeteorAt) {
-        const fromLeft = Math.random() < 0.5;
-        meteor = { t: now, dur: 600 + Math.random() * 450,
-          x0: fromLeft ? -30 : W + 30, y0: Math.random() * H * 0.5,
-          dx: (fromLeft ? 1 : -1) * W * (0.35 + Math.random() * 0.3), dy: H * (0.08 + Math.random() * 0.2) };
-      }
-      if (meteor) {
-        const p = (now - meteor.t) / meteor.dur;
-        if (p >= 1) { meteor = null; nextMeteorAt = now + 18000 + Math.random() * 28000; }
-        else {
-          const hx = meteor.x0 + meteor.dx * p, hy = meteor.y0 + meteor.dy * p;
-          const nl = Math.hypot(meteor.dx, meteor.dy) || 1;
-          const mg = ctx.createLinearGradient(hx, hy, hx - meteor.dx / nl * 55, hy - meteor.dy / nl * 55);
-          mg.addColorStop(0, `rgba(220,235,255,${(0.55 * Math.sin(Math.PI * p)).toFixed(3)})`);
-          mg.addColorStop(1, 'rgba(220,235,255,0)');
-          ctx.strokeStyle = mg; ctx.lineWidth = 1.1;
-          ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(hx - meteor.dx / nl * 55, hy - meteor.dy / nl * 55); ctx.stroke();
-        }
-      }
-    }
-  }
-  function loop(now) {
-    raf = requestAnimationFrame(loop);
-    if (now - lastDraw < 33) return;
-    lastDraw = now; draw(now);
-  }
-  function start() {
-    if (ORB_REDUCE || document.hidden || !inView) { draw(performance.now()); return; }
-    if (!raf) raf = requestAnimationFrame(loop);
-  }
-  function stop(keep = true) { if (raf) { cancelAnimationFrame(raf); raf = 0; } if (keep) draw(performance.now()); }
-  function hitTest(px, py) {
-    let best = -1, bd = 1e9;
-    for (let i = 0; i < bodies.length; i++) {
-      const d = Math.hypot(px - bodies[i].x, py - bodies[i].y);
-      if (d < bodies[i].R + (ORB_COARSE ? 14 : 7) && d < bd) { bd = d; best = i; }
-    }
-    return best;
-  }
-  resize();
-  let rz = 0;
-  window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(resize, 150); });
-  if ('IntersectionObserver' in window) {
-    new IntersectionObserver(es => { for (const e of es) inView = e.isIntersecting; inView ? start() : stop(false); },
-      { rootMargin: '80px' }).observe(canvas);
-  }
-  document.addEventListener('visibilitychange', () => document.hidden ? stop(false) : start());
-  start();
-  return { setBodies, hitTest, get bodies() { return bodies; }, setHover(i) { hoverIdx = i; if (!raf) draw(performance.now()); } };
+  out.push(`<span class="er-tick now" style="left:${erX(erIso(erAsof))}%" title="Last session: ${erDate(erIso(erAsof))}">NOW</span>`);
+  track.innerHTML = out.join('');
 }
 
-let catalystScanner = null, catalystRows = [], crShowAll = false;
-const CR_VISIBLE = 12;
-
-function renderCatalystCard(r) {
-  const ticker = r.tk || isinTicker(r.isin);
-  const name = isinName(r.isin) || r.issuer || '';
-  const dir = r.direction_score || 0;
-  const dirCls = dir > 0.15 ? 'up' : dir < -0.15 ? 'dn' : 'dim';
-  const dirArrow = dir > 0.15 ? '▲' : dir < -0.15 ? '▼' : '◆';
-  const breakdown = INTEL.catalystBreakdown(r);
-  let breakRow = '';
-  if (breakdown.length) {
-    const maxAbs = Math.max(...breakdown.map(([, p]) => Math.abs(p)), 1);
-    const rows = breakdown.map(([lbl, pts]) => {
-      const w = Math.abs(pts) / maxAbs * 100;
-      const isSignal = /smart signal/.test(lbl);
-      return `<div class="conv-break-row"><span class="conv-break-lbl">${lbl}</span>
-        <div class="conv-break-track"><div class="conv-break-fill${isSignal ? ' signal' : ''}" style="width:${w.toFixed(0)}%"></div></div>
-        <span class="conv-break-val">+${pts}</span></div>`;
-    }).join('');
-    breakRow = `
-      <details class="conv-break" onclick="event.stopPropagation()">
-        <summary>why ${r.catalyst_score}?</summary>
-        <div class="conv-break-body">${rows}</div>
-      </details>`;
+function erChips(r, dir) {
+  const c = [];
+  const b = r.dark_buy_days || 0, s = r.dark_sell_days || 0;
+  c.push(b || s
+    ? `<span class="er-chip ${r.ev_dark >= 0.25 ? 'up' : r.ev_dark <= -0.25 ? 'dn' : ''}" title="Sessions where mid-point dark prints moved the price — buyer- vs seller-initiated — over the ${r.runup_sessions} sessions since the last report (recent days weigh more). Scored.">DARK ▲${b} ▼${s}${r.dark_top_days ? ` · ${r.dark_top_days} TOP` : ''}</span>`
+    : `<span class="er-chip dim" title="No mid-point dark impact days in the run-up">NO DARK LEAN · ${r.runup_sessions} SESSIONS</span>`);
+  if (r.si_level != null) {
+    const ch = r.si_change != null ? +r.si_change : null;
+    c.push(`<span class="er-chip ${ch != null && ch >= 0.3 ? 'dn' : ''}" title="Disclosed short interest${r.si_date ? ' as of ' + erDate(r.si_date) : ''} and its change since the run-up began. Building ≥ 0.3 pp is scored bearish.">SHORTS ${(+r.si_level).toFixed(2)}%${ch != null ? ` ${erSigned(ch, 2)}PP` : ''}</span>`);
   }
-  return `
-    <div class="cr-card" onclick="drillIntoISIN('${r.isin}')">
-      <div class="cr-row1">
-        <span class="cr-evt">${EVT_GLYPH[r.event_type] || '▌'} ${r.event_type.replace(/_/g,' ')}</span>
-        <span class="cr-tminus">T−${r.days_to_event}d · ${r.event_date}</span>
-      </div>
-      <div class="cr-row2">
-        <span class="cr-arrow ${dirCls}">${dirArrow}</span>
-        <span class="cr-ticker">${INTEL.tkLink(r.isin, ticker)}</span>
-        <span class="cr-name">${name}</span>
-        <span class="cr-score">${r.catalyst_score}</span>
-      </div>
-      <div class="cr-bar"><div class="cr-bar-fill ${dirCls}" style="width:${Math.min(r.catalyst_score||0,100)}%"></div></div>
-      ${breakRow}
-    </div>`;
+  if (r.ins_open_buyers || r.ins_open_sellers) {
+    c.push(`<span class="er-chip ctx ${r.ins_open_buyers >= r.ins_open_sellers ? 'up' : 'dn'}" title="Distinct insiders who bought / sold between the previous report and the closed period (employee programmes excluded). Graded every season, not scored: insiders cannot trade the last 30 days, so their open-window trades speak to value, not to this report.">INSIDERS ${[r.ins_open_buyers ? `${r.ins_open_buyers} BOUGHT` : '', r.ins_open_sellers ? `${r.ins_open_sellers} SOLD` : ''].filter(Boolean).join(' · ')}</span>`);
+  }
+  if (r.ins_closed_trades) {
+    c.push(`<span class="er-chip amber" title="Insider trades published inside the 30-day closed period — usually exempt transactions, worth a look">${r.ins_closed_trades} TRADE${r.ins_closed_trades > 1 ? 'S' : ''} IN CLOSED PERIOD</span>`);
+  } else if (r.in_closed_period) {
+    c.push(`<span class="er-chip ctx dim" title="MAR: insiders may not trade in the 30 days before the report">CLOSED PERIOD</span>`);
+  }
+  if (r.analyst_score != null) {
+    const a = +r.analyst_score, ch = r.analyst_change != null ? +r.analyst_change : null;
+    c.push(`<span class="er-chip ctx ${ch != null && ch <= -0.2 ? 'up' : ch != null && ch >= 0.2 ? 'dn' : ''}" title="Analyst rating mix, 1 = strong buy … 5 = strong sell${r.analyst_n ? ` (${r.analyst_n} analysts)` : ''}${ch != null ? `; ${ch < 0 ? 'more bullish' : ch > 0 ? 'more bearish' : 'unchanged'} than ~3 months ago (${erSigned(ch, 2)})` : ''}. Context.">ANALYSTS ${a.toFixed(1)} ${erRec(a)}${ch != null && Math.abs(ch) >= 0.1 ? (ch < 0 ? ' ↑' : ' ↓') : ''}</span>`);
+  }
+  if (r.target_upside_pct != null) {
+    c.push(`<span class="er-chip ctx" title="Mean analyst price target vs the last price${r.target_n ? ` (${r.target_n} analysts)` : ''}">TARGET ${erSigned(r.target_upside_pct, 0)}%</span>`);
+  }
+  if (r.runup_pct != null && Math.abs(r.runup_pct) >= 3) {
+    const hot = r.runup_pct >= 5;
+    c.push(`<span class="er-chip ctx ${hot ? 'amber' : ''}" title="10-session return vs same-size peers.${hot ? ' In the Q2 2026 season, names that ran ≥ 5 % ahead of peers into their report reacted worse than average — a high bar.' : ''}">RUN-UP ${erSigned(r.runup_pct, 1)}%${hot ? ' · HIGH BAR' : ''}</span>`);
+  }
+  if (r.vol_ratio != null && +r.vol_ratio >= 1.5) {
+    c.push(`<span class="er-chip ctx" title="Volume over the last 5 sessions vs the 20 before">VOLUME ×${(+r.vol_ratio).toFixed(1)}</span>`);
+  }
+  if (r.conviction_side) {
+    c.push(`<span class="er-chip ctx" title="Today's event-agnostic LONG/SHORT book (conviction v4), further down">BOOK ${r.conviction_side} ${r.conviction}</span>`);
+  }
+  return c.join('');
 }
 
-function renderCatalystList() {
-  const shown = crShowAll ? catalystRows : catalystRows.slice(0, CR_VISIBLE);
-  document.getElementById('crList').innerHTML = shown.length
-    ? shown.map(renderCatalystCard).join('')
-    : '<div class="conv-empty">NO SCHEDULED CATALYSTS INSIDE 35D</div>';
-  document.getElementById('crMore').style.display =
-    catalystRows.length > CR_VISIBLE && !crShowAll ? '' : 'none';
+function erRowHTML(r) {
+  const dir = (r.direction || 'NONE').toLowerCase();
+  const tk = r.ticker || isinTicker(r.isin);
+  const nm = r.name || isinName(r.isin) || '';
+  const t = [];
+  t.push(`<div class="er-closed" style="left:${erX(r.closed_from)}%;width:${(erX(r.report_date) - erX(r.closed_from)).toFixed(2)}%" title="Closed period from ${erDate(r.closed_from)}: insiders may not trade in the 30 days before the report"></div>`);
+  if (r.runup_from) {
+    t.push(`<div class="er-win" style="left:${erX(r.runup_from)}%;width:${(erX(r.asof_date) - erX(r.runup_from)).toFixed(2)}%" title="Run-up window: ${r.runup_sessions} sessions${r.prev_report ? ' since the previous report' : ''}"></div>`);
+  }
+  t.push('<div class="er-base"></div>');
+  if (r.prev_report && erIn(r.prev_report)) {
+    t.push(`<span class="er-prev" style="left:${erX(r.prev_report)}%" title="Previous report ${erDate(r.prev_report)}"></span>`);
+  }
+  t.push(`<span class="er-now" style="left:${erX(r.asof_date)}%"></span>`);
+  const ins = new Map();
+  let early = 0;
+  for (const x of r.ins_trades || []) {
+    if (!erIn(x.d)) { early++; continue; }
+    const k = x.d + x.s, o = ins.get(k) || { d: x.d, s: x.s, n: 0, v: 0 };
+    o.n++; o.v += +x.v || 0; ins.set(k, o);
+  }
+  for (const o of ins.values()) {
+    const closed = erDay(o.d) >= erDay(r.closed_from);
+    t.push(`<span class="er-ins ${o.s === 'BUY' ? 'b' : 's'}" style="left:${erX(o.d)}%" title="Insider ${o.s === 'BUY' ? 'purchase' : 'sale'}${o.n > 1 ? ` ×${o.n}` : ''} published ${erDate(o.d)}${o.v >= 1e5 ? ` · ${fmtMn(o.v)} NOK` : ''}${closed ? ' · inside the closed period' : ''}"></span>`);
+  }
+  for (const d of r.dark_days || []) {
+    t.push(`<span class="er-dot ${d.v > 0 ? 'b' : 's'}${d.top ? ' top' : ''}" style="left:${erX(d.d)}%" title="${erDate(d.d)} · dark-pool ${d.v > 0 ? 'buying' : 'selling'} pressure (mid-point impact ${erSigned(d.bps)} bps)${d.top ? ' · top-decile dark day' : ''}"></span>`);
+  }
+  t.push(`<span class="er-rep${r.date_source === 'calendar' ? '' : ' est'}" style="left:${erX(r.report_date)}%" title="${r.period || ''} report ${erDate(r.report_date)} · ${r.date_source === 'calendar' ? 'filed financial calendar' : 'estimated from last year (+52 weeks)'}"></span>`);
+  const why = dir === 'none'
+    ? 'no dark-pool lean and no short build-up in the run-up'
+    : `dark ${erSigned(r.ev_dark, 2)} · shorts ${erSigned(r.ev_short, 2)} → agreement ${(+r.agreement).toFixed(2)}, ${r.families} agreeing famil${r.families === 1 ? 'y' : 'ies'}`;
+  return `<div class="er-row ${dir}" onclick="drillIntoISIN('${r.isin}')">
+    <div class="er-meta">
+      <div class="er-l1"><span class="er-arrow ${dir}">${dir === 'long' ? '▲' : dir === 'short' ? '▼' : '◆'}</span>
+        <span class="er-tk">${INTEL.tkLink(r.isin, erEsc(tk))}</span>
+        <span class="er-pos${dir === 'none' ? ' none' : ''}" title="Positioning: ${why}">${dir === 'none' ? 'QUIET' : r.positioning}</span></div>
+      <div class="er-name">${erEsc(nm)}</div>
+      <div class="er-when"><b>${r.period || 'Report'}</b> · ${erDate(r.report_date)} · T−${r.days_to_report}d<span class="er-src">${r.date_source === 'calendar' ? 'FILED' : 'EST'}</span></div>
+      ${dir === 'none' ? '' : `<div class="er-bar"><i class="${dir}" style="width:${r.positioning}%"></i></div>`}
+    </div>
+    <div class="er-track">${early ? `<span class="er-early" title="${early} insider trade${early > 1 ? 's' : ''} earlier in the open window, before this axis">← ${early}</span>` : ''}${t.join('')}</div>
+    <div class="er-chips">${erChips(r, dir)}</div>
+  </div>`;
 }
 
-async function loadCatalystRadar() {
+function erFiltered() {
+  const byPos = (a, b) => (b.positioning - a.positioning) || (erDay(a.report_date) - erDay(b.report_date));
+  const byDate = (a, b) => (erDay(a.report_date) - erDay(b.report_date)) || (b.positioning - a.positioning);
+  const R = erRows;
+  switch (erFilter) {
+    case 'date':     return [...R].sort(byDate);
+    case 'long':     return R.filter(r => r.direction === 'LONG').sort(byPos);
+    case 'short':    return R.filter(r => r.direction === 'SHORT').sort(byPos);
+    case 'week':     return R.filter(r => r.days_to_report <= 7).sort(byDate);
+    case 'insiders': return R.filter(r => r.ins_open_buyers || r.ins_open_sellers || r.ins_closed_trades).sort(byDate);
+    default:         return R.filter(r => r.direction !== 'NONE').sort(byPos);
+  }
+}
+
+function renderEventRadar() {
+  const rows = erFiltered();
+  const shown = erShowAll ? rows : rows.slice(0, ER_VISIBLE);
+  document.getElementById('erList').innerHTML = shown.length
+    ? shown.map(erRowHTML).join('')
+    : `<div class="conv-empty">${erFilter === 'week' ? 'NO REPORTS IN THE NEXT 7 DAYS' : 'NOTHING MATCHES THIS FILTER'}</div>`;
+  const more = document.getElementById('erMore');
+  more.style.display = rows.length > ER_VISIBLE && !erShowAll ? '' : 'none';
+  more.textContent = `Show all ${rows.length}`;
+}
+
+function renderEventKpis(rows) {
+  const L = rows.filter(r => r.direction === 'LONG').length, S = rows.filter(r => r.direction === 'SHORT').length;
+  const filed = rows.filter(r => r.date_source === 'calendar').length;
+  const closed = rows.filter(r => r.in_closed_period).length;
+  const wk = {};
+  for (const r of rows) {
+    const d = erDay(r.report_date), mon = d - (new Date(d * 864e5).getUTCDay() + 6) % 7;
+    wk[mon] = (wk[mon] || 0) + 1;
+  }
+  const [bw, bn] = Object.entries(wk).sort((a, b) => b[1] - a[1])[0] || [null, 0];
+  const nxt = rows.slice().sort((a, b) => erDay(a.report_date) - erDay(b.report_date))[0];
+  const tile = (l, v, s) => `<div class="book-kpi"><div class="book-kpi-label">${l}</div><div class="book-kpi-value">${v}</div><div class="book-kpi-sub">${s}</div></div>`;
+  document.getElementById('erKpis').innerHTML =
+    tile('Reports ahead', rows.length, `next ${ER_AHEAD} days · ${filed} on filed calendars`) +
+    tile('Positioned', `<span style="color:var(--green)">▲${L}</span> <span style="color:var(--red)">▼${S}</span>`, 'dark flow or short sellers leaning') +
+    tile('Insiders locked out', closed, 'inside the 30-day closed period') +
+    tile('Busiest week', bw ? `wk ${erDate(erIso(+bw), false)}` : '—',
+      `${bn} reports${nxt ? ` · next: ${erEsc(nxt.ticker || isinTicker(nxt.isin))} ${erDate(nxt.report_date, false)}` : ''}`);
+}
+
+function feedOrbital(rows) {
+  if (!orbital) return;
+  orbital.setBodies(rows.map(r => ({
+    isin: r.isin, tk: r.ticker || isinTicker(r.isin), side: r.direction || 'NONE', size: r.positioning,
+    days: r.days_to_report,
+    pulse: Math.min(1, ((r.dark_buy_days || 0) + (r.dark_sell_days || 0)) / 6),
+    trail: Math.min(1, Math.abs(r.runup_pct || 0) / 10),
+    row: r,
+  })));
+  const L = rows.filter(r => r.direction === 'LONG').length, S = rows.filter(r => r.direction === 'SHORT').length;
+  document.getElementById('orbCounts').innerHTML =
+    `${rows.length} reports · <span class="L">▲ ${L}</span> · <span class="S">▼ ${S}</span>`;
+  const wk = rows.filter(r => r.days_to_report <= 7).length, cl = rows.filter(r => r.in_closed_period).length;
+  document.getElementById('orbStatus').innerHTML =
+    `<div class="meta-pill">${wk} INSIDE 7D</div><div class="meta-pill">${cl} IN CLOSED PERIOD</div>`;
+}
+
+let erReady = null;
+async function loadEventRadar() {
   try {
-    const rows = await APIall('catalyst_radar',
-      'select=isin,issuer,event_type,event_date,days_to_event,catalyst_score,direction_score,' +
-      'insider_net_value_30d,dark_pct_vs_5d_norm,dark_side_bias,sig_count_14d,sig_hit_rate_t5,' +
-      'whale_14d,whale_notional_14d,adv_zscore,excess_ret_10s_pct,short_pct_chg,' +
-      's_insider,s_dark,s_signal,s_whale,s_volume,s_trend,s_short');
-    catalystRows = rows.map(r => ({ ...r, tk: isinTicker(r.isin) }));
-    const bullish = catalystRows.filter(r => (r.direction_score||0) > 0.15).length;
-    const bearish = catalystRows.filter(r => (r.direction_score||0) < -0.15).length;
-    document.getElementById('crCount').textContent =
-      `${catalystRows.length} EVENTS · ${bullish} BULLISH · ${bearish} BEARISH`;
-    catalystScanner.setBodies(catalystRows);
-    renderCatalystList();
+    const rows = await API('report_radar', `select=${ER_COLS}`);
+    erRows = rows.map(r => ({ ...r, positioning: +r.positioning || 0 }));
+    erAsof = rows.length ? erDay(rows[0].asof_date) : erDay(new Date().toISOString());
+    const L = erRows.filter(r => r.direction === 'LONG').length, S = erRows.filter(r => r.direction === 'SHORT').length;
+    document.getElementById('erCount').textContent = `${erRows.length} REPORTS · ${L}▲ ${S}▼`;
+    erAxis();
+    renderEventKpis(erRows);
+    renderEventRadar();
+    feedOrbital(erRows);
+    document.getElementById('erNote').innerHTML =
+      `As of the ${rows.length ? erDate(rows[0].asof_date) : '—'} session. Report dates come from each company's filed financial calendar ` +
+      `(NewsWeb), else last year's date + 52 weeks (EST). Dark days are mid-point prints that moved the price; top-decile days ` +
+      `weigh 1.5×; older days fade (e<sup>−age/7</sup>). Short building ≥ 0.3 pp scores bearish; a high short level only adds to a short. ` +
+      `Positioning is bounded — one fresh dark day ≈ 33, dark flow and short sellers agreeing ≈ 60–85. ` +
+      `Solid chips are scored, dashed chips are context. Each evening's radar is frozen for the scoreboard below.`;
   } catch (e) {
-    console.error('catalyst radar load failed', e);
-    document.getElementById('crList').innerHTML = '<div class="conv-empty">DATA UNAVAILABLE</div>';
+    console.error('event radar load failed', e);
+    document.getElementById('erList').innerHTML = '<div class="conv-empty">DATA UNAVAILABLE</div>';
   }
 }
 
-function initCatalystRadar() {
-  const cv = document.getElementById('crCanvas');
-  if (!cv) return;
-  catalystScanner = makeCatalystScanner(cv);
-  const fly = document.getElementById('crFlyout');
-  const sec = document.getElementById('catalystSection');
-  const showFly = (i) => {
-    const b = catalystScanner.bodies[i];
-    const name = isinName(b.isin) || b.issuer || '';
-    const dir = b.direction_score || 0;
-    const dirLbl = dir > 0.15 ? 'bullish precursor' : dir < -0.15 ? 'bearish precursor' : 'mixed signal';
-    const dirCls = dir > 0.15 ? 'up' : dir < -0.15 ? 'dn' : 'dim';
-    fly.innerHTML = `<span class="tk">${b.tk}</span> <span class="dim">${name}</span><br>
-      <span class="${dirCls}">${EVT_GLYPH[b.event_type]||'▌'} ${b.event_type.replace(/_/g,' ')} T−${b.days_to_event}d</span>
-      · score <strong>${b.catalyst_score}</strong><br>
-      <span class="dim">${dirLbl} · ${ORB_COARSE ? 'tap again' : 'click'} for dossier</span>`;
-    fly.style.display = 'block';
-    fly.style.left = Math.max(4, Math.min(b.x + 16, sec.clientWidth - 260)) + 'px';
-    fly.style.top = Math.max(6, b.y - 12) + 'px';
-  };
-  cv.addEventListener('mousemove', e => {
-    const r = cv.getBoundingClientRect();
-    const i = catalystScanner.hitTest(e.clientX - r.left, e.clientY - r.top);
-    catalystScanner.setHover(i);
-    if (i < 0) { fly.style.display = 'none'; cv.style.cursor = ''; return; }
-    showFly(i); cv.style.cursor = 'pointer';
+function initEventRadar() {
+  document.getElementById('erFilters').addEventListener('click', e => {
+    const b = e.target.closest('.wt-filter'); if (!b || !b.dataset.f) return;
+    erFilter = b.dataset.f; erShowAll = false;
+    document.querySelectorAll('#erFilters .wt-filter').forEach(x => x.classList.toggle('on', x === b));
+    renderEventRadar();
   });
-  cv.addEventListener('mouseleave', () => { catalystScanner.setHover(-1); fly.style.display = 'none'; cv.style.cursor = ''; });
-  let tapIdx = -1;
-  cv.addEventListener('click', e => {
-    const r = cv.getBoundingClientRect();
-    const i = catalystScanner.hitTest(e.clientX - r.left, e.clientY - r.top);
-    if (i < 0) { if (ORB_COARSE) { tapIdx = -1; catalystScanner.setHover(-1); fly.style.display = 'none'; } return; }
-    if (ORB_COARSE && i !== tapIdx) { tapIdx = i; catalystScanner.setHover(i); showFly(i); return; }
-    drillIntoISIN(catalystScanner.bodies[i].isin);
-  });
-  document.getElementById('crMore').addEventListener('click', () => { crShowAll = true; renderCatalystList(); });
+  document.getElementById('erMore').addEventListener('click', () => { erShowAll = true; renderEventRadar(); });
+  let rz = 0;
+  window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => erRows.length && erAxis(), 150); });
 }
+
+/* ═══ REPORT REACTIONS — season scoreboard ══════════════════════════════════
+   api.report_radar_graded: every report since mid-June 2026 with the radar as
+   of two sessions before — rebuilt with today's rules, so in-sample.
+   api.report_radar_forward: the same grading of the radar frozen each evening
+   (api.report_radar_snapshot, from 2026-09-29) — the honest record.
+   Reaction = api.fwd_returns pe1 / pe5: from the close before the report
+   session, minus same-size peers. */
+const RS_COLS = 'isin,fiscal_year,period,pub_date,positioning,direction,ev_dark,ev_short,ev_insider,si_change,' +
+  'ins_open_buyers,runup_pct,reaction,reaction_5d';
+let rsSeasons = [], rsActive = null;
+const rsMean = a => a.length ? a.reduce((s, v) => s + v, 0) / a.length : null;
+const rsMed = a => { if (!a.length) return null; const s = [...a].sort((x, y) => x - y), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
+const rsPct = v => v == null ? '—' : `<span class="${v > 0 ? 'pos' : v < 0 ? 'neg' : ''}">${erSigned(v, 2)}%</span>`;
+const rsDay = r => +r.reaction * 100;
+
+function rsGroups(rows) {
+  const g = (label, f, sign, ctx = false) => ({ label, rows: rows.filter(f), sign, ctx });
+  return [
+    g('Positioned ▲ long', r => r.direction === 'LONG', 1),
+    g('Positioned ▼ short', r => r.direction === 'SHORT', -1),
+    g('Dark-pool buying lean ▲', r => +r.ev_dark >= 0.25, 1),
+    g('Dark-pool selling lean ▼', r => +r.ev_dark <= -0.25, -1),
+    g('Short sellers building ▼', r => +r.si_change >= 0.3, -1),
+    g('Insiders bought, open window ▲', r => +r.ins_open_buyers >= 1, 1, true),
+    g('Ran up ≥ 5 % vs peers ▼', r => r.runup_pct != null && +r.runup_pct >= 5, -1, true),
+    g('No positioning', r => r.direction === 'NONE', 0),
+    g('All reports', () => true, 0),
+  ];
+}
+
+function rsPlot(rows) {
+  const W = 520, H = 290, P = { l: 38, r: 10, t: 10, b: 28 };
+  const X = v => P.l + (v + 100) / 200 * (W - P.l - P.r);
+  const Y = v => P.t + (1 - (Math.max(-15, Math.min(15, v)) + 15) / 30) * (H - P.t - P.b);
+  const g = [];
+  for (const y of [-15, -10, -5, 0, 5, 10, 15]) {
+    g.push(`<line class="${y ? 'grid' : 'ax'}" x1="${P.l}" x2="${W - P.r}" y1="${Y(y)}" y2="${Y(y)}"/>` +
+      `<text x="${P.l - 6}" y="${Y(y) + 3}" text-anchor="end">${y > 0 ? '+' : y < 0 ? '−' : ''}${Math.abs(y)}%</text>`);
+  }
+  g.push(`<line class="ax" x1="${X(0)}" x2="${X(0)}" y1="${P.t}" y2="${H - P.b}"/>`);
+  g.push(`<text x="${X(-100)}" y="${H - 8}">◂ SHORT 100</text><text x="${X(0)}" y="${H - 8}" text-anchor="middle">QUIET</text>` +
+    `<text x="${X(100)}" y="${H - 8}" text-anchor="end">LONG 100 ▸</text>`);
+  const pts = rows.map(r => {
+    const q = r.direction === 'NONE';
+    const sx = r.direction === 'LONG' ? r.positioning : r.direction === 'SHORT' ? -r.positioning : (orbHash(r.isin + r.period + r.fiscal_year) - 0.5) * 7;
+    return { r, q, x: X(sx), y: Y(rsDay(r)) };
+  }).sort((a, b) => b.q - a.q);
+  for (const p of pts) {
+    const v = rsDay(p.r), cls = p.q ? 'n' : p.r.direction === 'LONG' ? 'l' : 's';
+    g.push(`<circle class="${cls}" cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${p.q ? 3 : 4.5}"><title>${erEsc(isinTicker(p.r.isin))} · ${p.r.period} ${p.r.fiscal_year} · ${erDate(p.r.pub_date)} — ${p.q ? 'quiet' : `${p.r.direction} ${p.r.positioning}`} · report day ${erSigned(v, 1)}% vs peers${Math.abs(v) > 15 ? ' (off the chart)' : ''}</title></circle>`);
+  }
+  document.getElementById('rsPlot').innerHTML =
+    `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Report-day reaction against positioning, one dot per report">${g.join('')}</svg>`;
+}
+
+function renderReactions() {
+  const s = rsSeasons.find(x => x.key === rsActive);
+  document.getElementById('rsTabs').innerHTML = rsSeasons.map(x =>
+    `<button class="wt-filter${x.key === rsActive ? ' on' : ''}" data-k="${x.key}">${x.label}${x.rows.length ? ` · ${x.rows.length}` : ''}</button>`).join('');
+  if (!s) return;
+  const rows = s.rows;
+  if (!rows.length) {
+    document.getElementById('rsKpis').innerHTML = '';
+    document.getElementById('rsTable').innerHTML = `<tr><td colspan="6" class="perf-empty">NO REPORTS GRADED YET</td></tr>`;
+    document.getElementById('rsPlot').innerHTML = `<div class="rs-empty">${s.empty || 'Nothing graded yet.'}</div>`;
+    return;
+  }
+  document.getElementById('rsTable').innerHTML = rsGroups(rows).filter(g => g.rows.length).map(g => {
+    const a = g.rows.map(rsDay), b = g.rows.filter(r => r.reaction_5d != null).map(r => +r.reaction_5d * 100);
+    const hit = g.sign ? Math.round(g.rows.filter(r => Math.sign(rsDay(r)) === g.sign).length / g.rows.length * 100) + '%' : '—';
+    return `<tr><td class="${g.ctx ? 'lbl-ctx' : ''}">${g.label}${g.ctx ? ' <span style="color:var(--text4)">· not scored</span>' : ''}</td>` +
+      `<td>${g.rows.length}</td><td>${rsPct(rsMean(a))}</td><td>${rsPct(rsMed(a))}</td><td>${rsPct(rsMean(b))}</td><td>${hit}</td></tr>`;
+  }).join('');
+  const pos = rows.filter(r => r.direction !== 'NONE');
+  const signed = pos.map(r => rsDay(r) * (r.direction === 'LONG' ? 1 : -1));
+  const hit = pos.length ? Math.round(signed.filter(v => v > 0).length / pos.length * 100) : null;
+  const absMove = rsMean(rows.map(r => Math.abs(rsDay(r))));
+  const quiet = rsMean(rows.filter(r => r.direction === 'NONE').map(rsDay));
+  const kpi = (l, v, sub, cls = '') => `<div class="ir-kpi"><div class="lbl">${l}</div><div class="val ${cls}">${v}</div><div class="sub">${sub}</div></div>`;
+  const ms = rsMean(signed);
+  document.getElementById('rsKpis').innerHTML =
+    kpi('Reports graded', rows.length, s.live ? 'frozen radar, graded live' : 'reconstructed · in-sample') +
+    kpi('Positioned calls', pos.length, hit != null ? `${hit}% moved the called way` : '—') +
+    kpi('Move the called way', ms == null ? '—' : `${erSigned(ms, 2)}%`, `median ${erSigned(rsMed(signed), 2)}% · quiet names ${erSigned(quiet, 2)}%`,
+      ms == null ? '' : ms > 0 ? 'pos' : 'neg') +
+    kpi('Typical report-day move', absMove == null ? '—' : `${absMove.toFixed(1)}%`, 'absolute, vs same-size peers');
+  rsPlot(rows);
+}
+
+async function loadReactions() {
+  try {
+    const [graded, fwd] = await Promise.all([
+      APIall('report_radar_graded', `select=${RS_COLS}&reaction=not.is.null&order=pub_date`),
+      API('report_radar_forward', `select=${RS_COLS}&reaction=not.is.null`).catch(() => []),
+    ]);
+    const norm = r => ({ ...r, positioning: +r.positioning || 0, direction: r.direction || 'NONE' });
+    const seasons = (rows, live) => {
+      const m = new Map();
+      for (const r of rows.map(norm)) {
+        const k = `${r.period} ${r.fiscal_year}`;
+        if (!m.has(k)) m.set(k, []);
+        m.get(k).push(r);
+      }
+      return [...m].map(([k, v]) => ({ key: (live ? 'L ' : 'R ') + k, label: `${k} · ${live ? 'live' : 'reconstructed'}`, live, rows: v,
+        order: Math.max(...v.map(r => erDay(r.pub_date))) }));
+    };
+    const live = seasons(fwd, true).sort((a, b) => b.order - a.order);
+    const recon = seasons(graded, false).filter(s => s.rows.length >= 5).sort((a, b) => b.order - a.order);
+    await erReady;
+    const next = erRows.slice().sort((a, b) => erDay(a.report_date) - erDay(b.report_date))[0];
+    if (next && !live.some(s => s.key === `L ${next.period} ${next.fiscal_year}`)) {
+      live.unshift({ key: `L ${next.period} ${next.fiscal_year}`, label: `${next.period} ${next.fiscal_year} · live`, live: true, rows: [],
+        empty: `Grading starts with the first ${next.period} reports — ${erEsc(next.ticker || isinTicker(next.isin))} on ${erDate(next.report_date)}. ` +
+               `Every evening's radar is frozen before anyone knows the reaction, so this season is the honest test.` });
+    }
+    rsSeasons = [...live, ...recon];
+    rsActive = (live.find(s => s.rows.length >= 10) || recon[0] || live[0] || {}).key;
+    const n = graded.length;
+    document.getElementById('rsCount').textContent = `${n} REPORTS GRADED`;
+    document.getElementById('rsNote').innerHTML =
+      `Reaction: from the close before the report session to its close (and four sessions on), minus the equal-weighted mean of ` +
+      `same-size peers (market-cap terciles). Positioning is read two sessions before the report session — the last evening you could act on at the next close. ` +
+      `Called = moved the way the evidence pointed. <b>Reconstructed</b> seasons rebuild the radar with today's rules as of each report — in-sample: ` +
+      `scoring only dark flow and short sellers was decided after seeing Q2 2026, where insider open-window buying came out wrong-signed. ` +
+      `<b>Live</b> seasons grade the radar frozen each evening (api.report_radar_snapshot) — the honest test. Small samples: read n before the percentages.`;
+    renderReactions();
+  } catch (e) {
+    console.error('reactions load failed', e);
+    document.getElementById('rsTable').innerHTML = '<tr><td colspan="6" class="perf-empty">DATA UNAVAILABLE</td></tr>';
+  }
+}
+document.getElementById('rsTabs').addEventListener('click', e => {
+  const b = e.target.closest('.wt-filter'); if (!b || !b.dataset.k) return;
+  rsActive = b.dataset.k; renderReactions();
+});
 
 /* ═══ ACT II — MARKET INTELLIGENCE ═════════════════════════════════════════ */
 function drawBand(canvas, buckets, busiest) {
@@ -2022,9 +2163,10 @@ document.getElementById('wtMore').addEventListener('click', () => { wtShowAll = 
 /* ═══ INIT ═════════════════════════════════════════════════════════════════ */
 (async function init() {
   initOrbital();
-  initCatalystRadar();
+  initEventRadar();
   loadInstruments();
-  await Promise.allSettled([loadMarket(), loadOrbital(), loadCatalystRadar(), loadConviction(), loadIntelReport(), loadConvictionEntries(), loadForwardRecord(), loadWatchtower()]);
+  erReady = loadEventRadar();
+  await Promise.allSettled([loadMarket(), erReady, loadReactions(), loadConviction(), loadIntelReport(), loadConvictionEntries(), loadForwardRecord(), loadWatchtower()]);
 })();
 </script>
 </body>

@@ -14,8 +14,13 @@ backend architecture, scheduled jobs, DB access, and working agreements.
   Dossier, Market Maker, Fastrente with live Norges Bank/NGB rates), data-health footer. Counts use
   `HEAD` + `Prefer: count=exact` — never download a table just to count it (the old Galton KPI pulled all
   ~20k `daily_close` rows on every load).
-- `radar.html (formerly markedsradar.html)` — dark-flow conviction shortlist (`api.conviction`) plus the
-  Catalyst Radar section (`api.catalyst_radar` — event-first precursor scoring, added 2026-09-02). Do **not**
+- `radar.html (formerly markedsradar.html)` — the radar's purpose is informed positioning ahead of company reports
+  (Jonas, 2026-09-29). Top: the event-horizon orbital + **Event Radar** (`api.report_radar`: every report ≤ 35 days
+  out on a shared calendar axis — dark-pool days, insider trades, run-up window, 30-day closed period, report
+  diamond; solid chips are scored, dashed are context) and **Report Reactions** (season scoreboard from
+  `api.report_radar_graded` / `api.report_radar_forward`). Below: market intelligence, the event-agnostic
+  conviction book (`api.conviction`) and its track records, watchtower. The old Catalyst Radar section
+  (`api.catalyst_radar`) was replaced 2026-09-29. Backend runbook: `../ENEXT/docs/event-radar.md`. Do **not**
   edit this file with `sed` — it wiped the file once; use the Edit tool.
 - `portfolio.html` — personal portfolio tracker; 5D chart merges `api.intraday_live` for
   minute-level live resolution during Oslo market hours. World-style shell (sticky scrollspy rail,
@@ -55,8 +60,12 @@ backend architecture, scheduled jobs, DB access, and working agreements.
   `pe*` columns of `api.radar_calls` / `api.radar_league` / `api.conviction_entries` and `api.conviction_forward`
   (the live snapshots). Never grade from the signal day's close or against the cap-weighted index.
 - `api.galton_weights` / `api.galton_metrics` / `api.galton_matrices`.
-- `api.catalyst_radar` — one row per (isin, upcoming event ≤35d), fused insider/dark/signal/whale/volume/trend/
-  short precursor score (`catalyst_score` 0-100) + `direction_score`. Defined in ENEXT `sql/catalyst_radar.sql`.
+- Event radar: `api.report_radar` (live, ~0.7 s — the point-in-time function runs per request; `positioning`,
+  `direction`, `dark_days` / `ins_trades` jsonb series, `closed_from`, `runup_from`, `date_source` calendar|estimated),
+  `api.report_radar_graded` (every report since 2026-06-15: positioning two sessions before + `reaction` = pe1,
+  `reaction_5d` = pe5), `api.report_radar_forward` (the frozen snapshots graded — the honest record),
+  `api.report_calendar` / `api.report_events` / `api.report_event_sessions`. Landing card reads `api.report_radar`.
+- `api.catalyst_radar` — legacy (off the page since 2026-09-29); ENEXT `sql/catalyst_radar.sql`.
 
 ## Working agreements
 

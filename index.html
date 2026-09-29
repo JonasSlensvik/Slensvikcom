@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Slensvik · Norwegian Equity Intelligence</title>
-<meta name="description" content="Norwegian equity intelligence terminal — dark-flow signals, conviction radar, portfolio analytics and the Galton strategy, built on Euronext Oslo Børs data.">
+<meta name="description" content="Norwegian equity intelligence terminal — an event radar for informed positioning ahead of company reports, dark-flow signals, portfolio analytics and the Galton strategy, built on Euronext Oslo Børs data.">
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=Syne:wght@500;700;800&display=swap" rel="stylesheet">
@@ -373,14 +373,15 @@
         </div>
         <div class="gw-name">Markedsradar</div>
         <p class="gw-desc">
-          Every Norwegian trade printed by Euronext, run through wall-bias,
-          ceiling/floor break and cross-sectional dark-flow logic. Today's
-          Book ranks long and short candidates by conviction.
+          Every upcoming quarterly report on Oslo Børs, with the dots
+          leading into it — dark-pool flow, short sellers, insiders'
+          last open window, analysts — and a scoreboard that grades
+          each season on the reaction.
         </p>
-        <div class="gw-list" id="radarTop"><span class="lab">Top conviction</span><span class="tk">—</span></div>
+        <div class="gw-list" id="radarTop"><span class="lab">Positioned ahead of reports</span><span class="tk">—</span></div>
         <div class="gw-meta">
-          <span>Universe <strong id="kpiMrUniverse">—</strong></span>
-          <span>Signals/d <strong id="kpiMrSignals">—</strong></span>
+          <span>Reports 35d <strong id="kpiMrReports">—</strong></span>
+          <span>Positioned <strong id="kpiMrPositioned">—</strong></span>
         </div>
         <div class="gw-enter"><span>ENTER</span><span class="gw-arrow">→</span></div>
       </a>
@@ -748,19 +749,16 @@
     $('briefHead').textContent = 'Open the World board for today’s brief';
   }
 
-  /* ── Radar ── */
+  /* ── Radar: the event radar — who is positioning ahead of the next reports (api.report_radar) ── */
   (async () => {
-    const top = await G('conviction?select=isin,side,conviction&order=conviction.desc,direction_score.desc&limit=5');
-    if (top && top.length) {
-      const tk = await G(`instruments?select=isin,ticker&isin=in.(${top.map(r => r.isin).join(',')})`);
-      const T = Object.fromEntries((tk || []).map(r => [r.isin, r.ticker]));
-      $('radarTop').innerHTML = '<span class="lab">Top conviction</span>' + top.slice(0, 4).map(r =>
-        `<span class="tk ${r.side === 'SHORT' ? 's' : 'l'}" title="${esc(r.side)} · conviction ${r.conviction}">${esc(T[r.isin] || r.isin.slice(-5))}</span>`).join('');
-    }
-    const ds = await G('daily_summary?select=trade_date&order=trade_date.desc&limit=1');
-    if (ds && ds[0]) set('kpiMrUniverse', await count(`daily_summary?trade_date=eq.${ds[0].trade_date}&select=isin`));
-    const latest = await G('smart_signals?select=trade_date&order=trade_date.desc&limit=1');
-    if (latest && latest[0]) set('kpiMrSignals', await count(`smart_signals?trade_date=eq.${latest[0].trade_date}&select=id`));
+    const rows = await G('report_radar?select=isin,ticker,direction,positioning,report_date,period');
+    if (!rows) return;
+    const pos = rows.filter(r => r.direction !== 'NONE').sort((a, b) => b.positioning - a.positioning);
+    set('kpiMrReports', rows.length);
+    set('kpiMrPositioned', pos.length);
+    $('radarTop').innerHTML = '<span class="lab">Positioned ahead of reports</span>' + (pos.length
+      ? pos.slice(0, 4).map(r => `<span class="tk ${r.direction === 'SHORT' ? 's' : 'l'}" title="${esc(r.direction)} ${r.positioning} ahead of the ${esc(r.period || '')} report ${esc(r.report_date)}">${esc(r.ticker || r.isin.slice(-5))} <span style="color:var(--text3)">${+r.report_date.slice(8, 10)}.${+r.report_date.slice(5, 7)}</span></span>`).join('')
+      : '<span class="tk" style="color:var(--text3)">none yet</span>');
   })();
 
   /* ── Portfolio: the dividend engine, market-wide ── */
