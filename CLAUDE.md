@@ -51,6 +51,9 @@ backend architecture, scheduled jobs, DB access, and working agreements.
   `INTEL.convictionBreakdown` (mirrored in ENEXT `conviction_alerts.py`) — keep the two identical.
   Query each side separately (`side=eq.LONG` / `side=eq.SHORT`): a shared top-N crowds shorts out.
   Formula + evidence: `../ENEXT/docs/conviction-v4.md`.
+- Grading: `api.fwd_returns` (next-close entry, vs same-size peers, `pe1…pe120`); the radar's track records read the
+  `pe*` columns of `api.radar_calls` / `api.radar_league` / `api.conviction_entries` and `api.conviction_forward`
+  (the live snapshots). Never grade from the signal day's close or against the cap-weighted index.
 - `api.galton_weights` / `api.galton_metrics` / `api.galton_matrices`.
 - `api.catalyst_radar` — one row per (isin, upcoming event ≤35d), fused insider/dark/signal/whale/volume/trend/
   short precursor score (`catalyst_score` 0-100) + `direction_score`. Defined in ENEXT `sql/catalyst_radar.sql`.

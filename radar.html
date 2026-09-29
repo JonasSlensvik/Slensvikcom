@@ -640,7 +640,7 @@ table.wt { width: 100%; border-collapse: collapse; font-family: var(--mono); fon
       <div class="ir-kpis" id="irKpis"></div>
       <div class="ir-grid">
         <div>
-          <div class="ir-sub">Book scorecard · top-10 per side · excess vs market</div>
+          <div class="ir-sub">Book scorecard · top-10 per side · vs same-size peers, from the next close</div>
           <div class="table-wrap"><table class="perf-table"><thead><tr>
             <th>Side</th><th>Calls</th><th>+1d hit</th><th>+5d hit</th><th>+5d med</th><th>+10d hit</th><th>+10d med</th>
           </tr></thead><tbody id="irScore"><tr><td colspan="7" class="perf-empty">LOADING …</td></tr></tbody></table></div>
@@ -648,7 +648,7 @@ table.wt { width: 100%; border-collapse: collapse; font-family: var(--mono); fon
           <div id="irCalls" style="font-size:10.5px; line-height:2.1">—</div>
         </div>
         <div>
-          <div class="ir-sub">Signal league · median market-adjusted move 10d after first firing</div>
+          <div class="ir-sub">Signal league · median move vs same-size peers, 10 sessions from the next close after first firing</div>
           <div id="irLeague">—</div>
         </div>
       </div>
@@ -669,7 +669,7 @@ table.wt { width: 100%; border-collapse: collapse; font-family: var(--mono); fon
       <div class="table-wrap"><table class="perf-table"><thead><tr>
         <th>Horizon</th><th>Long N</th><th>Long hit</th><th>Long med excess</th><th>Short N</th><th>Short hit</th><th>Short med excess</th>
       </tr></thead><tbody id="ceTable"><tr><td colspan="7" class="perf-empty">LOADING …</td></tr></tbody></table></div>
-      <div class="ir-note" id="ceNote">Reconstructed with today's point-in-time formula (conviction v4, live since 2026-09-29) applied to each historical day — in-sample, not proof, same caveat as Backtest Regrade above. Conviction ≥ 60 only (about one name a day), so N is small by design: treat every row here as a lead, not a verdict.</div>
+      <div class="ir-note" id="ceNote">Reconstructed with today's point-in-time formula (conviction v4, live since 2026-09-29) applied to each historical day — in-sample, not proof, same caveat as Backtest Regrade above. Conviction ≥ 60 only, so N is small by design: treat every row here as a lead, not a verdict. Hit = beat same-size peers in the called direction, measured from the next close; median in % (sign-adjusted for shorts).</div>
     </div>
   </div>
 
@@ -968,10 +968,14 @@ async function loadConviction() {
 async function loadIntelReport() {
   try {
     const [calls, league] = await Promise.all([
-      API('radar_calls', 'select=call_date,isin,side,conviction,x1,x5,x10&order=call_date'),
-      API('radar_league', 'order=med_x10_bps.desc'),
+      API('radar_calls', 'select=call_date,isin,side,conviction,pe1,pe5,pe10&order=call_date'),
+      API('radar_league', 'order=med_pe10_bps.desc.nullslast'),
     ]);
     if (!calls.length) { document.getElementById('irCount').textContent = 'NO DATA YET'; return; }
+    // graded the tradeable way (ENEXT sql/fwd_returns.sql): from the NEXT close — the book is published after
+    // the close — and against same-size peers, not the cap-weighted index (a size effect, not skill, otherwise)
+    for (const c of calls) { c.x1 = c.pe1; c.x5 = c.pe5; c.x10 = c.pe10; }
+    for (const r of league) { r.avg_x10_bps = r.avg_pe10_bps; r.med_x10_bps = r.med_pe10_bps; r.n10 = r.n_pe10; r.up10_pct = r.up_pe10_pct; }
 
     const days = new Set(calls.map(c => c.call_date));
     const agg = side => {
@@ -1002,7 +1006,7 @@ async function loadIntelReport() {
       kpi('LONG HIT +10D', pct(L.x10.hit), `${L.x10.n} calls graded`, L.x10.hit >= 55 ? 'pos' : L.x10.hit <= 45 ? 'neg' : '') +
       kpi('SHORT HIT +10D', pct(S.x10.hit), `${S.x10.n} calls graded`, S.x10.hit >= 55 ? 'pos' : S.x10.hit <= 45 ? 'neg' : '') +
       kpi('BEST SIGNAL', top ? top.signal_type.replace(/_/g, ' ') : '—',
-          top ? `+${Number(top.med_x10_bps).toFixed(0)} bps med +10d · n=${top.n10}` : '');
+          top ? `${Number(top.med_x10_bps) >= 0 ? '+' : ''}${Number(top.med_x10_bps).toFixed(0)} bps med vs peers, 10d · n=${top.n10}` : '');
 
     const bps = v => v == null ? '—' :
       `<span class="${v > 0 ? 'pos' : v < 0 ? 'neg' : ''}">${v > 0 ? '+' : ''}${v.toFixed(0)}</span>`;
@@ -1042,18 +1046,14 @@ async function loadIntelReport() {
       reads.push(`<b>Long flags lean right, but modestly:</b> ${pct(L.x10.hit)} hit at 10 days,
         median ${L.x10.med > 0 ? '+' : ''}${L.x10.med.toFixed(0)} bps — a thin edge where fat-tailed
         winners (and their hangovers) dominate the averages.`);
-    const db = league.find(r => r.signal_type === 'DARK_BLOCK');
-    if (db && Number(db.med_x10_bps) > 150)
-      reads.push(`<b>DARK BLOCK's raw drift</b> (+${Number(db.med_x10_bps).toFixed(0)} bps median at 10d) is not
-        size-neutral: measured against same-size peers from the next close it had no edge out of sample
-        (Jul–Sep 2026), which is why conviction v4 scores it neutral.`);
     document.getElementById('irReads').innerHTML = reads.map(r => `<div class="ir-read">${r}</div>`).join('');
 
     document.getElementById('irNote').textContent =
       `Method: the daily book is rebuilt as of each historical date by the same point-in-time function that ` +
       `drives the live book (conviction v4: dark-pool impact, insider buying dated by publication, fresh short-` +
-      `interest building), then graded on dividend-adjusted closes vs the cap-weighted market index from the call ` +
-      `day's close. Caveats: v4's components were chosen with this period in view, so history here is in-sample ` +
+      `interest building), then graded on dividend-adjusted closes from the NEXT close (the first price you can ` +
+      `trade after the book is published) against same-size peers (the day's market-cap tercile). Caveats: v4's ` +
+      `components were chosen with this period in view, so history here is in-sample ` +
       `validation, not proof; overlapping windows mean calls are not independent; ${days.size} trading days is a ` +
       `small sample. The honest test is the forward record below.`;
   } catch (e) {
@@ -1079,7 +1079,7 @@ function toggleSection(id) {
 async function loadConvictionEntries() {
   try {
     const rows = await API('conviction_entries',
-      'select=entry_date,isin,side,r1,r5,r20,r60,r120,x1,x5,x20,x60,x120&order=entry_date');
+      'select=entry_date,isin,side,pe1,pe5,pe20,pe60,pe120&order=entry_date');
     const longs  = rows.filter(r => r.side === 'LONG');
     const shorts = rows.filter(r => r.side === 'SHORT');
     document.getElementById('ceCount').textContent = `${longs.length}L · ${shorts.length}S ENTRIES`;
@@ -1088,13 +1088,14 @@ async function loadConvictionEntries() {
       return;
     }
 
-    const agg = (side, rkey, xkey) => {
-      const set = rows.filter(r => r.side === side && r[rkey] != null);
+    // one question for both columns: did the call beat same-size peers, from the next close?
+    // (hit used raw returns and the median index-excess before 2026-09-29 — two different questions)
+    const agg = (side, key) => {
+      const set = rows.filter(r => r.side === side && r[key] != null);
       if (!set.length) return { n: 0, hit: null, med: null };
-      const pnl  = set.map(r => side === 'LONG' ?  Number(r[rkey]) : -Number(r[rkey]));
-      const pnlx = set.map(r => side === 'LONG' ?  Number(r[xkey]) : -Number(r[xkey]));
+      const pnl = set.map(r => side === 'LONG' ? Number(r[key]) : -Number(r[key]));
       const hits = pnl.filter(v => v > 0).length;
-      const sx = [...pnlx].sort((a, b) => a - b);
+      const sx = [...pnl].sort((a, b) => a - b);
       return { n: set.length, hit: hits / set.length * 100, med: sx[Math.floor(sx.length / 2)] * 100 };
     };
 
@@ -1109,9 +1110,9 @@ async function loadConvictionEntries() {
       kpi('EARLIEST ENTRY', rows[0].entry_date, 'reconstruction start');
 
     document.getElementById('ceTable').innerHTML = [
-      ['1', 'r1', 'x1'], ['5', 'r5', 'x5'], ['20', 'r20', 'x20'], ['60', 'r60', 'x60'], ['120', 'r120', 'x120'],
-    ].map(([d, rk, xk]) => {
-      const L = agg('LONG', rk, xk), S = agg('SHORT', rk, xk);
+      ['1', 'pe1'], ['5', 'pe5'], ['20', 'pe20'], ['60', 'pe60'], ['120', 'pe120'],
+    ].map(([d, k]) => {
+      const L = agg('LONG', k), S = agg('SHORT', k);
       const hitCls = h => h == null ? '' : h >= 55 ? 'pos' : h <= 45 ? 'neg' : '';
       const medCls = m => m == null ? '' : m > 0 ? 'pos' : m < 0 ? 'neg' : '';
       return `<tr>
@@ -1139,13 +1140,15 @@ const FR_HORIZONS = [1, 5, 20, 60, 120];
 
 async function loadForwardRecord() {
   try {
-    const cols = ['snapshot_date', 'isin', 'side', 'model',
-      ...FR_HORIZONS.flatMap(n => [`excess_return_t${n}_pct`])].join(',');
-    const all = await API('conviction_snapshot', `select=${cols}&order=snapshot_date.asc`);
+    const cols = ['snapshot_date', 'isin', 'side', 'model', ...FR_HORIZONS.map(n => `pe${n}`)].join(',');
+    // api.conviction_forward = the frozen snapshots graded from the next close vs same-size peers (fractions)
+    const all = await API('conviction_forward', `select=${cols}&order=snapshot_date.asc`);
+    for (const r of all) for (const n of FR_HORIZONS)
+      r[`excess_return_t${n}_pct`] = r[`pe${n}`] == null ? null : Number(r[`pe${n}`]) * 100;
     // the forward record keeps model eras apart: show the live model once it has matured calls,
     // otherwise the retired v3 era (clearly labelled) while v4 accumulates
     const v4rows = all.filter(r => r.model === 'v4');
-    const v4Matured = v4rows.some(r => r.excess_return_t5_pct != null);
+    const v4Matured = v4rows.some(r => r.pe5 != null);
     const era = v4Matured ? 'v4' : 'v3';
     const rows = all.filter(r => (r.model || 'v3') === era);
     const tbl = document.getElementById('frTable');
@@ -1195,9 +1198,10 @@ async function loadForwardRecord() {
         (v4rows.length ? ` — ${new Set(v4rows.map(r => r.snapshot_date)).size} day(s) snapshotted, first returns mature after 5 trading days. ` : '. ')
       : 'Conviction v4 (live since 2026-09-29). ';
     document.getElementById('frNote').textContent = eraNote + (anyMatured
-      ? `Method: api.conviction_snapshot freezes the full universe's conviction score, plus a price and market-index ` +
-        `anchor, once — live, the day the call is made, never revised afterward. Excess return is vs the dividend-` +
-        `adjusted, cap-weighted market index. ${days.size} day${days.size === 1 ? '' : 's'} of live snapshots since ` +
+      ? `Method: api.conviction_snapshot freezes the full universe's conviction score once — live, the day the ` +
+        `call is made, never revised afterward. Returns run from the NEXT close (the book is published after the ` +
+        `close) on dividend-adjusted prices, relative to same-size peers (the day's market-cap tercile), not the ` +
+        `cap-weighted index. ${days.size} day${days.size === 1 ? '' : 's'} of live snapshots since ` +
         `${firstDay}. The 60/120-trading-day columns need ~3-6 months of calendar time to start filling in — that's ` +
         `expected, not a gap.`
       : `Live tracking since ${firstDay} — nothing has reached even the T+1 horizon yet; check back after the next ` +
