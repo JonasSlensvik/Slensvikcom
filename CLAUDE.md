@@ -15,13 +15,20 @@ backend architecture, scheduled jobs, DB access, and working agreements.
   `HEAD` + `Prefer: count=exact` — never download a table just to count it (the old Galton KPI pulled all
   ~20k `daily_close` rows on every load).
 - `radar.html (formerly markedsradar.html)` — the radar's purpose is informed positioning ahead of company reports
-  (Jonas, 2026-09-29). Top: the event-horizon orbital + **Event Radar** (`api.report_radar`: every report ≤ 35 days
-  out on a shared calendar axis — dark-pool days, insider trades, run-up window, 30-day closed period, report
-  diamond; solid chips are scored, dashed are context) and **Report Reactions** (season scoreboard from
-  `api.report_radar_graded` / `api.report_radar_forward`). Below: market intelligence, the event-agnostic
-  conviction book (`api.conviction`) and its track records, watchtower. The old Catalyst Radar section
-  (`api.catalyst_radar`) was replaced 2026-09-29. Backend runbook: `../ENEXT/docs/event-radar.md`. Do **not**
-  edit this file with `sed` — it wiped the file once; use the Edit tool.
+  (Jonas, 2026-09-29). World-style shell since 2026-09-29 (header LED pills, sticky scrollspy rail, report ticker tape,
+  glass panels, drawer). Order: **Horizon** (orbital hero — ring = days to report, size = positioning; the sky sits
+  right of the copy while `.hero-sky` is absolutely positioned, centred when stacked) → **Season calendar** (weeks ×
+  weekdays board of every results date, tinted by positioning) → **Event radar** (`api.report_radar` rows on a shared
+  calendar axis with a faint price line from `api.daily_close_adj`; solid chips scored, dashed context) →
+  **Report reactions** (season scoreboard, `api.report_radar_graded` / `api.report_radar_forward`) → the
+  event-agnostic **book** (`api.conviction`, top 6 a side until expanded) → **Track record** (tabs: forward / entries /
+  backtest) → **The tape** (market intelligence) → **Watchtower**. Any report (calendar chip, tape item, row, orbital
+  body) opens the **report drawer**: price with dark-pool days on the line and insider trades from the top, "why N",
+  short-interest step chart, insider filings, analyst mix / targets / actions, past graded reactions;
+  deep link `radar.html#report=<ISIN>` opens it on load (handy for headless screenshots, with `?static=1`).
+  The event-radar axis is sticky inside `.er-board`, which must stay `overflow: clip` — `hidden` makes the board a
+  scroll container and shoves the axis over the first row. Backend runbook: `../ENEXT/docs/event-radar.md`.
+  Do **not** edit this file with `sed` — it wiped the file once; use the Edit tool.
 - `portfolio.html` — personal portfolio tracker; 5D chart merges `api.intraday_live` for
   minute-level live resolution during Oslo market hours. World-style shell (sticky scrollspy rail,
   holdings ticker strip, header pills, deck HUD). **Income** section reads `api.dividends` for every ISIN

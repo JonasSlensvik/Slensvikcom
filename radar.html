@@ -7,643 +7,645 @@
 <meta name="description" content="Event radar for Oslo Børs — dark-pool flow, short sellers, insiders and analysts lined up against every upcoming quarterly report, and graded on the reaction.">
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=Syne:wght@400;600;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/intel.css">
 <script src="assets/intel.js?v=20260929b"></script>
-
 <style>
-/* ─── Variables ──────────────────────────────────────────────────────────
-   Canonical tokens live in assets/intel.css. This block maps this page's
-   legacy names onto the shared system. */
+/* ═══ RADAR — page-local layer on top of assets/intel.css ═══════════════════
+   Same shell as world.html (header pills, sticky scrollspy rail, ticker tape,
+   glass panels, flyouts, drawer) so the two boards read as one product.
+   Direction is never colour-alone: every long/short mark carries ▲/▼ or a
+   position (buy dots above the line, sell dots below), every value is signed
+   text. Amber = the report and its closed period; ice = the run-up window. */
 :root {
-  --bg:           var(--bg0);
-  --border-glow:  var(--border3);
-  --text:         var(--text2);
-  --text-dim:     var(--text3);
-  --text-bright:  var(--text1);
-  --amber-glow:   rgba(245,166,35,0.12);
-  --ice-glow:     rgba(79,195,247,0.10);
-  --gold:         var(--amber);
-  --body:         var(--mono);
+  --grid: rgba(255,255,255,0.055);
+  --axis: rgba(255,255,255,0.16);
+  --up: var(--green); --dn: var(--red);
+  --panel: rgba(11,15,23,0.72);
+  --rail-h: 38px;
+  --orb-cx: 50%;
 }
-
-/* ─── Reset & Base ──────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { scroll-behavior: smooth; }
-body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: var(--body);
-  font-size: 13px;
-  line-height: 1.5;
-  min-height: 100vh;
-  overflow-x: hidden;
-}
+html { scroll-behavior: smooth; scroll-padding-top: calc(var(--rail-h) + 14px); }
+body { background: var(--bg0); color: var(--text2); font-family: var(--mono); font-size: 12px; line-height: 1.5;
+       min-height: 100vh; overflow-x: hidden; -webkit-font-smoothing: antialiased; }
+a { color: inherit; }
+button { font: inherit; color: inherit; }
+.page { max-width: 1480px; margin: 0 auto; padding: 0 24px 72px; position: relative; }
+.num { font-variant-numeric: tabular-nums; }
+.up { color: var(--up); } .dn { color: var(--dn); } .flat, .dim { color: var(--text3); }
+.muted { color: var(--text3); } .faint { color: var(--text4); } .am { color: var(--amber); }
+.pos { color: var(--up); } .neg { color: var(--dn); }
 
-/* Subtle scan-line texture */
-body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 2px,
-    rgba(255,255,255,0.012) 2px,
-    rgba(255,255,255,0.012) 4px
-  );
-  pointer-events: none;
-  z-index: 0;
-}
-
-/* ─── Layout ────────────────────────────────────────────────────────────── */
-.page { max-width: 1440px; margin: 0 auto; padding: 0 24px 64px; position: relative; z-index: 1; }
-
-/* ─── Header ────────────────────────────────────────────────────────────── */
-header {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  padding: 40px 0 32px;
-  border-bottom: 1px solid var(--border);
-  margin-bottom: 28px;
-  flex-wrap: wrap;
-  gap: 16px;
-}
+/* ── header ──────────────────────────────────────────────────────────────── */
+header { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding: 34px 0 20px; }
 .logo-block { display: flex; flex-direction: column; gap: 4px; }
-.logo {
-  font-family: var(--sans);
-  font-weight: 800;
-  font-size: 28px;
-  letter-spacing: -0.5px;
-  color: var(--text-bright);
-}
+.logo { font-family: var(--sans); font-weight: 800; font-size: 28px; letter-spacing: -0.5px; color: var(--text1); }
 .logo span { color: var(--ice); }
-.logo-sub {
-  font-family: var(--mono);
-  font-size: 11px;
-  color: var(--text-dim);
-  letter-spacing: 2px;
-  text-transform: uppercase;
-}
-.header-meta { display: flex; gap: 24px; align-items: flex-end; flex-wrap: wrap; }
-.meta-pill {
-  font-family: var(--mono);
-  font-size: 11px;
-  color: var(--text-dim);
-  background: var(--bg2);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 4px 10px;
-  letter-spacing: 1px;
-  font-variant-numeric: tabular-nums;
-}
-.meta-pill.live { border-color: var(--green); color: var(--green); }
-.meta-pill.live::before {
-  content: '● ';
-  animation: pulse 2s infinite;
-}
-@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+.logo-sub { font-size: 10px; letter-spacing: 0.14em; color: var(--text3); text-transform: uppercase; }
+.header-meta { display: flex; gap: 8px; flex-wrap: wrap; }
+.meta-pill { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; padding: 5px 12px; border-radius: 20px;
+             border: 1px solid var(--border2); color: var(--text3); white-space: nowrap; display: inline-flex; gap: 7px; align-items: center;
+             background: transparent; }
+.meta-pill .led { width: 6px; height: 6px; border-radius: 50%; background: var(--text4); }
+.meta-pill.ok .led { background: var(--green); box-shadow: 0 0 8px rgba(67,224,151,.7); }
+.meta-pill.warn .led { background: var(--amber); box-shadow: 0 0 8px rgba(245,166,35,.7); }
+.meta-pill.bad .led { background: var(--red); box-shadow: 0 0 8px rgba(240,96,96,.7); }
+.meta-pill b { color: var(--text1); font-weight: 600; }
 
-/* ─── Date selector ─────────────────────────────────────────────────────── */
-.date-bar {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 28px;
-  flex-wrap: wrap;
-}
-.date-bar label { font-family: var(--mono); font-size: 11px; color: var(--text-dim); letter-spacing: 1px; }
-.date-bar select, .date-bar input {
-  background: var(--bg2);
-  border: 1px solid var(--border);
-  color: var(--text);
-  padding: 6px 12px;
-  border-radius: 4px;
-  font-family: var(--mono);
-  font-size: 12px;
-  cursor: pointer;
-}
-.date-bar select:focus, .date-bar input:focus { outline: none; border-color: var(--ice); }
-.btn {
-  background: var(--ice-dim);
-  border: 1px solid var(--ice);
-  color: var(--ice);
-  padding: 6px 16px;
-  border-radius: 4px;
-  font-family: var(--mono);
-  font-size: 12px;
-  cursor: pointer;
-  transition: all 0.15s;
-  letter-spacing: 1px;
-}
-.btn:hover { background: var(--ice); color: var(--bg); }
+/* ── section rail (sticky, scrollspy) ────────────────────────────────────── */
+.rail { position: sticky; top: 0; z-index: 40; margin: 0 -24px 18px; padding: 0 24px; height: var(--rail-h);
+        display: flex; align-items: center; gap: 2px; overflow-x: auto; scrollbar-width: none;
+        background: rgba(5,8,16,0.82); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+        border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.rail::-webkit-scrollbar { display: none; }
+.rail a { font-size: 9.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text3); text-decoration: none;
+          padding: 5px 9px; border-radius: 3px; white-space: nowrap; transition: color .15s, background .15s; }
+.rail a:hover { color: var(--text1); background: var(--bg3); }
+.rail a.on { color: var(--amber); background: rgba(245,166,35,0.08); }
+.rail .rail-asof { margin-left: auto; font-size: 9.5px; color: var(--text4); letter-spacing: .08em; white-space: nowrap; padding-left: 12px; }
 
-/* ─── Section headers ───────────────────────────────────────────────────── */
-.section { margin-bottom: 40px; }
-.section-head {
-  display: flex;
-  align-items: baseline;
-  gap: 16px;
-  margin-bottom: 16px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--border);
+/* ── ticker tape: the season's reports in date order ─────────────────────── */
+.tape { position: relative; overflow: hidden; border: 1px solid var(--border); border-radius: 6px; height: 34px;
+        background: rgba(11,15,23,0.6); margin-bottom: 18px;
+        -webkit-mask-image: linear-gradient(90deg, transparent, #000 4%, #000 96%, transparent);
+                mask-image: linear-gradient(90deg, transparent, #000 4%, #000 96%, transparent); }
+.tape-track { display: inline-flex; white-space: nowrap; height: 100%; align-items: center; will-change: transform; }
+.tape-item { display: inline-flex; align-items: baseline; gap: 7px; padding: 0 16px; font-size: 11px; border-right: 1px solid var(--border);
+             cursor: pointer; background: none; border-top: 0; border-bottom: 0; border-left: 0; height: 100%; align-items: center; }
+.tape-item:hover .tk { color: var(--text1); }
+.tape-item .d { color: var(--text4); font-size: 9.5px; letter-spacing: .06em; }
+.tape-item .tk { color: var(--text2); letter-spacing: .06em; }
+.tape-item .p { font-variant-numeric: tabular-nums; font-size: 10.5px; }
+.tape-item.quiet .tk { color: var(--text3); }
+@media (prefers-reduced-motion: no-preference) {
+  .tape-track.run { animation: tape var(--tape-dur, 160s) linear infinite; }
+  .tape:hover .tape-track.run { animation-play-state: paused; }
+  @keyframes tape { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 }
-.section-head.collapsible { cursor: pointer; user-select: none; }
-.section-head.collapsible:hover .section-title { color: var(--ice); transition: color 0.15s; }
-.section-title {
-  font-family: var(--mono);
-  font-weight: 500;
-  font-size: 12px;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--text-bright);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-.section-title::first-letter {
-  color: var(--amber);     /* the glyph prefix burns amber, Bloomberg-style */
-  margin-right: 8px;
-}
-.section-desc {
-  font-size: 12px;
-  color: var(--text-dim);
-}
-.section-count {
-  font-family: var(--mono);
-  font-size: 11px;
-  color: var(--amber);
-  margin-left: auto;
-  white-space: nowrap;
-}
-.section-chevron {
-  font-size: 11px;
-  color: var(--text-dim);
-  transition: transform 0.2s;
-  flex-shrink: 0;
-  margin-left: 6px;
-}
-.section.collapsed .section-chevron { transform: rotate(-90deg); }
-.section.collapsed .section-body { display: none; }
+@media (prefers-reduced-motion: reduce) { .tape { overflow-x: auto; } }
 
-
-/* ═══ ORBITAL CATALYST RADAR (hero) ════════════════════════════════════════ */
-.orbital {
-  position: relative; height: 560px; margin-bottom: 44px;
-  border: 1px solid var(--border); border-radius: 10px;
-  background:
-    radial-gradient(ellipse 75% 95% at 50% 50%, rgba(15,22,34,0.6), rgba(4,7,14,0.95)),
-    var(--bg, #050810);
-  overflow: hidden;
-}
+/* ── hero: the event horizon ─────────────────────────────────────────────── */
+.hero { position: relative; height: 620px; border: 1px solid var(--border); border-radius: 12px; overflow: hidden;
+        background: radial-gradient(ellipse 70% 95% at 62% 50%, rgba(14,24,40,0.55), rgba(3,6,12,0.97)), var(--bg0);
+        margin-bottom: 8px; }
+.hero-sky { position: absolute; inset: 0; }
 #orbCanvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
-.orb-center {
-  position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%);
-  z-index: 3; pointer-events: none; text-align: center;
-}
-.orb-now { font-family: var(--mono); font-size: 9px; letter-spacing: .34em; color: var(--amber); text-transform: uppercase; }
-.orb-date { font-family: var(--mono); font-size: 11px; color: var(--text-dim); margin-top: 4px; letter-spacing: .1em; }
-.orb-counts { font-family: var(--mono); font-size: 12px; margin-top: 6px; font-variant-numeric: tabular-nums; }
-.orb-counts .L { color: var(--green, #43e097); } .orb-counts .S { color: var(--red, #f06060); }
-.orb-hint {
-  position: absolute; bottom: 10px; left: 14px; z-index: 3;
-  font-family: var(--mono); font-size: 9px; letter-spacing: .12em; color: var(--text-dim); text-transform: uppercase;
-}
-.orb-status { position: absolute; top: 12px; right: 14px; z-index: 3; display: flex; gap: 8px; }
-.orb-flyout {
-  position: absolute; z-index: 5; pointer-events: none; display: none;
-  background: rgba(13,18,28,0.95); border: 1px solid var(--border-bright, var(--border));
-  border-radius: 7px; padding: 10px 13px;
-  font-family: var(--mono); font-size: 10px; color: var(--text); line-height: 1.75; white-space: nowrap;
-  box-shadow: 0 12px 40px rgba(0,0,0,0.5);
-}
-.orb-flyout .tk { font-size: 13px; font-weight: 600; color: var(--text-bright); letter-spacing: .06em; }
-.orb-flyout .up { color: var(--green, #43e097); } .orb-flyout .dn { color: var(--red, #f06060); }
-.orb-flyout .dim { color: var(--text-dim); font-size: 9px; }
-@media (max-width: 768px) { .orbital { height: 420px; } .orb-hint { display: none; } }
+.hero::after { content: ''; position: absolute; inset: 0 auto 0 0; width: 46%; pointer-events: none; z-index: 2;
+               background: linear-gradient(90deg, rgba(4,7,13,0.92) 0%, rgba(4,7,13,0.66) 55%, transparent 100%); }
+.hero-copy { position: absolute; left: 26px; top: 26px; bottom: 24px; z-index: 3; width: min(410px, 40%);
+             display: flex; flex-direction: column; pointer-events: none; }
+.hero-copy a, .hero-copy button { pointer-events: auto; }
+.hero-kicker { font-size: 9px; letter-spacing: .32em; color: var(--amber); text-transform: uppercase; }
+.hero-title { font-family: var(--sans); font-weight: 800; font-size: 34px; line-height: 1.04; color: var(--text1);
+              margin: 10px 0 12px; letter-spacing: -0.025em; }
+.hero-title em { font-style: normal; color: var(--amber); }
+.hero-lede { font-family: var(--sans); font-size: 12.5px; line-height: 1.6; color: var(--text2); }
+.hero-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; margin-top: 20px;
+              background: var(--border); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.hs { background: rgba(7,11,18,0.88); padding: 10px 12px 9px; min-width: 0; }
+.hs .l { font-size: 8.5px; letter-spacing: .18em; text-transform: uppercase; color: var(--text3); white-space: nowrap; }
+.hs .v { font-size: 22px; font-weight: 600; color: var(--text1); letter-spacing: -0.02em; margin-top: 2px;
+         font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hs .v small { font-size: 12px; font-weight: 500; }
+.hs .s { font-size: 9.5px; color: var(--text4); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hero-cta { display: flex; gap: 6px; flex-wrap: wrap; margin-top: auto; padding-top: 16px; }
+.hero-cta a { font-size: 9.5px; letter-spacing: .14em; text-transform: uppercase; text-decoration: none; color: var(--text2);
+              border: 1px solid var(--border2); border-radius: 4px; padding: 6px 11px; background: rgba(5,8,16,.6); transition: all .15s; }
+.hero-cta a:hover { color: var(--amber); border-color: rgba(245,166,35,.45); }
+.orb-center { position: absolute; left: var(--orb-cx); top: 50%; transform: translate(-50%, -50%); z-index: 3;
+              pointer-events: none; text-align: center; }
+.orb-now { font-size: 9px; letter-spacing: .34em; color: var(--amber); text-transform: uppercase; }
+.orb-date { font-size: 10.5px; color: var(--text2); margin-top: 4px; letter-spacing: .1em; text-shadow: 0 0 6px rgba(3,6,12,.95), 0 0 2px rgba(3,6,12,.95); }
+.orb-counts { font-size: 11.5px; margin-top: 5px; font-variant-numeric: tabular-nums; color: var(--text1); text-shadow: 0 0 6px rgba(3,6,12,.95); }
+.orb-counts .L { color: var(--up); } .orb-counts .S { color: var(--dn); }
+.orb-status { position: absolute; top: 14px; right: 16px; z-index: 4; display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.orb-status .meta-pill { background: rgba(5,8,16,.62); }
+.hero-legend { position: absolute; right: 16px; bottom: 14px; z-index: 4; display: flex; gap: 14px; flex-wrap: wrap; justify-content: flex-end;
+               font-size: 9px; letter-spacing: .12em; text-transform: uppercase; color: var(--text4); pointer-events: none; max-width: 56%; }
+.hero-legend b { color: var(--text3); font-weight: 500; }
+.flyout { position: absolute; z-index: 6; pointer-events: none; display: none; min-width: 240px; max-width: 320px;
+          background: rgba(9,13,21,.96); border: 1px solid var(--border2); border-radius: 8px; padding: 11px 13px 10px;
+          box-shadow: 0 16px 44px rgba(0,0,0,.55); font-size: 10.5px; line-height: 1.7; }
+.flyout .fn { font-family: var(--sans); font-weight: 700; font-size: 15px; color: var(--text1); }
+.flyout .fr { font-size: 9px; color: var(--text4); letter-spacing: .1em; text-transform: uppercase; margin-bottom: 6px; }
+.flyout .row { display: flex; justify-content: space-between; gap: 14px; }
+.flyout .row span:first-child { color: var(--text3); }
+.flyout .row b { font-weight: 500; color: var(--text1); font-variant-numeric: tabular-nums; }
+.flyout .hint { color: var(--text4); font-size: 9px; margin-top: 6px; letter-spacing: .08em; }
 
-/* ═══ EVENT RADAR — every report ahead and the dots leading into it ════════
-   One row per company reporting inside 35 days, on a shared calendar axis
-   (8 weeks back → the horizon) so the season's shape is visible: the dark
-   run-up window, dark-pool days, insiders' last open-window trades, the
-   30-day closed period and the report itself. Solid chips are scored
-   (dark flow, short sellers); dashed chips are context. */
-.er-controls { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0 10px; }
-.er-axis, .er-row { display: grid; grid-template-columns: 206px minmax(0, 1fr); column-gap: 18px; }
-.er-axis {
-  position: sticky; top: 0; z-index: 4; background: var(--bg);
-  padding: 7px 0 5px; border-bottom: 1px solid var(--border);
-}
-.er-axis-lbl { font-size: 9px; letter-spacing: .16em; text-transform: uppercase; color: var(--text-dim); align-self: end; }
+/* ── generic section chrome ──────────────────────────────────────────────── */
+.sec { margin-top: 48px; }
+.sec-title { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; margin-bottom: 16px; }
+.sec-title h2 { font-family: var(--sans); font-weight: 700; font-size: 21px; color: var(--text1); letter-spacing: -0.01em; white-space: nowrap; }
+.sec-title h2 .g { color: var(--amber); font-family: var(--mono); font-weight: 400; margin-right: 9px; font-size: 15px; }
+.sec-title h2 .tag { font-family: var(--mono); font-size: 9px; font-weight: 500; letter-spacing: .16em; text-transform: uppercase;
+                     vertical-align: 4px; margin-left: 10px; padding: 2px 7px; border-radius: 3px; }
+.tag.live { color: var(--up); background: var(--green-dim); } .tag.ins { color: var(--amber); background: var(--amber-dim); }
+.tag.ctx { color: var(--text3); background: var(--bg3); }
+.sec-title p { flex: 1 1 380px; font-size: 11px; color: var(--text3); line-height: 1.65; }
+.sec-title .asof { font-size: 10px; color: var(--amber); letter-spacing: .08em; white-space: nowrap; margin-left: auto; }
+.grid { display: grid; gap: 14px; }
+.panel { padding: 16px 18px; min-width: 0; }
+.panel h3 { font-size: 9.5px; font-weight: 500; letter-spacing: .18em; text-transform: uppercase; color: var(--text3);
+            margin-bottom: 12px; display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+.panel h3 .g { color: var(--amber); margin-right: 6px; }
+.panel h3 small { font-size: 9px; letter-spacing: .06em; text-transform: none; color: var(--text4); font-weight: 400; }
+.note { font-size: 10px; color: var(--text4); line-height: 1.7; margin-top: 12px; }
+.note b { color: var(--text3); font-weight: 500; }
+.empty, .conv-empty, .perf-empty { padding: 26px; text-align: center; color: var(--text4); font-size: 10.5px; letter-spacing: .08em; }
+.empty { border: 1px dashed var(--border2); border-radius: 6px; }
+.chips, .er-controls, .wt-filters, .rs-tabs, .rec-tabs { display: flex; gap: 4px; flex-wrap: wrap; }
+.chip, .wt-filter { font-size: 9.5px; letter-spacing: .12em; text-transform: uppercase; cursor: pointer; color: var(--text3);
+        background: transparent; border: 1px solid var(--border2); border-radius: 3px; padding: 5px 10px; white-space: nowrap; }
+.chip:hover, .wt-filter:hover { color: var(--text1); }
+.chip[aria-pressed="true"], .wt-filter.on { color: var(--amber); border-color: rgba(245,166,35,.45); background: rgba(245,166,35,.08); }
+
+/* ── KPI tiles (event radar, book, scoreboard, record) ───────────────────── */
+.book-kpis, .ir-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin-bottom: 14px; }
+.book-kpi, .ir-kpi { border: 1px solid var(--border); border-radius: 8px; padding: 11px 13px 10px; background: var(--panel); min-width: 0; }
+.book-kpi-label, .ir-kpi .lbl { font-size: 9px; letter-spacing: .14em; text-transform: uppercase; color: var(--text3); white-space: nowrap;
+                                overflow: hidden; text-overflow: ellipsis; }
+.book-kpi-value, .ir-kpi .val { font-size: 20px; font-weight: 600; color: var(--text1); margin: 4px 0 1px; letter-spacing: -0.01em;
+                                font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ir-kpi .val.pos { color: var(--up); } .ir-kpi .val.neg { color: var(--dn); }
+.book-kpi-sub, .ir-kpi .sub { font-size: 9.5px; color: var(--text4); line-height: 1.5; }
+
+/* ── tables ──────────────────────────────────────────────────────────────── */
+.table-wrap { overflow-x: auto; }
+.perf-table { width: 100%; border-collapse: collapse; font-size: 11px; font-variant-numeric: tabular-nums; }
+.perf-table th { text-align: right; padding: 8px 9px; border-bottom: 1px solid var(--border2); font-size: 9px; letter-spacing: .14em;
+                 text-transform: uppercase; color: var(--text3); font-weight: 500; white-space: nowrap; }
+.perf-table th:first-child { text-align: left; }
+.perf-table td { text-align: right; padding: 8px 9px; border-bottom: 1px solid var(--border); color: var(--text2); white-space: nowrap; }
+.perf-table td:first-child { text-align: left; color: var(--text1); }
+.perf-table tr:last-child td { border-bottom: none; }
+.perf-table td.lbl-ctx { color: var(--text3); }
+
+/* ═══ SEASON CALENDAR — the financial calendar as a board ══════════════════ */
+.cal { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: var(--panel); }
+.cal-head, .cal-week { display: grid; grid-template-columns: 92px repeat(5, minmax(0, 1fr)); }
+.cal-head { background: rgba(255,255,255,0.02); border-bottom: 1px solid var(--border2); }
+.cal-head span { font-size: 9px; letter-spacing: .2em; text-transform: uppercase; color: var(--text3); padding: 8px 10px; }
+.cal-week { border-bottom: 1px solid var(--border); }
+.cal-week:last-child { border-bottom: 0; }
+.cal-wk { padding: 10px 10px 10px 12px; border-right: 1px solid var(--border); display: flex; flex-direction: column; gap: 3px; }
+.cal-wk b { font-size: 10px; color: var(--text2); font-weight: 500; letter-spacing: .1em; }
+.cal-wk span { font-size: 9px; color: var(--text4); letter-spacing: .04em; }
+.cal-wk .bar { height: 3px; border-radius: 2px; background: var(--bg3); margin-top: auto; overflow: hidden; }
+.cal-wk .bar i { display: block; height: 100%; background: var(--text3); border-radius: 2px; }
+.cal-wk em { font-style: normal; font-size: 10px; color: var(--text3); font-variant-numeric: tabular-nums; }
+.cal-week.peak .cal-wk .bar i { background: var(--amber); }
+.cal-week.peak .cal-wk em { color: var(--amber); }
+.cal-day { padding: 8px 8px 10px; border-right: 1px solid var(--border); min-width: 0; min-height: 74px; position: relative; }
+.cal-week.none .cal-day { min-height: 40px; }
+.cal-day:last-child { border-right: 0; }
+.cal-day.past { opacity: .38; }
+.cal-day.today { background: rgba(245,166,35,0.045); box-shadow: inset 0 2px 0 var(--amber); }
+.cal-dh { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+.cal-dh span { font-size: 11px; color: var(--text2); font-variant-numeric: tabular-nums; }
+.cal-dh em { font-style: normal; font-size: 9px; color: var(--text4); letter-spacing: .08em; }
+.cal-day.today .cal-dh span { color: var(--amber); }
+.cal-chips { display: flex; flex-wrap: wrap; gap: 3px; }
+.cal-chip { font-size: 9.5px; letter-spacing: .04em; cursor: pointer; border-radius: 3px; padding: 2px 5px; white-space: nowrap;
+            border: 1px solid var(--border2); background: transparent; color: var(--text3); line-height: 1.5;
+            transition: transform .12s, border-color .12s; }
+.cal-chip:hover { border-color: var(--text3); color: var(--text1); }
+.cal-chip b { font-weight: 600; font-variant-numeric: tabular-nums; margin-left: 3px; }
+.cal-chip.long { color: var(--text1); border-color: rgba(67,224,151, calc(0.3 + var(--p, 0) * 0.6));
+                 background: rgba(67,224,151, calc(0.05 + var(--p, 0) * 0.22)); }
+.cal-chip.short { color: var(--text1); border-color: rgba(240,96,96, calc(0.3 + var(--p, 0) * 0.6));
+                  background: rgba(240,96,96, calc(0.05 + var(--p, 0) * 0.22)); }
+.cal-chip.long i { color: var(--up); font-style: normal; } .cal-chip.short i { color: var(--dn); font-style: normal; }
+.cal-chip.est { border-style: dashed; }
+.cal-more { font-size: 9px; letter-spacing: .08em; color: var(--text4); background: none; border: 0; cursor: pointer; padding: 2px 3px; }
+.cal-more:hover { color: var(--ice); }
+.cal-legend { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 10px; font-size: 9px; letter-spacing: .1em; text-transform: uppercase; color: var(--text4); }
+.cal-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.cal-legend .cal-chip { cursor: default; pointer-events: none; }
+
+/* ═══ EVENT RADAR — every report ahead and the dots leading into it ════════ */
+.er-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+.er-top .sort { font-size: 9px; letter-spacing: .12em; color: var(--text4); text-transform: uppercase; }
+.er-board { border: 1px solid var(--border); border-radius: 10px; background: var(--panel); overflow: visible; overflow: clip; }
+/* clip, not hidden: hidden would make the board a scroll container and trap the sticky axis inside it */
+.er-axis, .er-row { display: grid; grid-template-columns: 214px minmax(0, 1fr); column-gap: 18px; }
+.er-axis { position: sticky; top: var(--rail-h); z-index: 5; background: rgba(8,12,19,0.95); -webkit-backdrop-filter: blur(8px);
+           backdrop-filter: blur(8px); padding: 8px 16px 6px; border-bottom: 1px solid var(--border2); }
+.er-axis-lbl { font-size: 9px; letter-spacing: .16em; text-transform: uppercase; color: var(--text3); align-self: end; }
 .er-axis-track { position: relative; height: 16px; }
-.er-tick {
-  position: absolute; top: 1px; transform: translateX(-50%);
-  font-size: 9px; color: var(--text-dim); letter-spacing: .04em; white-space: nowrap; font-variant-numeric: tabular-nums;
-}
+.er-tick { position: absolute; top: 1px; transform: translateX(-50%); font-size: 9px; color: var(--text3); letter-spacing: .04em;
+           white-space: nowrap; font-variant-numeric: tabular-nums; }
 .er-tick::after { content: ''; position: absolute; left: 50%; top: 14px; width: 1px; height: 4px; background: var(--border2); }
 .er-tick.now { color: var(--amber); font-weight: 500; }
 .er-tick.now::after { background: var(--amber); }
 .er-list { display: flex; flex-direction: column; }
-.er-row {
-  grid-template-areas: "meta track" "meta chips";
-  padding: 11px 0 10px; border-bottom: 1px solid var(--border);
-  cursor: pointer; transition: background .15s;
-}
-.er-row:hover { background: rgba(255,255,255,0.018); }
-.er-meta { grid-area: meta; min-width: 0; border-left: 2px solid var(--border2); padding-left: 10px; }
-.er-row.long  .er-meta { border-left-color: var(--green); }
-.er-row.short .er-meta { border-left-color: var(--red); }
+.er-row { grid-template-areas: "meta track" "meta chips"; padding: 12px 16px 11px; border-bottom: 1px solid var(--border);
+          cursor: pointer; transition: background .15s; position: relative; }
+.er-row:last-child { border-bottom: 0; }
+.er-row:hover { background: rgba(255,255,255,0.022); }
+.er-row:focus-visible { outline: none; background: rgba(79,195,247,0.05); }
+.er-meta { grid-area: meta; min-width: 0; border-left: 2px solid var(--border2); padding-left: 11px; }
+.er-row.long  .er-meta { border-left-color: var(--up); }
+.er-row.short .er-meta { border-left-color: var(--dn); }
 .er-l1 { display: flex; align-items: baseline; gap: 8px; }
 .er-arrow { font-size: 11px; line-height: 1; }
-.er-arrow.long { color: var(--green); } .er-arrow.short { color: var(--red); } .er-arrow.none { color: var(--text4); }
-.er-tk { font-size: 13px; font-weight: 500; color: var(--text-bright); letter-spacing: .04em; }
+.er-arrow.long { color: var(--up); } .er-arrow.short { color: var(--dn); } .er-arrow.none { color: var(--text4); }
+.er-tk { font-size: 13.5px; font-weight: 600; color: var(--text1); letter-spacing: .04em; }
 .er-tk a { color: inherit; text-decoration: none; }
-.er-pos {
-  margin-left: auto; font-size: 19px; font-weight: 500; color: var(--amber);
-  letter-spacing: -0.02em; font-variant-numeric: tabular-nums; cursor: help;
-}
-.er-pos.none { color: var(--text4); font-size: 12px; letter-spacing: .1em; }
-.er-name { font-family: var(--sans); font-size: 10.5px; color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.er-when { font-size: 10px; color: var(--text); letter-spacing: .04em; margin-top: 4px; font-variant-numeric: tabular-nums; }
+.er-pos { margin-left: auto; font-size: 21px; font-weight: 600; color: var(--text1); letter-spacing: -0.03em;
+          font-variant-numeric: tabular-nums; cursor: help; }
+.er-row.long .er-pos { color: var(--up); } .er-row.short .er-pos { color: var(--dn); }
+.er-pos.none { color: var(--text4); font-size: 10px; letter-spacing: .14em; font-weight: 500; }
+.er-name { font-family: var(--sans); font-size: 10.5px; color: var(--text3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.er-when { font-size: 10px; color: var(--text2); letter-spacing: .03em; margin-top: 5px; font-variant-numeric: tabular-nums; }
 .er-when b { color: var(--amber); font-weight: 500; }
-.er-src { font-size: 8px; color: var(--text-dim); border: 1px solid var(--border2); padding: 0 4px; margin-left: 5px; letter-spacing: .12em; vertical-align: 1px; }
-.er-bar { height: 2px; background: var(--bg3); margin-top: 7px; overflow: hidden; }
+.er-src { font-size: 8px; color: var(--text4); border: 1px solid var(--border2); padding: 0 4px; margin-left: 6px; letter-spacing: .12em;
+          vertical-align: 1px; border-radius: 2px; }
+.er-bar { height: 2px; background: var(--bg3); margin-top: 8px; overflow: hidden; border-radius: 1px; }
 .er-bar i { display: block; height: 100%; }
-.er-bar i.long  { background: linear-gradient(90deg, var(--green), #86efac); }
-.er-bar i.short { background: linear-gradient(90deg, var(--red), #fda4af); }
-
-.er-track { grid-area: track; position: relative; height: 36px; }
-.er-base { position: absolute; left: 0; right: 0; top: 18px; height: 1px; background: rgba(255,255,255,0.08); }
-.er-win {
-  position: absolute; top: 8px; height: 20px;
-  background: rgba(79,195,247,0.07); border-left: 1px solid rgba(79,195,247,0.3);
-}
-.er-closed {
-  position: absolute; top: 3px; height: 30px;
-  background: repeating-linear-gradient(135deg, rgba(245,166,35,0.11) 0 2px, transparent 2px 7px);
-  border-left: 1px dashed rgba(245,166,35,0.4);
-}
-.er-now { position: absolute; top: 0; bottom: 0; width: 1px; background: rgba(245,166,35,0.6); }
-.er-dot { position: absolute; width: 8px; height: 8px; border-radius: 50%; transform: translate(-50%, -50%); }
-.er-dot.b { top: 13px; background: var(--green); color: var(--green); }
-.er-dot.s { top: 23px; background: var(--red); color: var(--red); }
-.er-dot.top { width: 10px; height: 10px; box-shadow: 0 0 0 2px var(--bg), 0 0 0 3px currentColor; }
-.er-ins {
-  position: absolute; width: 7px; height: 7px; transform: translate(-50%, -50%) rotate(45deg);
-  border: 1.5px solid; background: var(--bg);
-}
-.er-ins.b { top: 5px; border-color: var(--green); }
-.er-ins.s { top: 31px; border-color: var(--red); }
-.er-prev { position: absolute; top: 10px; height: 16px; width: 2px; margin-left: -1px; background: var(--text3); }
-.er-rep {
-  position: absolute; top: 18px; transform: translate(-50%, -50%);
-  width: 11px; height: 11px; rotate: 45deg; background: var(--amber);
-  box-shadow: 0 0 0 2px var(--bg), 0 0 12px rgba(245,166,35,0.45);
-}
-.er-rep.est { background: transparent; border: 1.5px dashed var(--amber); box-shadow: 0 0 0 2px var(--bg); }
-.er-early { position: absolute; left: 0; top: 0; font-size: 8px; color: var(--text-dim); letter-spacing: .04em; }
-
-.er-chips { grid-area: chips; display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
-.er-chip {
-  font-size: 9px; letter-spacing: .07em; color: var(--text);
-  background: var(--bg2); border: 1px solid var(--border2); padding: 2px 6px; white-space: nowrap;
-}
+.er-bar i.long  { background: linear-gradient(90deg, rgba(67,224,151,.5), var(--up)); }
+.er-bar i.short { background: linear-gradient(90deg, rgba(240,96,96,.5), var(--dn)); }
+.er-track { grid-area: track; position: relative; height: 46px; }
+.er-px { position: absolute; left: 0; right: 0; top: 4px; height: 38px; width: 100%; overflow: visible; pointer-events: none; }
+.er-px polyline { fill: none; stroke: rgba(164,173,191,0.42); stroke-width: 1.25; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+.er-base { position: absolute; left: 0; right: 0; top: 23px; height: 1px; background: rgba(255,255,255,0.06); }
+.er-win { position: absolute; top: 6px; height: 34px; background: rgba(79,195,247,0.06); border-left: 1px solid rgba(79,195,247,0.32); }
+.er-closed { position: absolute; top: 2px; height: 42px;
+             background: repeating-linear-gradient(135deg, rgba(245,166,35,0.11) 0 2px, transparent 2px 7px);
+             border-left: 1px dashed rgba(245,166,35,0.42); }
+.er-now { position: absolute; top: 0; bottom: 0; width: 1px; background: rgba(245,166,35,0.65); }
+.er-dot { position: absolute; width: 8px; height: 8px; border-radius: 50%; transform: translate(-50%, -50%);
+          box-shadow: 0 0 0 2px rgba(8,12,19,0.9); }
+.er-dot.b { top: 16px; background: var(--up); color: var(--up); }
+.er-dot.s { top: 31px; background: var(--dn); color: var(--dn); }
+.er-dot.top { width: 10px; height: 10px; box-shadow: 0 0 0 2px rgba(8,12,19,0.9), 0 0 0 3.5px currentColor; }
+.er-ins { position: absolute; width: 7px; height: 7px; transform: translate(-50%, -50%) rotate(45deg); border: 1.5px solid; background: var(--bg0); }
+.er-ins.b { top: 5px; border-color: var(--up); }
+.er-ins.s { top: 42px; border-color: var(--dn); }
+.er-prev { position: absolute; top: 12px; height: 22px; width: 2px; margin-left: -1px; background: var(--text3); border-radius: 1px; }
+.er-rep { position: absolute; top: 23px; transform: translate(-50%, -50%) rotate(45deg); width: 12px; height: 12px; background: var(--amber);
+          box-shadow: 0 0 0 2px rgba(8,12,19,0.95), 0 0 14px rgba(245,166,35,0.5); }
+.er-rep.est { background: transparent; border: 1.5px dashed var(--amber); box-shadow: 0 0 0 2px rgba(8,12,19,0.95); }
+.er-early { position: absolute; left: 0; top: -1px; font-size: 8.5px; color: var(--text4); letter-spacing: .04em; }
+.er-chips { grid-area: chips; display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+.er-chip { font-size: 9px; letter-spacing: .07em; color: var(--text2); background: var(--bg2); border: 1px solid var(--border2);
+           padding: 2px 6px; white-space: nowrap; border-radius: 3px; }
 .er-chip.ctx { border-style: dashed; background: transparent; }
-.er-chip.up { color: var(--green); border-color: rgba(67,224,151,0.4); }
-.er-chip.dn { color: var(--red); border-color: rgba(240,96,96,0.4); }
+.er-chip.up { color: var(--up); border-color: rgba(67,224,151,0.4); }
+.er-chip.dn { color: var(--dn); border-color: rgba(240,96,96,0.4); }
 .er-chip.amber { color: var(--amber); border-color: rgba(245,166,35,0.45); }
-.er-chip.dim { color: var(--text-dim); border-color: var(--border); }
-.er-legend {
-  display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 12px 0 0;
-  font-size: 9px; letter-spacing: .08em; color: var(--text-dim); text-transform: uppercase;
-}
+.er-chip.dim { color: var(--text3); border-color: var(--border); }
+.er-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 12px; }
+.er-legend { display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 9px; letter-spacing: .08em; color: var(--text3); text-transform: uppercase; }
 .er-legend span { display: inline-flex; align-items: center; gap: 6px; }
 .er-legend .k { position: relative; display: inline-block; width: 14px; height: 12px; }
 .er-legend .k .er-dot, .er-legend .k .er-ins, .er-legend .k .er-rep { top: 6px !important; left: 7px; }
+.er-legend .k .er-rep { width: 9px; height: 9px; }
 .er-legend .k .er-closed, .er-legend .k .er-win { top: 0; height: 12px; left: 0; width: 14px; }
-.er-more { text-align: center; margin-top: 12px; }
-.er-note { font-size: 9.5px; color: var(--text-dim); letter-spacing: .04em; line-height: 1.7; margin-top: 10px; }
-@media (max-width: 700px) {
-  .er-axis, .er-row { grid-template-columns: minmax(0, 1fr); }
-  .er-row { grid-template-areas: "meta" "track" "chips"; }
-  .er-axis-lbl { display: none; }
-  .er-track { margin-top: 8px; }
-}
+.er-more { text-align: center; }
+.er-note { font-size: 10px; color: var(--text4); line-height: 1.75; margin-top: 12px; }
 
-/* ═══ REPORT REACTIONS — did the dots call it? ═════════════════════════════ */
-.rs-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
-.rs-grid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 24px; align-items: start; }
-@media (max-width: 900px) { .rs-grid { grid-template-columns: minmax(0, 1fr); } }
+/* ═══ REPORT REACTIONS ═════════════════════════════════════════════════════ */
+.rs-grid { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 14px; align-items: stretch; }
+.rs-plot { position: relative; }
 .rs-plot svg { width: 100%; height: auto; display: block; overflow: visible; }
-.rs-plot .ax { stroke: rgba(255,255,255,0.14); stroke-width: 1; }
+.rs-plot .ax { stroke: rgba(255,255,255,0.16); stroke-width: 1; }
 .rs-plot .grid { stroke: rgba(255,255,255,0.05); stroke-width: 1; }
 .rs-plot text { font-family: var(--mono); font-size: 9px; fill: var(--text3); letter-spacing: .06em; }
-.rs-plot circle { stroke: var(--bg); stroke-width: 1.5; }
+.rs-plot circle { stroke: rgba(8,12,19,0.95); stroke-width: 1.5; cursor: pointer; }
 .rs-plot circle:hover { stroke: var(--text1); }
-.perf-table td.lbl-ctx { color: var(--text-dim); }
-.rs-empty { border: 1px dashed var(--border2); padding: 26px 14px; text-align: center; font-size: 10.5px; color: var(--text-dim); letter-spacing: .06em; line-height: 1.8; }
-.rs-plot circle.l { fill: var(--green); }
-.rs-plot circle.s { fill: var(--red); }
-.rs-plot circle.n { fill: rgba(122,132,153,0.45); }
-.conv-break-fill.signal { background: var(--purple, #a78bfa); }
+.rs-plot circle.l { fill: var(--up); } .rs-plot circle.s { fill: var(--dn); } .rs-plot circle.n { fill: rgba(122,132,153,0.45); }
+.rs-empty { border: 1px dashed var(--border2); border-radius: 6px; padding: 30px 16px; text-align: center; font-size: 10.5px;
+            color: var(--text3); letter-spacing: .04em; line-height: 1.85; }
+.rs-season { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+.rs-prog { flex: 1 1 260px; display: flex; align-items: center; gap: 10px; font-size: 9.5px; color: var(--text3); letter-spacing: .06em; }
+.rs-prog .bar { flex: 1; height: 4px; border-radius: 2px; background: var(--bg3); overflow: hidden; }
+.rs-prog .bar i { display: block; height: 100%; background: var(--amber); }
+.tt { position: absolute; z-index: 20; pointer-events: none; display: none; background: rgba(9,13,21,.96); border: 1px solid var(--border2);
+      border-radius: 6px; padding: 8px 10px; font-size: 10.5px; white-space: nowrap; box-shadow: 0 10px 30px rgba(0,0,0,.5); line-height: 1.6; }
+.tt .td { color: var(--text3); font-size: 9.5px; letter-spacing: .06em; margin-bottom: 3px; }
+.tt b { color: var(--text1); font-weight: 600; }
 
-/* ═══ MARKET INTELLIGENCE ══════════════════════════════════════════════════ */
-.mi-grid { display: grid; grid-template-columns: 1.5fr 1fr; gap: 22px; }
-@media (max-width: 900px) { .mi-grid { grid-template-columns: 1fr; } }
-.mi-band-box { position: relative; border: 1px solid var(--border); border-radius: 8px; background: rgba(10,15,24,.65); padding: 14px 14px 8px; }
-.mi-band-head { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 9px; letter-spacing: .14em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 8px; }
-#miBand { width: 100%; height: 190px; display: block; }
-.mi-headline { font-family: var(--sans, inherit); font-size: 19px; font-weight: 600; color: var(--text-bright); line-height: 1.45; margin: 2px 0 14px; }
-.mi-headline .up { color: var(--green, #43e097); } .mi-headline .dn { color: var(--red, #f06060); } .mi-headline .am { color: var(--amber); }
-.mi-tiles { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
-.mi-tile { border: 1px solid var(--border); border-radius: 7px; background: rgba(13,20,32,.8); padding: 11px 13px; }
-.mi-tile .lbl { font-family: var(--mono); font-size: 8.5px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--text-dim); margin-bottom: 5px; }
-.mi-tile .val { font-family: var(--mono); font-size: 17px; font-weight: 600; color: var(--text-bright); font-variant-numeric: tabular-nums; }
-.mi-tile .val.up { color: var(--green,#43e097); } .mi-tile .val.dn { color: var(--red,#f06060); } .mi-tile .val.am { color: var(--amber); }
-.mi-tile .sub { font-family: var(--mono); font-size: 9px; color: var(--text-dim); margin-top: 3px; }
-.mi-breadth { position: relative; height: 10px; border-radius: 5px; overflow: hidden; background: var(--bg3, #1a212d); margin-top: 7px; display: flex; }
-.mi-breadth .a { background: var(--green, #43e097); opacity: .75; } .mi-breadth .d { background: var(--red, #f06060); opacity: .75; } .mi-breadth .u { background: rgba(255,255,255,.13); }
-.mi-leaders { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin-top: 18px; }
-.mi-lead { border: 1px solid var(--border); border-left: 2px solid var(--amber); border-radius: 6px; padding: 9px 12px; font-family: var(--mono); font-size: 10.5px; }
-.mi-lead .who { color: var(--text-bright); font-weight: 600; }
-.mi-lead .what { color: var(--text-dim); font-size: 8.5px; letter-spacing: 1px; text-transform: uppercase; }
+/* ═══ TODAY'S BOOK (event-agnostic conviction) ════════════════════════════ */
+.conviction-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; }
+.conviction-col { border: 1px solid var(--border); border-radius: 10px; background: var(--panel); padding: 14px 14px 12px; min-width: 0; }
+.conv-col-head { display: flex; align-items: center; gap: 10px; padding-bottom: 10px; margin-bottom: 12px; border-bottom: 1px solid var(--border);
+                 font-size: 10px; letter-spacing: 0.16em; font-variant-numeric: tabular-nums; }
+.conv-col-arrow { font-size: 13px; line-height: 1; }
+.conv-col-arrow.long { color: var(--up); } .conv-col-arrow.short { color: var(--dn); }
+.conv-col-label { color: var(--text1); font-weight: 500; }
+.conv-col-count { margin-left: auto; color: var(--text3); font-size: 10px; }
+.conv-list { display: flex; flex-direction: column; gap: 8px; }
+.conviction-grid:not(.all) .conv-card:nth-child(n+7) { display: none; }   /* top 6 a side until asked */
+.conv-card { position: relative; border: 1px solid var(--border); border-radius: 8px; background: rgba(17,22,31,0.7); padding: 11px 12px 10px;
+             cursor: pointer; transition: border-color .15s, background .15s; }
+.conv-card.long { box-shadow: inset 2px 0 0 var(--up); } .conv-card.short { box-shadow: inset 2px 0 0 var(--dn); }
+.conv-card:hover { background: var(--bg3); border-color: var(--border2); }
+.conv-row1 { display: flex; align-items: baseline; gap: 10px; }
+.conv-arrow { font-size: 11px; line-height: 1; }
+.conv-arrow.long { color: var(--up); } .conv-arrow.short { color: var(--dn); }
+.conv-ticker { font-size: 13px; font-weight: 600; color: var(--text1); letter-spacing: 0.04em; }
+.conv-name { font-family: var(--sans); font-size: 11px; color: var(--text3); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.conv-score { font-size: 20px; font-weight: 600; color: var(--amber); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.conv-bar { height: 2px; background: var(--bg3); margin: 7px 0 9px; overflow: hidden; border-radius: 1px; }
+.conv-bar-fill { height: 100%; transition: width 0.4s; }
+.conv-bar-fill.long { background: linear-gradient(90deg, rgba(67,224,151,.5), var(--up)); }
+.conv-bar-fill.short { background: linear-gradient(90deg, rgba(240,96,96,.5), var(--dn)); }
+.conv-signals { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 9px; }
+.conv-chip { font-size: 9px; letter-spacing: 0.08em; color: var(--text2); background: var(--bg3); border: 1px solid var(--border);
+             padding: 2px 6px; display: inline-flex; align-items: center; gap: 5px; border-radius: 3px; }
+.conv-chip .g { color: var(--amber); font-size: 10px; }
+.conv-chip.event { border-color: rgba(245,166,35,0.32); color: var(--amber); }
+.conv-chip.si { border-color: rgba(245,166,35,0.32); color: var(--amber); }
+.conv-chip.si.high { background: rgba(245,166,35,0.10); }
+.conv-chip.up, .conv-chip.dark.up { border-color: rgba(67,224,151,0.40); color: var(--up); }
+.conv-chip.dn, .conv-chip.dark.dn { border-color: rgba(240,96,96,0.40); color: var(--dn); }
+.conv-chip.dark .g, .conv-chip.up .g, .conv-chip.dn .g { color: inherit; }
+.conv-chip.dark.confirmed { background: rgba(245,166,35,0.10); border-color: var(--amber); }
+.conv-footer { display: flex; gap: 14px; flex-wrap: wrap; font-size: 10px; color: var(--text3); letter-spacing: 0.06em;
+               border-top: 1px solid var(--border); padding-top: 8px; font-variant-numeric: tabular-nums; }
+.conv-footer strong { color: var(--text1); font-weight: 500; }
+.conv-break { margin-top: 8px; }
+.conv-break summary { cursor: pointer; font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--text3); list-style: none; }
+.conv-break summary::-webkit-details-marker { display: none; }
+.conv-break summary::before { content: '▸ '; }
+.conv-break[open] summary::before { content: '▾ '; }
+.conv-break summary:hover { color: var(--text1); }
+.conv-break-body { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+.conv-break-row { display: grid; grid-template-columns: 1fr 62px 38px; gap: 8px; align-items: center; margin-bottom: 4px; font-size: 10px; }
+.conv-break-lbl { color: var(--text2); }
+.conv-break-track { position: relative; height: 8px; background: var(--bg3); border-radius: 2px; overflow: hidden; }
+.conv-break-fill { position: absolute; inset: 0 auto 0 0; background: var(--amber); }
+.conv-break-fill.neg { background: var(--dn); }
+.conv-break-val { text-align: right; font-variant-numeric: tabular-nums; color: var(--text1); }
+.conv-break-cap { margin-top: 6px; font-size: 9.5px; color: var(--text3); line-height: 1.5; }
 
-/* ═══ WATCHTOWER ═══════════════════════════════════════════════════════════ */
-.wt-filters { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
-.wt-filter {
-  font-family: var(--mono); font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase;
-  border: 1px solid var(--border); background: transparent; color: var(--text-dim);
-  border-radius: 5px; padding: 5px 11px; cursor: pointer;
-}
-.wt-filter:hover { color: var(--text-bright); }
-.wt-filter.on { color: var(--ice); border-color: var(--ice-dim, var(--ice)); background: rgba(79,195,247,.08); }
-.wt-wrap { overflow-x: auto; }
-table.wt { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 11px; }
-.wt th {
-  text-align: left; font-size: 8.5px; letter-spacing: 1.2px; text-transform: uppercase;
-  color: var(--text-dim); font-weight: 500; padding: 7px 10px; border-bottom: 1px solid var(--border);
-  white-space: nowrap;
-}
-.wt td { padding: 8px 10px; border-bottom: 1px solid rgba(255,255,255,0.04); white-space: nowrap; vertical-align: middle; }
-.wt tbody tr { cursor: pointer; }
-.wt tbody tr:hover { background: rgba(79,195,247,0.045); }
-.wt .tkr { font-weight: 600; color: var(--text-bright); letter-spacing: .05em; }
-.wt .nm { color: var(--text-dim); font-size: 9px; max-width: 150px; overflow: hidden; text-overflow: ellipsis; display: block; }
-.wt .num { font-variant-numeric: tabular-nums; }
-.wt .up { color: var(--green, #43e097); } .wt .dn { color: var(--red, #f06060); } .wt .dim { color: var(--text-dim); }
-.wt-spark { width: 92px; height: 26px; display: block; }
-.wt-verdict { font-size: 9px; letter-spacing: .08em; border-radius: 4px; padding: 2.5px 7px; font-weight: 600; }
-.wt-verdict.L { background: rgba(67,224,151,.12); color: var(--green, #43e097); }
-.wt-verdict.S { background: rgba(240,96,96,.12); color: var(--red, #f06060); }
-.wt-verdict.N { background: rgba(255,255,255,.05); color: var(--text-dim); font-weight: 400; }
-.wt .glyphs { letter-spacing: 3px; color: var(--ice); font-size: 12px; }
-.wt .evt { color: var(--amber); }
-.wt-more { text-align: center; margin-top: 12px; }
-
-/* ─── Footer ─────────────────────────────────────────────────────────────── */
-.radar-footer {
-  margin-top: 52px; padding: 18px 0 8px; border-top: 1px solid var(--border);
-  font-family: var(--mono); font-size: 9px; letter-spacing: .12em; color: var(--text-dim);
-  display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; text-transform: uppercase;
-}
-@media (max-width: 860px) {
-  /* the shared nav becomes a scroll rail: give it its own constrained row */
-  header { flex-wrap: wrap; }
-  header [data-intel-nav] { min-width: 0; flex: 1 1 100%; order: 3; }
-  header [data-intel-nav] .site-nav { justify-content: flex-start; }
-}
-@media (max-width: 600px) {
-  .mi-tiles { grid-template-columns: 1fr 1fr; }
-  .mi-headline { font-size: 16px; }
-  .section-head { flex-wrap: wrap; row-gap: 4px; }
-  .section-desc { min-width: 0; }
-  .section-count { margin-left: 0; }
-}
-
-/* ── Radar Intelligence (graded book) ─────────────────────────────────── */
-.ir-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 16px; }
-.ir-kpi { background: rgba(13,20,32,.92); border: 1px solid var(--border); border-radius: 7px; padding: 11px 13px; }
-.ir-kpi .lbl { font-size: 8.5px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--text-dim); margin-bottom: 5px; }
-.ir-kpi .val { font-size: 17px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--text-bright); }
-.ir-kpi .val.pos { color: var(--green, #43e097); } .ir-kpi .val.neg { color: var(--red, #f06060); }
-.ir-kpi .sub { font-size: 9px; color: var(--text-dim); margin-top: 3px; }
-.ir-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; margin-bottom: 14px; }
-@media (max-width: 900px) { .ir-grid { grid-template-columns: 1fr; } }
-.ir-sub { font-size: 9px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--text-dim); margin-bottom: 8px; }
-.ir-league-row { display: grid; grid-template-columns: 128px 1fr 96px; gap: 10px; align-items: center; margin-bottom: 7px; font-size: 10.5px; }
+/* ═══ TRACK RECORD (tabs) ══════════════════════════════════════════════════ */
+.rec-tabs { margin-bottom: 14px; }
+.rec-tabs .chip small { color: var(--text4); margin-left: 6px; letter-spacing: .06em; text-transform: none; }
+.rec-pane { display: none; }
+.rec-pane.on { display: block; }
+.ir-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; margin-bottom: 14px; }
+.ir-sub { font-size: 9px; letter-spacing: .14em; text-transform: uppercase; color: var(--text3); margin-bottom: 10px; line-height: 1.5; }
+.ir-league-row { display: grid; grid-template-columns: 128px minmax(0, 1fr) 104px; gap: 10px; align-items: center; margin-bottom: 7px; font-size: 10.5px; }
 .ir-bar-track { position: relative; height: 12px; background: rgba(255,255,255,.05); border-radius: 3px; overflow: hidden; }
 .ir-bar-track::after { content: ''; position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; background: rgba(255,255,255,.14); }
 .ir-bar { position: absolute; top: 0; bottom: 0; opacity: .85; }
 .ir-reads { border-left: 2px solid var(--ice); padding: 4px 0 4px 14px; margin: 6px 0 12px; }
 .ir-read { font-size: 11.5px; line-height: 1.75; }
 .ir-read b { color: var(--ice); font-weight: 600; }
-.ir-note { font-size: 9px; color: var(--text-dim); letter-spacing: .05em; line-height: 1.6; }
+.ir-note { font-size: 10px; color: var(--text4); line-height: 1.7; }
 
-/* ─── Today's Book / Conviction Shortlist ─────────────────────────────── */
-.conviction-grid {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
-}
-@media (max-width: 760px) { .conviction-grid { grid-template-columns: 1fr; } }
-.conviction-col {
-  border: 1px solid var(--border);
-  background: rgba(255,255,255,0.012);
-  padding: 14px 14px 12px;
-}
-.conv-col-head {
-  display: flex; align-items: center; gap: 10px;
-  padding-bottom: 10px; margin-bottom: 12px;
-  border-bottom: 1px solid var(--border);
-  font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em;
-  font-variant-numeric: tabular-nums;
-}
-.conv-col-arrow      { font-size: 13px; line-height: 1; }
-.conv-col-arrow.long { color: var(--green, #4ade80); }
-.conv-col-arrow.short{ color: var(--red,   #f87171); }
-.conv-col-label      { color: var(--text-bright); font-weight: 500; }
-.conv-col-count      { margin-left: auto; color: var(--text-dim); font-size: 10px; }
-.conv-list           { display: flex; flex-direction: column; gap: 8px; }
-.conv-empty {
-  color: var(--text-dim); font-family: var(--mono);
-  font-size: 10px; letter-spacing: 0.12em;
-  text-align: center; padding: 28px 8px;
-}
-.conv-card {
-  position: relative;
-  border: 1px solid var(--border);
-  background: var(--bg2, #0d1218);
-  padding: 11px 12px 10px;
-  cursor: pointer; transition: all 0.15s;
-}
-.conv-card.long  { border-left: 2px solid var(--green, #4ade80); }
-.conv-card.short { border-left: 2px solid var(--red,   #f87171); }
-.conv-card:hover { background: var(--bg3); border-color: rgba(255,255,255,0.12); }
-.conv-row1 {
-  display: flex; align-items: baseline; gap: 10px;
-}
-.conv-arrow      { font-size: 11px; line-height: 1; }
-.conv-arrow.long { color: var(--green, #4ade80); }
-.conv-arrow.short{ color: var(--red,   #f87171); }
-.conv-ticker {
-  font-family: var(--mono); font-size: 13px; font-weight: 500;
-  color: var(--text-bright); letter-spacing: 0.04em;
-}
-.conv-name {
-  font-family: var(--sans); font-size: 11px; color: var(--text-dim);
-  flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-.conv-score {
-  font-family: var(--mono); font-size: 20px; font-weight: 500;
-  color: var(--amber); letter-spacing: -0.02em;
-  font-variant-numeric: tabular-nums;
-}
-.conv-bar {
-  height: 2px; background: var(--bg3); margin: 7px 0 9px;
-  overflow: hidden;
-}
-.conv-bar-fill       { height: 100%; transition: width 0.4s; }
-.conv-bar-fill.long  { background: linear-gradient(90deg, var(--green, #4ade80), #86efac); }
-.conv-bar-fill.short { background: linear-gradient(90deg, var(--red,   #f87171), #fda4af); }
-.conv-signals { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 9px; }
-.conv-chip {
-  font-family: var(--mono); font-size: 9px; letter-spacing: 0.08em;
-  color: var(--text); background: var(--bg3);
-  border: 1px solid var(--border);
-  padding: 2px 6px;
-  display: inline-flex; align-items: center; gap: 5px;
-}
-.conv-chip .g           { color: var(--amber); font-size: 10px; }
-.conv-chip.event        { border-color: rgba(245,166,35,0.32); color: var(--amber); }
-.conv-chip.event .g     { color: var(--amber); }
-.conv-footer {
-  display: flex; gap: 14px; flex-wrap: wrap;
-  font-family: var(--mono); font-size: 10px;
-  color: var(--text-dim); letter-spacing: 0.06em;
-  border-top: 1px solid var(--border); padding-top: 8px;
-  font-variant-numeric: tabular-nums;
-}
-.conv-footer strong { color: var(--text-bright); font-weight: 500; }
-.conv-footer .up    { color: var(--green, #4ade80); }
-.conv-footer .dn    { color: var(--red,   #f87171); }
-.conv-chip.si       { border-color: rgba(245,166,35,0.32); color: var(--amber); }
-.conv-chip.si.high  { background: rgba(245,166,35,0.10); }
-.conv-chip.si .g    { color: var(--amber); }
-.conv-chip.dark.up        { border-color: rgba(74,222,128,0.40); color: var(--green, #4ade80); }
-.conv-chip.dark.dn        { border-color: rgba(248,113,113,0.40); color: var(--red, #f87171); }
-.conv-chip.dark .g        { color: inherit; }
-.conv-chip.dark.confirmed { background: rgba(245,166,35,0.10); border-color: var(--amber); }
+/* ═══ THE TAPE (market intelligence) ═══════════════════════════════════════ */
+.mi-headline { font-family: var(--sans); font-size: 19px; font-weight: 600; color: var(--text1); line-height: 1.45; margin: 0 0 14px; }
+.mi-headline .up { color: var(--up); } .mi-headline .dn { color: var(--dn); } .mi-headline .am { color: var(--amber); }
+.mi-grid { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 14px; }
+.mi-band-head { display: flex; justify-content: space-between; font-size: 9px; letter-spacing: .14em; text-transform: uppercase; color: var(--text3); margin-bottom: 8px; }
+#miBand { width: 100%; height: 190px; display: block; }
+.mi-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.mi-tile { border: 1px solid var(--border); border-radius: 8px; background: var(--panel); padding: 11px 13px; min-width: 0; }
+.mi-tile .lbl { font-size: 9px; letter-spacing: .14em; text-transform: uppercase; color: var(--text3); margin-bottom: 4px; }
+.mi-tile .val { font-size: 17px; font-weight: 600; color: var(--text1); font-variant-numeric: tabular-nums; }
+.mi-tile .val.up { color: var(--up); } .mi-tile .val.dn { color: var(--dn); } .mi-tile .val.am { color: var(--amber); }
+.mi-tile .sub { font-size: 9.5px; color: var(--text4); margin-top: 3px; }
+.mi-breadth { position: relative; height: 8px; border-radius: 4px; overflow: hidden; background: var(--bg3); margin-top: 7px; display: flex; }
+.mi-breadth .a { background: var(--up); opacity: .75; } .mi-breadth .d { background: var(--dn); opacity: .75; } .mi-breadth .u { background: rgba(255,255,255,.13); }
+.mi-leaders { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-top: 14px; }
+.mi-lead { border: 1px solid var(--border); box-shadow: inset 2px 0 0 var(--amber); border-radius: 6px; padding: 9px 12px; font-size: 10.5px; background: var(--panel); }
+.mi-lead .who { color: var(--text1); font-weight: 600; }
+.mi-lead .what { color: var(--text3); font-size: 9px; letter-spacing: .12em; text-transform: uppercase; }
 
-/* ── conviction score breakdown — the itemized pts_* components ──────── */
-.conv-break { margin-top: 8px; }
-.conv-break summary { cursor: pointer; font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--text-dim); list-style: none; }
-.conv-break summary::-webkit-details-marker { display: none; }
-.conv-break summary::before { content: '▸ '; }
-.conv-break[open] summary::before { content: '▾ '; }
-.conv-break summary:hover { color: var(--text-bright); }
-.conv-break-body { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
-.conv-break-row { display: grid; grid-template-columns: 1fr 62px 38px; gap: 8px; align-items: center; margin-bottom: 4px; font-size: 10px; }
-.conv-break-lbl { color: var(--text); }
-.conv-break-track { position: relative; height: 8px; background: var(--bg3); }
-.conv-break-fill { position: absolute; inset: 0 auto 0 0; background: var(--amber); }
-.conv-break-fill.neg { background: var(--red, #f87171); }
-.conv-break-val { text-align: right; font-variant-numeric: tabular-nums; color: var(--text-bright); }
-.conv-break-cap { margin-top: 6px; font-size: 9.5px; color: var(--text-dim); line-height: 1.5; }
+/* ═══ WATCHTOWER ═══════════════════════════════════════════════════════════ */
+.wt-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+.wt-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 10px; background: var(--panel); }
+table.wt { width: 100%; border-collapse: collapse; font-size: 11px; min-width: 900px; }
+.wt th { text-align: left; font-size: 9px; letter-spacing: .14em; text-transform: uppercase; color: var(--text3); font-weight: 500;
+         padding: 9px 10px; border-bottom: 1px solid var(--border2); white-space: nowrap; background: rgba(255,255,255,0.02); }
+.wt td { padding: 7px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; vertical-align: middle; }
+.wt tbody tr { cursor: pointer; }
+.wt tbody tr:hover { background: var(--bg3); }
+.wt .tkr { font-weight: 600; color: var(--text1); letter-spacing: .05em; }
+.wt .nm { color: var(--text3); font-size: 9px; max-width: 150px; overflow: hidden; text-overflow: ellipsis; display: block; }
+.wt .num { font-variant-numeric: tabular-nums; }
+.wt-spark { width: 92px; height: 26px; display: block; }
+.wt-verdict { font-size: 9px; letter-spacing: .08em; border-radius: 3px; padding: 2.5px 7px; font-weight: 600; }
+.wt-verdict.L { background: var(--green-dim); color: var(--up); }
+.wt-verdict.S { background: var(--red-dim); color: var(--dn); }
+.wt-verdict.N { background: rgba(255,255,255,.05); color: var(--text3); font-weight: 400; }
+.wt .glyphs { letter-spacing: 3px; color: var(--ice); font-size: 12px; }
+.wt .evt { color: var(--amber); }
+.wt-more { text-align: center; margin-top: 12px; }
 
-/* ─── Book KPI strip ────────────────────────────────────────────────────── */
-.book-kpis {
-  display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
-  margin-bottom: 14px;
-}
-@media (max-width: 760px) { .book-kpis { grid-template-columns: repeat(2, 1fr); } }
-.book-kpi {
-  border: 1px solid var(--border); padding: 10px 12px;
-  background: var(--bg2);
-}
-.book-kpi-label {
-  font-family: var(--mono); font-size: 9px; letter-spacing: 0.18em;
-  text-transform: uppercase; color: var(--text-dim);
-  margin-bottom: 5px;
-}
-.book-kpi-value {
-  font-family: var(--mono); font-size: 19px; font-weight: 500;
-  color: var(--text-bright); letter-spacing: -0.02em;
-  font-variant-numeric: tabular-nums;
-}
-.book-kpi-sub {
-  font-family: var(--mono); font-size: 9px; color: var(--text-dim);
-  margin-top: 2px; letter-spacing: 0.06em;
-}
+/* ═══ REPORT DRAWER — one company, every dot ═══════════════════════════════ */
+.drawer-scrim { position: fixed; inset: 0; z-index: 90; background: rgba(3,5,10,.55); display: none; }
+.drawer-scrim.open { display: block; }
+.drawer { position: fixed; top: 0; right: 0; bottom: 0; z-index: 91; width: min(640px, 100vw); overflow-y: auto;
+          background: rgba(9,13,21,.975); border-left: 1px solid var(--border2); box-shadow: -24px 0 60px rgba(0,0,0,.5);
+          transform: translateX(105%); transition: transform .3s cubic-bezier(.2,.8,.2,1); padding: 24px 24px 44px; }
+.drawer.open { transform: none; }
+.dr-x { position: absolute; right: 16px; top: 16px; background: none; border: 1px solid var(--border2); color: var(--text3);
+        border-radius: 4px; width: 30px; height: 30px; cursor: pointer; font-size: 15px; }
+.dr-x:hover { color: var(--text1); }
+.dr-kick { font-size: 9px; letter-spacing: .26em; text-transform: uppercase; color: var(--amber); }
+.dr-head { display: flex; align-items: flex-end; gap: 14px; margin-top: 6px; padding-right: 40px; }
+.dr-name { font-family: var(--sans); font-weight: 800; font-size: 26px; color: var(--text1); letter-spacing: -0.015em; line-height: 1.05; }
+.dr-name small { display: block; font-family: var(--mono); font-weight: 400; font-size: 10px; letter-spacing: .12em; color: var(--text3);
+                 text-transform: uppercase; margin-top: 5px; }
+.dr-pos { margin-left: auto; text-align: right; flex: 0 0 auto; }
+.dr-pos .v { font-size: 30px; font-weight: 600; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; line-height: 1; }
+.dr-pos .l { font-size: 9px; letter-spacing: .16em; text-transform: uppercase; color: var(--text3); margin-top: 4px; }
+.dr-when { display: flex; gap: 8px; flex-wrap: wrap; margin: 14px 0 4px; }
+.dr-when span { font-size: 10px; letter-spacing: .06em; padding: 4px 9px; border-radius: 3px; border: 1px solid var(--border2); color: var(--text2); }
+.dr-when span.am { color: var(--amber); border-color: rgba(245,166,35,.4); background: rgba(245,166,35,.06); }
+.dr-sec { margin-top: 22px; }
+.dr-sec h4 { font-size: 9px; font-weight: 500; letter-spacing: .2em; text-transform: uppercase; color: var(--amber); margin-bottom: 10px;
+             display: flex; justify-content: space-between; gap: 10px; }
+.dr-sec h4 small { color: var(--text4); letter-spacing: .06em; text-transform: none; font-size: 9px; }
+.dr-chart { position: relative; }
+.dr-chart svg { display: block; width: 100%; overflow: visible; }
+.dr-chart .gl { stroke: rgba(255,255,255,0.05); } .dr-chart .ax { stroke: rgba(255,255,255,0.16); }
+.dr-chart text { font-family: var(--mono); font-size: 9px; fill: var(--text3); }
+.dr-chart .px { fill: none; stroke: var(--text1); stroke-width: 1.6; stroke-linejoin: round; }
+.dr-chart .si { fill: none; stroke: var(--dn); stroke-width: 1.6; }
+.dr-chart .si-a { fill: rgba(240,96,96,0.08); stroke: none; }
+.dr-chart .xh { stroke: rgba(232,238,247,0.35); stroke-dasharray: 2 3; }
+.kv { display: flex; justify-content: space-between; gap: 12px; font-size: 11px; padding: 5px 0; border-bottom: 1px solid var(--border); }
+.kv span:first-child { color: var(--text3); }
+.kv b { font-weight: 500; color: var(--text1); font-variant-numeric: tabular-nums; text-align: right; }
+.dr-ev { display: grid; grid-template-columns: 150px minmax(0, 1fr) 54px; gap: 10px; align-items: center; font-size: 10.5px; padding: 5px 0;
+         border-bottom: 1px solid var(--border); }
+.dr-ev .l { color: var(--text2); } .dr-ev .l small { display: block; color: var(--text4); font-size: 9px; }
+.dr-ev .t { position: relative; height: 8px; background: var(--bg3); border-radius: 2px; }
+.dr-ev .t::after { content: ''; position: absolute; left: 50%; top: -2px; bottom: -2px; width: 1px; background: rgba(255,255,255,.2); }
+.dr-ev .t i { position: absolute; top: 0; bottom: 0; border-radius: 2px; }
+.dr-ev .v { text-align: right; font-variant-numeric: tabular-nums; color: var(--text1); }
+.dr-list { font-size: 10.5px; }
+.dr-li { display: grid; grid-template-columns: 70px minmax(0, 1fr) auto; gap: 10px; padding: 5px 0; border-bottom: 1px solid var(--border); align-items: baseline; }
+.dr-li .d { color: var(--text4); font-size: 9.5px; font-variant-numeric: tabular-nums; }
+.dr-li .n { color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dr-li .n small { color: var(--text4); margin-left: 6px; }
+.dr-li .r { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.dr-li.closed .d { color: var(--amber); }
+.dr-mix { display: flex; height: 12px; border-radius: 3px; overflow: hidden; margin: 4px 0 6px; gap: 2px; }
+.dr-mix i { display: block; height: 100%; }
+.dr-mix-l { display: flex; justify-content: space-between; font-size: 9px; color: var(--text4); letter-spacing: .06em; }
+.dr-rng { position: relative; height: 22px; margin: 10px 4px 2px; }
+.dr-rng .ln { position: absolute; left: 0; right: 0; top: 10px; height: 2px; background: var(--bg3); border-radius: 1px; }
+.dr-rng .band { position: absolute; top: 9px; height: 4px; background: rgba(79,195,247,.35); border-radius: 2px; }
+.dr-rng .mk { position: absolute; top: 4px; width: 2px; height: 14px; margin-left: -1px; border-radius: 1px; }
+.dr-rng .mk.px { background: var(--text1); } .dr-rng .mk.tg { background: var(--ice); }
+.dr-rng-l { display: flex; justify-content: space-between; font-size: 9px; color: var(--text4); font-variant-numeric: tabular-nums; }
+.dr-cta { display: inline-flex; margin-top: 26px; font-size: 10px; letter-spacing: .14em; text-transform: uppercase; text-decoration: none;
+          color: var(--amber); border: 1px solid rgba(245,166,35,.45); border-radius: 4px; padding: 8px 14px; }
+.dr-cta:hover { background: rgba(245,166,35,.08); }
+.dr-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 9px; color: var(--text3); letter-spacing: .06em; margin-top: 8px; }
+.dr-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.dr-legend i { display: inline-block; }
 
-/* ─── Track Record table ─────────────────────────────────────────────── */
-.perf-table {
-  width: 100%; border-collapse: collapse;
-  font-family: var(--mono); font-size: 11px;
-  font-variant-numeric: tabular-nums;
+/* ── footer ──────────────────────────────────────────────────────────────── */
+.radar-footer { margin-top: 56px; padding-top: 20px; border-top: 1px solid var(--border); font-size: 9.5px; letter-spacing: .12em;
+                color: var(--text4); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; text-transform: uppercase; }
+
+/* ── responsive ──────────────────────────────────────────────────────────── */
+@media (max-width: 1100px) {
+  .rs-grid, .ir-grid, .mi-grid { grid-template-columns: minmax(0, 1fr); }
 }
-.perf-table th {
-  text-align: right; padding: 8px 10px;
-  border-bottom: 1px solid var(--border);
-  font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase;
-  color: var(--text-dim); font-weight: 500;
+@media (max-width: 980px) {
+  .hero { height: auto; display: flex; flex-direction: column; }
+  .hero::after { display: none; }
+  .hero-sky { position: relative; height: 420px; order: 2; }
+  .hero-copy { position: relative; left: 0; top: 0; bottom: auto; width: auto; padding: 22px 20px 6px; order: 1; }
+  .hero-cta { margin-top: 14px; }
+  .hero-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .hero-legend { display: none; }
+  .conviction-grid { grid-template-columns: minmax(0, 1fr); }
 }
-.perf-table th:first-child { text-align: left; }
-.perf-table td {
-  text-align: right; padding: 9px 10px;
-  border-bottom: 1px solid var(--border);
-  color: var(--text);
+@media (max-width: 860px) {
+  header { flex-wrap: wrap; }
+  header [data-intel-nav] { min-width: 0; flex: 1 1 100%; order: 3; }
+  header [data-intel-nav] .site-nav { justify-content: flex-start; }
 }
-.perf-table td:first-child { text-align: left; color: var(--text-bright); }
-.perf-table tr:last-child td { border-bottom: none; }
-.perf-table .pos { color: var(--green, #4ade80); }
-.perf-table .neg { color: var(--red,   #f87171); }
-.perf-empty {
-  color: var(--text-dim); font-family: var(--mono);
-  font-size: 11px; letter-spacing: 0.06em;
-  text-align: center; padding: 28px 8px;
+@media (max-width: 760px) {
+  .cal { border: 0; background: none; }
+  .cal-head { display: none; }
+  .cal-week { display: block; border: 1px solid var(--border); border-radius: 8px; background: var(--panel); margin-bottom: 10px; overflow: hidden; }
+  .cal-wk { flex-direction: row; align-items: baseline; gap: 10px; border-right: 0; border-bottom: 1px solid var(--border); padding: 8px 12px; }
+  .cal-wk .bar { flex: 1; margin: 0; align-self: center; }
+  .cal-day { display: grid; grid-template-columns: 58px minmax(0, 1fr); gap: 8px; border-right: 0; border-bottom: 1px solid var(--border);
+             min-height: 0; padding: 7px 12px; }
+  .cal-day:last-child { border-bottom: 0; }
+  .cal-day.empty { display: none; }
+  .cal-dh { flex-direction: column; margin: 0; }
+}
+@media (max-width: 700px) {
+  .page { padding: 0 16px 60px; }
+  .rail { margin: 0 -16px 14px; padding: 0 16px; }
+  .hero-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .hero-title { font-size: 28px; }
+  .hero-sky { height: 360px; }
+  .er-axis, .er-row { grid-template-columns: minmax(0, 1fr); }
+  .er-axis { padding: 8px 12px 6px; }
+  .er-row { grid-template-areas: "meta" "track" "chips"; padding: 12px 12px 11px; }
+  .er-axis-lbl { display: none; }
+  .er-track { margin-top: 10px; }
+  .sec-title h2 { font-size: 19px; white-space: normal; }
+  .sec-title .asof { margin-left: 0; }
+  .mi-headline { font-size: 16px; }
+  .drawer { padding: 20px 16px 40px; }
+  .dr-ev { grid-template-columns: 118px minmax(0, 1fr) 46px; }
 }
 
+/* small additions: calendar day labels per layout, tape halves, orbital flyout content */
+.cal-dh .dm { display: none; }
+@media (max-width: 760px) { .cal-dh .dd { display: none; } .cal-dh .dm { display: inline; } }
+.tape-track > span { display: inline-flex; height: 100%; }
+.flyout .tk { font-size: 13px; font-weight: 600; color: var(--text1); letter-spacing: .06em; }
+.flyout .dim { color: var(--text3); font-size: 9.5px; }
+.flyout .up { color: var(--up); } .flyout .dn { color: var(--dn); }
 </style>
 </head>
 <body>
 <div class="page">
 
-  <!-- ── Header ──────────────────────────────────────────────────────────── -->
   <header>
     <div class="logo-block">
       <div class="logo">Slensvik<span>radar</span></div>
-      <div class="logo-sub">Event Intelligence · XOSL / MERK</div>
+      <div class="logo-sub">Informed positioning ahead of Oslo Børs reports</div>
     </div>
     <div data-intel-nav></div>
     <div class="header-meta">
-      <div class="meta-pill live" id="statusPill">T-1 DATA</div>
-      <div class="meta-pill" id="tradeDatePill">—</div>
+      <div class="meta-pill" id="pillRadar"><span class="led"></span><span id="pillRadarT">Connecting …</span></div>
+      <div class="meta-pill" id="pillSeason">—</div>
     </div>
   </header>
 
-  <!-- ═══ ACT I — ORBITAL CATALYST RADAR ═══════════════════════════════════ -->
-  <section class="orbital" id="orbitalSection" aria-label="Event horizon — every company reporting in the next 35 days, by days to its report">
-    <canvas id="orbCanvas"></canvas>
-    <div class="orb-center">
-      <div class="orb-now">◉ Event Horizon</div>
-      <div class="orb-date" id="orbDate">—</div>
-      <div class="orb-counts" id="orbCounts">—</div>
+  <nav class="rail" id="rail" aria-label="Sections">
+    <a href="#horizon">Horizon</a><a href="#season">Season</a><a href="#radar">Event radar</a><a href="#scoreboard">Scoreboard</a>
+    <a href="#book">Book</a><a href="#record">Track record</a><a href="#market">Tape</a><a href="#watchtower">Watchtower</a>
+    <span class="rail-asof" id="railAsof"></span>
+  </nav>
+
+  <div class="tape" id="tape" aria-label="Upcoming reports, in date order"><div class="tape-track" id="tapeTrack"></div></div>
+
+  <!-- ═══ HORIZON — every report ahead, by days to go ═══════════════════════ -->
+  <section class="hero" id="horizon" aria-label="Event horizon — every company reporting in the next 35 days, by days to its report">
+    <div class="hero-sky" id="orbitalSection">
+      <canvas id="orbCanvas" role="img" aria-label="Orbital map of upcoming reports: ring = days to report, size = positioning, colour = direction"></canvas>
+      <div class="orb-center">
+        <div class="orb-now">◉ Event horizon</div>
+        <div class="orb-date" id="orbDate">—</div>
+        <div class="orb-counts" id="orbCounts">—</div>
+      </div>
+      <div class="orb-status" id="orbStatus"></div>
+      <div class="hero-legend"><span><b>Ring</b> days to report</span><span><b>Size</b> positioning</span><span><b>Colour</b> direction</span><span><b>Pulse</b> dark-pool days</span><span><b>Trail</b> run-up</span></div>
+      <div class="flyout" id="orbFlyout"></div>
     </div>
-    <div class="orb-status" id="orbStatus"></div>
-    <div class="orb-hint">ring = days to report · size = positioning · colour = direction · pulse = dark-pool days · trail = run-up · click a body for its dossier</div>
-    <div class="orb-flyout" id="orbFlyout"></div>
+    <div class="hero-copy">
+      <div class="hero-kicker" id="heroKicker">◉ Reporting season</div>
+      <h1 class="hero-title">Who is positioning <em>before</em> the numbers?</h1>
+      <p class="hero-lede">Dark-pool prints that move the price, short sellers building, insiders' last trades before their
+        closed period — lined up against every company's next report, then graded on the reaction.</p>
+      <div class="hero-stats" id="heroStats">
+        <div class="hs"><div class="l">Reports ahead</div><div class="v">—</div><div class="s">&nbsp;</div></div>
+        <div class="hs"><div class="l">Positioned</div><div class="v">—</div><div class="s">&nbsp;</div></div>
+        <div class="hs"><div class="l">Insiders locked out</div><div class="v">—</div><div class="s">&nbsp;</div></div>
+        <div class="hs"><div class="l">Next up</div><div class="v">—</div><div class="s">&nbsp;</div></div>
+      </div>
+      <div class="hero-cta"><a href="#season">Season calendar ↓</a><a href="#radar">The dots ↓</a><a href="#scoreboard">Scoreboard ↓</a></div>
+    </div>
   </section>
 
-  <!-- ═══ EVENT RADAR — every report ahead and the dots leading into it ═════ -->
-  <div class="section" id="sec-events">
-    <div class="section-head">
-      <div class="section-title">◬ Event Radar · Reporting Season</div>
-      <div class="section-desc">Every company reporting in the next five weeks and the dots leading into it — dark-pool pressure since the last report, short sellers building, insiders' last trades before their 30-day closed period, analysts, the run-up. Positioning scores the two groups that can trade right up to the report: dark-pool flow and short sellers.</div>
-      <div class="section-count" id="erCount">—</div>
+  <!-- ═══ SEASON — the financial calendar as a board ═══════════════════════ -->
+  <section class="sec" id="season">
+    <div class="sec-title">
+      <h2><span class="g">▦</span>Season calendar</h2>
+      <p>Every results date on the companies' filed financial calendars for the next five weeks. Tinted names have
+        dark-pool flow or short sellers leaning into their report — the deeper the tint, the stronger the positioning.
+        Click a name for its dots.</p>
+      <span class="asof" id="calAsof"></span>
     </div>
-    <div class="section-body">
-      <div class="book-kpis" id="erKpis"></div>
-      <div class="er-controls" id="erFilters">
+    <div class="cal" id="calBoard"><div class="empty">Loading the calendar …</div></div>
+    <div class="cal-legend">
+      <span><span class="cal-chip long" style="--p:.75"><i>▲</i> TKR <b>62</b></span> leaning long</span>
+      <span><span class="cal-chip short" style="--p:.75"><i>▼</i> TKR <b>73</b></span> leaning short</span>
+      <span><span class="cal-chip">TKR</span> quiet</span>
+      <span><span class="cal-chip est">TKR</span> estimated date</span>
+    </div>
+  </section>
+
+  <!-- ═══ EVENT RADAR — the dots, report by report ═════════════════════════ -->
+  <section class="sec" id="radar">
+    <div class="sec-title">
+      <h2><span class="g">◬</span>Event radar</h2>
+      <p>One row per report on a shared calendar: the run-up since the last report, dark-pool days (buyers above the
+        line, sellers below), insider trades as they were published, the 30-day closed period and the report itself,
+        with the price drawn faintly behind. Positioning scores the traders who can act right up to the report —
+        dark-pool flow and short sellers; insiders, analysts and the run-up are context.</p>
+      <span class="asof" id="erCount">—</span>
+    </div>
+    <div class="er-top">
+      <div class="er-controls" id="erFilters" role="group" aria-label="Filter reports">
         <button class="wt-filter on" data-f="positioned">Positioned</button>
         <button class="wt-filter" data-f="date">All by date</button>
         <button class="wt-filter" data-f="long">▲ Long</button>
@@ -651,166 +653,159 @@ table.wt { width: 100%; border-collapse: collapse; font-family: var(--mono); fon
         <button class="wt-filter" data-f="week">Next 7 days</button>
         <button class="wt-filter" data-f="insiders">Insider trades</button>
       </div>
+      <span class="sort">Click a row for every dot</span>
+    </div>
+    <div class="er-board">
       <div class="er-axis" id="erAxis"><div class="er-axis-lbl">Report · positioning</div><div class="er-axis-track"></div></div>
       <div class="er-list" id="erList"><div class="conv-empty">LOADING THE CALENDAR …</div></div>
-      <div class="er-more"><button class="wt-filter" id="erMore" style="display:none">Show all</button></div>
+    </div>
+    <div class="er-foot">
       <div class="er-legend">
         <span><span class="k"><span class="er-dot b"></span></span>Dark-pool buy day</span>
         <span><span class="k"><span class="er-dot s"></span></span>Dark-pool sell day</span>
-        <span><span class="k"><span class="er-dot b top"></span></span>Top-decile dark day</span>
-        <span><span class="k"><span class="er-ins b"></span></span>Insider buy / <span class="k"><span class="er-ins s"></span></span>sell (published)</span>
-        <span><span class="k"><span class="er-win"></span></span>Run-up since last report</span>
-        <span><span class="k"><span class="er-closed"></span></span>Closed period (30d)</span>
-        <span><span class="k"><span class="er-rep"></span></span>Report · <span class="k"><span class="er-rep est"></span></span>estimated date</span>
+        <span><span class="k"><span class="er-dot b top"></span></span>Top-decile</span>
+        <span><span class="k"><span class="er-ins b"></span></span>Insider buy / <span class="k"><span class="er-ins s"></span></span>sell</span>
+        <span><span class="k"><span class="er-win"></span></span>Run-up</span>
+        <span><span class="k"><span class="er-closed"></span></span>Closed period</span>
+        <span><span class="k"><span class="er-rep"></span></span>Report · <span class="k"><span class="er-rep est"></span></span>estimated</span>
       </div>
-      <div class="er-note" id="erNote"></div>
+      <div class="er-more"><button class="wt-filter" id="erMore" style="display:none">Show all</button></div>
     </div>
-  </div>
+    <div class="er-note" id="erNote"></div>
+  </section>
 
-  <!-- ═══ REPORT REACTIONS — season scoreboard ══════════════════════════════ -->
-  <div class="section" id="sec-reactions">
-    <div class="section-head">
-      <div class="section-title">◈ Report Reactions · Season Scoreboard</div>
-      <div class="section-desc">Did the dots call it? Every report graded on its reaction — the close before it to the close after it, and four sessions on — against same-size peers, with the positioning read two sessions before: the last evening you could still act on.</div>
-      <div class="section-count" id="rsCount">—</div>
+  <!-- ═══ SCOREBOARD — did the dots call it? ═══════════════════════════════ -->
+  <section class="sec" id="scoreboard">
+    <div class="sec-title">
+      <h2><span class="g">◈</span>Report reactions</h2>
+      <p>Did the dots call it? Every report graded on its reaction — the close before it to the close after it, and four
+        sessions on — against same-size peers, using the positioning the radar showed two sessions before: the last
+        evening you could still act on.</p>
+      <span class="asof" id="rsCount">—</span>
     </div>
-    <div class="section-body">
-      <div class="rs-tabs" id="rsTabs"></div>
-      <div class="ir-kpis" id="rsKpis"></div>
-      <div class="rs-grid">
-        <div>
-          <div class="ir-sub">Report-day reaction vs same-size peers, by what the radar saw two sessions before</div>
-          <div class="table-wrap"><table class="perf-table"><thead><tr>
-            <th>Evidence before the report</th><th>N</th><th>Day mean</th><th>Day median</th><th>+5d mean</th><th>Called</th>
-          </tr></thead><tbody id="rsTable"><tr><td colspan="6" class="perf-empty">LOADING …</td></tr></tbody></table></div>
-        </div>
-        <div>
-          <div class="ir-sub">Each report · positioning (◂ short · long ▸) vs report-day move</div>
-          <div class="rs-plot" id="rsPlot"></div>
-        </div>
+    <div class="rs-season"><div class="rs-tabs" id="rsTabs"></div><div class="rs-prog" id="rsProg"></div></div>
+    <div class="ir-kpis" id="rsKpis"></div>
+    <div class="rs-grid">
+      <div class="panel">
+        <h3><span><span class="g">≡</span>By what the radar saw</span><small>vs same-size peers</small></h3>
+        <div class="table-wrap"><table class="perf-table"><thead><tr>
+          <th>Evidence before the report</th><th>N</th><th>Day mean</th><th>Day median</th><th>+5d mean</th><th>Called</th>
+        </tr></thead><tbody id="rsTable"><tr><td colspan="6" class="perf-empty">LOADING …</td></tr></tbody></table></div>
       </div>
-      <div class="ir-note" id="rsNote" style="margin-top:12px"></div>
-    </div>
-  </div>
-
-  <!-- ═══ ACT II — MARKET INTELLIGENCE ═════════════════════════════════════ -->
-  <div class="section" id="sec-market">
-    <div class="section-head">
-      <div class="section-title">⊞ Market Intelligence</div>
-      <div class="section-desc">The whole tape, one place — turnover, breadth, dark share, flow leaders, and the session minute by minute.</div>
-      <div class="section-count" id="miCount">—</div>
-    </div>
-    <div class="mi-headline" id="miHeadline">Reading the tape …</div>
-    <div class="mi-grid">
-      <div class="mi-band-box">
-        <div class="mi-band-head"><span>Session flow · NOK per minute</span><span id="miBandMeta">—</span></div>
-        <canvas id="miBand"></canvas>
-      </div>
-      <div class="mi-tiles" id="miTiles"></div>
-    </div>
-    <div class="mi-leaders" id="miLeaders"></div>
-  </div>
-
-  <!-- ═══ ACT III — TODAY'S BOOK ═══════════════════════════════════════════ -->
-  <div class="section" id="sec-conviction">
-    <div class="section-head">
-      <div class="section-title">▣ Today's Book</div>
-      <div class="section-desc">The event-agnostic book, beside the calendar: ranked by agreeing evidence from informed participants — dark-pool impact, insiders buying, short sellers building. Conflicting evidence costs points and no single source can max the score. Click any card for the dossier.</div>
-      <div class="section-count" id="convictionCount">—</div>
-    </div>
-    <div class="section-body">
-      <div class="book-kpis" id="bookKpis"></div>
-      <div class="conviction-grid">
-        <div class="conviction-col">
-          <div class="conv-col-head">
-            <span class="conv-col-arrow long">▲</span>
-            <span class="conv-col-label">LONG CONVICTION</span>
-            <span class="conv-col-count" id="longCount">—</span>
-          </div>
-          <div class="conv-list" id="longList"><div class="conv-empty">LOADING …</div></div>
-        </div>
-        <div class="conviction-col">
-          <div class="conv-col-head">
-            <span class="conv-col-arrow short">▼</span>
-            <span class="conv-col-label">SHORT CONVICTION</span>
-            <span class="conv-col-count" id="shortCount">—</span>
-          </div>
-          <div class="conv-list" id="shortList"><div class="conv-empty">LOADING …</div></div>
-        </div>
+      <div class="panel">
+        <h3><span><span class="g">⁘</span>Each report</span><small>◂ short · positioning · long ▸ against the report-day move</small></h3>
+        <div class="rs-plot" id="rsPlot"></div>
       </div>
     </div>
-  </div>
+    <div class="note" id="rsNote"></div>
+  </section>
 
-  <!-- ═══ Backtest Regrade — the reconstructed book (in-sample) ────────────── -->
-  <div class="section" id="sec-intel-report">
-    <div class="section-head collapsible" onclick="toggleSection('sec-intel-report')">
-      <div class="section-title">◎ Backtest Regrade · In-Sample</div>
-      <div class="section-desc">Reconstructed with TODAY's formula, not what was actually live at the time — a backtest, not a live record. See Forward Track Record below for the honest test.</div>
-      <div class="section-count" id="irCount">—</div>
-      <span class="section-chevron">▾</span>
+  <!-- ═══ BOOK — the event-agnostic conviction book ════════════════════════ -->
+  <section class="sec" id="book">
+    <div class="sec-title">
+      <h2><span class="g">▣</span>Today's book<span class="tag ctx">event-agnostic</span></h2>
+      <p>Beside the calendar: names ranked by agreeing evidence from informed participants — dark-pool impact, insiders
+        buying, short sellers building. Conflicting evidence costs points and no single source can max the score.
+        Click a card for the dossier.</p>
+      <span class="asof" id="convictionCount">—</span>
     </div>
-    <div class="section-body">
+    <div class="book-kpis" id="bookKpis"></div>
+    <div class="conviction-grid" id="bookGrid">
+      <div class="conviction-col">
+        <div class="conv-col-head"><span class="conv-col-arrow long">▲</span><span class="conv-col-label">LONG CONVICTION</span><span class="conv-col-count" id="longCount">—</span></div>
+        <div class="conv-list" id="longList"><div class="conv-empty">LOADING …</div></div>
+      </div>
+      <div class="conviction-col">
+        <div class="conv-col-head"><span class="conv-col-arrow short">▼</span><span class="conv-col-label">SHORT CONVICTION</span><span class="conv-col-count" id="shortCount">—</span></div>
+        <div class="conv-list" id="shortList"><div class="conv-empty">LOADING …</div></div>
+      </div>
+    </div>
+    <div class="er-more" style="margin-top:12px"><button class="wt-filter" id="bookMore">Show the full book</button></div>
+  </section>
+
+  <!-- ═══ TRACK RECORD — the book, graded ══════════════════════════════════ -->
+  <section class="sec" id="record">
+    <div class="sec-title">
+      <h2><span class="g">◇</span>Track record</h2>
+      <p>How the book has done, graded from the next close against same-size peers. The forward record was frozen live,
+        day by day; the other two rebuild history with today's formula — in-sample, leads rather than proof.</p>
+    </div>
+    <div class="rec-tabs" id="recTabs" role="tablist" aria-label="Track record views">
+      <button class="chip" role="tab" aria-pressed="true" data-pane="fr">Forward · live</button>
+      <button class="chip" role="tab" aria-pressed="false" data-pane="ce">Entries ≥ 60 · in-sample</button>
+      <button class="chip" role="tab" aria-pressed="false" data-pane="ir">Backtest regrade · in-sample</button>
+    </div>
+    <div class="rec-pane on" id="pane-fr" role="tabpanel">
+      <div class="panel">
+        <h3><span><span class="g">◈</span>Forward track record</span><small id="frCount">—</small></h3>
+        <div class="table-wrap"><table class="perf-table"><thead><tr>
+          <th>Horizon</th><th>Matured</th><th>Long hit</th><th>Long med excess</th><th>Short hit</th><th>Short med excess</th>
+        </tr></thead><tbody id="frTable"><tr><td colspan="6" class="perf-empty">LOADING …</td></tr></tbody></table></div>
+      </div>
+      <div class="note" id="frNote"></div>
+    </div>
+    <div class="rec-pane" id="pane-ce" role="tabpanel">
+      <div class="ir-kpis" id="ceKpis"></div>
+      <div class="panel">
+        <h3><span><span class="g">◇</span>Conviction entries</span><small id="ceCount">—</small></h3>
+        <div class="table-wrap"><table class="perf-table"><thead><tr>
+          <th>Horizon</th><th>Long N</th><th>Long hit</th><th>Long med excess</th><th>Short N</th><th>Short hit</th><th>Short med excess</th>
+        </tr></thead><tbody id="ceTable"><tr><td colspan="7" class="perf-empty">LOADING …</td></tr></tbody></table></div>
+      </div>
+      <div class="note" id="ceNote">Buy the day conviction first reaches 60, hold for N days — one entry per name per streak.
+        Reconstructed with today's point-in-time formula (conviction v4, live since 2026-09-29) applied to each historical day —
+        in-sample, not proof. Conviction ≥ 60 only, so N is small by design: treat every row as a lead, not a verdict. Hit = beat
+        same-size peers in the called direction, measured from the next close; median in % (sign-adjusted for shorts).</div>
+    </div>
+    <div class="rec-pane" id="pane-ir" role="tabpanel">
       <div class="ir-kpis" id="irKpis"></div>
       <div class="ir-grid">
-        <div>
-          <div class="ir-sub">Book scorecard · top-10 per side · vs same-size peers, from the next close</div>
+        <div class="panel">
+          <h3><span><span class="g">◎</span>Book scorecard</span><small id="irCount">—</small></h3>
+          <div class="ir-sub">Top-10 per side · vs same-size peers, from the next close</div>
           <div class="table-wrap"><table class="perf-table"><thead><tr>
             <th>Side</th><th>Calls</th><th>+1d hit</th><th>+5d hit</th><th>+5d med</th><th>+10d hit</th><th>+10d med</th>
           </tr></thead><tbody id="irScore"><tr><td colspan="7" class="perf-empty">LOADING …</td></tr></tbody></table></div>
           <div class="ir-sub" style="margin-top:16px">Best ◈ and worst ◇ graded calls (+10d excess)</div>
           <div id="irCalls" style="font-size:10.5px; line-height:2.1">—</div>
         </div>
-        <div>
-          <div class="ir-sub">Signal league · median move vs same-size peers, 10 sessions from the next close after first firing</div>
+        <div class="panel">
+          <h3><span><span class="g">≡</span>Signal league</span><small>median vs peers, 10 sessions</small></h3>
           <div id="irLeague">—</div>
         </div>
       </div>
       <div class="ir-reads" id="irReads"></div>
       <div class="ir-note" id="irNote"></div>
     </div>
-  </div>
+  </section>
 
-  <!-- ═══ Max Conviction Entries — first-hit-only entry study (in-sample) ──── -->
-  <div class="section" id="sec-conv-entries">
-    <div class="section-head">
-      <div class="section-title">◇ Conviction Entries · In-Sample</div>
-      <div class="section-desc">Buy the day conviction first reaches 60, hold for N days — one entry per name per streak, not one row for every day it lingered at the top.</div>
-      <div class="section-count" id="ceCount">—</div>
+  <!-- ═══ THE TAPE — the last session ══════════════════════════════════════ -->
+  <section class="sec" id="market">
+    <div class="sec-title">
+      <h2><span class="g">⊞</span>The tape</h2>
+      <p>The last session in one place — turnover, breadth, true dark share, flow leaders and the session minute by minute.</p>
+      <span class="asof" id="miCount">—</span>
     </div>
-    <div class="section-body">
-      <div class="ir-kpis" id="ceKpis"></div>
-      <div class="table-wrap"><table class="perf-table"><thead><tr>
-        <th>Horizon</th><th>Long N</th><th>Long hit</th><th>Long med excess</th><th>Short N</th><th>Short hit</th><th>Short med excess</th>
-      </tr></thead><tbody id="ceTable"><tr><td colspan="7" class="perf-empty">LOADING …</td></tr></tbody></table></div>
-      <div class="ir-note" id="ceNote">Reconstructed with today's point-in-time formula (conviction v4, live since 2026-09-29) applied to each historical day — in-sample, not proof, same caveat as Backtest Regrade above. Conviction ≥ 60 only, so N is small by design: treat every row here as a lead, not a verdict. Hit = beat same-size peers in the called direction, measured from the next close; median in % (sign-adjusted for shorts).</div>
+    <div class="mi-headline" id="miHeadline">Reading the tape …</div>
+    <div class="mi-grid">
+      <div class="panel">
+        <div class="mi-band-head"><span>Session flow · NOK per minute</span><span id="miBandMeta">—</span></div>
+        <canvas id="miBand"></canvas>
+      </div>
+      <div class="mi-tiles" id="miTiles"></div>
     </div>
-  </div>
+    <div class="mi-leaders" id="miLeaders"></div>
+  </section>
 
-  <!-- ═══ Forward Track Record — the true point-in-time test ───────────────── -->
-  <div class="section" id="sec-forward-record">
-    <div class="section-head">
-      <div class="section-title">◈ Forward Track Record · Live</div>
-      <div class="section-desc">Every conviction call is snapshotted once, live, on the day it's made — no reconstruction, no hindsight. Forward returns fill in as trading days pass.</div>
-      <div class="section-count" id="frCount">—</div>
+  <!-- ═══ WATCHTOWER — every active name ═══════════════════════════════════ -->
+  <section class="sec" id="watchtower">
+    <div class="sec-title">
+      <h2><span class="g">◭</span>Watchtower</h2>
+      <p>Every active name, micro and macro — price, flow, evidence, catalysts. Any row opens the dossier.</p>
+      <span class="asof" id="wtCount">—</span>
     </div>
-    <div class="section-body">
-      <div class="ir-kpis" id="frKpis"></div>
-      <div class="table-wrap"><table class="perf-table"><thead><tr>
-        <th>Horizon</th><th>Matured</th><th>Long hit</th><th>Long med excess</th><th>Short hit</th><th>Short med excess</th>
-      </tr></thead><tbody id="frTable"><tr><td colspan="6" class="perf-empty">LOADING …</td></tr></tbody></table></div>
-      <div class="ir-note" id="frNote"></div>
-    </div>
-  </div>
-
-  <!-- ═══ ACT IV — WATCHTOWER ══════════════════════════════════════════════ -->
-  <div class="section" id="sec-watchtower">
-    <div class="section-head">
-      <div class="section-title">◭ Watchtower</div>
-      <div class="section-desc">Every active name, micro and macro — price, flow, evidence, catalysts. Any row opens the dossier.</div>
-      <div class="section-count" id="wtCount">—</div>
-    </div>
-    <div class="section-body">
-      <div class="wt-filters" id="wtFilters">
+    <div class="wt-top">
+      <div class="wt-filters" id="wtFilters" role="group" aria-label="Filter names">
         <button class="wt-filter on" data-f="all">All</button>
         <button class="wt-filter" data-f="long">▲ Long</button>
         <button class="wt-filter" data-f="short">▼ Short</button>
@@ -818,25 +813,31 @@ table.wt { width: 100%; border-collapse: collapse; font-family: var(--mono); fon
         <button class="wt-filter" data-f="insider">Insiders</button>
         <button class="wt-filter" data-f="event">Event ≤7d</button>
       </div>
-      <div class="wt-wrap">
-        <table class="wt">
-          <thead><tr>
-            <th>Name</th><th>Close</th><th>1D</th><th>Session</th><th>Verdict</th>
-            <th>Signals 14d</th><th>Dark</th><th>Insiders 7d</th><th>Adv-Z</th><th>Catalyst</th>
-          </tr></thead>
-          <tbody id="wtBody"><tr><td colspan="10" class="dim" style="padding:20px">LOADING THE TAPE …</td></tr></tbody>
-        </table>
-      </div>
-      <div class="wt-more"><button class="wt-filter" id="wtMore" style="display:none">Show all names</button></div>
     </div>
-  </div>
+    <div class="wt-wrap">
+      <table class="wt">
+        <thead><tr>
+          <th>Name</th><th>Close</th><th>1D</th><th>Session</th><th>Verdict</th>
+          <th>Signals 14d</th><th>Dark</th><th>Insiders 7d</th><th>Adv-Z</th><th>Catalyst</th>
+        </tr></thead>
+        <tbody id="wtBody"><tr><td colspan="10" class="dim" style="padding:20px">LOADING THE TAPE …</td></tr></tbody>
+      </table>
+    </div>
+    <div class="wt-more"><button class="wt-filter" id="wtMore" style="display:none">Show all names</button></div>
+  </section>
 
   <footer class="radar-footer">
-    <span>Slensvikradar · built nightly from the Euronext trade tape</span>
+    <span>Slensvikradar · report calendar from NewsWeb · flow from the Euronext trade tape</span>
     <span>the finest intelligence on this side of the Isen</span>
   </footer>
 
 </div>
+
+<div class="drawer-scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-label="Report dossier" aria-hidden="true">
+  <button class="dr-x" id="drawerX" aria-label="Close">×</button>
+  <div id="drawerBody"></div>
+</aside>
 
 <script>
 
@@ -1385,7 +1386,7 @@ function starLayer(W, H, density, bright) {
 function makeOrbital(canvas) {
   const ctx = canvas.getContext('2d');
   let bodies = [], W = 0, H = 0, raf = 0, hoverIdx = -1, inView = true, lastDraw = 0;
-  let stars = null, starsFar = null, meteor = null;
+  let stars = null, starsFar = null, meteor = null, stacked = false;
   let nextMeteorAt = performance.now() + 7000 + Math.random() * 16000;
   const t0 = performance.now();
 
@@ -1395,13 +1396,17 @@ function makeOrbital(canvas) {
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     canvas.width = W * dpr; canvas.height = H * dpr;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    stacked = getComputedStyle(canvas.parentElement).position !== 'absolute';  // phones/tablets: copy above, sky centred
+    canvas.parentElement.style.setProperty('--orb-cx', geom().cx + 'px');   // the centre label follows the sky
     stars = starsFar = null;
     if (!raf) draw(performance.now());
   }
   function geom() {
-    const cx = W / 2, cy = H / 2;
+    const wide = !stacked;                 // the hero copy overlays the left: move the sky right
+    const cx = wide ? W * 0.63 : W / 2, cy = H / 2;
     const maxRy = H / 2 - 34;
-    const maxRx = Math.max(maxRy, Math.min(W / 2 - 70, maxRy * 2.6));
+    const maxRx = wide ? Math.max(maxRy, Math.min(W - cx - 40, maxRy * 2.3))
+                       : Math.max(maxRy, Math.min(W / 2 - 40, maxRy * 2.6));
     const inner = 0.22;   // innermost ring fraction (imminent events hug the core)
     return { cx, cy, maxRx, maxRy, inner };
   }
@@ -1590,7 +1595,7 @@ function initOrbital() {
       ${r.period || 'Report'} · ${erDate(r.report_date)} · T−${r.days_to_report}d <span class="dim">${r.date_source === 'calendar' ? 'filed calendar' : 'estimated date'}</span><br>
       <span class="${cls}">${b.side === 'NONE' ? 'quiet — no positioning' : `${b.side} ${b.size}`}</span>
       · dark ▲${r.dark_buy_days || 0} ▼${r.dark_sell_days || 0}${r.si_level != null ? ` · SI ${(+r.si_level).toFixed(2)}%${r.si_change != null ? ` (${erSigned(r.si_change, 2)}pp)` : ''}` : ''}<br>
-      <span class="dim">${r.ins_open_buyers ? `◐ ${r.ins_open_buyers} insider buyer${r.ins_open_buyers > 1 ? 's' : ''} · ` : ''}${r.in_closed_period ? 'closed period · ' : ''}${r.runup_pct != null ? `run-up ${erSigned(r.runup_pct, 1)}% · ` : ''}${ORB_COARSE ? 'tap again' : 'click'} for dossier</span>`;
+      <span class="dim">${r.ins_open_buyers ? `◐ ${r.ins_open_buyers} insider buyer${r.ins_open_buyers > 1 ? 's' : ''} · ` : ''}${r.in_closed_period ? 'closed period · ' : ''}${r.runup_pct != null ? `run-up ${erSigned(r.runup_pct, 1)}% · ` : ''}${ORB_COARSE ? 'tap again' : 'click'} for the dots</span>`;
     fly.style.display = 'block';
     fly.style.left = Math.max(4, Math.min(b.x + 20, sec.clientWidth - 280)) + 'px';
     fly.style.top = Math.max(8, b.y - 16) + 'px';
@@ -1609,7 +1614,7 @@ function initOrbital() {
     const i = orbital.hitTest(e.clientX - r.left, e.clientY - r.top);
     if (i < 0) { if (ORB_COARSE) { tapIdx = -1; orbital.setHover(-1); fly.style.display = 'none'; } return; }
     if (ORB_COARSE && i !== tapIdx) { tapIdx = i; orbital.setHover(i); showFly(i); return; }
-    drillIntoISIN(orbital.bodies[i].isin);
+    openReport(orbital.bodies[i].isin);
   });
 }
 
@@ -1625,7 +1630,7 @@ const ER_COLS = 'isin,ticker,name,report_date,fiscal_year,period,date_source,day
   'in_closed_period,prev_report,runup_from,runup_sessions,dark_buy_days,dark_sell_days,dark_top_days,ev_dark,' +
   'dark_days,si_level,si_change,si_date,ev_short,ins_open_buyers,ins_open_sellers,ins_closed_trades,ins_trades,' +
   'analyst_score,analyst_n,analyst_change,runup_pct,vol_ratio,agreement,families,positioning,direction,asof_date,' +
-  'target_upside_pct,target_n,conviction_side,conviction';
+  'target_upside_pct,target_n,conviction_side,conviction,price,ev_insider';
 let erRows = [], erFilter = 'positioned', erShowAll = false, erAsof = 0;
 
 const erDay = s => { const [y, m, d] = String(s).slice(0, 10).split('-').map(Number); return Date.UTC(y, m - 1, d) / 864e5; };
@@ -1724,7 +1729,7 @@ function erRowHTML(r) {
   const why = dir === 'none'
     ? 'no dark-pool lean and no short build-up in the run-up'
     : `dark ${erSigned(r.ev_dark, 2)} · shorts ${erSigned(r.ev_short, 2)} → agreement ${(+r.agreement).toFixed(2)}, ${r.families} agreeing famil${r.families === 1 ? 'y' : 'ies'}`;
-  return `<div class="er-row ${dir}" onclick="drillIntoISIN('${r.isin}')">
+  return `<div class="er-row ${dir}" tabindex="0" role="button" aria-label="${erEsc(tk)} — open the report dots" onclick="openReport('${r.isin}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openReport('${r.isin}')}">
     <div class="er-meta">
       <div class="er-l1"><span class="er-arrow ${dir}">${dir === 'long' ? '▲' : dir === 'short' ? '▼' : '◆'}</span>
         <span class="er-tk">${INTEL.tkLink(r.isin, erEsc(tk))}</span>
@@ -1733,7 +1738,7 @@ function erRowHTML(r) {
       <div class="er-when"><b>${r.period || 'Report'}</b> · ${erDate(r.report_date)} · T−${r.days_to_report}d<span class="er-src">${r.date_source === 'calendar' ? 'FILED' : 'EST'}</span></div>
       ${dir === 'none' ? '' : `<div class="er-bar"><i class="${dir}" style="width:${r.positioning}%"></i></div>`}
     </div>
-    <div class="er-track">${early ? `<span class="er-early" title="${early} insider trade${early > 1 ? 's' : ''} earlier in the open window, before this axis">← ${early}</span>` : ''}${t.join('')}</div>
+    <div class="er-track">${erPxSvg(r.isin)}${early ? `<span class="er-early" title="${early} insider trade${early > 1 ? 's' : ''} earlier in the open window, before this axis">← ${early}</span>` : ''}${t.join('')}</div>
     <div class="er-chips">${erChips(r, dir)}</div>
   </div>`;
 }
@@ -1764,6 +1769,7 @@ function renderEventRadar() {
 }
 
 function renderEventKpis(rows) {
+  // the headline numbers live in the hero now (the old KPI strip repeated them)
   const L = rows.filter(r => r.direction === 'LONG').length, S = rows.filter(r => r.direction === 'SHORT').length;
   const filed = rows.filter(r => r.date_source === 'calendar').length;
   const closed = rows.filter(r => r.in_closed_period).length;
@@ -1774,13 +1780,13 @@ function renderEventKpis(rows) {
   }
   const [bw, bn] = Object.entries(wk).sort((a, b) => b[1] - a[1])[0] || [null, 0];
   const nxt = rows.slice().sort((a, b) => erDay(a.report_date) - erDay(b.report_date))[0];
-  const tile = (l, v, s) => `<div class="book-kpi"><div class="book-kpi-label">${l}</div><div class="book-kpi-value">${v}</div><div class="book-kpi-sub">${s}</div></div>`;
-  document.getElementById('erKpis').innerHTML =
-    tile('Reports ahead', rows.length, `next ${ER_AHEAD} days · ${filed} on filed calendars`) +
-    tile('Positioned', `<span style="color:var(--green)">▲${L}</span> <span style="color:var(--red)">▼${S}</span>`, 'dark flow or short sellers leaning') +
-    tile('Insiders locked out', closed, 'inside the 30-day closed period') +
-    tile('Busiest week', bw ? `wk ${erDate(erIso(+bw), false)}` : '—',
-      `${bn} reports${nxt ? ` · next: ${erEsc(nxt.ticker || isinTicker(nxt.isin))} ${erDate(nxt.report_date, false)}` : ''}`);
+  const hs = (l, v, s) => `<div class="hs"><div class="l">${l}</div><div class="v">${v}</div><div class="s">${s}</div></div>`;
+  document.getElementById('heroStats').innerHTML =
+    hs('Reports ahead', rows.length, `next ${ER_AHEAD} days · ${filed} filed`) +
+    hs('Positioned', `<span class="up">▲${L}</span> <span class="dn">▼${S}</span>`, 'dark flow or shorts leaning') +
+    hs('Insiders locked out', closed, 'in the 30-day closed period') +
+    hs('Next up', nxt ? `${erEsc(nxt.ticker || isinTicker(nxt.isin))} <small class="muted">${erDate(nxt.report_date, false)}</small>` : '—',
+       bw ? `peak: wk of ${ddmm(erIso(+bw))} · ${bn} reports` : '');
 }
 
 function feedOrbital(rows) {
@@ -1807,11 +1813,15 @@ async function loadEventRadar() {
     erRows = rows.map(r => ({ ...r, positioning: +r.positioning || 0 }));
     erAsof = rows.length ? erDay(rows[0].asof_date) : erDay(new Date().toISOString());
     const L = erRows.filter(r => r.direction === 'LONG').length, S = erRows.filter(r => r.direction === 'SHORT').length;
-    document.getElementById('erCount').textContent = `${erRows.length} REPORTS · ${L}▲ ${S}▼`;
+    document.getElementById('erCount').textContent = `${erRows.length} REPORTS · ▲${L} ▼${S}`;
     erAxis();
     renderEventKpis(erRows);
     renderEventRadar();
     feedOrbital(erRows);
+    renderSeasonCalendar();
+    renderTape();
+    renderShellMeta();
+    loadEventPrices();                     // faint price lines behind the dots — re-renders the rows when in
     document.getElementById('erNote').innerHTML =
       `As of the ${rows.length ? erDate(rows[0].asof_date) : '—'} session. Report dates come from each company's filed financial calendar ` +
       `(NewsWeb), else last year's date + 52 weeks (EST). Dark days are mid-point prints that moved the price; top-decile days ` +
@@ -1893,6 +1903,12 @@ function rsPlot(rows) {
 
 function renderReactions() {
   const s = rsSeasons.find(x => x.key === rsActive);
+  const prog = document.getElementById('rsProg');
+  if (s && s.live) {
+    const [per, fy] = s.key.slice(2).split(' ');
+    const ahead = erRows.filter(r => r.period === per && String(r.fiscal_year) === fy).length, done = s.rows.length;
+    prog.innerHTML = `<span>${done} of ${done + ahead} ${per} reports graded</span><span class="bar"><i style="width:${done + ahead ? (done / (done + ahead) * 100).toFixed(0) : 0}%"></i></span><span>${ahead} ahead</span>`;
+  } else if (s) prog.innerHTML = `<span>Rebuilt with today's rules — in-sample</span>`;
   document.getElementById('rsTabs').innerHTML = rsSeasons.map(x =>
     `<button class="wt-filter${x.key === rsActive ? ' on' : ''}" data-k="${x.key}">${x.label}${x.rows.length ? ` · ${x.rows.length}` : ''}</button>`).join('');
   if (!s) return;
@@ -1945,9 +1961,12 @@ async function loadReactions() {
     const live = seasons(fwd, true).sort((a, b) => b.order - a.order);
     const recon = seasons(graded, false).filter(s => s.rows.length >= 5).sort((a, b) => b.order - a.order);
     await erReady;
-    const next = erRows.slice().sort((a, b) => erDay(a.report_date) - erDay(b.report_date))[0];
-    if (next && !live.some(s => s.key === `L ${next.period} ${next.fiscal_year}`)) {
-      live.unshift({ key: `L ${next.period} ${next.fiscal_year}`, label: `${next.period} ${next.fiscal_year} · live`, live: true, rows: [],
+    // the live placeholder is the season most upcoming reports belong to (a late filer's Q2 can be first in line)
+    const season = erSeasonLabel(erRows);
+    const next = erRows.filter(r => `${r.period} ${r.fiscal_year}` === season)
+      .sort((a, b) => erDay(a.report_date) - erDay(b.report_date))[0];
+    if (next && !live.some(s => s.key === `L ${season}`)) {
+      live.unshift({ key: `L ${season}`, label: `${season} · live`, live: true, rows: [],
         empty: `Grading starts with the first ${next.period} reports — ${erEsc(next.ticker || isinTicker(next.isin))} on ${erDate(next.report_date)}. ` +
                `Every evening's radar is frozen before anyone knows the reaction, so this season is the honest test.` });
     }
@@ -1971,6 +1990,26 @@ document.getElementById('rsTabs').addEventListener('click', e => {
   const b = e.target.closest('.wt-filter'); if (!b || !b.dataset.k) return;
   rsActive = b.dataset.k; renderReactions();
 });
+
+/* Faint price lines behind each row's dots — one fetch for every company on the radar, min–max scaled per
+   row across the axis's back window, so you can see what the price did around each dark-pool day. */
+let erPx = {};
+function erPxSvg(isin) {
+  const pts = erPx[isin];
+  if (!pts || pts.length < 3) return '';
+  const vs = pts.map(p => p[1]), lo = Math.min(...vs), hi = Math.max(...vs), span = hi - lo || 1;
+  const poly = pts.map(([d, v]) => `${erX(erIso(d)).toFixed(2)},${(35 - (v - lo) / span * 32).toFixed(2)}`).join(' ');
+  return `<svg class="er-px" viewBox="0 0 100 38" preserveAspectRatio="none" aria-hidden="true"><polyline points="${poly}"/></svg>`;
+}
+async function loadEventPrices() {
+  const isins = erRows.map(r => r.isin);
+  if (!isins.length) return;
+  const rows = await APIall('daily_close_adj',
+    `isin=in.(${isins.join(',')})&trade_date=gte.${erIso(erAsof - ER_BACK)}&select=isin,trade_date,adj_close&order=isin.asc,trade_date.asc`).catch(() => []);
+  erPx = {};
+  for (const p of rows) if (+p.adj_close > 0) (erPx[p.isin] = erPx[p.isin] || []).push([erDay(p.trade_date), +p.adj_close]);
+  renderEventRadar();
+}
 
 /* ═══ ACT II — MARKET INTELLIGENCE ═════════════════════════════════════════ */
 function drawBand(canvas, buckets, busiest) {
@@ -2020,8 +2059,6 @@ async function loadMarket() {
     const p = pulseRows && pulseRows[0];
     if (!p) { document.getElementById('miHeadline').textContent = 'No market data yet.'; return; }
 
-    document.getElementById('tradeDatePill').textContent = p.trade_date || '—';
-    document.getElementById('orbDate').textContent = (p.trade_date || '') + ' · T-1 settled';
     document.getElementById('miCount').textContent = `${p.total_names} NAMES · ${Number(p.total_trades).toLocaleString('nb-NO')} TRADES`;
 
     const up = +p.advancers > +p.decliners;   // verdict = heads vs heads, not share of total
@@ -2160,13 +2197,447 @@ document.getElementById('wtFilters').addEventListener('click', e => {
 });
 document.getElementById('wtMore').addEventListener('click', () => { wtShowAll = true; renderWatchtower(); });
 
+
+/* ═══ SHARED DATE HELPERS (Oslo calendar) ══════════════════════════════════ */
+const osloToday = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Oslo' }).format(new Date());
+const osloHour = () => +new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Oslo', hour: '2-digit', hourCycle: 'h23' }).format(new Date());
+const isWeekday = d => { const w = new Date(d * 864e5).getUTCDay(); return w !== 0 && w !== 6; };
+const ddmm = s => `${+String(s).slice(8, 10)}.${+String(s).slice(5, 7)}`;
+function isoWeek(day) {
+  const t = new Date(day * 864e5), dn = (t.getUTCDay() + 6) % 7;
+  t.setUTCDate(t.getUTCDate() - dn + 3);
+  const jan4 = new Date(Date.UTC(t.getUTCFullYear(), 0, 4));
+  return 1 + Math.round(((t - jan4) / 864e5 - 3 + (jan4.getUTCDay() + 6) % 7) / 7);
+}
+const erSeasonLabel = rows => {       // the dominant (period, fiscal year) among upcoming reports, e.g. "Q3 2026"
+  const n = {};
+  for (const r of rows) if (r.period && r.fiscal_year) { const k = `${r.period} ${r.fiscal_year}`; n[k] = (n[k] || 0) + 1; }
+  return (Object.entries(n).sort((a, b) => b[1] - a[1])[0] || [''])[0];
+};
+
+/* ═══ SEASON CALENDAR — the financial calendar as a board ══════════════════
+   Weeks × weekdays from this week to the 35-day horizon; each day lists the
+   companies reporting, positioned names first, tinted by direction and
+   strength (dashed = estimated date). The calendar is what the radar is
+   anchored on — click a name for its dots. */
+const CAL_MAX = 8;
+let calExpanded = new Set();
+function renderSeasonCalendar() {
+  const el = document.getElementById('calBoard');
+  const rows = erRows;
+  if (!rows.length) { el.innerHTML = '<div class="empty">No results dates on file inside 35 days.</div>'; return; }
+  const today = erDay(osloToday());
+  const byDay = new Map();
+  for (const r of rows) {
+    let d = erDay(r.report_date);
+    const w = new Date(d * 864e5).getUTCDay();
+    if (w === 6) d -= 1; else if (w === 0) d -= 2;          // a weekend date sits on its Friday
+    if (!byDay.has(d)) byDay.set(d, []);
+    byDay.get(d).push(r);
+  }
+  const first = today - (new Date(today * 864e5).getUTCDay() + 6) % 7;             // Monday this week
+  const last = Math.max(...[...byDay.keys()]);
+  const weeks = [];
+  for (let m = first; m <= last; m += 7) {
+    const days = [0, 1, 2, 3, 4].map(i => ({ d: m + i, rows: byDay.get(m + i) || [] }));
+    weeks.push({ m, days, n: days.reduce((s, x) => s + x.rows.length, 0) });
+  }
+  const maxN = Math.max(...weeks.map(w => w.n), 1);
+  const chip = r => {
+    const dir = (r.direction || 'NONE').toLowerCase(), tk = erEsc(r.ticker || isinTicker(r.isin));
+    const est = r.date_source === 'calendar' ? '' : ' est';
+    const glyph = dir === 'long' ? '<i>▲</i> ' : dir === 'short' ? '<i>▼</i> ' : '';
+    const tip = `${r.ticker || ''} · ${r.period || ''} report ${erDate(r.report_date)}${est ? ' (estimated)' : ''} · ` +
+      (dir === 'none' ? 'quiet' : `${r.direction} ${r.positioning}`);
+    return `<button class="cal-chip ${dir === 'none' ? '' : dir}${est}" style="--p:${(r.positioning / 100).toFixed(2)}" data-isin="${r.isin}" title="${erEsc(tip)}">${glyph}${tk}${dir === 'none' ? '' : `<b>${r.positioning}</b>`}</button>`;
+  };
+  const dayCell = ({ d, rows: rs }) => {
+    const cls = ['cal-day', d < today ? 'past' : '', d === today ? 'today' : '', rs.length ? '' : 'empty'].filter(Boolean).join(' ');
+    const sorted = rs.slice().sort((a, b) => (b.positioning - a.positioning) || String(a.ticker).localeCompare(String(b.ticker)));
+    const open = calExpanded.has(d), shown = open ? sorted : sorted.slice(0, CAL_MAX);
+    const more = sorted.length > shown.length ? `<button class="cal-more" data-day="${d}">+${sorted.length - shown.length} more</button>` : '';
+    return `<div class="${cls}"><div class="cal-dh"><span class="dd">${new Date(d * 864e5).getUTCDate()}</span>` +
+      `<span class="dm">${erDate(erIso(d))}</span><em>${d === today ? 'TODAY' : rs.length ? rs.length : ''}</em></div>` +
+      `<div class="cal-chips">${shown.map(chip).join('')}${more}</div></div>`;
+  };
+  el.innerHTML = `<div class="cal-head"><span></span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span></div>` +
+    weeks.map(w => `<div class="cal-week${w.n === maxN && w.n > 0 ? ' peak' : ''}${w.n ? '' : ' none'}">` +
+      `<div class="cal-wk"><b>WK ${isoWeek(w.m)}</b><span>${ddmm(erIso(w.m))} – ${ddmm(erIso(w.m + 4))}</span>` +
+      `<em>${w.n} report${w.n === 1 ? '' : 's'}</em><div class="bar"><i style="width:${(w.n / maxN * 100).toFixed(0)}%"></i></div></div>` +
+      w.days.map(dayCell).join('') + `</div>`).join('');
+  const pos = rows.filter(r => r.direction !== 'NONE').length;
+  document.getElementById('calAsof').textContent = `${rows.length} REPORTS · ${pos} POSITIONED`;
+}
+
+/* ═══ TAPE — the season's reports scrolling past, in date order ════════════ */
+function renderTape() {
+  const track = document.getElementById('tapeTrack');
+  const rows = erRows.slice().sort((a, b) => (erDay(a.report_date) - erDay(b.report_date)) || (b.positioning - a.positioning));
+  if (!rows.length) { track.innerHTML = ''; return; }
+  const item = (r, hidden) => {
+    const dir = r.direction || 'NONE';
+    const p = dir === 'NONE' ? '<span class="p faint">·</span>'
+      : `<span class="p ${dir === 'LONG' ? 'up' : 'dn'}">${dir === 'LONG' ? '▲' : '▼'}${r.positioning}</span>`;
+    return `<button class="tape-item${dir === 'NONE' ? ' quiet' : ''}" data-isin="${r.isin}"${hidden ? ' tabindex="-1"' : ''}>` +
+      `<span class="d">${ddmm(r.report_date)}</span><span class="tk">${erEsc(r.ticker || isinTicker(r.isin))}</span>${p}</button>`;
+  };
+  track.innerHTML = `<span>${rows.map(r => item(r, false)).join('')}</span><span aria-hidden="true">${rows.map(r => item(r, true)).join('')}</span>`;
+  track.style.setProperty('--tape-dur', Math.max(70, rows.length * 2.6) + 's');
+  track.classList.add('run');
+}
+
+/* ═══ SHELL META — freshness pill, season pill, rail as-of, hero kicker ════ */
+function renderShellMeta() {
+  const asof = erRows.length ? erRows[0].asof_date : null;
+  const pill = document.getElementById('pillRadar');
+  if (!asof) { pill.className = 'meta-pill bad'; document.getElementById('pillRadarT').textContent = 'No radar data'; return; }
+  // the radar's session should be the last completed weekday session (the evening pipeline lands by ~23:30 Oslo)
+  const today = erDay(osloToday());
+  let expected = today - 1;
+  while (!isWeekday(expected)) expected--;
+  if (isWeekday(today) && osloHour() >= 23) expected = today;
+  let lag = 0;
+  for (let d = erDay(asof) + 1; d <= expected; d++) if (isWeekday(d)) lag++;
+  pill.className = 'meta-pill ' + (lag <= 0 ? 'ok' : lag === 1 ? 'warn' : 'bad');
+  pill.title = lag <= 0 ? 'The radar is built on the latest session'
+    : `The radar is ${lag} session${lag > 1 ? 's' : ''} behind (a holiday, or the evening pipeline is late)`;
+  document.getElementById('pillRadarT').innerHTML = `Radar <b>${erDate(asof)}</b>`;
+  const season = erSeasonLabel(erRows);
+  document.getElementById('pillSeason').innerHTML = `${season ? `<b>${season}</b> season · ` : ''}${erRows.length} reports`;
+  document.getElementById('railAsof').textContent = `as of the ${erDate(asof)} session`;
+  document.getElementById('orbDate').textContent = `as of ${erDate(asof)}`;
+  if (season) document.getElementById('heroKicker').textContent = `◉ Reporting season · ${season}`;
+}
+
+/* ═══ REPORT DRAWER — one company, every dot ═══════════════════════════════
+   Opened from the calendar, the tape, the event-radar rows and the orbital.
+   Fetched on open, per ISIN: prices, short-interest history, insider filings,
+   the analyst mix / targets / actions and the company's graded reports. */
+const DR_PROGRAMME = /share (saving|purchase|incentive|matching)|aksjespare|aksjekjøpsprogram|employee|ansatt|long[- ]term incentive|\bLTI\b|bonus share|allocat|tildel|\bRSU|performance share|restricted share/i;
+let drIsin = null, drReturnFocus = null;
+const drKv = (k, v) => `<div class="kv"><span>${k}</span><b>${v}</b></div>`;
+const drPct = (v, dp = 1) => v == null || isNaN(v) ? '—' : `<span class="${+v > 0 ? 'up' : +v < 0 ? 'dn' : ''}">${erSigned(v, dp)}%</span>`;
+const drName = s => {        // the insider parser sometimes stores sentence fragments as names — only show real-looking ones
+  const t = String(s || '').trim();
+  return /^[A-ZÆØÅÄÖÜÉ][\p{L}'.-]+(\s+(?:[A-ZÆØÅÄÖÜÉ][\p{L}'.-]+|von|van|de|af)){1,4}$/u.test(t)
+    && !/\b(and|the|is|of|og|av|board|members|ownership|company|group|holding|AS|ASA)\b/i.test(t) ? t : '';
+};
+
+function drHeader(r) {
+  const dir = r.direction || 'NONE';
+  const col = dir === 'LONG' ? 'var(--up)' : dir === 'SHORT' ? 'var(--dn)' : 'var(--text3)';
+  const tk = r.ticker || isinTicker(r.isin), nm = r.name || isinName(r.isin) || '';
+  return `<div class="dr-kick">◉ ${erEsc(r.period || 'Report')} ${r.fiscal_year || ''} · event radar</div>
+    <div class="dr-head">
+      <div class="dr-name">${erEsc(tk)}<small>${erEsc(nm)}</small></div>
+      <div class="dr-pos"><div class="v" style="color:${col}">${dir === 'NONE' ? '—' : (dir === 'LONG' ? '▲' : '▼') + r.positioning}</div>
+        <div class="l">${dir === 'NONE' ? 'quiet' : dir.toLowerCase() + ' positioning'}</div></div>
+    </div>
+    <div class="dr-when"><span class="am">${erEsc(r.period || 'Report')} · ${erDate(r.report_date)}</span><span>T−${r.days_to_report}d</span>
+      <span>${r.date_source === 'calendar' ? 'filed calendar' : 'estimated date'}</span>
+      ${r.in_closed_period ? '<span>insiders in closed period</span>' : `<span>closed period from ${erDate(r.closed_from, false)}</span>`}</div>`;
+}
+
+/* The dots, on one chart: the price (adjusted close), the run-up window, the
+   closed period, the previous report and the next one; dark-pool days sit ON
+   the price line (so you see what the price did after them), insider trades
+   hang from the top at their publication date. Hover for the day. */
+function drDots(r, px, W = 592) {         // drawn at the drawer's real width so the text stays legible on a phone
+  const H = W < 480 ? 220 : 250, P = { l: 46, r: 14, t: 26, b: 26 };
+  const now = erDay(r.asof_date), rep = erDay(r.report_date);
+  const d0 = Math.min(now - 70, r.runup_from ? erDay(r.runup_from) - 7 : now - 70), d1 = Math.max(rep, now) + 5;
+  const X = d => P.l + (d - d0) / (d1 - d0) * (W - P.l - P.r);
+  const pts = px.map(p => ({ d: erDay(p.trade_date), v: +p.adj_close })).filter(p => p.d >= d0 && p.v > 0);
+  if (pts.length < 3) return { svg: '<div class="empty">No price history for this window</div>', pts: [] };
+  const vs = pts.map(p => p.v), lo = Math.min(...vs), hi = Math.max(...vs), pad = (hi - lo) * 0.14 || hi * 0.02;
+  const y0 = lo - pad, y1 = hi + pad;
+  const Y = v => P.t + 12 + (1 - (v - y0) / (y1 - y0)) * (H - P.t - P.b - 12);
+  const at = d => { let best = pts[0]; for (const p of pts) if (Math.abs(p.d - d) < Math.abs(best.d - d)) best = p; return best; };
+  const g = [`<defs><pattern id="drHatch" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">` +
+    `<rect width="2.2" height="7" fill="rgba(245,166,35,0.17)"/></pattern></defs>`];
+  const top = P.t - 6, bot = H - P.b;
+  // closed period + run-up window + previous report
+  const cf = Math.max(erDay(r.closed_from), d0);
+  g.push(`<rect x="${X(cf)}" y="${top}" width="${Math.max(0, X(rep) - X(cf))}" height="${bot - top}" fill="url(#drHatch)"/>`);
+  g.push(`<line x1="${X(cf)}" x2="${X(cf)}" y1="${top}" y2="${bot}" stroke="rgba(245,166,35,0.45)" stroke-dasharray="3 3"/>`);
+  if (r.runup_from) g.push(`<rect x="${X(erDay(r.runup_from))}" y="${top}" width="${Math.max(0, X(now) - X(erDay(r.runup_from)))}" height="${bot - top}" fill="rgba(79,195,247,0.06)"/>`);
+  if (r.prev_report && erDay(r.prev_report) >= d0) {
+    const xp = X(erDay(r.prev_report));
+    g.push(`<line x1="${xp}" x2="${xp}" y1="${top}" y2="${bot}" stroke="rgba(164,173,191,0.55)"/>` +
+      `<text x="${xp + 4}" y="${top + 9}">prev. report</text>`);
+  }
+  // y grid (4 levels) + x ticks (every other Monday)
+  for (let i = 0; i <= 3; i++) {
+    const v = y0 + (y1 - y0) * (0.12 + i * 0.25), y = Y(v);
+    g.push(`<line class="gl" x1="${P.l}" x2="${W - P.r}" y1="${y}" y2="${y}"/><text x="${P.l - 6}" y="${y + 3}" text-anchor="end">${v >= 100 ? v.toFixed(0) : v.toFixed(2)}</text>`);
+  }
+  let k = 0;
+  for (let d = d0; d <= d1; d++) {
+    if (new Date(d * 864e5).getUTCDay() !== 1 || k++ % (W < 480 ? 3 : 2)) continue;
+    g.push(`<text x="${X(d)}" y="${H - 8}" text-anchor="middle">${erDate(erIso(d), false)}</text>`);
+  }
+  g.push(`<line class="ax" x1="${P.l}" x2="${W - P.r}" y1="${bot}" y2="${bot}"/>`);
+  // now + report
+  g.push(`<line x1="${X(now)}" x2="${X(now)}" y1="${top}" y2="${bot}" stroke="rgba(245,166,35,0.75)"/>` +
+    `<text x="${X(now) - 4}" y="${top + 9}" text-anchor="end" style="fill:var(--amber)">now</text>`);
+  const yr = (top + bot) / 2;
+  g.push(`<rect x="${X(rep) - 6}" y="${yr - 6}" width="12" height="12" transform="rotate(45 ${X(rep)} ${yr})" ` +
+    `fill="${r.date_source === 'calendar' ? 'var(--amber)' : 'none'}" stroke="var(--amber)" stroke-width="1.5"${r.date_source === 'calendar' ? '' : ' stroke-dasharray="3 2"'}/>` +
+    `<text x="${X(rep)}" y="${yr - 13}" text-anchor="middle" style="fill:var(--amber)">${erEsc(r.period || 'report')}</text>`);
+  // price
+  g.push(`<polyline class="px" points="${pts.map(p => `${X(p.d).toFixed(1)},${Y(p.v).toFixed(1)}`).join(' ')}"/>`);
+  // dark-pool days on the price line
+  for (const dd of r.dark_days || []) {
+    const d = erDay(dd.d); if (d < d0) continue;
+    const p = at(d), buy = dd.v > 0;
+    g.push(`<circle cx="${X(d).toFixed(1)}" cy="${Y(p.v).toFixed(1)}" r="${dd.top ? 5.5 : 4.2}" fill="${buy ? 'var(--up)' : 'var(--dn)'}" ` +
+      `stroke="rgba(9,13,21,0.95)" stroke-width="1.6"/>`);
+    if (dd.top) g.push(`<circle cx="${X(d).toFixed(1)}" cy="${Y(p.v).toFixed(1)}" r="8" fill="none" stroke="${buy ? 'var(--up)' : 'var(--dn)'}" stroke-width="1"/>`);
+  }
+  // insider trades hang from the top at their publication date
+  const ins = new Map();
+  for (const t of r.ins_trades || []) { const d = erDay(t.d); if (d < d0) continue; const key = d + t.s; ins.set(key, { d, s: t.s, n: (ins.get(key) || { n: 0 }).n + 1 }); }
+  for (const t of ins.values()) {
+    const x = X(t.d), buy = t.s === 'BUY', p = at(t.d);
+    g.push(`<line x1="${x}" x2="${x}" y1="${top + 4}" y2="${Y(p.v)}" stroke="${buy ? 'rgba(67,224,151,0.35)' : 'rgba(240,96,96,0.35)'}" stroke-dasharray="2 3"/>` +
+      `<rect x="${x - 4}" y="${top}" width="8" height="8" transform="rotate(45 ${x} ${top + 4})" fill="var(--bg0)" stroke="${buy ? 'var(--up)' : 'var(--dn)'}" stroke-width="1.5"/>`);
+  }
+  // crosshair (positioned on hover)
+  g.push(`<line class="xh" id="drXh" x1="0" x2="0" y1="${top}" y2="${bot}" style="display:none"/>` +
+    `<rect id="drHit" x="${P.l}" y="${top}" width="${W - P.l - P.r}" height="${bot - top}" fill="transparent"/>`);
+  return { svg: `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Price with dark-pool days, insider trades, closed period and the report date">${g.join('')}</svg>`,
+           pts, X, W, d0, d1 };
+}
+
+function drWireDots(r, chart) {
+  const box = document.getElementById('drDots'), svg = box && box.querySelector('svg');
+  if (!svg || !chart.pts.length) return;
+  const tt = box.querySelector('.tt'), xh = svg.getElementById ? svg.getElementById('drXh') : svg.querySelector('#drXh');
+  const hit = svg.querySelector('#drHit');
+  const dark = new Map((r.dark_days || []).map(d => [erDay(d.d), d]));
+  const insBy = new Map();
+  for (const t of r.ins_trades || []) { const d = erDay(t.d); (insBy.get(d) || insBy.set(d, []).get(d)).push(t); }
+  const base = chart.pts[0].v;
+  const move = e => {
+    const rect = svg.getBoundingClientRect(), sx = (e.clientX - rect.left) / rect.width * chart.W;
+    let best = chart.pts[0];
+    for (const p of chart.pts) if (Math.abs(chart.X(p.d) - sx) < Math.abs(chart.X(best.d) - sx)) best = p;
+    const x = chart.X(best.d);
+    xh.setAttribute('x1', x); xh.setAttribute('x2', x); xh.style.display = '';
+    const dk = dark.get(best.d), it = insBy.get(best.d) || [];
+    tt.innerHTML = `<div class="td">${erDate(erIso(best.d))}</div><b>${best.v.toFixed(2)}</b> <span class="muted">${erSigned((best.v / base - 1) * 100, 1)}% in window</span>` +
+      (dk ? `<br><span class="${dk.v > 0 ? 'up' : 'dn'}">${dk.v > 0 ? '▲ dark-pool buying' : '▼ dark-pool selling'}</span> <span class="muted">${erSigned(dk.bps)} bps${dk.top ? ' · top decile' : ''}</span>` : '') +
+      (it.length ? `<br>${it.map(t => `<span class="${t.s === 'BUY' ? 'up' : 'dn'}">◆ insider ${t.s === 'BUY' ? 'purchase' : 'sale'}</span>`).join(' ')}` : '');
+    tt.style.display = 'block';
+    const px = x / chart.W * rect.width;
+    tt.style.left = Math.min(rect.width - tt.offsetWidth - 4, Math.max(4, px + 12)) + 'px';
+    tt.style.top = '6px';
+  };
+  hit.addEventListener('pointermove', move);
+  hit.addEventListener('pointerdown', move);
+  hit.addEventListener('pointerleave', () => { tt.style.display = 'none'; xh.style.display = 'none'; });
+}
+
+/* Short interest over the same window — its own chart (never a second y-axis on the price). */
+function drShorts(r, si, chart) {
+  const pts = si.map(s => ({ d: erDay(s.position_date), v: +s.short_pct })).filter(p => chart.d0 == null || p.d >= chart.d0 - 30);
+  if (!pts.length) return `<div class="empty">No disclosed short positions (≥ 0.5 % of shares) in the window.</div>`;
+  const W = chart.W || 592, H = 118, P = { l: 46, r: 14, t: 12, b: 20 };
+  const d0 = chart.d0, d1 = chart.d1;
+  const X = d => P.l + (Math.max(d0, Math.min(d1, d)) - d0) / (d1 - d0) * (W - P.l - P.r);
+  const hi = Math.max(1, ...pts.map(p => p.v)) * 1.18;
+  const Y = v => P.t + (1 - v / hi) * (H - P.t - P.b);
+  const now = erDay(r.asof_date);
+  let path = '', prev = null;
+  const seq = pts.filter(p => p.d <= now);
+  if (seq.length && seq[0].d > d0) seq.unshift({ d: d0, v: pts.filter(p => p.d < d0).map(p => p.v).pop() ?? 0 });
+  for (const p of seq) { path += prev ? ` L${X(p.d).toFixed(1)},${Y(prev.v).toFixed(1)} L${X(p.d).toFixed(1)},${Y(p.v).toFixed(1)}` : `M${X(p.d).toFixed(1)},${Y(p.v).toFixed(1)}`; prev = p; }
+  if (prev) path += ` L${X(now).toFixed(1)},${Y(prev.v).toFixed(1)}`;
+  const area = path ? `${path} L${X(now).toFixed(1)},${Y(0)} L${X(seq[0].d).toFixed(1)},${Y(0)} Z` : '';
+  const g = [];
+  for (const v of [0, hi / 2 / 1.18, hi / 1.18]) g.push(`<line class="gl" x1="${P.l}" x2="${W - P.r}" y1="${Y(v)}" y2="${Y(v)}"/><text x="${P.l - 6}" y="${Y(v) + 3}" text-anchor="end">${v.toFixed(1)}%</text>`);
+  g.push(`<line x1="${X(now)}" x2="${X(now)}" y1="${P.t}" y2="${H - P.b}" stroke="rgba(245,166,35,0.6)"/>`);
+  if (area) g.push(`<path class="si-a" d="${area}"/><path class="si" d="${path}"/>`);
+  const last = seq[seq.length - 1];
+  if (last) g.push(`<circle cx="${X(last.d)}" cy="${Y(last.v)}" r="3.5" fill="var(--dn)"/><text x="${X(last.d) - 6}" y="${Y(last.v) - 7}" text-anchor="end" style="fill:var(--text2)">${last.v.toFixed(2)}%</text>`);
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Disclosed short interest over the window">${g.join('')}</svg>`;
+}
+
+function drWhy(r) {
+  const row = (lbl, sub, v, ctx) => {
+    const w = Math.min(1, Math.abs(+v || 0) / 3) * 50;
+    const bar = !+v ? '' : +v > 0 ? `<i style="left:50%;width:${w}%;background:${ctx ? 'rgba(67,224,151,.4)' : 'var(--up)'}"></i>`
+      : `<i style="right:50%;width:${w}%;background:${ctx ? 'rgba(240,96,96,.4)' : 'var(--dn)'}"></i>`;
+    return `<div class="dr-ev"><span class="l">${lbl}<small>${sub}</small></span><span class="t">${bar}</span><span class="v">${erSigned(v, 2)}</span></div>`;
+  };
+  const siSub = r.si_level != null ? `${(+r.si_level).toFixed(2)}% short${r.si_change != null ? `, ${erSigned(r.si_change, 2)} pp in the run-up` : ''}` : 'none disclosed';
+  const sc = +r.agreement ? `${Math.round(+r.agreement * 100)}% agreement · ${r.families} famil${r.families === 1 ? 'y' : 'ies'}` : 'no directional evidence';
+  return row('Dark-pool flow', `▲${r.dark_buy_days} ▼${r.dark_sell_days} days · ${r.dark_top_days} top-decile · ${r.runup_sessions} sessions`, r.ev_dark) +
+    row('Short sellers', siSub, r.ev_short) +
+    row('Insiders · not scored', `${r.ins_open_buyers} bought · ${r.ins_open_sellers} sold, open window`, r.ev_insider, true) +
+    drKv('Combined', `${sc} → <span style="color:${r.direction === 'LONG' ? 'var(--up)' : r.direction === 'SHORT' ? 'var(--dn)' : 'var(--text3)'}">${r.direction === 'NONE' ? 'quiet' : `${r.direction} ${r.positioning}`}</span>`);
+}
+
+function drInsiders(r, ins) {
+  const rows = ins.filter(t => t.side === 'BUY' || t.side === 'SELL');
+  if (!rows.length) return '<div class="empty">No insider trades filed in the window.</div>';
+  const cf = erDay(r.closed_from);
+  return `<div class="dr-list">${rows.slice(0, 12).map(t => {
+    const prog = DR_PROGRAMME.test(t.raw_excerpt || ''), closed = t.trade_date && erDay(t.trade_date) >= cf;
+    const who = [t.person_role, drName(t.person_name)].filter(Boolean).join(' · ') || 'insider';
+    const val = +t.value >= 1e4 ? `${fmtMn(+t.value)} ${t.currency || 'NOK'}` : '';
+    return `<div class="dr-li${closed ? ' closed' : ''}"><span class="d">${t.trade_date ? erDate(t.trade_date, false) : '—'}</span>` +
+      `<span class="n">${erEsc(who)}${prog ? '<small>programme — excluded</small>' : closed ? '<small>closed period</small>' : ''}</span>` +
+      `<span class="r ${t.side === 'BUY' ? 'up' : 'dn'}">${t.side === 'BUY' ? '▲ buy' : '▼ sell'}${val ? ` · ${val}` : ''}</span></div>`;
+  }).join('')}</div>`;
+}
+
+function drAnalysts(r, rec, cons, acts) {
+  let s = '';
+  const t = rec && rec[0];
+  if (t && +t.total) {
+    const parts = [['strong buy', t.strong_buy, 'var(--up)'], ['buy', t.buy, 'rgba(67,224,151,.5)'], ['hold', t.hold, '#5a6377'],
+                   ['sell', t.sell, 'rgba(240,96,96,.5)'], ['strong sell', t.strong_sell, 'var(--dn)']];
+    s += `<div class="dr-mix">${parts.filter(p => +p[1]).map(p => `<i style="flex:${p[1]};background:${p[2]}" title="${p[1]} ${p[0]}"></i>`).join('')}</div>` +
+      `<div class="dr-mix-l">${parts.map(p => `<span>${p[0]} ${p[1] || 0}</span>`).join('')}</div>`;
+  }
+  if (r.analyst_score != null) {
+    const ch = r.analyst_change;
+    s += drKv('Rating (1 = strong buy)', `${(+r.analyst_score).toFixed(2)} ${erRec(+r.analyst_score).toLowerCase()}` +
+      (ch != null ? ` <span class="${+ch < 0 ? 'up' : +ch > 0 ? 'dn' : 'muted'}">${erSigned(ch, 2)} vs 3 mo</span>` : ''));
+  }
+  const c = cons && cons[0], price = erRows.find(x => x.isin === r.isin)?.price;
+  if (c && +c.target_mean > 0) {
+    const lo = Math.min(+c.target_low || +c.target_mean, +price || Infinity), hi = Math.max(+c.target_high || +c.target_mean, +price || 0);
+    const P = v => ((v - lo) / ((hi - lo) || 1) * 100).toFixed(1);
+    s += `<div class="dr-rng"><div class="ln"></div>` +
+      (+c.target_low && +c.target_high ? `<div class="band" style="left:${P(+c.target_low)}%;width:${(P(+c.target_high) - P(+c.target_low)).toFixed(1)}%"></div>` : '') +
+      `<div class="mk tg" style="left:${P(+c.target_mean)}%" title="mean target ${(+c.target_mean).toFixed(2)}"></div>` +
+      (+price ? `<div class="mk px" style="left:${P(+price)}%" title="last price ${(+price).toFixed(2)}"></div>` : '') + `</div>` +
+      `<div class="dr-rng-l"><span>${+c.target_low ? `lowest target ${(+c.target_low).toFixed(1)}` : ''}</span><span>${+c.target_high ? `highest ${(+c.target_high).toFixed(1)}` : ''}</span></div>` +
+      drKv(`<span style="color:var(--ice)">▍</span>mean target ${(+c.target_mean).toFixed(1)} vs <span style="color:var(--text1)">▍</span>price ${+price ? (+price).toFixed(1) : '—'}`,
+           `${r.target_upside_pct != null ? drPct(r.target_upside_pct, 0) : '—'} · ${c.num_analysts || '—'} analysts`);
+  }
+  if (acts && acts.length) {
+    s += `<div class="dr-list" style="margin-top:8px">${acts.map(a => `<div class="dr-li"><span class="d">${erDate(String(a.grade_date).slice(0, 10), false)}</span>` +
+      `<span class="n">${erEsc(a.firm || '')}<small>${erEsc([a.action, a.to_grade].filter(Boolean).join(' → '))}</small></span>` +
+      `<span class="r">${a.current_pt ? `PT ${(+a.current_pt).toFixed(1)}` : ''}</span></div>`).join('')}</div>`;
+  }
+  return s || '<div class="empty">No analyst coverage on file.</div>';
+}
+
+function drPast(past) {
+  if (!past.length) return '<div class="empty">No graded reports yet — grading starts with reports since mid-June 2026.</div>';
+  return `<div class="dr-list">${past.map(p => {
+    const dir = p.direction || 'NONE';
+    return `<div class="dr-li"><span class="d">${erDate(p.pub_date, false)}</span>` +
+      `<span class="n">${p.period} ${p.fiscal_year}<small>${dir === 'NONE' ? 'quiet before it' : `${dir.toLowerCase()} ${p.positioning} before it`}</small></span>` +
+      `<span class="r">${p.reaction != null ? `day ${drPct(+p.reaction * 100)}` : 'not graded'}${p.reaction_5d != null ? ` · 5d ${drPct(+p.reaction_5d * 100)}` : ''}</span></div>`;
+  }).join('')}</div>`;
+}
+
+async function openReport(isin) {
+  const r = erRows.find(x => x.isin === isin);
+  if (!r) { drillIntoISIN(isin); return; }
+  drIsin = isin;
+  if (!document.getElementById('drawer').classList.contains('open')) drReturnFocus = document.activeElement;
+  const body = document.getElementById('drawerBody');
+  body.innerHTML = drHeader(r) + '<div class="dr-sec"><div class="empty">Loading the dots …</div></div>';
+  document.getElementById('drawer').classList.add('open');
+  document.getElementById('drawer').setAttribute('aria-hidden', 'false');
+  document.getElementById('scrim').classList.add('open');
+  document.getElementById('drawer').scrollTop = 0;
+  document.getElementById('drawerX').focus({ preventScroll: true });
+  try { history.replaceState(null, '', '#report=' + isin); } catch (e) { /* file:// */ }
+  const since = erIso(erAsof - 110), q = s => API(...s).catch(() => []);
+  const [px, si, ins, rec, cons, acts, past] = await Promise.all([
+    q(['daily_close_adj', `isin=eq.${isin}&trade_date=gte.${since}&select=trade_date,adj_close&order=trade_date.asc`]),
+    q(['short_interest', `isin=eq.${isin}&position_date=gte.${erIso(erAsof - 150)}&select=position_date,short_pct&order=position_date.asc`]),
+    q(['insider_trades', `isin=eq.${isin}&side=in.(BUY,SELL)&trade_date=gte.${erIso(erAsof - 130)}&select=trade_date,person_name,person_role,side,value,currency,raw_excerpt&order=trade_date.desc&limit=30`]),
+    q(['analyst_rec_latest', `isin=eq.${isin}`]),
+    q(['analyst_consensus', `isin=eq.${isin}`]),
+    q(['analyst_actions', `isin=eq.${isin}&order=grade_date.desc&limit=5`]),
+    q(['report_radar_graded', `isin=eq.${isin}&select=fiscal_year,period,pub_date,positioning,direction,reaction,reaction_5d&order=pub_date.desc&limit=6`]),
+  ]);
+  if (drIsin !== isin) return;                    // another report was opened meanwhile
+  const cw = Math.max(300, Math.min(592, document.getElementById('drawerBody').clientWidth || 592));
+  const chart = drDots(r, px, cw);
+  body.innerHTML = drHeader(r) +
+    `<div class="dr-sec"><h4><span>The dots</span><small>price · dark-pool days on the line · insider trades from the top</small></h4>
+       <div class="dr-chart" id="drDots">${chart.svg}<div class="tt"></div></div>
+       <div class="dr-legend"><span><i style="width:8px;height:8px;border-radius:50%;background:var(--up)"></i>dark buy</span>
+         <span><i style="width:8px;height:8px;border-radius:50%;background:var(--dn)"></i>dark sell</span>
+         <span><i style="width:7px;height:7px;border:1.5px solid var(--up);transform:rotate(45deg)"></i>insider buy</span>
+         <span><i style="width:12px;height:8px;background:rgba(79,195,247,.2)"></i>run-up</span>
+         <span><i style="width:12px;height:8px;background:repeating-linear-gradient(135deg,rgba(245,166,35,.35) 0 2px,transparent 2px 5px)"></i>closed period</span></div></div>` +
+    `<div class="dr-sec"><h4><span>Why ${r.direction === 'NONE' ? 'quiet' : r.positioning}?</span><small>scored: dark flow + short sellers</small></h4>${drWhy(r)}</div>` +
+    `<div class="dr-sec"><h4><span>Short sellers</span><small>disclosed short interest, % of shares</small></h4><div class="dr-chart">${drShorts(r, si, chart.pts.length ? chart : { d0: erAsof - 70, d1: erDay(r.report_date) + 5, W: cw })}</div></div>` +
+    `<div class="dr-sec"><h4><span>Insiders</span><small>trade dates · open window from ${r.prev_report ? erDate(r.prev_report, false) : 'the last report'}, closed from ${erDate(r.closed_from, false)}</small></h4>${drInsiders(r, ins)}</div>` +
+    `<div class="dr-sec"><h4><span>Analysts</span><small>rating mix · targets · recent actions</small></h4>${drAnalysts(r, rec, cons, acts)}</div>` +
+    `<div class="dr-sec"><h4><span>Past reports</span><small>reaction vs same-size peers</small></h4>${drPast(past)}</div>` +
+    `<a class="dr-cta" href="${INTEL.dossierHref(isin)}">Open the full dossier →</a>`;
+  if (chart.pts.length) drWireDots(r, chart);
+}
+
+function closeReport() {
+  if (!document.getElementById('drawer').classList.contains('open')) return;
+  drIsin = null;
+  document.getElementById('drawer').classList.remove('open');
+  document.getElementById('drawer').setAttribute('aria-hidden', 'true');
+  document.getElementById('scrim').classList.remove('open');
+  try { if (/^#report=/.test(location.hash)) history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* file:// */ }
+  if (drReturnFocus && drReturnFocus.focus) drReturnFocus.focus({ preventScroll: true });
+}
+
+/* ═══ SHELL — scrollspy, record tabs, delegated clicks ═════════════════════ */
+function initShell() {
+  // scrollspy: the rail follows the section most in view
+  const links = [...document.querySelectorAll('#rail a')];
+  if ('IntersectionObserver' in window) {
+    const vis = new Map();
+    const io = new IntersectionObserver(es => {
+      for (const e of es) vis.set(e.target.id, e.isIntersecting ? e.intersectionRatio : 0);
+      let best = null, br = 0;
+      for (const [id, r] of vis) if (r > br) { br = r; best = id; }
+      links.forEach(a => a.classList.toggle('on', a.getAttribute('href') === '#' + best));
+    }, { threshold: [0, 0.15, 0.4, 0.7], rootMargin: '-40px 0px -40% 0px' });
+    for (const a of links) { const s = document.getElementById(a.getAttribute('href').slice(1)); if (s) io.observe(s); }
+  }
+  document.getElementById('recTabs').addEventListener('click', e => {
+    const b = e.target.closest('[data-pane]'); if (!b) return;
+    document.querySelectorAll('#recTabs [data-pane]').forEach(x => x.setAttribute('aria-pressed', x === b ? 'true' : 'false'));
+    document.querySelectorAll('.rec-pane').forEach(p => p.classList.toggle('on', p.id === 'pane-' + b.dataset.pane));
+  });
+  document.getElementById('calBoard').addEventListener('click', e => {
+    const more = e.target.closest('.cal-more');
+    if (more) { calExpanded.add(+more.dataset.day); renderSeasonCalendar(); return; }
+    const c = e.target.closest('.cal-chip[data-isin]'); if (c) openReport(c.dataset.isin);
+  });
+  document.getElementById('tapeTrack').addEventListener('click', e => {
+    const b = e.target.closest('.tape-item[data-isin]'); if (b) openReport(b.dataset.isin);
+  });
+  document.getElementById('bookMore').addEventListener('click', e => {
+    const all = document.getElementById('bookGrid').classList.toggle('all');
+    e.target.textContent = all ? 'Show the top 6 a side' : 'Show the full book';
+  });
+  document.getElementById('drawerX').addEventListener('click', closeReport);
+  document.getElementById('scrim').addEventListener('click', closeReport);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeReport(); });
+}
+
 /* ═══ INIT ═════════════════════════════════════════════════════════════════ */
 (async function init() {
   initOrbital();
   initEventRadar();
+  initShell();
   loadInstruments();
   erReady = loadEventRadar();
-  await Promise.allSettled([loadMarket(), erReady, loadReactions(), loadConviction(), loadIntelReport(), loadConvictionEntries(), loadForwardRecord(), loadWatchtower()]);
+  erReady.then(() => {
+    const m = /report=([A-Z]{2}[A-Z0-9]{10})/.exec(location.hash);
+    if (m) openReport(m[1]);
+  });
+  await Promise.allSettled([erReady, loadReactions(), loadConviction(), loadIntelReport(), loadConvictionEntries(),
+                            loadForwardRecord(), loadMarket(), loadWatchtower()]);
 })();
 </script>
 </body>
