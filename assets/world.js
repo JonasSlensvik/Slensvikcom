@@ -1480,12 +1480,16 @@
       $('#geoAsof').textContent = 'GDELT day ' + dLong(pDate(hs[0].latest_date));
       box.innerHTML = hs.map((h) => {
         const dy = goodDyad(h.top_dyads), src = (h.top_sources || [])[0];
-        const sub = [dy ? title(dy.a1) + (dy.a2 ? ' → ' + title(dy.a2) : '') + ' · ' + dy.label.toLowerCase() : '',
-          src ? `<a href="${esc(safeUrl(src.url))}" target="_blank" rel="noopener nofollow">${esc(src.domain)}</a>` : ''].filter(Boolean);
+        // Each part is escaped where it is built. The old index-based rule escaped whichever part came
+        // first, so a row without a dyad printed its source link as markup (South Africa, 2026-09-29).
+        // No two-sided dyad → the top story's headline says what's happening instead.
+        const what = dy ? title(dy.a1) + ' → ' + title(dy.a2) + ' · ' + dy.label.toLowerCase() : (src && src.title) || '';
+        const link = src ? `<a href="${esc(safeUrl(src.url))}" target="_blank" rel="noopener nofollow"${src.title ? ` title="${esc(src.title)}"` : ''}>${esc(src.domain)}</a>` : '';
+        const sub = (what ? `<span class="hs-what">${esc(what)}</span>` : '') + (what && link ? '<span class="hs-dot">·</span>' : '') + link;
         const spikeCls = isNum(h.spike) && h.spike >= 2 ? 'dn' : isNum(h.spike) && h.spike >= 1.4 ? '' : 'muted';
         return `<div class="hs-row" data-iso="${esc(h.iso2 || '')}" role="button" tabindex="0">
           <span class="hs-rk">${h.rank}</span>
-          <span style="min-width:0"><div class="hs-nm">${esc(h.name)}</div><div class="hs-sub">${sub.map((x, i) => (i === 0 ? esc(x) : x)).join(' · ')}</div></span>
+          <span style="min-width:0"><div class="hs-nm">${esc(h.name)}</div><div class="hs-sub">${sub}</div></span>
           <span><div class="tbar"><i style="width:${clamp(h.tension, 0, 100)}%;background:${LAYERS.tension.scale(h.tension / 100)}"></i></div>
             <div class="spk" style="text-align:left;margin-top:3px">${fmt(h.tension, 0)}<span class="faint">/100</span></div></span>
           <span class="spk ${spikeCls}">${isNum(h.spike) ? fmt(h.spike, 1) + '×' : '—'}</span>

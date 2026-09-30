@@ -13,7 +13,7 @@
 <script src="assets/intel.js?v=20260929b"></script>
 <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js" defer></script>
-<script src="assets/world.js?v=20260929" defer></script>
+<script src="assets/world.js?v=20260930" defer></script>
 
 <style>
 /* ═══ WORLD — page-local layer on top of assets/intel.css ═══════════════════
@@ -297,7 +297,10 @@ table.pb { width: 100%; border-collapse: collapse; }
 .hs-row:hover { background: var(--bg3); }
 .hs-rk { color: var(--text4); font-size: 10px; text-align: right; }
 .hs-nm { color: var(--text1); font-size: 12px; }
-.hs-sub { color: var(--text3); font-size: 9.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hs-sub { color: var(--text3); font-size: 9.5px; white-space: nowrap; display: flex; gap: .45em; min-width: 0; }
+.hs-sub > * { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.hs-sub a, .hs-sub .hs-dot { flex: none; }
+.hs-sub a { max-width: 65%; }   /* the text gives way first — only a very long domain on a phone gets cut */
 .hs-sub a { color: var(--text3); text-decoration: none; border-bottom: 1px dotted var(--text4); }
 .hs-sub a:hover { color: var(--ice); }
 .tbar { height: 6px; border-radius: 3px; background: var(--bg3); position: relative; overflow: hidden; }
