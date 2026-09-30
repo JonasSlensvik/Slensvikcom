@@ -1,8 +1,8 @@
 # slensvikcom — static frontend for the ENEXT market platform
 
 Owner: Jonas Slensvik (GitHub: JonasSlensvik). Plain HTML + Chart.js, IBM Plex Mono.
-Served via the iMac's Cloudflare tunnel; data comes from PostgREST at
-**https://api.slensvik.com** (anon, SELECT-only).
+Served by GitHub Pages; data comes from PostgREST at **https://api.slensvik.com** (anon,
+SELECT-only), which the iMac publishes through a Cloudflare tunnel.
 
 **The full project brief lives in the ENEXT repo: `../ENEXT/CLAUDE.md`** — read it for the
 backend architecture, scheduled jobs, DB access, and working agreements.
@@ -76,6 +76,9 @@ backend architecture, scheduled jobs, DB access, and working agreements.
 
 ## Working agreements
 
-- **Never commit or push unless explicitly asked.** Summarize and ask when ready.
+- **Commit and push when the work is done and verified — don't ask.** Standing agreement with
+  Jonas since 2026-09-30 (replaces the old ask-first rule). A push to `main` deploys the live site
+  through GitHub Pages, so check the page first (headless screenshot) and bump the `?v=`
+  cache-buster on any changed asset. Never commit secrets; confirm first before a force-push.
 - **Reap headless Chrome / Playwright screenshot processes** after any browser check.
 - Keep the iMac lean — avoid global installs. (See `../ENEXT/CLAUDE.md` for the rest.)
