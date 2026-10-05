@@ -40,7 +40,17 @@ backend architecture, scheduled jobs, DB access, and working agreements.
 - `galton.html` — Galton weekly-strategy page; live tracker mirrors the portfolio's
   minute-level resolution (cold-start seeds `prev_close` at week-open, then merges
   `api.intraday_live`; refreshes every 3 min, paused during what-if slider previews).
-- `fastrente.html` — savings/rate tool.
+- `fastrente.html` — Lånekassen fixed-rate decision page (rebuilt 2026-10-05): should you lock in the
+  coming 10.–17. window? The offer is the average of the *previous* month's Wednesday Finansportalen
+  top-5 readings, so when yields have moved since, you lock off-market and can break in the next window
+  for a credited gain. Leads with a decision panel (verdict, per-tenor forecast with 80 % band, P(gain),
+  net NOK after two months of fixed-vs-floating carry, dated plan, "already locked?" advice), then
+  lockable-vs-market chart, calibration on every official cycle since 2021, live Norges Bank, the
+  observation tracker. Data: `api.lanekassen_rates` (official), `rpc/world_history` (NGB 3/5/10Y +
+  `pol.no`), and the Google Sheet's `fp_obs_*` Wednesday readings — the sheet's swap tab died
+  2026-08-19 and its `rate_variabel` in June 2026; don't reuse them. Gain = Lånekassen's described
+  method (same remaining term, fixed repayment plan); `?today=YYYY-MM-DD` replays another date's logic.
+  Rule that shapes it: after a break you must float ≥ 2 months — no break-and-relock in one window.
 - `world.html` + `assets/world.js` — World Intel: canvas globe (d3-geo + topojson, layers: tension,
   policy/real rates, inflation, growth, FX, equities, sanctions; chokepoints, disasters, market beacons,
   day/night), ranked intel brief, risk regime, cross-asset matrix, curves, central-bank map, FX,
@@ -54,6 +64,9 @@ backend architecture, scheduled jobs, DB access, and working agreements.
   `api.world_country_snapshot`, `api.world_hotspots`, `api.world_chokepoint_snapshot`,
   `api.world_source_health`, `rpc/world_history?ids={a,b}&since=YYYY-MM-DD` (compact arrays).
 - `api.latest_price` — per-ISIN best price (live tick > EOD), `fidelity` = 'live'|'eod'.
+- `api.lanekassen_rates` — official Lånekassen rates per period (`valid_from` = 1st of an odd month):
+  `flytende` + `fast_3/5/10` (fixed offers null until published on the 10th of the window month).
+  ENEXT World Intel source `lanekassen`, 6-hourly.
 - Dividends: `api.dividends` (one row per isin × ex_date: amount + currency, `amount_nok` + `amount_nok_basis`,
   record/pay dates, `pay_date_est`, `status`, `sources`, `confirmed`), `api.dividend_calendar` (−14…+120 days,
   ticker, price, event yield), `api.dividend_profile` (TTM, frequency, growth, next), `api.dividend_announcements`.
