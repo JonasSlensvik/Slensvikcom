@@ -322,6 +322,56 @@ header { display: flex; align-items: flex-end; justify-content: space-between; g
 .rs-prog { flex: 1 1 260px; display: flex; align-items: center; gap: 10px; font-size: 9.5px; color: var(--text3); letter-spacing: .06em; }
 .rs-prog .bar { flex: 1; height: 4px; border-radius: 2px; background: var(--bg3); overflow: hidden; }
 .rs-prog .bar i { display: block; height: 100%; background: var(--amber); }
+.rs-plot .zone { fill: rgba(245,166,35,0.035); }
+.rs-plot .thr { stroke: rgba(245,166,35,0.45); stroke-width: 1; stroke-dasharray: 3 3; }
+.rs-plot .thr.hi { stroke: rgba(245,166,35,0.22); }
+.rs-plot text.thr-l { fill: var(--amber); opacity: .75; }
+.rs-plot circle.f { opacity: .38; }
+/* how sure: one row per positioning band, every call on a shared "move the called way" axis */
+.rs-sure { margin-bottom: 14px; }
+.rl-row { display: grid; grid-template-columns: 190px minmax(0, 1fr) minmax(0, 340px); gap: 18px; align-items: center;
+          padding: 10px 0; border-bottom: 1px solid var(--border); }
+.rl-row.rl-axis-row { border-bottom: 0; padding: 4px 0 0; }
+.rl-hd { display: flex; align-items: center; gap: 8px; }
+.rl-hd .nm { font-size: 11px; font-weight: 600; letter-spacing: .16em; text-transform: uppercase; color: var(--text1); }
+.rl-hd .rg { font-size: 11px; color: var(--amber); font-variant-numeric: tabular-nums; }
+.rl-row.faint .rl-hd .nm { color: var(--text2); } .rl-row.faint .rl-hd .rg { color: var(--text3); }
+.rl-band small { display: block; font-size: 9.5px; color: var(--text3); line-height: 1.5; margin-top: 3px; }
+.rl-band small.n { color: var(--text4); font-variant-numeric: tabular-nums; }
+.rl-sig { display: inline-flex; align-items: flex-end; gap: 2px; height: 11px; }
+.rl-sig i { display: block; width: 3px; border-radius: 1px; background: var(--bg3); }
+.rl-sig i:nth-child(1) { height: 4px; } .rl-sig i:nth-child(2) { height: 7px; } .rl-sig i:nth-child(3) { height: 11px; }
+.rl-sig.s1 i:nth-child(-n+1), .rl-sig.s2 i:nth-child(-n+2), .rl-sig.s3 i { background: var(--amber); }
+.rl-strip { position: relative; height: 46px; }
+.rl-strip svg { display: block; width: 100%; height: 46px; overflow: visible; }
+.rl-strip .bg-l { fill: rgba(240,96,96,0.04); } .rl-strip .bg-r { fill: rgba(67,224,151,0.04); }
+.rl-strip .zero { stroke: rgba(255,255,255,0.2); stroke-width: 1; }
+.rl-strip .med { stroke: var(--amber); stroke-width: 2; stroke-linecap: round; }
+.rl-strip path { stroke: rgba(8,12,19,0.95); stroke-width: 1.2; cursor: default; }
+.rl-strip path.l { fill: var(--up); } .rl-strip path.s { fill: var(--dn); }
+.rl-strip path:hover { stroke: var(--text1); }
+.rl-strip .none { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 9.5px;
+                  letter-spacing: .1em; text-transform: uppercase; color: var(--text4); border: 1px dashed var(--border); border-radius: 4px; }
+.rl-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; text-align: right; }
+.rl-stats b { display: block; font-size: 14px; font-weight: 600; color: var(--text1); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.rl-stats b.pos { color: var(--up); } .rl-stats b.neg { color: var(--dn); }
+.rl-stats span { display: block; font-size: 8.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--text4); white-space: nowrap; }
+.rl-axis { position: relative; height: 30px; font-size: 9px; color: var(--text3); letter-spacing: .06em; }
+.rl-axis span { position: absolute; top: 0; transform: translateX(-50%); font-variant-numeric: tabular-nums; }
+.rl-axis em { position: absolute; bottom: 0; font-style: normal; font-size: 8.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--text4); }
+.rl-axis em.l { left: 0; } .rl-axis em.r { right: 0; }
+.rl-quiet { font-size: 10px; color: var(--text3); padding-top: 8px; line-height: 1.6; }
+.rl-quiet b { color: var(--text2); font-weight: 500; letter-spacing: .14em; text-transform: uppercase; font-size: 9.5px; }
+.rs-verdict { margin-top: 12px; padding: 11px 14px; border: 1px solid rgba(245,166,35,0.22); border-radius: 6px; background: rgba(245,166,35,0.04);
+              font-size: 11px; line-height: 1.7; color: var(--text2); }
+.rs-verdict b { color: var(--text1); font-weight: 600; }
+.rs-verdict .pos { color: var(--up); } .rs-verdict .neg { color: var(--dn); }
+.rs-verdict .dim { color: var(--text3); }
+@media (max-width: 760px) {
+  .rl-row { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .rl-stats { text-align: left; }
+  .rl-axis-row .rl-band, .rl-axis-row .rl-stats { display: none; }
+}
 .tt { position: absolute; z-index: 20; pointer-events: none; display: none; background: rgba(9,13,21,.96); border: 1px solid var(--border2);
       border-radius: 6px; padding: 8px 10px; font-size: 10.5px; white-space: nowrap; box-shadow: 0 10px 30px rgba(0,0,0,.5); line-height: 1.6; }
 .tt .td { color: var(--text3); font-size: 9.5px; letter-spacing: .06em; margin-bottom: 3px; }
@@ -678,13 +728,18 @@ table.wt { width: 100%; border-collapse: collapse; font-size: 11px; min-width: 9
   <section class="sec" id="scoreboard">
     <div class="sec-title">
       <h2><span class="g">◈</span>Report reactions</h2>
-      <p>Did the dots call it? Every report graded on its reaction — the close before it to the close after it, and four
-        sessions on — against same-size peers, using the positioning the radar showed two sessions before: the last
-        evening you could still act on.</p>
+      <p>Did the dots call it — and did a surer score call it better? Every report graded on its reaction — the close
+        before it to the close after it, and four sessions on — against same-size peers, using the positioning the radar
+        showed two sessions before: the last evening you could still act on.</p>
       <span class="asof" id="rsCount">—</span>
     </div>
     <div class="rs-season"><div class="rs-tabs" id="rsTabs"></div><div class="rs-prog" id="rsProg"></div></div>
     <div class="ir-kpis" id="rsKpis"></div>
+    <div class="panel rs-sure">
+      <h3><span><span class="g">≣</span>How sure the radar was</span><small>report-day move the called way · vs same-size peers</small></h3>
+      <div id="rsLadder"></div>
+      <div class="rs-verdict" id="rsVerdict" hidden></div>
+    </div>
     <div class="rs-grid">
       <div class="panel">
         <h3><span><span class="g">≡</span>By what the radar saw</span><small>vs same-size peers</small></h3>
@@ -693,7 +748,7 @@ table.wt { width: 100%; border-collapse: collapse; font-size: 11px; min-width: 9
         </tr></thead><tbody id="rsTable"><tr><td colspan="6" class="perf-empty">LOADING …</td></tr></tbody></table></div>
       </div>
       <div class="panel">
-        <h3><span><span class="g">⁘</span>Each report</span><small>◂ short · positioning · long ▸ against the report-day move</small></h3>
+        <h3><span><span class="g">⁘</span>Each report</span><small>◂ short · positioning · long ▸ against the report-day move · dashed: sure from 33</small></h3>
         <div class="rs-plot" id="rsPlot"></div>
       </div>
     </div>
@@ -1861,6 +1916,125 @@ const rsMed = a => { if (!a.length) return null; const s = [...a].sort((x, y) =>
 const rsPct = v => v == null ? '—' : `<span class="${v > 0 ? 'pos' : v < 0 ? 'neg' : ''}">${erSigned(v, 2)}%</span>`;
 const rsDay = r => +r.reaction * 100;
 
+/* How sure was the radar? Positioning bands cut at the formula's own landmarks, fixed on 2026-10-06 before any
+   Q3 2026 reaction (ENEXT docs/event-radar.md, "Confidence bands"): 33 = score 1, one full and fresh piece of
+   evidence (a dark-pool impact day on the last evening, or short sellers building ≥ 0.3 pp); 60 = the
+   conviction book's entry bar. A call under 33 rests on dark-pool days that have faded with age (e^(−age/7))
+   or on evidence that partly conflicts. Judge the cuts on live seasons — don't move them after seeing one. */
+const RS_SURE = 33, RS_STRONG = 60, RS_BANDS_FIXED = '2026-10-06';
+const RS_BANDS = [
+  { k: 'strong', name: 'Strong', range: '60+',   bars: 3, what: 'stacked evidence — the book’s entry bar' },
+  { k: 'firm',   name: 'Firm',   range: '33–59', bars: 2, what: 'one full, fresh piece of evidence' },
+  { k: 'faint',  name: 'Faint',  range: '< 33',  bars: 1, what: 'faded or partly conflicting evidence' },
+];
+const RL_PAD = 9;
+const rsBand = r => r.direction === 'NONE' ? 'quiet' : r.positioning >= RS_STRONG ? 'strong' : r.positioning >= RS_SURE ? 'firm' : 'faint';
+const rsCalled = r => rsDay(r) * (r.direction === 'SHORT' ? -1 : 1);
+const rsCalled5 = r => r.reaction_5d == null ? null : +r.reaction_5d * 100 * (r.direction === 'SHORT' ? -1 : 1);
+const rsHits = a => a.filter(r => rsCalled(r) > 0).length;
+
+// Chance of at least `a` hits among the nA sure calls if the season's hits were dealt out at random between
+// sure and faint calls — the permutation test of the hit-rate gap, done exactly (hypergeometric tail).
+function rsExactP(a, nA, b, nB) {
+  const n = nA + nB, h = a + b, lf = [0];
+  for (let i = 1; i <= n; i++) lf[i] = lf[i - 1] + Math.log(i);
+  const lc = (x, k) => lf[x] - lf[k] - lf[x - k];
+  let p = 0;
+  for (let x = a; x <= Math.min(nA, h); x++) p += Math.exp(lc(h, x) + lc(n - h, nA - x) - lc(n, nA));
+  return Math.min(1, p);
+}
+
+let rsLadderCalls = [];
+function rsLadder(rows) {
+  const calls = rows.filter(r => r.direction !== 'NONE'), quiet = rows.filter(r => r.direction === 'NONE');
+  rsLadderCalls = calls;
+  const pctTxt = v => v == null ? '—' : `${erSigned(v, 2)}%`;
+  const sgn = v => v == null ? '' : v > 0 ? 'pos' : v < 0 ? 'neg' : '';
+  const stat = (v, l, cls = '') => `<div><b class="${cls}">${v}</b><span>${l}</span></div>`;
+  const bands = RS_BANDS.map(b => {
+    const c = calls.filter(r => rsBand(r) === b.k), v = c.map(rsCalled), v5 = c.map(rsCalled5).filter(x => x != null);
+    const h = rsHits(c), hr = c.length ? Math.round(h / c.length * 100) : null, nL = c.filter(r => r.direction === 'LONG').length;
+    return `<div class="rl-row ${b.k}">` +
+      `<div class="rl-band"><div class="rl-hd"><span class="rl-sig s${b.bars}" aria-hidden="true"><i></i><i></i><i></i></span>` +
+      `<span class="nm">${b.name}</span><span class="rg">${b.range}</span></div><small>${b.what}</small>` +
+      `<small class="n">${c.length ? `${c.length} call${c.length > 1 ? 's' : ''} · ${nL} ▲ long · ${c.length - nL} ▼ short` : 'no calls'}</small></div>` +
+      `<div class="rl-strip" data-band="${b.k}"></div>` +
+      `<div class="rl-stats">` +
+        stat(hr == null ? '—' : `${hr}%`, c.length ? `called ${h}/${c.length}` : 'called', hr == null ? '' : hr >= 55 ? 'pos' : hr <= 45 ? 'neg' : '') +
+        stat(pctTxt(rsMed(v)), 'median', sgn(rsMed(v))) + stat(pctTxt(rsMean(v)), 'mean', sgn(rsMean(v))) +
+        stat(pctTxt(rsMean(v5)), '+5d mean', sgn(rsMean(v5))) +
+      `</div></div>`;
+  }).join('');
+  const ticks = [-15, -10, -5, 0, 5, 10, 15].map(t =>
+    `<span style="left:calc(${RL_PAD}px + (100% - ${2 * RL_PAD}px) * ${(t + 15) / 30})">${t > 0 ? '+' : t < 0 ? '−' : ''}${Math.abs(t)}%</span>`).join('');
+  const qm = rsMean(quiet.map(rsDay));
+  document.getElementById('rsLadder').innerHTML = bands +
+    `<div class="rl-row rl-axis-row"><div class="rl-band"></div><div class="rl-axis">${ticks}` +
+    `<em class="l">◂ moved against the call</em><em class="r">moved with the call ▸</em></div><div class="rl-stats"></div></div>` +
+    `<div class="rl-quiet"><b>Quiet</b> · no call — ${quiet.length} report${quiet.length === 1 ? '' : 's'}` +
+    `${qm == null ? '' : `, report day ${erSigned(qm, 2)}% on average vs peers`}. Hit rates are only for calls; a quiet name has no side to be right about.</div>`;
+  rsStrips();
+
+  const sure = calls.filter(r => r.positioning >= RS_SURE), faint = calls.filter(r => r.positioning < RS_SURE);
+  const honest = rows.every(r => String(r.pub_date) >= RS_BANDS_FIXED);   // fixed that morning, before the day's close
+  const when = honest ? `<span class="dim">The cut-offs were fixed on 6 Oct 2026, before any of these reactions — an honest test.</span>`
+                      : `<span class="dim">In-sample: the cut-offs were drawn after seeing these reactions — the live seasons are the test.</span>`;
+  const el = document.getElementById('rsVerdict');
+  el.hidden = false;
+  if (sure.length < 5 || faint.length < 5) {
+    el.innerHTML = `Too few calls on each side of ${RS_SURE} for a verdict yet — ${sure.length} sure, ${faint.length} faint. ${when}`;
+    return;
+  }
+  const a = rsHits(sure), b = rsHits(faint), ha = a / sure.length, hb = b / faint.length;
+  const pc = (x, cls) => `<span class="${cls}">${Math.round(x * 100)}%</span>`;
+  const side = d => { const x = sure.filter(r => r.direction === d); return x.length ? `${rsHits(x)} of ${x.length}` : 'none'; };
+  let read;
+  if (ha > hb) {
+    const p = rsExactP(a, sure.length, b, faint.length);
+    read = `If the score carried no information, a split at least this lopsided would turn up ` +
+      `<b>${p < 0.001 ? 'under 0.1' : (p * 100).toFixed(1)}%</b> of the time (exact test, one-sided). `;
+  } else read = `No sign this season that a surer score called it better. `;
+  el.innerHTML =
+    `<b>Sure calls (${RS_SURE}+)</b> moved the called way ${pc(ha, ha >= 0.55 ? 'pos' : ha <= 0.45 ? 'neg' : '')} of the time ` +
+    `(${a} of ${sure.length}, median ${erSigned(rsMed(sure.map(rsCalled)), 2)}%); <b>faint calls</b> ` +
+    `${pc(hb, hb >= 0.55 ? 'pos' : hb <= 0.45 ? 'neg' : '')} (${b} of ${faint.length}, median ${erSigned(rsMed(faint.map(rsCalled)), 2)}%). ` +
+    read + `Sure ▼ shorts: ${side('SHORT')} called; sure ▲ longs: ${side('LONG')}. ${when}`;
+}
+
+// Each band's calls as markers (▲ long / ▼ short) on the move-the-called-way axis, nudged apart vertically so
+// none hide behind another; amber tick = the band's median. Drawn at the strip's real width (redrawn on resize).
+function rsStrips() {
+  for (const el of document.querySelectorAll('#rsLadder .rl-strip')) {
+    const c = rsLadderCalls.filter(r => rsBand(r) === el.dataset.band);
+    if (!c.length) { el.innerHTML = '<span class="none">No calls in this band</span>'; continue; }
+    const w = el.clientWidth || 600, h = 46, cy = h / 2, R = 5.2;
+    const X = v => RL_PAD + (Math.max(-15, Math.min(15, v)) + 15) / 30 * (w - 2 * RL_PAD);
+    const pts = c.map(r => ({ r, v: rsCalled(r), x: X(rsCalled(r)) })).sort((p, q) => p.x - q.x);
+    const placed = [];
+    for (const p of pts) {
+      for (let k = 0; ; k++) {
+        const dy = (k % 2 ? 1 : -1) * Math.ceil(k / 2) * R * 1.15;
+        if (k > 6 || placed.every(q => (q.x - p.x) ** 2 + (q.y - dy) ** 2 >= (2 * R) ** 2)) { p.y = dy; placed.push(p); break; }
+      }
+    }
+    const tri = (x, y, up) => up ? `M${x.toFixed(1)},${(y - R).toFixed(1)}L${(x + R).toFixed(1)},${(y + R * .8).toFixed(1)}L${(x - R).toFixed(1)},${(y + R * .8).toFixed(1)}Z`
+                                 : `M${x.toFixed(1)},${(y + R).toFixed(1)}L${(x + R).toFixed(1)},${(y - R * .8).toFixed(1)}L${(x - R).toFixed(1)},${(y - R * .8).toFixed(1)}Z`;
+    const z = X(0), mv = rsMed(pts.map(p => p.v)), md = X(mv).toFixed(1);
+    el.innerHTML = `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" role="img" aria-label="${c.length} calls in the ${el.dataset.band} band, by move the called way">` +
+      `<rect class="bg-l" x="0" y="0" width="${z}" height="${h}"/><rect class="bg-r" x="${z}" y="0" width="${w - z}" height="${h}"/>` +
+      `<line class="zero" x1="${z}" x2="${z}" y1="0" y2="${h}"/>` +
+      `<line class="med" x1="${md}" x2="${md}" y1="5" y2="${h - 5}" opacity=".35"/>` +
+      pts.map(p => `<path class="${p.r.direction === 'LONG' ? 'l' : 's'}" d="${tri(p.x, cy + p.y, p.r.direction === 'LONG')}">` +
+        `<title>${erEsc(isinTicker(p.r.isin))} · ${p.r.period} ${p.r.fiscal_year} · ${erDate(p.r.pub_date)} — ${p.r.direction} ${p.r.positioning} · ` +
+        `report day ${erSigned(rsDay(p.r), 1)}% vs peers, ${erSigned(p.v, 1)}% the called way${Math.abs(p.v) > 15 ? ' (off the chart)' : ''}</title></path>`).join('') +
+      `<g><title>Median ${erSigned(mv, 2)}% the called way</title><line class="med" x1="${md}" x2="${md}" y1="-3" y2="5"/>` +
+      `<line class="med" x1="${md}" x2="${md}" y1="${h - 5}" y2="${h + 3}"/></g>` +
+      `</svg>`;
+  }
+}
+let rsRz = 0;
+window.addEventListener('resize', () => { clearTimeout(rsRz); rsRz = setTimeout(() => rsLadderCalls.length && rsStrips(), 150); });
+
 function rsGroups(rows) {
   const g = (label, f, sign, ctx = false) => ({ label, rows: rows.filter(f), sign, ctx });
   return [
@@ -1881,9 +2055,16 @@ function rsPlot(rows) {
   const X = v => P.l + (v + 100) / 200 * (W - P.l - P.r);
   const Y = v => P.t + (1 - (Math.max(-15, Math.min(15, v)) + 15) / 30) * (H - P.t - P.b);
   const g = [];
+  // sure zones: positioning 33+ either way (dashed), and the book's entry bar at 60
+  g.push(`<rect class="zone" x="${X(RS_SURE)}" y="${P.t}" width="${X(100) - X(RS_SURE)}" height="${H - P.t - P.b}"/>` +
+    `<rect class="zone" x="${X(-100)}" y="${P.t}" width="${X(-RS_SURE) - X(-100)}" height="${H - P.t - P.b}"/>`);
   for (const y of [-15, -10, -5, 0, 5, 10, 15]) {
     g.push(`<line class="${y ? 'grid' : 'ax'}" x1="${P.l}" x2="${W - P.r}" y1="${Y(y)}" y2="${Y(y)}"/>` +
       `<text x="${P.l - 6}" y="${Y(y) + 3}" text-anchor="end">${y > 0 ? '+' : y < 0 ? '−' : ''}${Math.abs(y)}%</text>`);
+  }
+  for (const t of [RS_SURE, RS_STRONG]) for (const s of [-1, 1]) {
+    g.push(`<line class="thr${t === RS_STRONG ? ' hi' : ''}" x1="${X(s * t)}" x2="${X(s * t)}" y1="${P.t}" y2="${H - P.b}"/>` +
+      `<text class="thr-l" x="${X(s * t) + 3 * s}" y="${P.t + 9}" text-anchor="${s > 0 ? 'start' : 'end'}">${t}</text>`);
   }
   g.push(`<line class="ax" x1="${X(0)}" x2="${X(0)}" y1="${P.t}" y2="${H - P.b}"/>`);
   g.push(`<text x="${X(-100)}" y="${H - 8}">◂ SHORT 100</text><text x="${X(0)}" y="${H - 8}" text-anchor="middle">QUIET</text>` +
@@ -1894,8 +2075,9 @@ function rsPlot(rows) {
     return { r, q, x: X(sx), y: Y(rsDay(r)) };
   }).sort((a, b) => b.q - a.q);
   for (const p of pts) {
-    const v = rsDay(p.r), cls = p.q ? 'n' : p.r.direction === 'LONG' ? 'l' : 's';
-    g.push(`<circle class="${cls}" cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${p.q ? 3 : 4.5}"><title>${erEsc(isinTicker(p.r.isin))} · ${p.r.period} ${p.r.fiscal_year} · ${erDate(p.r.pub_date)} — ${p.q ? 'quiet' : `${p.r.direction} ${p.r.positioning}`} · report day ${erSigned(v, 1)}% vs peers${Math.abs(v) > 15 ? ' (off the chart)' : ''}</title></circle>`);
+    const v = rsDay(p.r), band = rsBand(p.r);
+    const cls = p.q ? 'n' : (p.r.direction === 'LONG' ? 'l' : 's') + (band === 'faint' ? ' f' : '');
+    g.push(`<circle class="${cls}" cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${p.q ? 3 : 4.5}"><title>${erEsc(isinTicker(p.r.isin))} · ${p.r.period} ${p.r.fiscal_year} · ${erDate(p.r.pub_date)} — ${p.q ? 'quiet' : `${p.r.direction} ${p.r.positioning} (${band})`} · report day ${erSigned(v, 1)}% vs peers${Math.abs(v) > 15 ? ' (off the chart)' : ''}</title></circle>`);
   }
   document.getElementById('rsPlot').innerHTML =
     `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Report-day reaction against positioning, one dot per report">${g.join('')}</svg>`;
@@ -1914,7 +2096,10 @@ function renderReactions() {
   if (!s) return;
   const rows = s.rows;
   if (!rows.length) {
+    rsLadderCalls = [];
     document.getElementById('rsKpis').innerHTML = '';
+    document.getElementById('rsLadder').innerHTML = `<div class="rs-empty">No calls graded yet — each band fills in as the season's reports land.</div>`;
+    document.getElementById('rsVerdict').hidden = true;
     document.getElementById('rsTable').innerHTML = `<tr><td colspan="6" class="perf-empty">NO REPORTS GRADED YET</td></tr>`;
     document.getElementById('rsPlot').innerHTML = `<div class="rs-empty">${s.empty || 'Nothing graded yet.'}</div>`;
     return;
@@ -1926,18 +2111,23 @@ function renderReactions() {
       `<td>${g.rows.length}</td><td>${rsPct(rsMean(a))}</td><td>${rsPct(rsMed(a))}</td><td>${rsPct(rsMean(b))}</td><td>${hit}</td></tr>`;
   }).join('');
   const pos = rows.filter(r => r.direction !== 'NONE');
-  const signed = pos.map(r => rsDay(r) * (r.direction === 'LONG' ? 1 : -1));
+  const signed = pos.map(rsCalled);
   const hit = pos.length ? Math.round(signed.filter(v => v > 0).length / pos.length * 100) : null;
   const absMove = rsMean(rows.map(r => Math.abs(rsDay(r))));
-  const quiet = rsMean(rows.filter(r => r.direction === 'NONE').map(rsDay));
   const kpi = (l, v, sub, cls = '') => `<div class="ir-kpi"><div class="lbl">${l}</div><div class="val ${cls}">${v}</div><div class="sub">${sub}</div></div>`;
-  const ms = rsMean(signed);
+  const bandKpi = (l, a) => {
+    if (!a.length) return kpi(l, '—', 'no calls yet');
+    const h = rsHits(a), hr = Math.round(h / a.length * 100);
+    return kpi(l, `${hr}%`, `${h} of ${a.length} moved the called way · median ${erSigned(rsMed(a.map(rsCalled)), 2)}%`,
+      hr >= 55 ? 'pos' : hr <= 45 ? 'neg' : '');
+  };
   document.getElementById('rsKpis').innerHTML =
     kpi('Reports graded', rows.length, s.live ? 'frozen radar, graded live' : 'reconstructed · in-sample') +
-    kpi('Positioned calls', pos.length, hit != null ? `${hit}% moved the called way` : '—') +
-    kpi('Move the called way', ms == null ? '—' : `${erSigned(ms, 2)}%`, `median ${erSigned(rsMed(signed), 2)}% · quiet names ${erSigned(quiet, 2)}%`,
-      ms == null ? '' : ms > 0 ? 'pos' : 'neg') +
+    kpi('Positioned calls', pos.length, hit != null ? `${hit}% moved the called way · mean ${erSigned(rsMean(signed), 2)}%` : 'none this season') +
+    bandKpi(`Sure calls · ${RS_SURE}+`, pos.filter(r => r.positioning >= RS_SURE)) +
+    bandKpi(`Faint calls · < ${RS_SURE}`, pos.filter(r => r.positioning < RS_SURE)) +
     kpi('Typical report-day move', absMove == null ? '—' : `${absMove.toFixed(1)}%`, 'absolute, vs same-size peers');
+  rsLadder(rows);
   rsPlot(rows);
 }
 
@@ -1977,7 +2167,10 @@ async function loadReactions() {
     document.getElementById('rsNote').innerHTML =
       `Reaction: from the close before the report session to its close (and four sessions on), minus the equal-weighted mean of ` +
       `same-size peers (market-cap terciles). Positioning is read two sessions before the report session — the last evening you could act on at the next close. ` +
-      `Called = moved the way the evidence pointed. <b>Reconstructed</b> seasons rebuild the radar with today's rules as of each report — in-sample: ` +
+      `Called = moved the way the evidence pointed. <b>How sure</b>: strong ${RS_STRONG}+ (the conviction book's entry bar), firm ${RS_SURE}–${RS_STRONG - 1} ` +
+      `(at least one full, fresh piece of evidence — a dark-pool impact day on the last evening, or short sellers building ≥ 0.3 pp), faint under ${RS_SURE} ` +
+      `(dark-pool days that have faded with age, or evidence that partly conflicts); sure = ${RS_SURE}+. The cut-offs are the formula's own landmarks, ` +
+      `fixed on 6 Oct 2026 before any Q3 reaction. <b>Reconstructed</b> seasons rebuild the radar with today's rules as of each report — in-sample: ` +
       `scoring only dark flow and short sellers was decided after seeing Q2 2026, where insider open-window buying came out wrong-signed. ` +
       `<b>Live</b> seasons grade the radar frozen each evening (api.report_radar_snapshot) — the honest test. Small samples: read n before the percentages.`;
     renderReactions();
@@ -2531,7 +2724,7 @@ function drPast(past) {
   return `<div class="dr-list">${past.map(p => {
     const dir = p.direction || 'NONE';
     return `<div class="dr-li"><span class="d">${erDate(p.pub_date, false)}</span>` +
-      `<span class="n">${p.period} ${p.fiscal_year}<small>${dir === 'NONE' ? 'quiet before it' : `${dir.toLowerCase()} ${p.positioning} before it`}</small></span>` +
+      `<span class="n">${p.period} ${p.fiscal_year}<small>${dir === 'NONE' ? 'quiet before it' : `${dir.toLowerCase()} ${p.positioning} (${rsBand({ direction: dir, positioning: +p.positioning })}) before it`}</small></span>` +
       `<span class="r">${p.reaction != null ? `day ${drPct(+p.reaction * 100)}` : 'not graded'}${p.reaction_5d != null ? ` · 5d ${drPct(+p.reaction_5d * 100)}` : ''}</span></div>`;
   }).join('')}</div>`;
 }

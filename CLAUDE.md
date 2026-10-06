@@ -20,7 +20,9 @@ backend architecture, scheduled jobs, DB access, and working agreements.
   right of the copy while `.hero-sky` is absolutely positioned, centred when stacked) → **Season calendar** (weeks ×
   weekdays board of every results date, tinted by positioning) → **Event radar** (`api.report_radar` rows on a shared
   calendar axis with a faint price line from `api.daily_close_adj`; solid chips scored, dashed context) →
-  **Report reactions** (season scoreboard, `api.report_radar_graded` / `api.report_radar_forward`) → the
+  **Report reactions** (season scoreboard, `api.report_radar_graded` / `api.report_radar_forward`; graded by
+  confidence band, strong 60+ / firm 33–59 / faint < 33 (`RS_SURE` / `RS_STRONG`). The cuts were fixed
+  2026-10-06 before any Q3 reaction: don't move them after seeing a season, see ENEXT `docs/event-radar.md`) → the
   event-agnostic **book** (`api.conviction`, top 6 a side until expanded) → **Track record** (tabs: forward / entries /
   backtest) → **The tape** (market intelligence) → **Watchtower**. Any report (calendar chip, tape item, row, orbital
   body) opens the **report drawer**: price with dark-pool days on the line and insider trades from the top, "why N",
