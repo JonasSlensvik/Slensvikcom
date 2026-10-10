@@ -25,12 +25,27 @@ backend architecture, scheduled jobs, DB access, and working agreements.
   2026-10-06 before any Q3 reaction: don't move them after seeing a season, see ENEXT `docs/event-radar.md`) → the
   event-agnostic **book** (`api.conviction`, top 6 a side until expanded) → **Track record** (tabs: forward / entries /
   backtest) → **The tape** (market intelligence) → **Watchtower**. Any report (calendar chip, tape item, row, orbital
-  body) opens the **report drawer**: price with dark-pool days on the line and insider trades from the top, "why N",
-  short-interest step chart, insider filings, analyst mix / targets / actions, past graded reactions;
-  deep link `radar.html#report=<ISIN>` opens it on load (handy for headless screenshots, with `?static=1`).
+  body) opens the **report drawer**. Its chart is TradingView **Lightweight Charts v5.2** (jsDelivr; Apache-2.0, keep
+  the attribution logo). It has three panes on one time axis: candles on dividend-adjusted tape prices
+  (`price_ohlcv` × `daily_close_adj` adj/close), volume, and short interest as a step line. Background bands mark
+  the run-up, closed period, previous report, last session and report day. Dark-pool days sit on the candles and
+  insider trades point down from above. `drLwc`; the SVG `drDots` is the fallback when the CDN script is missing.
+  Then "why N", insider filings, analyst mix / targets / actions, past graded reactions.
+  Deep link `radar.html#report=<ISIN>` opens it on load (handy for headless screenshots, with `?static=1`).
+  dossier.html / portfolio.html still use Lightweight Charts **4.2.3**. v5 changed the API (`addSeries(X, …)`,
+  `createSeriesMarkers`), so migrate them deliberately.
   The event-radar axis is sticky inside `.er-board`, which must stay `overflow: clip` — `hidden` makes the board a
   scroll container and shoves the axis over the first row. Backend runbook: `../ENEXT/docs/event-radar.md`.
   Do **not** edit this file with `sed` — it wiped the file once; use the Edit tool.
+- `dark.html` — dark-pool explorer (2026-10-10), in the nav as "Dark pool". It loads every mid-point (mechanism 3) and
+  off-book (mechanism 4) print of the last 90 days (~25k rows) from `api.trades_raw` (`is_dark`, partial index) into
+  **DuckDB-WASM** in the tab. **Mosaic vgplot** cross-filters four views (notional per session, names, Oslo time of
+  day, print size) and a table, with a mechanism menu. Every brush is a local SQL query and never touches the
+  iMac. Pins: `@uwdata/vgplot@0.32.1` and `@duckdb/duckdb-wasm@1.33.1-dev57.0`, the build mosaic-core 0.32.1
+  depends on. Keep them in step: the page creates the DuckDB instance and hands it to `vg.wasmConnector`.
+  `trades_raw.trading_time` holds UTC wall-clock labelled +02, so the page converts it (`osloClock`). Avoid
+  DuckDB reserved words as aliases (`names` broke the KPI query). First load is ~10 s, mostly the WASM download.
+  Headless screenshots need real time (DuckDB runs in a Worker), not `--virtual-time-budget`.
 - `portfolio.html` — personal portfolio tracker; 5D chart merges `api.intraday_live` for
   minute-level live resolution during Oslo market hours. World-style shell (sticky scrollspy rail,
   holdings ticker strip, header pills, deck HUD). **Income** section reads `api.dividends` for every ISIN

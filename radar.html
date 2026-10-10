@@ -9,7 +9,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/intel.css">
-<script src="assets/intel.js?v=20260929b"></script>
+<script src="assets/intel.js?v=20261010"></script>
+<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@5.2.1/dist/lightweight-charts.standalone.production.js" defer></script>
 <style>
 /* ═══ RADAR — page-local layer on top of assets/intel.css ═══════════════════
    Same shell as world.html (header pills, sticky scrollspy rail, ticker tape,
@@ -520,6 +521,11 @@ table.wt { width: 100%; border-collapse: collapse; font-size: 11px; min-width: 9
 .dr-chart .si { fill: none; stroke: var(--dn); stroke-width: 1.6; }
 .dr-chart .si-a { fill: rgba(240,96,96,0.08); stroke: none; }
 .dr-chart .xh { stroke: rgba(232,238,247,0.35); stroke-dasharray: 2 3; }
+.dr-lwc { height: 360px; }
+@media (max-width: 700px) { .dr-lwc { height: 320px; } }
+.dr-lwc-wrap .tt { z-index: 5; }
+.dr-pane-l { display: flex; justify-content: space-between; font-size: 8.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--text4);
+             margin-top: 4px; }
 .kv { display: flex; justify-content: space-between; gap: 12px; font-size: 11px; padding: 5px 0; border-bottom: 1px solid var(--border); }
 .kv span:first-child { color: var(--text3); }
 .kv b { font-weight: 500; color: var(--text1); font-variant-numeric: tabular-nums; text-align: right; }
@@ -838,7 +844,8 @@ table.wt { width: 100%; border-collapse: collapse; font-size: 11px; min-width: 9
   <section class="sec" id="market">
     <div class="sec-title">
       <h2><span class="g">⊞</span>The tape</h2>
-      <p>The last session in one place — turnover, breadth, true dark share, flow leaders and the session minute by minute.</p>
+      <p>The last session in one place — turnover, breadth, true dark share, flow leaders and the session minute by minute.
+        Every dark print of the last 90 sessions, cross-filtered: <a href="dark.html" style="color:var(--ice)">the dark-pool explorer →</a></p>
       <span class="asof" id="miCount">—</span>
     </div>
     <div class="mi-headline" id="miHeadline">Reading the tape …</div>
@@ -2631,6 +2638,144 @@ function drWireDots(r, chart) {
   hit.addEventListener('pointerleave', () => { tt.style.display = 'none'; xh.style.display = 'none'; });
 }
 
+/* The dots on TradingView Lightweight Charts v5 (Apache-2.0; its licence asks for the TradingView link
+   that the attribution logo shows). Three panes on one time axis — candles on dividend-adjusted prices,
+   volume, disclosed short interest (a step line, never a second y-axis on the price). Dark-pool days sit
+   ON the candles, insider trades point down from above them; the run-up window, closed period, previous
+   report, the last session and the report day are background bands (a histogram on its own hidden
+   0–1 scale). Drag to pan, scroll or pinch to zoom; the tooltip follows the crosshair. Returns false
+   when the CDN script is missing, and the caller falls back to the SVG (drDots). */
+let drChartApi = null;
+function drLwcRemove() { if (drChartApi) { drChartApi.remove(); drChartApi = null; } }
+function drLwc(host, r, px, ohlcv, si) {
+  if (typeof LightweightCharts === 'undefined' || !host) return false;
+  const LW = LightweightCharts, css = getComputedStyle(document.documentElement);
+  const C = k => css.getPropertyValue(k).trim();
+  const UP = C('--up') || '#43e097', DN = C('--dn') || '#f06060', TXT = C('--text3') || '#5a6377';
+  const now = r.asof_date, rep = r.report_date, cf = r.closed_from, ru = r.runup_from, prev = r.prev_report;
+  const d0 = erIso(Math.min(erDay(now) - 70, ru ? erDay(ru) - 7 : erDay(now) - 70));
+  // adjusted candles: the tape's dominant venue, one bar a day, scaled by daily_close_adj (adj_close / close);
+  // sessions the tape missed (it has lagged daily_close before) become flat bars from the adjusted close
+  const adj = new Map(px.filter(p => +p.close > 0 && +p.adj_close > 0).map(p => [p.trade_date, +p.adj_close / +p.close]));
+  const cnt = {};
+  for (const o of ohlcv) cnt[o.venue] = (cnt[o.venue] || 0) + 1;
+  const ven = Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a])[0];
+  const bars = new Map();
+  for (const o of ohlcv) {
+    const t = o.ts.slice(0, 10);
+    if (o.venue !== ven || o.open == null || o.close == null || t < d0 || bars.has(t)) continue;
+    const f = adj.get(t) ?? 1;
+    bars.set(t, { time: t, open: o.open * f, high: o.high * f, low: o.low * f, close: o.close * f, volume: +o.volume || 0 });
+  }
+  for (const p of px) {
+    if (p.trade_date < d0 || bars.has(p.trade_date) || !(+p.adj_close > 0)) continue;
+    const v = +p.adj_close;
+    bars.set(p.trade_date, { time: p.trade_date, open: v, high: v, low: v, close: v, volume: null, flat: true });
+  }
+  const data = [...bars.values()].sort((a, b) => a.time < b.time ? -1 : 1);
+  if (data.length < 3) return false;
+  const last = data[data.length - 1].time, base = data[0].close;
+  const prec = data[data.length - 1].close < 10 ? 3 : 2;
+  // the timeline runs on to three days after the report, weekdays only
+  const future = [];
+  for (let d = erDay(last) + 1; d <= Math.max(erDay(rep), erDay(last)) + 3; d++) {
+    const wd = new Date(d * 864e5).getUTCDay(); if (wd && wd < 6) future.push(erIso(d));
+  }
+  const times = data.map(b => b.time).concat(future);
+
+  drLwcRemove();
+  const chart = drChartApi = LW.createChart(host, {
+    autoSize: true,
+    layout: { background: { type: 'solid', color: 'transparent' }, textColor: TXT, fontSize: 10,
+              fontFamily: 'IBM Plex Mono, ui-monospace, monospace', attributionLogo: true,
+              panes: { separatorColor: 'rgba(255,255,255,0.08)', enableResize: false } },
+    grid: { vertLines: { color: 'rgba(255,255,255,0.04)' }, horzLines: { color: 'rgba(255,255,255,0.05)' } },
+    rightPriceScale: { borderColor: 'rgba(255,255,255,0.12)' },
+    timeScale: { borderColor: 'rgba(255,255,255,0.12)', rightOffset: 1, fixLeftEdge: true, fixRightEdge: true },
+    crosshair: { mode: LW.CrosshairMode.Magnet,
+      vertLine: { color: 'rgba(232,238,247,0.35)', style: LW.LineStyle.Dashed, labelBackgroundColor: '#1a212d' },
+      horzLine: { color: 'rgba(232,238,247,0.35)', style: LW.LineStyle.Dashed, labelBackgroundColor: '#1a212d' } },
+    handleScroll: { vertTouchDrag: false },        // a vertical swipe scrolls the drawer, not the chart
+  });
+  // background bands first, so they draw behind the candles
+  const band = chart.addSeries(LW.HistogramSeries, { priceScaleId: 'band', lastValueVisible: false, priceLineVisible: false,
+                                                    base: 0, priceFormat: { type: 'volume' } });
+  chart.priceScale('band').applyOptions({ visible: false, scaleMargins: { top: 0, bottom: 0 } });
+  const bandColor = t => t === rep ? 'rgba(245,166,35,0.55)' : t === now ? 'rgba(245,166,35,0.28)'
+    : prev && t === prev ? 'rgba(164,173,191,0.32)' : cf && t >= cf && t < rep ? 'rgba(245,166,35,0.11)'
+    : ru && t >= ru && t <= now ? 'rgba(79,195,247,0.08)' : null;
+  band.setData(times.map(t => { const c = bandColor(t); return c ? { time: t, value: 1, color: c } : { time: t }; }));
+  const price = chart.addSeries(LW.CandlestickSeries, {
+    upColor: UP, downColor: DN, borderUpColor: UP, borderDownColor: DN, wickUpColor: UP, wickDownColor: DN,
+    priceLineVisible: false, priceFormat: { type: 'price', precision: prec, minMove: prec === 3 ? 0.001 : 0.01 },
+  });
+  price.setData(data.map(b => b.flat ? { time: b.time, open: b.open, high: b.high, low: b.low, close: b.close,
+                                         color: '#7f8799', borderColor: '#7f8799', wickColor: '#7f8799' }
+                                     : { time: b.time, open: b.open, high: b.high, low: b.low, close: b.close })
+                    .concat(future.map(t => ({ time: t }))));
+  // markers snap to the first session on or after their date
+  const snap = d => data.find(b => b.time >= d && erDay(b.time) - erDay(d) <= 5)?.time;
+  const marks = [];
+  for (const dd of r.dark_days || []) {
+    const t = snap(dd.d); if (!t) continue;
+    marks.push({ time: t, position: 'inBar', shape: 'circle', color: dd.v > 0 ? UP : DN, size: dd.top ? 1.6 : 1 });
+  }
+  const insBy = new Map();
+  for (const it of r.ins_trades || []) {
+    const t = snap(it.d); if (!t) continue;
+    const k = t + it.s; if (insBy.has(k)) continue;
+    insBy.set(k, 1);
+    marks.push({ time: t, position: 'aboveBar', shape: 'arrowDown', color: it.s === 'BUY' ? UP : DN, size: 1 });
+  }
+  marks.sort((a, b) => a.time < b.time ? -1 : a.time > b.time ? 1 : 0);
+  if (marks.length) LW.createSeriesMarkers(price, marks);
+  // pane 1: volume
+  const vol = data.filter(b => b.volume != null);
+  if (vol.length) {
+    chart.addSeries(LW.HistogramSeries, { lastValueVisible: false, priceLineVisible: false, priceFormat: { type: 'volume' } }, 1)
+      .setData(vol.map(b => ({ time: b.time, value: b.volume, color: b.close >= b.open ? 'rgba(67,224,151,0.35)' : 'rgba(240,96,96,0.32)' })));
+  }
+  // pane 2: disclosed short interest, carried forward between disclosures
+  const sis = si.map(s => ({ d: s.position_date, v: +s.short_pct })).sort((a, b) => a.d < b.d ? -1 : 1);
+  const siAt = t => { let v = null; for (const s of sis) { if (s.d <= t) v = s.v; else break; } return v; };
+  const siData = data.map(b => ({ time: b.time, value: siAt(b.time) })).filter(p => p.value != null);
+  let siSeries = null;
+  if (siData.length) {
+    // anchored at zero: auto-scaling would blow a 0.01 pp change up into a cliff
+    const siMax = Math.max(...siData.map(p => p.value));
+    siSeries = chart.addSeries(LW.LineSeries, { color: DN, lineWidth: 2, lineType: LW.LineType.WithSteps, priceLineVisible: false,
+      crosshairMarkerRadius: 3, priceFormat: { type: 'custom', formatter: v => v.toFixed(2) + '%', minMove: 0.01 },
+      autoscaleInfoProvider: () => ({ priceRange: { minValue: 0, maxValue: Math.max(1, siMax * 1.25) } }) }, vol.length ? 2 : 1);
+    siSeries.setData(siData);
+  }
+  const panes = chart.panes();
+  panes[0].setStretchFactor(4);
+  for (const p of panes.slice(1)) p.setStretchFactor(1);
+  chart.timeScale().fitContent();
+
+  // tooltip: the day, the price, and any dot on it
+  const tt = host.parentElement.querySelector('.tt');
+  const darkBy = new Map((r.dark_days || []).map(d => [snap(d.d), d]));
+  const insOn = new Map();
+  for (const it of r.ins_trades || []) { const t = snap(it.d); if (t) (insOn.get(t) || insOn.set(t, []).get(t)).push(it); }
+  chart.subscribeCrosshairMove(p => {
+    const bar = p.point && p.time ? p.seriesData.get(price) : null;
+    if (!bar || bar.close == null) { tt.style.display = 'none'; return; }
+    const t = typeof p.time === 'string' ? p.time : erIso(Date.UTC(p.time.year, p.time.month - 1, p.time.day) / 864e5);
+    const dk = darkBy.get(t), it = insOn.get(t) || [], s = siAt(t);
+    tt.innerHTML = `<div class="td">${erDate(t)}${t === rep ? ' · REPORT' : ''}</div><b>${bar.close.toFixed(prec)}</b> ` +
+      `<span class="muted">${erSigned((bar.close / base - 1) * 100, 1)}% in window</span>` +
+      (dk ? `<br><span class="${dk.v > 0 ? 'up' : 'dn'}">${dk.v > 0 ? '▲ dark-pool buying' : '▼ dark-pool selling'}</span> <span class="muted">${erSigned(dk.bps)} bps${dk.top ? ' · top decile' : ''}</span>` : '') +
+      (it.length ? `<br>${it.map(x => `<span class="${x.s === 'BUY' ? 'up' : 'dn'}">◆ insider ${x.s === 'BUY' ? 'purchase' : 'sale'}</span>`).join(' ')}` : '') +
+      (s != null ? `<br><span class="muted">short interest ${s.toFixed(2)}%</span>` : '');
+    tt.style.display = 'block';
+    const w = host.clientWidth;
+    tt.style.left = Math.min(w - tt.offsetWidth - 4, Math.max(4, p.point.x + 14)) + 'px';
+    tt.style.top = '6px';
+  });
+  return true;
+}
+
 /* Short interest over the same window — its own chart (never a second y-axis on the price). */
 function drShorts(r, si, chart) {
   const pts = si.map(s => ({ d: erDay(s.position_date), v: +s.short_pct })).filter(p => chart.d0 == null || p.d >= chart.d0 - 30);
@@ -2743,38 +2888,55 @@ async function openReport(isin) {
   document.getElementById('drawerX').focus({ preventScroll: true });
   try { history.replaceState(null, '', '#report=' + isin); } catch (e) { /* file:// */ }
   const since = erIso(erAsof - 110), q = s => API(...s).catch(() => []);
-  const [px, si, ins, rec, cons, acts, past] = await Promise.all([
-    q(['daily_close_adj', `isin=eq.${isin}&trade_date=gte.${since}&select=trade_date,adj_close&order=trade_date.asc`]),
+  const [px, si, ins, rec, cons, acts, past, ohlcv] = await Promise.all([
+    q(['daily_close_adj', `isin=eq.${isin}&trade_date=gte.${since}&select=trade_date,close,adj_close&order=trade_date.asc`]),
     q(['short_interest', `isin=eq.${isin}&position_date=gte.${erIso(erAsof - 150)}&select=position_date,short_pct&order=position_date.asc`]),
     q(['insider_trades', `isin=eq.${isin}&side=in.(BUY,SELL)&trade_date=gte.${erIso(erAsof - 130)}&select=trade_date,person_name,person_role,side,value,currency,raw_excerpt&order=trade_date.desc&limit=30`]),
     q(['analyst_rec_latest', `isin=eq.${isin}`]),
     q(['analyst_consensus', `isin=eq.${isin}`]),
     q(['analyst_actions', `isin=eq.${isin}&order=grade_date.desc&limit=5`]),
     q(['report_radar_graded', `isin=eq.${isin}&select=fiscal_year,period,pub_date,positioning,direction,reaction,reaction_5d&order=pub_date.desc&limit=6`]),
+    q(['price_ohlcv', `isin=eq.${isin}&source=eq.trades&ts=gte.${since}&select=ts,venue,open,high,low,close,volume&order=ts.asc&limit=600`]),
   ]);
   if (drIsin !== isin) return;                    // another report was opened meanwhile
   const cw = Math.max(300, Math.min(592, document.getElementById('drawerBody').clientWidth || 592));
-  const chart = drDots(r, px, cw);
+  const lwc = typeof LightweightCharts !== 'undefined';
+  const chart = lwc ? { pts: [] } : drDots(r, px, cw);
+  const siNow = si.length ? si[si.length - 1] : null;
   body.innerHTML = drHeader(r) +
-    `<div class="dr-sec"><h4><span>The dots</span><small>price · dark-pool days on the line · insider trades from the top</small></h4>
-       <div class="dr-chart" id="drDots">${chart.svg}<div class="tt"></div></div>
+    `<div class="dr-sec"><h4><span>The dots</span><small>${lwc ? 'candles · volume · short interest — drag to pan, scroll to zoom' : 'price · dark-pool days on the line · insider trades from the top'}</small></h4>
+       ${lwc ? '<div class="dr-chart dr-lwc-wrap"><div class="dr-lwc" id="drLwc"></div><div class="tt"></div></div>'
+             : `<div class="dr-chart" id="drDots">${chart.svg}<div class="tt"></div></div>`}
        <div class="dr-legend"><span><i style="width:8px;height:8px;border-radius:50%;background:var(--up)"></i>dark buy</span>
          <span><i style="width:8px;height:8px;border-radius:50%;background:var(--dn)"></i>dark sell</span>
-         <span><i style="width:7px;height:7px;border:1.5px solid var(--up);transform:rotate(45deg)"></i>insider buy</span>
+         ${lwc ? '<span><span style="color:var(--up)">▼</span>&nbsp;insider buy · <span style="color:var(--dn)">▼</span>&nbsp;sale</span>'
+               : '<span><i style="width:7px;height:7px;border:1.5px solid var(--up);transform:rotate(45deg)"></i>insider buy</span>'}
          <span><i style="width:12px;height:8px;background:rgba(79,195,247,.2)"></i>run-up</span>
-         <span><i style="width:12px;height:8px;background:repeating-linear-gradient(135deg,rgba(245,166,35,.35) 0 2px,transparent 2px 5px)"></i>closed period</span></div></div>` +
+         <span><i style="width:12px;height:8px;background:${lwc ? 'rgba(245,166,35,.22)' : 'repeating-linear-gradient(135deg,rgba(245,166,35,.35) 0 2px,transparent 2px 5px)'}"></i>closed period</span>
+         ${lwc ? '<span><i style="width:3px;height:10px;background:rgba(245,166,35,.8)"></i>report day</span>' : ''}</div></div>` +
     `<div class="dr-sec"><h4><span>Why ${r.direction === 'NONE' ? 'quiet' : r.positioning}?</span><small>scored: dark flow + short sellers</small></h4>${drWhy(r)}</div>` +
-    `<div class="dr-sec"><h4><span>Short sellers</span><small>disclosed short interest, % of shares</small></h4><div class="dr-chart">${drShorts(r, si, chart.pts.length ? chart : { d0: erAsof - 70, d1: erDay(r.report_date) + 5, W: cw })}</div></div>` +
+    `<div class="dr-sec"><h4><span>Short sellers</span><small>disclosed short interest, % of shares</small></h4>${lwc
+      ? (siNow ? drKv('Latest disclosure', `${(+siNow.short_pct).toFixed(2)}% · ${erDate(siNow.position_date, false)}${r.si_change != null ? ` · ${erSigned(r.si_change, 2)} pp in the run-up` : ''}`) +
+                 `<div class="note" style="margin-top:6px">The step line in the chart's bottom pane, on the same time axis as the price.</div>`
+               : `<div class="empty">No disclosed short positions (≥ 0.5 % of shares) in the window.</div>`)
+      : `<div class="dr-chart">${drShorts(r, si, chart.pts.length ? chart : { d0: erAsof - 70, d1: erDay(r.report_date) + 5, W: cw })}</div>`}</div>` +
     `<div class="dr-sec"><h4><span>Insiders</span><small>trade dates · open window from ${r.prev_report ? erDate(r.prev_report, false) : 'the last report'}, closed from ${erDate(r.closed_from, false)}</small></h4>${drInsiders(r, ins)}</div>` +
     `<div class="dr-sec"><h4><span>Analysts</span><small>rating mix · targets · recent actions</small></h4>${drAnalysts(r, rec, cons, acts)}</div>` +
     `<div class="dr-sec"><h4><span>Past reports</span><small>reaction vs same-size peers</small></h4>${drPast(past)}</div>` +
     `<a class="dr-cta" href="${INTEL.dossierHref(isin)}">Open the full dossier →</a>`;
+  if (lwc && !drLwc(document.getElementById('drLwc'), r, px, ohlcv, si)) {
+    // too little tape for candles: back to the SVG line
+    const fb = drDots(r, px, cw), wrap = document.querySelector('.dr-lwc-wrap');
+    if (wrap) { wrap.id = 'drDots'; wrap.classList.remove('dr-lwc-wrap'); wrap.innerHTML = fb.svg + '<div class="tt"></div>'; }
+    if (fb.pts.length) drWireDots(r, fb);
+  }
   if (chart.pts.length) drWireDots(r, chart);
 }
 
 function closeReport() {
   if (!document.getElementById('drawer').classList.contains('open')) return;
   drIsin = null;
+  drLwcRemove();
   document.getElementById('drawer').classList.remove('open');
   document.getElementById('drawer').setAttribute('aria-hidden', 'true');
   document.getElementById('scrim').classList.remove('open');

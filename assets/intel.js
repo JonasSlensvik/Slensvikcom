@@ -431,6 +431,7 @@
   const NAV_PAGES = [
     { href: 'index.html',        label: 'Terminal' },
     { href: 'radar.html',        label: 'Radar' },
+    { href: 'dark.html',         label: 'Dark pool' },
     { href: 'portfolio.html',    label: 'Portfolio' },
     { href: 'galton.html',       label: 'Galton' },
     { href: 'marketmaker.html',  label: 'MarketMaker' },
