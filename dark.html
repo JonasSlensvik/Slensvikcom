@@ -143,7 +143,7 @@ import * as vg from 'https://cdn.jsdelivr.net/npm/@uwdata/vgplot@0.32.1/+esm';
 import * as duckdb from 'https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.33.1-dev57.0/+esm';
 
 const API = 'https://api.slensvik.com';
-const DAYS = 90, PAGE = 10000;
+const DAYS = 90;
 const $ = id => document.getElementById(id);
 const css = getComputedStyle(document.documentElement);
 const C = k => css.getPropertyValue(k).trim();
@@ -160,18 +160,15 @@ function osloClock(ts) {
   return osloFmt.format(d);                      // "HH:MM:SS"
 }
 
+// One request, ordered by trade_date so Postgres reads the dark-print partial index (trade_date, isin)
+// WHERE is_dark (~1.5 s). Ordering by id walked the primary key over all 11.8 M trades, and an exact
+// count cost another ~5 s. Relies on PostgREST having no db-max-rows (it has none, 2026-10-10).
 async function fetchPrints(since) {
-  const out = [];
-  for (let off = 0; ; off += PAGE) {
-    const url = `${API}/trades_raw?is_dark=is.true&trade_date=gte.${since}` +
-      `&select=id,trade_date,trading_time,isin,price,quantity,notional,market_mechanism,trading_mode&order=id.asc&limit=${PAGE}&offset=${off}`;
-    const r = await fetch(url, { headers: { Accept: 'application/json' } });
-    if (!r.ok) throw new Error(`HTTP ${r.status} from the API`);
-    const page = await r.json();
-    out.push(...page);
-    status(`Loading the tape … <b>${nf(out.length)}</b> prints`);
-    if (page.length < PAGE) return out;
-  }
+  const url = `${API}/trades_raw?is_dark=is.true&trade_date=gte.${since}` +
+    `&select=trade_date,trading_time,isin,price,quantity,notional,market_mechanism,trading_mode&order=trade_date.asc`;
+  const r = await fetch(url, { headers: { Accept: 'application/json' } });
+  if (!r.ok) throw new Error(`HTTP ${r.status} from the API`);
+  return r.json();
 }
 
 async function startDuckDB() {

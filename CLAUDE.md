@@ -44,7 +44,9 @@ backend architecture, scheduled jobs, DB access, and working agreements.
   iMac. Pins: `@uwdata/vgplot@0.32.1` and `@duckdb/duckdb-wasm@1.33.1-dev57.0`, the build mosaic-core 0.32.1
   depends on. Keep them in step: the page creates the DuckDB instance and hands it to `vg.wasmConnector`.
   `trades_raw.trading_time` holds UTC wall-clock labelled +02, so the page converts it (`osloClock`). Avoid
-  DuckDB reserved words as aliases (`names` broke the KPI query). First load is ~10 s, mostly the WASM download.
+  DuckDB reserved words as aliases (`names` broke the KPI query). The prints come in ONE request ordered by
+  `trade_date`, which reads the partial index. `order=id` walked all 11.8 M trades, and an exact count cost ~5 s.
+  This relies on PostgREST having no `db-max-rows`. First load is ~5 s, mostly the WASM download.
   Headless screenshots need real time (DuckDB runs in a Worker), not `--virtual-time-budget`.
 - `portfolio.html` — personal portfolio tracker; 5D chart merges `api.intraday_live` for
   minute-level live resolution during Oslo market hours. World-style shell (sticky scrollspy rail,
