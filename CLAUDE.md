@@ -30,7 +30,10 @@ backend architecture, scheduled jobs, DB access, and working agreements.
   (`price_ohlcv` × `daily_close_adj` adj/close), volume, and short interest as a step line. Background bands mark
   the run-up, closed period, previous report, last session and report day. Dark-pool days sit on the candles and
   insider trades point down from above. `drLwc`; the SVG `drDots` is the fallback when the CDN script is missing.
-  Then "why N", insider filings, analyst mix / targets / actions, past graded reactions.
+  Then, for companies with a nowcast card, "What the prices say" (`drNowcast`: EPS ranges against consensus per quarter,
+  the daily record, "Priced in?" attribution, segments and bridge; ENEXT `api.nowcast_latest` / `nowcast_daily` /
+  `nowcast_attribution`, runbook `../ENEXT/docs/nowcast.md`), "why N", insider filings, analyst mix / targets /
+  actions, past graded reactions.
   Deep link `radar.html#report=<ISIN>` opens it on load (handy for headless screenshots, with `?static=1`).
   dossier.html / portfolio.html still use Lightweight Charts **4.2.3**. v5 changed the API (`addSeries(X, …)`,
   `createSeriesMarkers`), so migrate them deliberately.

@@ -541,6 +541,27 @@ table.wt { width: 100%; border-collapse: collapse; font-size: 11px; min-width: 9
 .dr-li .d { color: var(--text4); font-size: 9.5px; font-variant-numeric: tabular-nums; }
 .dr-li .n { color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .dr-li .n small { color: var(--text4); margin-left: 6px; }
+/* nowcast section (drNowcast) */
+.dr-nc-q, .dr-nc-hist, .dr-nc-attr { margin-bottom: 16px; }
+.dr-nc-h { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; font-size: 10.5px; margin-bottom: 6px; }
+.dr-nc-h b { color: var(--text1); font-weight: 500; }
+.dr-nc-h span { color: var(--text4); font-size: 9.5px; }
+.dr-nc-row { display: grid; grid-template-columns: 78px minmax(0, 1fr) 92px; gap: 10px; align-items: center; font-size: 10.5px; padding: 4px 0; }
+.dr-nc-row .lab { color: var(--text2); }
+.dr-nc-row .trk { position: relative; height: 10px; background: var(--bg3); border-radius: 3px; }
+.dr-nc-row .trk .rng { position: absolute; top: 0; bottom: 0; border-radius: 3px; }
+.dr-nc-row .trk .mid { position: absolute; top: -3px; width: 3px; height: 16px; margin-left: -1.5px; border-radius: 2px; }
+.dr-nc-row .v { text-align: right; font-variant-numeric: tabular-nums; color: var(--text1); }
+.dr-nc-row .v small { margin-left: 6px; font-size: 9.5px; }
+.dr-nc-axis { display: grid; grid-template-columns: 78px auto 1fr auto 92px; gap: 0 10px; font-size: 9px; color: var(--text4); font-variant-numeric: tabular-nums; }
+.dr-nc-axis span:nth-child(1) { grid-column: 2; } .dr-nc-axis span:nth-child(2) { grid-column: 3; text-align: center; } .dr-nc-axis span:nth-child(3) { grid-column: 4; }
+.dr-nc-seg { margin-top: 6px; font-size: 10px; }
+.dr-nc-seg summary { cursor: pointer; color: var(--text3); font-size: 9.5px; letter-spacing: .04em; }
+.dr-nc-seg summary:focus-visible { outline: 1px solid var(--amber); outline-offset: 2px; }
+.dr-nc-seg .dr-li.sub .n { white-space: normal; } .dr-nc-seg .dr-li.sub .n small { display: block; margin-left: 0; }
+.dr-nc-spark { display: block; overflow: visible; }
+.dr-ev.strong .l { color: var(--text1); }
+@media (max-width: 520px) { .dr-nc-row { grid-template-columns: 64px minmax(0, 1fr) 80px; } }
 .dr-li .r { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .dr-li.closed .d { color: var(--amber); }
 .dr-mix { display: flex; height: 12px; border-radius: 3px; overflow: hidden; margin: 4px 0 6px; gap: 2px; }
@@ -2864,6 +2885,103 @@ function drAnalysts(r, rec, cons, acts) {
   return s || '<div class="empty">No analyst coverage on file.</div>';
 }
 
+/* ── Nowcast: what the prices we watch imply for the quarter (ENEXT api.nowcast_*; docs/nowcast.md) ──
+   Only companies with a card get the section. Each quarter: the nowcast's EPS range (company guidance, and the
+   fitted variant where the card has one) against the day's consensus range on one scale; the daily record since
+   the last report; what the watched prices explain of the share's move since then; the segment bridge. */
+const NC_COL = { guided: 'var(--amber)', power: 'rgba(79,195,247,.95)' };
+const NC_LAB = { guided: 'Nowcast', power: 'With power' };
+const ncQ = n => `${n.period} ${n.fiscal_year}`;
+const ncQkey = n => n.fiscal_year * 10 + +String(n.period).slice(1);
+const ncM = v => v == null || isNaN(v) ? '—' : (+v < 0 ? '−' : '') + Math.abs(Math.round(+v)).toLocaleString('en-GB');   // MNOK, thousands separators
+
+function drNcStrip(q, rows) {
+  const vals = rows.flatMap(r => [r.lo, r.hi, r.mid]).filter(v => v != null && isFinite(v));
+  if (!vals.length) return '';
+  const lo = Math.min(...vals), hi = Math.max(...vals), pad = (hi - lo) * 0.06 || 0.05;
+  const x = v => (((v - lo + pad) / (hi - lo + 2 * pad)) * 100).toFixed(2);
+  return `<div class="dr-nc-strip">${rows.map(r => {
+    const rng = r.lo != null && r.hi != null
+      ? `<i class="rng" style="left:${x(r.lo)}%;width:${(x(r.hi) - x(r.lo)).toFixed(2)}%;background:${r.fill}"></i>` : '';
+    const mid = r.mid != null ? `<b class="mid" style="left:${x(r.mid)}%;background:${r.dot}"></b>` : '';
+    return `<div class="dr-nc-row"><span class="lab">${r.label}</span><span class="trk">${rng}${mid}</span><span class="v">${r.text}</span></div>`;
+  }).join('')}<div class="dr-nc-axis"><span>${lo.toFixed(2)}</span><span>EPS, NOK</span><span>${hi.toFixed(2)}</span></div></div>`;
+}
+
+function drNcSpark(hist) {
+  const pts = hist.filter(h => h.eps_mid != null);
+  if (pts.length < 3) return '';
+  const W = 560, H = 78, L = 4, R = 64, T = 8, B = 16;
+  const d0 = Math.min(...pts.map(h => erDay(h.asof_date))), d1 = Math.max(...pts.map(h => erDay(h.asof_date)));
+  const vals = pts.flatMap(h => [+h.eps_mid, h.consensus_eps != null ? +h.consensus_eps : NaN]).filter(isFinite);
+  const v0 = Math.min(...vals), v1 = Math.max(...vals), sp = (v1 - v0) || 0.1;
+  const X = d => L + ((d - d0) / Math.max(1, d1 - d0)) * (W - L - R), Y = v => T + (1 - (v - v0 + sp * 0.08) / (sp * 1.16)) * (H - T - B);
+  const qs = [...new Set(pts.map(ncQ))];
+  const col = (i) => i === 0 ? 'var(--amber)' : 'rgba(79,195,247,.95)';
+  let s = `<svg class="dr-nc-spark" viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Nowcast EPS by day">`;
+  qs.forEach((q, i) => {
+    const qp = pts.filter(h => ncQ(h) === q);
+    s += `<polyline fill="none" stroke="${col(i)}" stroke-width="1.6" stroke-linejoin="round" points="${qp.map(h => `${X(erDay(h.asof_date)).toFixed(1)},${Y(+h.eps_mid).toFixed(1)}`).join(' ')}"/>`;
+    const last = qp[qp.length - 1];
+    s += `<text x="${W - R + 6}" y="${Y(+last.eps_mid) + 3}" fill="${col(i)}" font-size="9">${erEsc(q)} ${(+last.eps_mid).toFixed(2)}</text>`;
+    qp.filter(h => h.consensus_eps != null).forEach(h => {
+      s += `<circle cx="${X(erDay(h.asof_date)).toFixed(1)}" cy="${Y(+h.consensus_eps).toFixed(1)}" r="2.6" fill="var(--text1)"/>`;
+    });
+  });
+  s += `<text x="${L}" y="${H - 3}" fill="var(--text4)" font-size="9">${erDate(pts[0].asof_date, false)}</text>`;
+  s += `<text x="${W - R}" y="${H - 3}" fill="var(--text4)" font-size="9" text-anchor="end">${erDate(pts[pts.length - 1].asof_date, false)}</text>`;
+  return s + '</svg>';
+}
+
+function drNowcast(nc, attr, hist) {
+  if (!nc.length) return '';
+  const byQ = new Map();
+  nc.slice().sort((a, b) => ncQkey(a) - ncQkey(b)).forEach(n => {
+    if (!byQ.has(ncQ(n))) byQ.set(ncQ(n), {});
+    byQ.get(ncQ(n))[n.variant] = n;
+  });
+  let s = '';
+  for (const [q, v] of byQ) {
+    const g = v.guided || Object.values(v)[0];
+    const rows = [];
+    if (g.consensus_eps != null) rows.push({ label: 'Consensus', lo: g.consensus_low != null ? +g.consensus_low : null,
+      hi: g.consensus_high != null ? +g.consensus_high : null, mid: +g.consensus_eps, fill: 'rgba(255,255,255,.14)', dot: 'var(--text1)',
+      text: `${(+g.consensus_eps).toFixed(2)}<small>${g.consensus_n || '?'} analysts</small>` });
+    for (const k of ['guided', 'power']) {
+      const n = v[k];
+      if (!n) continue;
+      rows.push({ label: NC_LAB[k] || k, lo: +n.eps_low, hi: +n.eps_high, mid: +n.eps_mid, fill: NC_COL[k] ? `color-mix(in srgb, ${NC_COL[k]} 30%, transparent)` : 'rgba(255,255,255,.2)',
+        dot: NC_COL[k] || 'var(--text1)', text: `${(+n.eps_mid).toFixed(2)}${n.surprise_pct != null ? `<small>${drPct(+n.surprise_pct)}</small>` : ''}` });
+    }
+    const verdict = g.surprise_pct == null ? 'no consensus captured yet'
+      : Math.abs(+g.surprise_pct) < 5 ? 'in line with consensus' : +g.surprise_pct > 0 ? 'above consensus' : 'below consensus';
+    s += `<div class="dr-nc-q"><div class="dr-nc-h"><b>${erEsc(q)}</b><span>${g.report_date ? `report ${erDate(g.report_date, false)} · ` : ''}built on ${erEsc(String(g.base || ''))}</span></div>` +
+      drNcStrip(q, rows) +
+      `<div class="note" style="margin-top:4px">Adjusted EBITDA ${ncM(+g.ebitda)} MNOK (${ncM(+g.ebitda_low)}–${ncM(+g.ebitda_high)}), ` +
+      `EPS ${(+g.eps_low).toFixed(2)}–${(+g.eps_high).toFixed(2)}: ${verdict}.${v.power ? ` With the fitted Nordic-power effect, ${(+v.power.eps_mid).toFixed(2)}.` : ''}</div>` +
+      `<details class="dr-nc-seg"><summary>Segments and bridge</summary><div class="dr-list">${(g.segments || []).map(sg =>
+        `<div class="dr-li"><span class="d">${erEsc(sg.key)}</span><span class="n">${erEsc(sg.name)}<small>${ncM(+sg.base)} before</small></span>` +
+        `<span class="r">${ncM(+sg.value)}<small> ${ncM(+sg.low)}–${ncM(+sg.high)}</small></span></div>`).join('')}` +
+      (g.items || []).map(it => `<div class="dr-li sub"><span class="d">${erEsc(it.segment)}</span><span class="n" title="${erEsc(it.basis)}">${erEsc(it.item)}<small>${erEsc(it.basis)}</small></span>` +
+        `<span class="r">${erSigned(+it.mnok, 0)}</span></div>`).join('') + `</div></details></div>`;
+  }
+  const spark = drNcSpark(hist);
+  if (spark) s += `<div class="dr-nc-hist"><div class="dr-nc-h"><b>The daily record</b><span>nowcast EPS each day since the last report · dots: consensus</span></div>${spark}</div>`;
+  const a = attr[0];
+  if (a && a.parts) {
+    const row = (lbl, sub, v, strong) => {
+      const w = Math.min(1, Math.abs(+v || 0) / 10) * 50;
+      const bar = !+v ? '' : +v > 0 ? `<i style="left:50%;width:${w}%;background:var(--up)"></i>` : `<i style="right:50%;width:${w}%;background:var(--dn)"></i>`;
+      return `<div class="dr-ev${strong ? ' strong' : ''}"><span class="l">${lbl}<small>${sub}</small></span><span class="t">${bar}</span><span class="v">${erSigned(v, 1)}%</span></div>`;
+    };
+    s += `<div class="dr-nc-attr"><div class="dr-nc-h"><b>Priced in?</b><span>the share since ${erDate(a.since_session, false)} against what the watched prices explain</span></div>` +
+      row('Share price', `${a.sessions} sessions`, +a.actual_pct, true) +
+      a.parts.filter(p => Math.abs(+p.contribution_pct) >= 0.05).map(p => row(erEsc(p.label), `moved ${erSigned(+p.factor_pct, 1)}% · beta ${(+p.beta).toFixed(2)}`, +p.contribution_pct)).join('') +
+      row('Not explained', `daily fit R² ${(+a.r2).toFixed(2)}`, +a.unexplained_pct, true) + `</div>`;
+  }
+  return s + `<div class="note">Built from the company's published sensitivities and guidance, applied every day to the prices on the World page (LME aluminium, alumina, premiums, currencies, Nordic power). Consensus is Yahoo's, captured daily. Graded when the report lands.</div>`;
+}
+
 function drPast(past) {
   if (!past.length) return '<div class="empty">No graded reports yet — grading starts with reports since mid-June 2026.</div>';
   return `<div class="dr-list">${past.map(p => {
@@ -2888,7 +3006,7 @@ async function openReport(isin) {
   document.getElementById('drawerX').focus({ preventScroll: true });
   try { history.replaceState(null, '', '#report=' + isin); } catch (e) { /* file:// */ }
   const since = erIso(erAsof - 110), q = s => API(...s).catch(() => []);
-  const [px, si, ins, rec, cons, acts, past, ohlcv] = await Promise.all([
+  const [px, si, ins, rec, cons, acts, past, ohlcv, nc, ncAttr, ncHist] = await Promise.all([
     q(['daily_close_adj', `isin=eq.${isin}&trade_date=gte.${since}&select=trade_date,close,adj_close&order=trade_date.asc`]),
     q(['short_interest', `isin=eq.${isin}&position_date=gte.${erIso(erAsof - 150)}&select=position_date,short_pct&order=position_date.asc`]),
     q(['insider_trades', `isin=eq.${isin}&side=in.(BUY,SELL)&trade_date=gte.${erIso(erAsof - 130)}&select=trade_date,person_name,person_role,side,value,currency,raw_excerpt&order=trade_date.desc&limit=30`]),
@@ -2897,6 +3015,9 @@ async function openReport(isin) {
     q(['analyst_actions', `isin=eq.${isin}&order=grade_date.desc&limit=5`]),
     q(['report_radar_graded', `isin=eq.${isin}&select=fiscal_year,period,pub_date,positioning,direction,reaction,reaction_5d&order=pub_date.desc&limit=6`]),
     q(['price_ohlcv', `isin=eq.${isin}&source=eq.trades&ts=gte.${since}&select=ts,venue,open,high,low,close,volume&order=ts.asc&limit=600`]),
+    q(['nowcast_latest', `isin=eq.${isin}`]),
+    q(['nowcast_attribution', `isin=eq.${isin}&order=asof_date.desc&limit=1`]),
+    q(['nowcast_daily', `isin=eq.${isin}&variant=eq.guided&select=asof_date,fiscal_year,period,eps_mid,consensus_eps&order=asof_date.asc&limit=600`]),
   ]);
   if (drIsin !== isin) return;                    // another report was opened meanwhile
   const cw = Math.max(300, Math.min(592, document.getElementById('drawerBody').clientWidth || 592));
@@ -2914,6 +3035,7 @@ async function openReport(isin) {
          <span><i style="width:12px;height:8px;background:rgba(79,195,247,.2)"></i>run-up</span>
          <span><i style="width:12px;height:8px;background:${lwc ? 'rgba(245,166,35,.22)' : 'repeating-linear-gradient(135deg,rgba(245,166,35,.35) 0 2px,transparent 2px 5px)'}"></i>closed period</span>
          ${lwc ? '<span><i style="width:3px;height:10px;background:rgba(245,166,35,.8)"></i>report day</span>' : ''}</div></div>` +
+    (nc.length ? `<div class="dr-sec" id="drNowcast"><h4><span>What the prices say</span><small>nowcast from the prices we watch · against consensus</small></h4>${drNowcast(nc, ncAttr, ncHist)}</div>` : '') +
     `<div class="dr-sec"><h4><span>Why ${r.direction === 'NONE' ? 'quiet' : r.positioning}?</span><small>scored: dark flow + short sellers</small></h4>${drWhy(r)}</div>` +
     `<div class="dr-sec"><h4><span>Short sellers</span><small>disclosed short interest, % of shares</small></h4>${lwc
       ? (siNow ? drKv('Latest disclosure', `${(+siNow.short_pct).toFixed(2)}% · ${erDate(siNow.position_date, false)}${r.si_change != null ? ` · ${erSigned(r.si_change, 2)} pp in the run-up` : ''}`) +
