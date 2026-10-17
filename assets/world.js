@@ -1464,7 +1464,9 @@
 
   /* ── commodities & vol ── */
   function renderCommodities() {
-    const cmd = S.boardList.filter((r) => (r.asset_class === 'commodity' && r.source === 'yahoo') || r.asset_class === 'shipping');
+    // LME aluminium comes from Westmetall (the price Hydro sells at); its 3-month and stock series stay off the tiles
+    const cmd = S.boardList.filter((r) => (r.asset_class === 'commodity' && (r.source === 'yahoo' || r.series_id === 'cmd.lme_al'))
+      || r.asset_class === 'shipping');
     $('#cmdTiles').innerHTML = cmd.map((r) => tile(r, { chgKey: 'chg_1d', extra: (x) => `${esc(chg(x, x.chg_1m))} 1M` })).join('');
     const vol = S.boardList.filter((r) => r.asset_class === 'vol');
     $('#volTiles').innerHTML = vol.map((r) => tile(r, { chgKey: 'chg_1d',
