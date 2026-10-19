@@ -35,8 +35,8 @@ backend architecture, scheduled jobs, DB access, and working agreements.
   `nowcast_attribution`, runbook `../ENEXT/docs/nowcast.md`), "why N", insider filings, analyst mix / targets /
   actions, past graded reactions.
   Deep link `radar.html#report=<ISIN>` opens it on load (handy for headless screenshots, with `?static=1`).
-  dossier.html / portfolio.html still use Lightweight Charts **4.2.3**. v5 changed the API (`addSeries(X, …)`,
-  `createSeriesMarkers`), so migrate them deliberately.
+  portfolio.html still uses Lightweight Charts **4.2.3** (dossier.html moved to v5.2.1 on 2026-10-19). v5 changed the
+  API (`addSeries(X, …)`, `createSeriesMarkers`), so migrate it deliberately.
   The event-radar axis is sticky inside `.er-board`, which must stay `overflow: clip` — `hidden` makes the board a
   scroll container and shoves the axis over the first row. Backend runbook: `../ENEXT/docs/event-radar.md`.
   Do **not** edit this file with `sed` — it wiped the file once; use the Edit tool.
@@ -59,6 +59,21 @@ backend architecture, scheduled jobs, DB access, and working agreements.
   calendar, runway, profile, ledger, market ex-dates. Ex-date events elsewhere on the page (desk chips,
   tape ribbons, deck moons) are synthesized from the same rows (`syncDividendEvents`). Backend runbook:
   `../ENEXT/docs/dividends.md`.
+- `dossier.html` + `assets/dossier-report.js` — one company, rebuilt around its next report on 2026-10-19 (a superset of
+  the radar's report drawer). Order: hero + KPIs → **The Report Ahead** (countdown ring, positioning dial, tiles, the
+  radar's "why N" evidence, the nowcast with daily record / "priced in?" / segments for card companies, consensus and its
+  90-day drift, target range, rating mix, broker actions) → the **price tape** (Lightweight Charts v5.2.1: candles on
+  adjusted tape prices, Yahoo `price_history` back to 2010 as the pre-tape area, volume and short-interest panes, report
+  bands from a series primitive — every report since 2024 with its reaction, the coming report, run-up, closed period —
+  the radar's dark-pool days, signals, insiders, event ribbons, target rail; ranges TO REPORT / 3M … ALL) → **Road to the
+  Report** (SVG swimlanes from the last report to the next: share vs market, daily frozen positioning, news, dark pool,
+  short interest, insiders, brokers, nowcast + consensus EPS) → **Into Every Report** (event study −20…+5 sessions, this
+  quarter's run-up drawn live; then the report table, a click opens the release text from `api.report_texts`) → intraday,
+  dark flow, insiders, shorts, events → **In the News** (`api.company_news`, `api.broker_actions`; deduplicated on display —
+  the wires repeat one action in two languages) → signals → analysts + financials (quarterly by default) → health →
+  return distribution. `DossierReport.render(isin)` fetches and renders the report sections and resolves to the data the
+  tape takes its bands from. The "Radar Book" KPI is `api.conviction` (select `model` + `ev_*`, or
+  `INTEL.convictionBreakdown` falls back to v3's NULL `pts_*`).
 - `galton.html` — Galton weekly-strategy page; live tracker mirrors the portfolio's
   minute-level resolution (cold-start seeds `prev_close` at week-open, then merges
   `api.intraday_live`; refreshes every 3 min, paused during what-if slider previews).

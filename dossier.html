@@ -9,9 +9,10 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=Syne:wght@500;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.3/dist/lightweight-charts.standalone.production.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@5.2.1/dist/lightweight-charts.standalone.production.js"></script>
 <link rel="stylesheet" href="assets/intel.css">
 <script src="assets/intel.js?v=20261010"></script>
+<script src="assets/dossier-report.js?v=20261019"></script>
 <style>
   /* Design tokens live in assets/intel.css (shared design system). */
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -274,6 +275,187 @@
   .conv-break-fill.neg { background: var(--red, #f87171); }
   .conv-break-val { text-align: right; font-variant-numeric: tabular-nums; color: var(--text-bright); }
   .conv-break-cap { margin-top: 6px; font-size: 10px; color: var(--text-dim); line-height: 1.5; }
+
+  /* ══ report sections (assets/dossier-report.js, 2026-10-19) ══ */
+  .jump { position:sticky; top:0; z-index:6; display:flex; gap:5px; overflow-x:auto; scrollbar-width:none; margin:14px -6px 0; padding:9px 6px;
+          background:linear-gradient(var(--bg0) 72%, rgba(5,8,16,0)); }
+  .jump::-webkit-scrollbar { display:none; }
+  .jump a { flex:none; font-family:var(--mono); font-size:9.5px; letter-spacing:.12em; text-transform:uppercase; color:var(--text3); text-decoration:none;
+            padding:5px 11px; border:1px solid var(--border2); border-radius:999px; background:var(--bg1); transition:color .15s, border-color .15s, background .15s; }
+  .jump a:hover, .jump a.on { color:var(--amber); border-color:rgba(245,166,35,.45); background:var(--amber-dim); }
+  .sec { scroll-margin-top:54px; }
+  .rp-u { color:var(--green); } .rp-d { color:var(--red); } .rp-m { color:var(--text4); }
+
+  .rp-panel { position:relative; overflow:hidden; }
+  .rp-panel::before { content:''; position:absolute; inset:0; pointer-events:none;
+    background:radial-gradient(ellipse 55% 75% at 0% 0%, rgba(245,166,35,.075), transparent 62%), radial-gradient(ellipse 45% 70% at 100% 0%, rgba(79,195,247,.06), transparent 60%); }
+  .rp-panel > * { position:relative; }
+  .rp-hero { display:grid; grid-template-columns:132px minmax(0,1fr) 184px; gap:24px; align-items:center; margin:4px 0 20px; }
+  @media (max-width:960px) { .rp-hero { grid-template-columns:116px minmax(0,1fr); } .rp-dialbox { grid-column:1 / -1; justify-self:center; } }
+  @media (max-width:560px) { .rp-hero { grid-template-columns:minmax(0,1fr); } .rp-ring { justify-self:center; } }
+  .rp-ring { width:124px; height:124px; display:block; }
+  .rp-ring .trk { fill:none; stroke:var(--bg3); stroke-width:7; }
+  .rp-ring .arc { fill:none; stroke:var(--amber); stroke-width:7; stroke-linecap:round; filter:drop-shadow(0 0 6px rgba(245,166,35,.45)); }
+  .rp-ring .dot { fill:#fff; }
+  .rp-ring .big { font-family:var(--sans); font-weight:700; font-size:34px; fill:var(--text1); text-anchor:middle; }
+  .rp-ring .sm { font-family:var(--mono); font-size:9px; letter-spacing:.12em; fill:var(--text3); text-anchor:middle; }
+  .rp-when { display:flex; gap:14px; align-items:baseline; flex-wrap:wrap; }
+  .rp-when .am { font-family:var(--sans); font-weight:700; font-size:clamp(20px,2.4vw,30px); color:var(--text1); letter-spacing:-.01em; line-height:1.1; }
+  .rp-when span:not(.am) { font-family:var(--mono); font-size:12.5px; color:var(--amber); letter-spacing:.06em; }
+  .rp-when em { color:var(--text3); font-style:normal; font-size:10px; margin-left:6px; }
+  .rp-chips { display:flex; gap:6px; flex-wrap:wrap; margin:10px 0 14px; }
+  .rp-chips .c { font-family:var(--mono); font-size:9.5px; letter-spacing:.05em; color:var(--text2); padding:3px 9px; border:1px solid var(--border2); border-radius:999px; background:var(--bg1); }
+  .rp-chips .c.ice { color:var(--ice); border-color:rgba(79,195,247,.35); background:var(--ice-dim); }
+  .rp-chips .c.amb { color:var(--amber); border-color:rgba(245,166,35,.35); background:var(--amber-dim); }
+  .rp-tiles { display:grid; grid-template-columns:repeat(auto-fit, minmax(148px, 1fr)); gap:8px; }
+  .rp-tile { background:rgba(11,15,23,.7); border:1px solid var(--border); border-radius:var(--radius); padding:9px 11px; }
+  .rp-tile.hl { border-color:rgba(245,166,35,.45); box-shadow:var(--glow-amber); }
+  .rp-tile .k { font-family:var(--mono); font-size:8.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--text3); }
+  .rp-tile .v { font-family:var(--mono); font-size:20px; font-weight:600; margin-top:4px; font-variant-numeric:tabular-nums; color:var(--text1); }
+  .rp-tile .s { font-family:var(--mono); font-size:9px; color:var(--text4); margin-top:3px; line-height:1.4; }
+  .rp-dialbox { text-align:center; }
+  .rp-dial { width:184px; height:110px; display:block; margin:0 auto; }
+  .rp-dial .arcs path { fill:none; stroke-width:9; }
+  .rp-dial .needle { stroke-width:2.5; stroke-linecap:round; }
+  .rp-dial .end { font-family:var(--mono); font-size:7.5px; letter-spacing:.14em; fill:var(--text4); text-anchor:middle; }
+  .rp-dial .val { font-family:var(--mono); font-size:15px; font-weight:600; text-anchor:middle; }
+  .rp-dialbox .s { font-family:var(--mono); font-size:9.5px; color:var(--text3); letter-spacing:.05em; margin-top:2px; }
+  .rp-cols { display:grid; grid-template-columns:minmax(0,1.12fr) minmax(0,1fr); gap:24px; }
+  @media (max-width:980px) { .rp-cols { grid-template-columns:minmax(0,1fr); } }
+  .rp-block { margin-bottom:18px; }
+  .rp-bh { font-family:var(--mono); font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:var(--text2); padding-bottom:7px; margin-bottom:6px; border-bottom:1px solid var(--border); }
+  .rp-bh small { text-transform:none; letter-spacing:.03em; color:var(--text4); font-size:9.5px; margin-left:8px; }
+  .rp-ev { display:grid; grid-template-columns:minmax(0,200px) minmax(0,1fr) 56px; gap:10px; align-items:center; font-family:var(--mono); font-size:11px; padding:7px 0; border-bottom:1px solid rgba(255,255,255,.03); }
+  .rp-ev .l { color:var(--text2); } .rp-ev .l small { display:block; color:var(--text4); font-size:9px; margin-top:2px; }
+  .rp-ev .t { position:relative; height:8px; background:var(--bg3); border-radius:2px; }
+  .rp-ev .t::after { content:''; position:absolute; left:50%; top:-3px; bottom:-3px; width:1px; background:rgba(255,255,255,.22); }
+  .rp-ev .t i { position:absolute; top:0; bottom:0; border-radius:2px; }
+  .rp-ev .v { text-align:right; font-variant-numeric:tabular-nums; color:var(--text1); }
+  .rp-ev.strong .l { color:var(--text1); }
+  .rp-kv { display:flex; justify-content:space-between; gap:12px; align-items:center; font-family:var(--mono); font-size:11px; padding:6px 0; border-bottom:1px solid rgba(255,255,255,.03); }
+  .rp-kv > span { color:var(--text3); }
+  .rp-kv b { font-weight:500; color:var(--text1); text-align:right; font-variant-numeric:tabular-nums; display:inline-flex; gap:6px; align-items:center; flex-wrap:wrap; justify-content:flex-end; }
+  .rp-kv small { color:var(--text4); font-size:9.5px; }
+  .rp-note { font-family:var(--mono); font-size:9.5px; line-height:1.55; color:var(--text4); margin-top:8px; }
+  .rp-list { display:flex; flex-direction:column; }
+  .rp-list.news { max-height:540px; overflow-y:auto; }
+  .rp-li { display:grid; grid-template-columns:56px minmax(0,1fr) auto; gap:10px; align-items:baseline; font-family:var(--mono); font-size:11px; padding:6px 0; border-bottom:1px solid rgba(255,255,255,.035); }
+  .rp-li .dt { color:var(--text4); font-size:10px; font-variant-numeric:tabular-nums; }
+  .rp-li .n { color:var(--text1); min-width:0; }
+  .rp-li .n.wrap { line-height:1.45; }
+  .rp-li .n small { display:block; color:var(--text4); font-size:9.5px; margin-top:2px; }
+  .rp-li .r { color:var(--text2); text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .rp-li .r small { color:var(--text4); }
+  .rp-li .r.src { color:var(--text4); font-size:9.5px; max-width:130px; overflow:hidden; text-overflow:ellipsis; }
+  .rp-li.sub { padding-left:12px; opacity:.85; }
+  .rp-li a { color:var(--text1); text-decoration:none; } .rp-li a:hover { color:var(--ice); }
+  .rp-ncq { margin:8px 0 16px; }
+  .rp-h { display:flex; gap:10px; align-items:baseline; flex-wrap:wrap; font-family:var(--mono); font-size:11px; margin-bottom:6px; }
+  .rp-h b { color:var(--text1); font-weight:500; } .rp-h span { color:var(--text4); font-size:9.5px; }
+  .rp-strip-row { display:grid; grid-template-columns:84px minmax(0,1fr) 110px; gap:10px; align-items:center; font-family:var(--mono); font-size:11px; padding:4px 0; }
+  .rp-strip-row .lab { color:var(--text2); }
+  .rp-strip-row .trk { position:relative; height:10px; background:var(--bg3); border-radius:3px; }
+  .rp-strip-row .rng { position:absolute; top:0; bottom:0; border-radius:3px; }
+  .rp-strip-row .mid { position:absolute; top:-3px; width:3px; height:16px; margin-left:-1.5px; border-radius:2px; }
+  .rp-strip-row .v { text-align:right; font-variant-numeric:tabular-nums; color:var(--text1); }
+  .rp-strip-row .v small { margin-left:6px; font-size:9.5px; }
+  .rp-strip-axis { display:grid; grid-template-columns:84px auto 1fr auto 110px; gap:0 10px; font-family:var(--mono); font-size:9px; color:var(--text4); }
+  .rp-strip-axis span:nth-child(1) { grid-column:2; } .rp-strip-axis span:nth-child(2) { grid-column:3; text-align:center; } .rp-strip-axis span:nth-child(3) { grid-column:4; }
+  .rp-seg { margin-top:8px; font-family:var(--mono); font-size:10px; }
+  .rp-seg summary { cursor:pointer; color:var(--text3); letter-spacing:.08em; }
+  .rp-ncspark { display:block; }
+  .rp-spark { width:120px; height:24px; }
+  .rp-drift { display:flex; gap:6px; justify-content:flex-end; flex-wrap:wrap; padding:3px 0 7px; font-family:var(--mono); font-size:10px; color:var(--text2); font-variant-numeric:tabular-nums; }
+  .rp-drift span { background:var(--bg1); border:1px solid var(--border); border-radius:3px; padding:2px 6px; }
+  .rp-drift small { color:var(--text4); margin-right:4px; }
+  .rp-rng { position:relative; height:22px; margin:14px 4px 2px; }
+  .rp-rng .ln { position:absolute; left:0; right:0; top:10px; height:2px; background:var(--bg3); }
+  .rp-rng .band { position:absolute; top:6px; height:10px; border-radius:3px; background:linear-gradient(90deg, rgba(240,96,96,.35), rgba(67,224,151,.35)); }
+  .rp-rng .mk { position:absolute; top:1px; width:3px; height:20px; margin-left:-1.5px; border-radius:2px; }
+  .rp-rng .mk.tg { background:var(--ice); box-shadow:0 0 8px rgba(79,195,247,.6); }
+  .rp-rng .mk.px { background:#fff; }
+  .rp-rng-l { display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; font-family:var(--mono); font-size:9.5px; color:var(--text4); margin-bottom:6px; }
+  .rp-rng-l i { display:inline-block; width:3px; height:9px; margin:0 4px -1px 0; border-radius:1px; } .rp-rng-l i.tg { background:var(--ice); } .rp-rng-l i.px { background:#fff; }
+  .rp-mix { display:flex; height:10px; border-radius:3px; overflow:hidden; gap:2px; margin:14px 0 6px; }
+  .rp-mix-l { display:flex; justify-content:space-between; flex-wrap:wrap; gap:6px; font-family:var(--mono); font-size:9.5px; color:var(--text4); }
+  .rp-mix-l b { color:var(--text2); font-weight:500; }
+  .rp-road-box, .rp-into-wrap { position:relative; }
+  .rp-road, .rp-into { display:block; font-family:var(--mono); max-width:100%; }
+  .rp-road .rp-ll { font-size:10.5px; fill:var(--text1); }
+  .rp-road .rp-ls { font-size:9px; fill:var(--text4); }
+  .rp-ax { font-size:9px; fill:var(--text4); }
+  .rp-grid { stroke:rgba(255,255,255,.045); }
+  .rp-sep { stroke:rgba(255,255,255,.05); }
+  .rp-zero { stroke:rgba(255,255,255,.2); stroke-dasharray:2 3; }
+  .rp-b-runup { fill:rgba(79,195,247,.075); }
+  .rp-b-closed { fill:rgba(245,166,35,.085); }
+  .rp-rep { stroke:rgba(245,166,35,.85); stroke-width:2; }
+  .rp-rep-t { fill:var(--amber); }
+  .rp-today { stroke:rgba(232,238,247,.5); stroke-dasharray:3 3; }
+  .rp-today-t { fill:var(--text2); }
+  .rp-cross { stroke:rgba(79,195,247,.55); pointer-events:none; }
+  .rp-hit { cursor:crosshair; }
+  .rp-tip { position:absolute; z-index:4; pointer-events:none; min-width:180px; max-width:360px; background:rgba(11,15,23,.97); border:1px solid var(--border3); border-radius:var(--radius);
+            padding:8px 10px; font-family:var(--mono); font-size:10px; color:var(--text2); box-shadow:var(--shadow-panel); }
+  .rp-tip[hidden] { display:none; }
+  .rp-tip .h { display:block; color:var(--text1); font-size:10.5px; margin-bottom:5px; letter-spacing:.03em; }
+  .rp-tip div:not(.h) { display:flex; justify-content:space-between; gap:14px; padding:1px 0; }
+  .rp-tip div span { color:var(--text3); white-space:nowrap; } .rp-tip div b { font-weight:500; color:var(--text1); text-align:right; }
+  .rp-legend { display:flex; gap:14px; flex-wrap:wrap; margin-top:8px; font-family:var(--mono); font-size:9px; letter-spacing:.05em; color:var(--text3); }
+  .rp-legend i { display:inline-block; width:12px; height:8px; margin-right:5px; vertical-align:-1px; border-radius:2px; }
+  .rp-legend .lg-runup { background:rgba(79,195,247,.25); } .rp-legend .lg-closed { background:rgba(245,166,35,.25); } .rp-legend .lg-rep { background:var(--amber); width:3px; height:11px; }
+  .rp-legend .lg-dot { background:var(--green); border-radius:50%; width:8px; box-shadow:0 0 0 2px rgba(67,224,151,.3); }
+  .rp-legend .lg-tri { width:0; height:0; border-radius:0; border-left:5px solid transparent; border-right:5px solid transparent; border-bottom:8px solid var(--green); }
+  .rp-legend .lg-cur { background:var(--amber); height:3px; } .rp-legend .lg-mean { height:0; border-top:2px dashed #e8eef7; border-radius:0; }
+  .rp-legend .lg-up { background:var(--green); height:2px; opacity:.7; } .rp-legend .lg-dn { background:var(--red); height:2px; opacity:.7; }
+  .rp-into-lede { font-family:var(--mono); font-size:11px; line-height:1.65; color:var(--text2); margin-bottom:10px; max-width:1000px; }
+  .rp-into-day { fill:rgba(245,166,35,.11); }
+  .rp-path { stroke-width:1.2; opacity:.42; transition:opacity .15s, stroke-width .15s; }
+  .rp-path.up { stroke:var(--green); } .rp-path.dn { stroke:var(--red); }
+  .rp-into-wrap.hov .rp-path { opacity:.1; }
+  .rp-into-wrap.hov .rp-path.hl { opacity:1; stroke-width:2.4; }
+  .rp-path-hit { stroke:transparent; stroke-width:10; cursor:pointer; }
+  .rp-mean { stroke:#e8eef7; stroke-width:1.6; stroke-dasharray:5 4; opacity:.8; }
+  .rp-mean-t { font-size:9.5px; fill:var(--text2); }
+  .rp-cur { stroke:var(--amber); stroke-width:3; stroke-linejoin:round; filter:drop-shadow(0 0 5px rgba(245,166,35,.55)); }
+  .rp-cur-dot { fill:var(--amber); stroke:#050810; stroke-width:2; }
+  .rp-cur-t { font-size:10.5px; fill:var(--amber); font-weight:600; }
+  .rp-sub-h { font-family:var(--mono); font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:var(--text2); margin:22px 0 8px; padding-top:14px; border-top:1px solid var(--border); }
+  .rp-tbl { width:100%; border-collapse:collapse; font-family:var(--mono); font-size:11px; }
+  .rp-tbl th { text-align:left; font-weight:400; font-size:9px; letter-spacing:.12em; text-transform:uppercase; color:var(--text4); padding:6px 8px; border-bottom:1px solid var(--border2); white-space:nowrap; }
+  .rp-tbl td { padding:7px 8px; border-bottom:1px solid rgba(255,255,255,.035); color:var(--text2); white-space:nowrap; font-variant-numeric:tabular-nums; }
+  .rp-tbl .num { text-align:right; }
+  .rp-tbl td.nm { color:var(--text1); }
+  .rp-tbl td small { color:var(--text4); font-size:9px; }
+  .rp-tbl td.bar { min-width:200px; }
+  .rp-bar { position:relative; display:inline-block; width:110px; height:8px; background:var(--bg3); border-radius:2px; margin-right:8px; vertical-align:middle; }
+  .rp-bar::after { content:''; position:absolute; left:50%; top:-2px; bottom:-2px; width:1px; background:rgba(255,255,255,.22); }
+  .rp-bar i { position:absolute; top:0; bottom:0; border-radius:2px; }
+  .rp-tbl td.tt { color:var(--text3); }
+  .rp-tbl td.tt span { display:inline-block; max-width:320px; overflow:hidden; text-overflow:ellipsis; vertical-align:bottom; }
+  .rp-tbl .chev { font-style:normal; color:var(--text4); margin-left:6px; display:inline-block; transition:transform .15s; }
+  .rp-row { cursor:pointer; } .rp-row:hover td { background:rgba(255,255,255,.025); } .rp-row:focus-visible { outline:1px solid var(--ice); outline-offset:-1px; }
+  .rp-row[aria-expanded="true"] .chev { transform:rotate(180deg); color:var(--amber); }
+  .rp-rel td { white-space:normal; background:var(--bg1); padding:12px 14px; }
+  .rp-reltxt .h { display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:8px; }
+  .rp-reltxt .h b { color:var(--text1); font-weight:500; } .rp-reltxt .h span { color:var(--text4); font-size:10px; }
+  .rp-reltxt p { font-size:11px; line-height:1.65; color:var(--text2); white-space:pre-line; max-width:1000px; }
+  .rp-reltxt mark { background:rgba(245,166,35,.18); color:var(--amber); padding:0 2px; border-radius:2px; }
+  .rp-reltxt .att { font-size:9.5px; color:var(--text4); margin-top:8px; }
+  .rp-reltxt a { display:inline-block; margin-top:8px; color:var(--ice); text-decoration:none; font-size:10.5px; }
+  .fin-tabs { display:flex; border:1px solid var(--border2); border-radius:var(--radius); overflow:hidden; width:max-content; margin:-4px 0 10px; }
+  .fin-tabs button { font-family:var(--mono); font-size:9px; letter-spacing:.12em; padding:4px 12px; background:transparent; color:var(--text3); border:none; cursor:pointer; }
+  .fin-tabs button + button { border-left:1px solid var(--border2); }
+  .fin-tabs button.active { color:var(--amber); background:var(--amber-dim); }
+  .fin-bars { display:block; margin-bottom:4px; }
+  .fin-bars-l { display:flex; gap:12px; flex-wrap:wrap; font-family:var(--mono); font-size:9px; color:var(--text4); margin-bottom:10px; }
+  .fin-bars-l i { display:inline-block; width:10px; height:8px; margin-right:4px; border-radius:2px; }
+  .layer-btn.on .dot.rep { background:linear-gradient(90deg, rgba(79,195,247,.9), var(--amber)); }
+  .layer-btn.on .dot.dark { background:linear-gradient(90deg, var(--green) 50%, var(--red) 50%); border-radius:50%; }
+  .mark-legend .sw { display:inline-block; width:12px; height:9px; border-radius:2px; vertical-align:-1px; }
+  .lwc-legend .am { color:var(--amber); }
+  .rp-link { color:var(--ice); text-decoration:none; } .rp-link:hover { text-decoration:underline; }
+  .range-seg button[hidden] { display:none; }
 </style>
 </head>
 <body>
@@ -316,42 +498,91 @@
     <div class="kpi"><div class="kpi-label">Insider 30D Net</div><div class="kpi-value" id="kIns">—</div><div class="kpi-sub" id="kInsSub">parsed newsweb flow</div></div>
     <div class="kpi"><div class="kpi-label">Next Event</div><div class="kpi-value" id="kEvt">—</div><div class="kpi-sub" id="kEvtSub">—</div></div>
     <div class="kpi" onclick="location.href='radar.html'" title="Open the radar" style="cursor:pointer">
-      <div class="kpi-label">Radar Verdict</div><div class="kpi-value" id="kRadar">—</div><div class="kpi-sub" id="kRadarSub">—</div>
+      <div class="kpi-label">Radar Book</div><div class="kpi-value" id="kRadar">—</div><div class="kpi-sub" id="kRadarSub">—</div>
     </div>
   </div>
 
   <details class="conv-break" id="convBreakWrap" style="display:none">
-    <summary>why this radar verdict?</summary>
+    <summary>why this book score? (the radar's event-agnostic LONG/SHORT book)</summary>
     <div class="conv-break-body" id="convBreakBody"></div>
   </details>
 
+  <nav class="jump" id="jump" aria-label="Sections">
+    <a href="#secReport">Report ahead</a><a href="#secChart">Chart</a><a href="#secRoad">Road to the report</a><a href="#secInto">Every report</a>
+    <a href="#secFlow">Dark flow · insiders</a><a href="#secShort">Shorts · events</a><a href="#secNews">News</a><a href="#secSignals">Signals</a><a href="#secFund">Fundamentals</a>
+  </nav>
+
+  <!-- THE REPORT AHEAD — assets/dossier-report.js -->
+  <div class="sec" id="secReport">
+    <div class="panel rp-panel">
+      <div class="panel-head">
+        <span class="panel-title"><span class="glyph">◎</span>The Report Ahead</span>
+        <span class="panel-meta" id="rpMeta">event radar · nowcast · consensus</span>
+      </div>
+      <div id="rpAhead"><div class="skeleton" style="height:280px"></div></div>
+    </div>
+  </div>
+
   <!-- PRICE CHART -->
-  <div class="sec">
+  <div class="sec" id="secChart">
     <div class="panel">
       <div class="panel-head">
         <span class="panel-title"><span class="glyph">◢</span>Price · Annotated Tape</span>
         <span class="panel-meta" id="pcMeta">adjusted daily closes</span>
       </div>
       <div class="layer-bar">
-        <button class="layer-btn on" id="lyrSig"><span class="dot sig"></span>SIGNALS</button>
-        <button class="layer-btn on" id="lyrEvt"><span class="dot evt"></span>EVENTS</button>
-        <button class="layer-btn on" id="lyrIns"><span class="dot ins"></span>INSIDERS</button>
+        <button class="layer-btn on" id="lyrRep" aria-pressed="true"><span class="dot rep"></span>REPORTS</button>
+        <button class="layer-btn on" id="lyrDark" aria-pressed="true"><span class="dot dark"></span>DARK POOL</button>
+        <button class="layer-btn on" id="lyrSig" aria-pressed="true"><span class="dot sig"></span>SIGNALS</button>
+        <button class="layer-btn on" id="lyrEvt" aria-pressed="true"><span class="dot evt"></span>EVENTS</button>
+        <button class="layer-btn on" id="lyrIns" aria-pressed="true"><span class="dot ins"></span>INSIDERS</button>
         <div class="range-seg" id="rangeSeg">
+          <button data-d="rep" id="rangeRep" hidden>TO REPORT</button>
           <button data-d="63">3M</button>
           <button data-d="126" class="active">6M</button>
+          <button data-d="252">1Y</button>
+          <button data-d="1260">5Y</button>
           <button data-d="0">ALL</button>
         </div>
       </div>
-      <div class="chart-frame" id="priceChartBox" style="height:430px">
+      <div class="chart-frame" id="priceChartBox" style="height:540px">
         <div class="lwc-legend" id="lwcLegend"></div>
         <div class="lwc-tip" id="lwcTip"></div>
       </div>
       <div class="mark-legend">
-        <span><i style="color:var(--purple)">●■</i>SMART SIGNAL (shape+color by type · hover for t5 hit-rate)</span>
+        <span><i class="sw" style="background:rgba(245,166,35,.55)"></i>REPORT DAY (past and coming)</span>
+        <span><i class="sw" style="background:rgba(79,195,247,.22)"></i>RUN-UP</span>
+        <span><i class="sw" style="background:rgba(245,166,35,.2)"></i>INSIDERS' CLOSED PERIOD</span>
+        <span><i style="color:var(--green)">●</i>DARK-POOL DAY THE RADAR COUNTS (big: top decile)</span>
+        <span><i style="color:var(--purple)">●■</i>SMART SIGNAL (hover for t5 hit-rate)</span>
         <span><i style="color:var(--amber)">│</i>CORPORATE EVENT</span>
-        <span><i style="color:var(--green)">▲</i>INSIDER BUY</span>
-        <span><i style="color:var(--red)">▼</i>INSIDER SELL (size ∝ value)</span>
+        <span><i style="color:var(--green)">▲</i><i style="color:var(--red)">▼</i>INSIDER BUY / SELL (size ∝ value)</span>
+        <span>PANES: PRICE · VOLUME · SHORT INTEREST</span>
       </div>
+    </div>
+  </div>
+
+  <!-- ROAD TO THE REPORT -->
+  <div class="sec" id="secRoad">
+    <div class="panel">
+      <div class="panel-head">
+        <span class="panel-title"><span class="glyph">⟿</span>Road to the Report</span>
+        <span class="panel-meta">every signal from the last report to the next, on one time axis · hover a day</span>
+      </div>
+      <div id="rpRoad" class="rp-road-box"><div class="skeleton" style="height:340px"></div></div>
+    </div>
+  </div>
+
+  <!-- INTO EVERY REPORT + REPORT HISTORY -->
+  <div class="sec" id="secInto">
+    <div class="panel">
+      <div class="panel-head">
+        <span class="panel-title"><span class="glyph">↯</span>Into Every Report</span>
+        <span class="panel-meta">the share against the market, 20 sessions before each report to 5 after</span>
+      </div>
+      <div id="rpInto"><div class="skeleton" style="height:280px"></div></div>
+      <div class="rp-sub-h">Report by report</div>
+      <div id="rpHistory"><div class="skeleton" style="height:200px"></div></div>
     </div>
   </div>
 
@@ -369,7 +600,7 @@
   </div>
 
   <!-- DARK FLOW + INSIDERS -->
-  <div class="sec grid-2-w">
+  <div class="sec grid-2-w" id="secFlow">
     <div class="panel">
       <div class="panel-head">
         <span class="panel-title"><span class="glyph">◍</span>Dark Flow</span>
@@ -391,7 +622,7 @@
   </div>
 
   <!-- SHORT INTEREST + EVENTS -->
-  <div class="sec grid-2">
+  <div class="sec grid-2" id="secShort">
     <div class="panel">
       <div class="panel-head">
         <span class="panel-title"><span class="glyph">◣</span>Short Interest</span>
@@ -408,8 +639,19 @@
     </div>
   </div>
 
+  <!-- IN THE NEWS -->
+  <div class="sec" id="secNews">
+    <div class="panel">
+      <div class="panel-head">
+        <span class="panel-title"><span class="glyph">✎</span>In the News</span>
+        <span class="panel-meta">headlines naming the company · broker actions parsed from them · recorded since 19 Oct 2026</span>
+      </div>
+      <div id="rpNews"><div class="skeleton" style="height:220px"></div></div>
+    </div>
+  </div>
+
   <!-- SIGNALS TABLE -->
-  <div class="sec">
+  <div class="sec" id="secSignals">
     <div class="panel">
       <div class="panel-head">
         <span class="panel-title"><span class="glyph">◬</span>Smart Signals · Recent Fires</span>
@@ -420,7 +662,7 @@
   </div>
 
   <!-- FUNDAMENTALS -->
-  <div class="sec grid-2-w">
+  <div class="sec grid-2-w" id="secFund">
     <div class="panel">
       <div class="panel-head">
         <span class="panel-title"><span class="glyph">◈</span>Analyst Consensus</span>
@@ -431,7 +673,10 @@
     <div class="panel">
       <div class="panel-head">
         <span class="panel-title"><span class="glyph">▦</span>Financials</span>
-        <span class="panel-meta" id="finMeta">annual · reporting ccy</span>
+        <span class="panel-meta" id="finMeta">quarterly · reporting ccy</span>
+      </div>
+      <div class="fin-tabs" id="finTabs" role="tablist">
+        <button class="active" data-f="q" role="tab" aria-selected="true">QUARTERLY</button><button data-f="a" role="tab" aria-selected="false">ANNUAL</button>
       </div>
       <div id="finBody"><div class="skeleton" style="height:140px"></div></div>
     </div>
@@ -592,6 +837,12 @@ if (!ISIN) {
 }
 const Q = encodeURIComponent(ISIN);
 
+/* the report sections (assets/dossier-report.js) fetch on their own, in parallel; the price tape takes its report
+   bands from the same data when it lands */
+const rpP = window.DossierReport
+  ? DossierReport.render(ISIN).catch(e => { console.error('dossier-report', e); return null; })
+  : Promise.resolve(null);
+
 /* today's Oslo calendar date — bounds the live intraday fetch */
 const todayOslo = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Oslo' }).format(new Date());
 
@@ -599,7 +850,7 @@ const todayOslo = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Oslo' }).
 const [
   intel, lastPx, instr, closesAdj, ohlcv, signals, sigPerf, darkHist, whales,
   shortHist, shortHolders, eventsRaw, proximity, insiderTrades, insiderIntel,
-  instrAll, consensus, financials, recTrend, intradayLive, convRows,
+  instrAll, consensus, financials, recTrend, intradayLive, convRows, priceHist, finQ,
 ] = await Promise.all([
   safeGet(`ticker_intel?isin=eq.${Q}`),                                             // NEW (may 404)
   safeGet(`latest_price?isin=eq.${Q}`),
@@ -621,10 +872,14 @@ const [
   safeGet(`financials_key?isin=eq.${Q}&freq=eq.annual&order=period_end.desc&limit=5`), // NEW (may 404)
   safeGet(`analyst_rec_trend?isin=eq.${Q}&order=period_month.asc`),                  // NEW (may 404)
   safeGet(`intraday_live?isin=eq.${Q}&ts=gte.${todayOslo}T00:00:00&select=ts,price&order=ts.asc&limit=3000`),
-  safeGet(`conviction?isin=eq.${Q}&select=side,conviction,signal_types,direction_days,last_signal_date,` +
+  // v4 rows need model + ev_* for INTEL.convictionBreakdown; the v3 pts_* stay for older snapshots
+  safeGet(`conviction?isin=eq.${Q}&select=model,side,conviction,score,ev_dark,ev_insider,ev_short,agreement,families,` +
+          `dark_buy_days,dark_sell_days,short_pct,short_pct_change,signal_types,direction_days,last_signal_date,` +
           `next_event_type,days_to_event,confirmed_days,insider_buyers_14d,` +
           `pts_direction_strength,pts_days_confirmed,pts_event_proximity,pts_short_interest_level,` +
           `pts_dark_confirmation,pts_insider_buying,pts_insider_selling,pts_short_interest_change`),
+  safeGet(`price_history?isin=eq.${Q}&select=trade_date,adj_close&order=trade_date.asc`),        // Yahoo, 2010 →
+  safeGet(`financials_key?isin=eq.${Q}&freq=eq.quarterly&order=period_end.desc&limit=8`),
 ]);
 
 /* euronext trade-tape candles: keep the dominant venue, one bar per day */
@@ -813,8 +1068,9 @@ if (nxtEvt) {
 const cv = (convRows && convRows[0]) || null;
 if (cv && cv.side !== 'NEUTRAL') {
   setKpi('kRadar', `${cv.side} ${cv.conviction}`, cv.side === 'LONG' ? 1 : -1);
-  $('kRadarSub').textContent =
-    `${(cv.signal_types || []).length} signal types · ${cv.direction_days || 0} active days · open radar ↗`;
+  $('kRadarSub').textContent = cv.model === 'v4'
+    ? `${cv.families || 0} evidence famil${cv.families === 1 ? 'y' : 'ies'} · ${Math.round((+cv.agreement || 0) * 100)}% agreement · open radar ↗`
+    : `${(cv.signal_types || []).length} signal types · ${cv.direction_days || 0} active days · open radar ↗`;
 
   const breakdown = INTEL.convictionBreakdown(cv);
   if (breakdown.length) {
@@ -826,7 +1082,8 @@ if (cv && cv.side !== 'NEUTRAL') {
         <div class="conv-break-track"><div class="conv-break-fill${pts < 0 ? ' neg' : ''}" style="width:${w.toFixed(0)}%"></div></div>
         <span class="conv-break-val">${pts > 0 ? '+' : ''}${pts}</span></div>`;
     }).join('');
-    const capNote = sum > cv.conviction
+    // v4 allocates the score across its families, so its bars sum to it; v3 summed points and capped at 100
+    const capNote = cv.model !== 'v4' && sum > cv.conviction
       ? `<div class="conv-break-cap">Components sum to ${sum.toFixed(0)} — score is capped at 100.</div>` : '';
     $('convBreakBody').innerHTML = rows + capNote;
     $('convBreakWrap').style.display = '';
@@ -836,13 +1093,17 @@ if (cv && cv.side !== 'NEUTRAL') {
   $('kRadarSub').textContent = 'not on today’s radar · open radar ↗';
 }
 
-/* ══════════ PRICE TAPE — lightweight-charts 4.2.3 ══════════
-   Candles from the euronext trade tape + ice area for the pre-tape
-   close-only era, merged on one time scale. Overlays: signal/insider
-   markers (native series markers), corporate-event ribbons via a custom
-   series primitive (redrawn inside the chart's render loop, so labels
-   track pan/zoom exactly), volume histogram pane underneath. */
-const layers = { sig: true, evt: true, ins: true };
+/* ══════════ PRICE TAPE — Lightweight Charts v5.2 ══════════
+   One time axis, three panes: the price, volume, and disclosed short interest as a step line. The price is candles
+   from the euronext trade tape on adjusted prices (× daily_close_adj's adj/close, as in the radar's report drawer),
+   with an ice area of adjusted closes where there is no tape: Yahoo's history back to 2010 before it
+   (api.price_history, rescaled to ours at the first shared session) and any sessions after it the tape missed.
+   Behind the price sit the radar's report bands: every report since 2024, the coming report, its run-up window and
+   the insiders' closed period. They come with the report data (assets/dossier-report.js) a moment after the chart.
+   On the price: smart signals, the dark-pool impact days the radar counts, insider trades. Event ribbons and the
+   analyst target rail are series primitives drawn inside the chart's own render pass, so they stay glued to their
+   bars through pan and zoom. v5 moved markers to a plugin (createSeriesMarkers) and series to addSeries(type, …). */
+const layers = { sig: true, evt: true, ins: true, dark: true, rep: true };
 
 function nearestIdx(labels, dateStr) {
   if (!dateStr) return -1;
@@ -856,8 +1117,7 @@ function nearestIdx(labels, dateStr) {
 
 (function buildPriceTape() {
   const box = $('priceChartBox'), legend = $('lwcLegend'), tip = $('lwcTip');
-  const all = closes || [];
-  if (!all.length) {
+  if (!(closes || []).length) {
     box.innerHTML = '<div class="empty-note" style="margin-top:120px">NO PRICE HISTORY FOR THIS ISIN</div>';
     return;
   }
@@ -865,106 +1125,144 @@ function nearestIdx(labels, dateStr) {
     box.innerHTML = '<div class="empty-note" style="margin-top:120px">CHART LIBRARY UNAVAILABLE — RELOAD</div>';
     return;
   }
+  const LW = LightweightCharts;
+  const dnum = (s) => Math.floor(Date.parse(String(s).slice(0, 10) + 'T00:00:00Z') / 864e5);
+  const diso = (n) => new Date(n * 864e5).toISOString().slice(0, 10);
 
+  /* candles on adjusted prices: tape OHLC × adj/close of the day, or of the first adjusted session after it
+     (no dividend between the two). Today's forming candle is live and needs no factor. */
+  const adjF = (closesAdj || []).filter(r => +r.close > 0 && +r.adj_close > 0).map(r => [r.trade_date, +r.adj_close / +r.close]);
+  const factorAt = (t) => { for (const [d, f] of adjF) if (d >= t) return f; return 1; };
+  const bars = ohlc.map(r => {
+    const f = r === todayCandle ? 1 : factorAt(r.time);
+    return { time: r.time, open: r.open * f, high: r.high * f, low: r.low * f, close: r.close * f,
+             volume: r.volume, live: r === todayCandle };
+  });
+
+  /* the adjusted close for every session: ours (daily_close_adj, else the adjusted candle), and before it Yahoo's
+     adjusted history rescaled to ours at the first shared session */
+  const adjBy = new Map();
+  bars.forEach(b => adjBy.set(b.time, b.close));
+  (closesAdj || []).forEach(r => { const v = r.adj_close != null ? +r.adj_close : +r.close; if (v > 0) adjBy.set(r.trade_date, v); });
+  const tape = [...adjBy.entries()].sort((a, b) => a[0] < b[0] ? -1 : 1).map(([trade_date, adj_close]) => ({ trade_date, adj_close }));
+  const tapeBy = new Map(tape.map(r => [r.trade_date, r.adj_close]));
+  const join = (priceHist || []).find(p => +p.adj_close > 0 && tapeBy.has(p.trade_date));
+  const kJoin = join ? tapeBy.get(join.trade_date) / +join.adj_close : 1;
+  const pre = (priceHist || []).filter(p => p.trade_date < tape[0].trade_date && +p.adj_close > 0)
+    .map(p => ({ trade_date: p.trade_date, adj_close: +p.adj_close * kJoin }));
+  const all = pre.concat(tape);
   const dates = all.map(r => r.trade_date);
   const dateSet = new Set(dates);
-  const lastClose = all[all.length - 1].adj_close;
+  const lastClose = tape[tape.length - 1].adj_close;
   const prec = lastClose != null && lastClose < 10 ? 3 : 2;
   const minMove = prec === 3 ? 0.001 : 0.01;
+  const PF = { type: 'custom', minMove, formatter: (v) => fmtNum(v, prec) };
   const tstr = (t) => typeof t === 'string' ? t
     : (t && t.year) ? `${t.year}-${String(t.month).padStart(2,'0')}-${String(t.day).padStart(2,'0')}` : '';
+  const firstOnOrAfter = (d) => { const i = nearestIdx(dates, d); return dates[i] === d ? i : i + 1 < dates.length ? i + 1 : -1; };
 
-  const chart = LightweightCharts.createChart(box, {
+  const chart = LW.createChart(box, {
     autoSize: true,
     layout: {
       background: { type: 'solid', color: 'transparent' },
       textColor: '#5a6377', fontFamily: "'IBM Plex Mono', monospace", fontSize: 10,
-      attributionLogo: false,
+      attributionLogo: true,                                   // Apache-2.0 attribution, as in the radar's drawer
+      panes: { separatorColor: 'rgba(255,255,255,0.08)', enableResize: false },
     },
     grid: { vertLines: { visible: false }, horzLines: { color: 'rgba(255,255,255,0.045)' } },
     crosshair: {
-      mode: LightweightCharts.CrosshairMode.Magnet,
-      vertLine: { color: 'rgba(79,195,247,0.38)', width: 1, style: LightweightCharts.LineStyle.Dashed, labelBackgroundColor: '#1a212d' },
-      horzLine: { color: 'rgba(79,195,247,0.38)', width: 1, style: LightweightCharts.LineStyle.Dashed, labelBackgroundColor: '#1a212d' },
+      mode: LW.CrosshairMode.Magnet,
+      vertLine: { color: 'rgba(79,195,247,0.38)', width: 1, style: LW.LineStyle.Dashed, labelBackgroundColor: '#1a212d' },
+      horzLine: { color: 'rgba(79,195,247,0.38)', width: 1, style: LW.LineStyle.Dashed, labelBackgroundColor: '#1a212d' },
     },
-    rightPriceScale: { borderVisible: false, scaleMargins: { top: 0.17, bottom: 0.22 } },
+    rightPriceScale: { borderVisible: false, scaleMargins: { top: 0.16, bottom: 0.06 } },
     timeScale: { borderVisible: false, rightOffset: 3, minBarSpacing: 0.25 },
-    localization: { priceFormatter: (v) => fmtNum(v, prec) },
+    handleScroll: { vertTouchDrag: false },                    // a vertical swipe scrolls the page, not the chart
   });
 
-  /* candle series — trade-tape era */
-  let candle = null;
-  if (ohlc.length) {
-    candle = chart.addCandlestickSeries({
-      upColor: C.green, downColor: C.red,
-      borderUpColor: C.green, borderDownColor: C.red,
-      wickUpColor: 'rgba(67,224,151,0.75)', wickDownColor: 'rgba(240,96,96,0.75)',
-      priceLineColor: 'rgba(79,195,247,0.4)', priceLineStyle: LightweightCharts.LineStyle.Dotted,
-      priceFormat: { type: 'price', precision: prec, minMove },
-    });
-    candle.setData(ohlc.map(({ time, open, high, low, close }) => ({ time, open, high, low, close })));
-  }
-  const firstCandleDate = ohlc.length ? ohlc[0].time : null;
-  const lastCandleDate  = ohlc.length ? ohlc[ohlc.length - 1].time : null;
+  /* whitespace on the weekdays up to the coming report, so the report day has a place on the time axis */
+  const pad = chart.addSeries(LW.LineSeries, { priceScaleId: 'pad', lastValueVisible: false, priceLineVisible: false,
+                                               crosshairMarkerVisible: false });
 
-  /* area series — adjusted closes for dates the tape doesn't cover
-     (overlaps one session with the first candle for visual continuity) */
+  /* candle series — the trade-tape era */
+  let candle = null;
+  if (bars.length) {
+    candle = chart.addSeries(LW.CandlestickSeries, {
+      upColor: C.green, downColor: C.red, borderUpColor: C.green, borderDownColor: C.red,
+      wickUpColor: 'rgba(67,224,151,0.75)', wickDownColor: 'rgba(240,96,96,0.75)',
+      priceLineColor: 'rgba(79,195,247,0.4)', priceLineStyle: LW.LineStyle.Dotted, priceFormat: PF,
+    });
+    candle.setData(bars.map(({ time, open, high, low, close }) => ({ time, open, high, low, close })));
+  }
+  const firstCandleDate = bars.length ? bars[0].time : null;
+  const liveBar = bars.find(b => b.live) || null;
+  const eodBars = bars.filter(b => !b.live);
+  const lastEodDate = eodBars.length ? eodBars[eodBars.length - 1].time : null;
+
+  /* area — adjusted closes before the tape (overlapping the first candle for continuity) */
   let area = null;
   const areaRows = (firstCandleDate ? all.filter(r => r.trade_date <= firstCandleDate) : all)
-    .filter(r => r.adj_close != null)
-    .map(r => ({ time: r.trade_date, value: +r.adj_close }));
+    .filter(r => r.adj_close != null).map(r => ({ time: r.trade_date, value: +r.adj_close }));
   if (areaRows.length > 1 || !candle) {
-    area = chart.addAreaSeries({
-      lineColor: C.ice, lineWidth: 1.5,
-      topColor: 'rgba(79,195,247,0.16)', bottomColor: 'rgba(79,195,247,0)',
-      priceLineVisible: false, lastValueVisible: !candle,
-      crosshairMarkerRadius: 3,
-      priceFormat: { type: 'price', precision: prec, minMove },
+    area = chart.addSeries(LW.AreaSeries, {
+      lineColor: C.ice, lineWidth: 1.5, topColor: 'rgba(79,195,247,0.16)', bottomColor: 'rgba(79,195,247,0)',
+      priceLineVisible: false, lastValueVisible: !candle, crosshairMarkerRadius: 3, priceFormat: PF,
     });
     area.setData(areaRows);
   }
 
-  /* post-tape area series — adjusted closes for dates AFTER the last candle.
-     price_ohlcv (the trade-tape source) can silently stop updating while
-     daily_close_adj keeps going (this happened for 5 weeks, 2026-07-02 to
-     2026-08-07, from an unrelated DB-permission error elsewhere in the
-     pipeline); without this the chart used to just freeze at the tape's last
-     date with no indication anything was missing. Overlaps one session with
-     the last candle, same convention as the pre-tape area above. */
+  /* post-tape area — sessions after the last tape candle that daily_close_adj has. price_ohlcv has silently stopped
+     before while daily_close_adj kept going (5 weeks, 2026-07-02 → 08-07, a DB-permission error elsewhere); without
+     this the chart froze at the tape's last date. Overlaps the last candle, as the pre-tape area does. */
   let postArea = null;
-  const postAreaRows = (lastCandleDate ? all.filter(r => r.trade_date >= lastCandleDate) : [])
-    .filter(r => r.adj_close != null)
-    .map(r => ({ time: r.trade_date, value: +r.adj_close }));
-  if (candle && postAreaRows.length > 1) {
-    postArea = chart.addAreaSeries({
-      lineColor: C.ice, lineWidth: 1.5,
-      topColor: 'rgba(79,195,247,0.16)', bottomColor: 'rgba(79,195,247,0)',
-      priceLineVisible: false, lastValueVisible: true,
-      crosshairMarkerRadius: 3,
-      priceFormat: { type: 'price', precision: prec, minMove },
+  const postRows = lastEodDate ? all.filter(r => r.trade_date >= lastEodDate && !(liveBar && r.trade_date >= liveBar.time))
+    .map(r => ({ time: r.trade_date, value: +r.adj_close })) : [];
+  if (candle && postRows.length > 1) {
+    postArea = chart.addSeries(LW.AreaSeries, {
+      lineColor: C.ice, lineWidth: 1.5, topColor: 'rgba(79,195,247,0.16)', bottomColor: 'rgba(79,195,247,0)',
+      priceLineVisible: false, lastValueVisible: !liveBar, crosshairMarkerRadius: 3, priceFormat: PF,
     });
-    postArea.setData(postAreaRows);
+    postArea.setData(postRows);
   }
   const host = candle || area;
 
-  /* volume histogram pane (overlay scale pinned to the bottom strip) */
+  /* pane 1: volume (tape days) */
   let vol = null;
-  if (candle && ohlc.some(r => r.volume != null)) {
-    vol = chart.addHistogramSeries({
-      priceScaleId: 'vol', priceFormat: { type: 'volume' },
-      lastValueVisible: false, priceLineVisible: false,
-    });
-    vol.setData(ohlc.map(r => ({
-      time: r.time, value: r.volume || 0,
-      color: r.close >= r.open ? 'rgba(67,224,151,0.30)' : 'rgba(240,96,96,0.28)',
-    })));
-    chart.priceScale('vol').applyOptions({ scaleMargins: { top: 0.84, bottom: 0 } });
+  const volBars = bars.filter(b => b.volume != null);
+  if (volBars.length) {
+    vol = chart.addSeries(LW.HistogramSeries, { priceFormat: { type: 'volume' }, lastValueVisible: false, priceLineVisible: false }, 1);
+    vol.setData(volBars.map(b => ({ time: b.time, value: b.volume,
+      color: b.close >= b.open ? 'rgba(67,224,151,0.32)' : 'rgba(240,96,96,0.30)' })));
   }
 
-  $('pcMeta').textContent =
-    `${dates[0]} → ${dates[dates.length - 1]} · ${dates.length} sessions · ${ohlc.length} candle days · adjusted${todayCandle ? ' · +live today' : ''}`;
+  /* pane 2: disclosed short interest, carried forward between disclosures; anchored at zero, because auto-scaling
+     would blow a 0.01 pp change up into a cliff */
+  const siMap = new Map();
+  const sis = (shortHist || []).filter(s => s.short_pct != null).map(s => ({ d: s.position_date, v: +s.short_pct }))
+    .sort((a, b) => a.d < b.d ? -1 : 1);
+  if (sis.length) {
+    let j = 0, cur = null;
+    for (const t of dates) { while (j < sis.length && sis[j].d <= t) cur = sis[j++].v; if (cur != null) siMap.set(t, cur); }
+    const siData = [...siMap.entries()].map(([time, value]) => ({ time, value }));
+    if (siData.length) {
+      const siMax = Math.max(...siData.map(p => p.value));
+      chart.addSeries(LW.LineSeries, { color: C.red, lineWidth: 2, lineType: LW.LineType.WithSteps, priceLineVisible: false,
+        crosshairMarkerRadius: 3, title: 'short', priceFormat: { type: 'custom', formatter: v => v.toFixed(2) + '%', minMove: 0.01 },
+        autoscaleInfoProvider: () => ({ priceRange: { minValue: 0, maxValue: Math.max(1, siMax * 1.25) } }) }, vol ? 2 : 1)
+        .setData(siData);
+    }
+  }
+  const panes = chart.panes();
+  panes[0].setStretchFactor(5);
+  panes.slice(1).forEach(p => p.setStretchFactor(1.1));
 
-  /* ── markers: signals (◆ era shapes) + insiders (▲▼, size ∝ value) ── */
+  const metaBase = `${dates[0]} → ${dates[dates.length - 1]} · ${pre.length ? `Yahoo history to ${tape[0].trade_date} · ` : ''}${eodBars.length} candle days · adjusted${liveBar ? ' · +live today' : ''}`;
+  $('pcMeta').textContent = metaBase;
+
+  /* the report data: bands, the radar's dark-pool days, the "to report" range */
+  let REP = null, repMap = new Map(), future = [];
+
+  /* ── markers: signals (circle/square by type) · dark-pool impact days (in the bar) · insiders (▲▼, size ∝ value) ── */
   const markerMeta = new Map();
   function buildMarkers() {
     markerMeta.clear();
@@ -975,6 +1273,13 @@ function nearestIdx(labels, dateStr) {
       markerMeta.set(id, { kind: 'sig', s });
       mk.push({ time: s.trade_date, position: 'aboveBar', shape: st.shape, color: st.color,
                 id, size: s.strength === 'STRONG' ? 0.95 : 0.6 });
+    });
+    if (layers.dark && REP && REP.radar) (REP.radar.dark_days || []).forEach((x, n) => {
+      const i = firstOnOrAfter(x.d);
+      if (i < 0 || dnum(dates[i]) - dnum(x.d) > 5) return;
+      const id = 'dark:' + n;
+      markerMeta.set(id, { kind: 'dark', x });
+      mk.push({ time: dates[i], position: 'inBar', shape: 'circle', color: x.v > 0 ? C.green : C.red, id, size: x.top ? 1.3 : 0.85 });
     });
     if (layers.ins) (insiderTrades || []).forEach((t, n) => {
       if (!t.trade_date || (t.side !== 'BUY' && t.side !== 'SELL')) return;
@@ -991,18 +1296,87 @@ function nearestIdx(labels, dateStr) {
     });
     return mk.sort((a, b) => a.time < b.time ? -1 : a.time > b.time ? 1 : 0);
   }
+  const mkCandle = candle ? LW.createSeriesMarkers(candle, []) : null;
+  const mkArea = area ? LW.createSeriesMarkers(area, []) : null;
+  const mkPost = postArea ? LW.createSeriesMarkers(postArea, []) : null;
   function applyMarkers() {
     const mk = buildMarkers();
-    if (candle && area) {
-      const c = [], a = [], p = [];
-      mk.forEach(m => {
-        if (m.time < firstCandleDate) a.push(m);
-        else if (postArea && m.time > lastCandleDate) p.push(m);
-        else c.push(m);
-      });
-      candle.setMarkers(c); area.setMarkers(a);
-      if (postArea) postArea.setMarkers(p);
-    } else if (host) host.setMarkers(mk);
+    if (!mkCandle) { if (mkArea) mkArea.setMarkers(mk); return; }
+    const c = [], a = [], p = [];
+    mk.forEach(m => {
+      if (mkArea && m.time < firstCandleDate) a.push(m);
+      else if (mkPost && m.time > lastEodDate && !(liveBar && m.time >= liveBar.time)) p.push(m);
+      else c.push(m);
+    });
+    mkCandle.setMarkers(c);
+    if (mkArea) mkArea.setMarkers(a);
+    if (mkPost) mkPost.setMarkers(p);
+  }
+
+  /* ── report bands (the drawer's palette), a series primitive under the price: every report day since 2024 with
+     its reaction, the coming report, the insiders' closed period before it, and its run-up window up to the radar's
+     as-of session (the closed period wins where they overlap). Solid at any zoom — a histogram leaves gaps. ── */
+  function makeBands() {
+    let P = null, list = [];
+    function draw(ctx, size) {
+      if (!P || !list.length) return;
+      const ts = P.chart.timeScale(), n = dates.length;
+      const a = ts.timeToCoordinate(dates[n - 2]), b = ts.timeToCoordinate(dates[n - 1]);
+      const half = a != null && b != null ? Math.max(0.75, Math.abs(b - a) / 2) : 3;
+      ctx.save();
+      ctx.font = "8px 'IBM Plex Mono', monospace"; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      let lastRight = -1e9;
+      for (const bd of list) {
+        const x1 = ts.timeToCoordinate(bd.from), x2 = ts.timeToCoordinate(bd.to);
+        if (x1 == null || x2 == null || x2 + half < 0 || x1 - half > size.width) continue;
+        ctx.fillStyle = bd.color;
+        ctx.fillRect(x1 - half, 0, Math.max(1.5, x2 - x1 + 2 * half), size.height);
+        if (!bd.label) continue;
+        const tw = ctx.measureText(bd.label).width + 8, cx = Math.min(Math.max(x1, tw / 2 + 2), size.width - tw / 2 - 2);
+        if (cx - tw / 2 < lastRight + 4) continue;                // no room at this zoom
+        lastRight = cx + tw / 2;
+        ctx.fillStyle = 'rgba(5,8,16,0.86)'; ctx.fillRect(cx - tw / 2, size.height - 16, tw, 12);
+        ctx.fillStyle = bd.strong ? '#f5a623' : 'rgba(245,166,35,0.85)';
+        ctx.fillText(bd.label, cx, size.height - 10);
+      }
+      ctx.restore();
+    }
+    const view = { zOrder: () => 'bottom',
+      renderer: () => ({ draw: (t) => t.useMediaCoordinateSpace(({ context, mediaSize }) => draw(context, mediaSize)) }) };
+    return {
+      attached(p) { P = p; },
+      detached() { P = null; },
+      paneViews() { return [view]; },
+      set(l) { list = l.sort((x, y) => x.from < y.from ? -1 : 1); if (P) P.requestUpdate(); },
+    };
+  }
+  const bands = makeBands();
+  host.attachPrimitive(bands);
+  function applyBands() {
+    const r = REP && REP.radar, lastT = dates[dates.length - 1];
+    future = [];
+    if (r && r.report_date > lastT) {
+      for (let n = dnum(lastT) + 1; n <= dnum(r.report_date) + 3; n++) { const wd = new Date(n * 864e5).getUTCDay(); if (wd && wd < 6) future.push(diso(n)); }
+    }
+    pad.setData(future.map(t => ({ time: t })));
+    const allT = dates.concat(future);
+    const snapF = d => allT.find(t => t >= d) || null;
+    const prevT = d => { let q = null; for (const t of allT) { if (t < d) q = t; else break; } return q; };
+    const list = [];
+    if (layers.rep) {
+      repMap.forEach((h, t) => { if (dateSet.has(t)) list.push({ from: t, to: t, color: 'rgba(245,166,35,0.30)',
+        label: `${h.period}${h.x_1d != null ? ' ' + sgn(+h.x_1d * 100, 1) + '%' : ''}` }); });
+      if (r) {
+        const rep = allT.includes(r.report_date) ? r.report_date : null;
+        const cf = r.closed_from ? snapF(r.closed_from) : null, ru = r.runup_from ? snapF(r.runup_from) : null;
+        const ruEnd = [r.asof_date, cf ? prevT(cf) : null].filter(Boolean).sort()[0];
+        if (ru && ruEnd && ruEnd >= ru) list.push({ from: ru, to: ruEnd, color: 'rgba(79,195,247,0.10)' });
+        const cEnd = rep ? prevT(rep) : null;
+        if (cf && cEnd && cEnd >= cf) list.push({ from: cf, to: cEnd, color: 'rgba(245,166,35,0.10)' });
+        if (rep) list.push({ from: rep, to: rep, color: 'rgba(245,166,35,0.55)', label: `${r.period} ${r.fiscal_year} ▸`, strong: true });
+      }
+    }
+    bands.set(list);
   }
 
   /* ── corporate-event ribbons: custom series primitive ──
@@ -1148,8 +1522,9 @@ function nearestIdx(labels, dateStr) {
   }
 
   /* ── crosshair: OHLC legend readout + marker hover tooltip ── */
-  const baseLegend = `<b>${esc(ticker)}</b> · ${ohlc.length ? 'tape candles' : 'adjusted closes'} · ${ccy}`;
+  const baseLegend = `<b>${esc(ticker)}</b> · ${bars.length ? 'tape candles' : 'adjusted closes'} · ${ccy}`;
   legend.innerHTML = baseLegend;
+  const sgn = (v, dp) => (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(dp);
   function tipHtml(m) {
     if (m.kind === 'sig') {
       const s = m.s, p = perfByType[s.signal_type];
@@ -1159,12 +1534,24 @@ function nearestIdx(labels, dateStr) {
         ${s.return_t5_pct != null ? `<div>this fire t5 ${fmtPct(s.return_t5_pct)}</div>` : ''}
         ${s.signal_desc ? `<div style="color:var(--text3)">${esc(s.signal_desc)}</div>` : ''}`;
     }
+    if (m.kind === 'dark') {
+      const x = m.x;
+      return `<div class="tt" style="color:${x.v > 0 ? C.green : C.red}">● DARK-POOL ${x.v > 0 ? 'BUYING' : 'SELLING'}${x.top ? ' · TOP DECILE' : ''}</div>
+        <div>${esc(x.d)} · mid-point impact ${x.bps != null ? sgn(+x.bps, 1) + ' bps' : '—'}</div>
+        <div style="color:var(--text3)">counted by the event radar for the coming report</div>`;
+    }
     const t = m.t;
     return `<div class="tt" style="color:${t.side === 'BUY' ? C.green : C.red}">${t.side === 'BUY' ? '▲ INSIDER BUY' : '▼ INSIDER SELL'}</div>
       <div>${esc(t.trade_date || '')} · ${esc(t.person_name || 'unnamed')}</div>
       ${t.person_role ? `<div style="color:var(--text3)">${esc(String(t.person_role).slice(0, 42))}</div>` : ''}
       ${t.quantity ? `<div>${fmtCompact(+t.quantity)} sh @ ${fmtNum(+t.price, 2)}</div>` : ''}
       <div>value ${t.value ? fmtCompact(+t.value) + ' ' + (t.currency || ccy) : '—'} · conf ${t.parse_confidence != null ? t.parse_confidence : '—'}</div>`;
+  }
+  function repTag(d) {
+    const h = repMap.get(d), r = REP && REP.radar;
+    if (h) return ` &nbsp;<span class="am">◆ ${esc(h.period)} ${h.fiscal_year} REPORT${h.x_1d != null ? ` ${sgn(+h.x_1d * 100, 1)}% vs market` : ''}</span>`;
+    if (r && d === r.report_date) return ` &nbsp;<span class="am">◆ ${esc(r.period)} ${r.fiscal_year} REPORT${r.date_source === 'estimated' ? ' · ESTIMATED DATE' : ''}</span>`;
+    return '';
   }
   chart.subscribeCrosshairMove((param) => {
     if (!param || !param.time || !param.point) {
@@ -1174,16 +1561,18 @@ function nearestIdx(labels, dateStr) {
     }
     const d = tstr(param.time);
     const cd = candle && param.seriesData.get(candle);
-    const ad = area && param.seriesData.get(area);
+    const ad = (area && param.seriesData.get(area)) || (postArea && param.seriesData.get(postArea));
     const vd = vol && param.seriesData.get(vol);
+    const si = siMap.get(d);
+    const siTxt = si != null ? ` &nbsp;SHORT <b>${fmtNum(si, 2)}%</b>` : '';
     if (cd && cd.open != null) {
       const chg = cd.open ? (cd.close / cd.open - 1) * 100 : null;
       const cls = (cd.close >= cd.open) ? 'u' : 'd';
-      legend.innerHTML = `<b>${d}</b> &nbsp;O <b>${fmtNum(cd.open, prec)}</b> &nbsp;H <b>${fmtNum(cd.high, prec)}</b> &nbsp;L <b>${fmtNum(cd.low, prec)}</b> &nbsp;C <b class="${cls}">${fmtNum(cd.close, prec)}</b> <span class="${cls}">${fmtPct(chg)}</span>${vd && vd.value != null ? ` &nbsp;VOL <b>${fmtCompact(vd.value)}</b>` : ''}`;
+      legend.innerHTML = `<b>${d}</b> &nbsp;O <b>${fmtNum(cd.open, prec)}</b> &nbsp;H <b>${fmtNum(cd.high, prec)}</b> &nbsp;L <b>${fmtNum(cd.low, prec)}</b> &nbsp;C <b class="${cls}">${fmtNum(cd.close, prec)}</b> <span class="${cls}">${fmtPct(chg)}</span>${vd && vd.value != null ? ` &nbsp;VOL <b>${fmtCompact(vd.value)}</b>` : ''}${siTxt}${repTag(d)}`;
     } else if (ad && ad.value != null) {
-      legend.innerHTML = `<b>${d}</b> &nbsp;CLOSE <b>${fmtNum(ad.value, prec)}</b> <span style="color:var(--text4)">adj · pre-tape</span>`;
+      legend.innerHTML = `<b>${d}</b> &nbsp;CLOSE <b>${fmtNum(ad.value, prec)}</b> <span style="color:var(--text4)">adjusted · ${d < (firstCandleDate || '9') ? (d < tape[0].trade_date ? 'Yahoo history' : 'pre-tape') : 'tape missing'}</span>${siTxt}${repTag(d)}`;
     } else {
-      legend.innerHTML = baseLegend;
+      legend.innerHTML = baseLegend + repTag(d);
     }
     const meta = param.hoveredObjectId != null ? markerMeta.get(param.hoveredObjectId) : null;
     if (meta) {
@@ -1201,27 +1590,49 @@ function nearestIdx(labels, dateStr) {
   });
 
   /* ── range + layer controls ── */
+  let activeRange = 126;
   function setRange(days) {
+    activeRange = days;
     const ts = chart.timeScale();
-    if (!days || dates.length <= days) ts.fitContent();
-    else ts.setVisibleRange({ from: dates[dates.length - days], to: dates[dates.length - 1] });
+    const end = future.length ? future[future.length - 1] : dates[dates.length - 1];
+    const r = REP && REP.radar;
+    if (days === 'rep' && r) {
+      const i = Math.max(0, firstOnOrAfter(r.prev_report || r.runup_from) - 4);
+      ts.setVisibleRange({ from: dates[i], to: end });
+    } else if (!days || days === 'rep' || dates.length <= days) ts.fitContent();
+    else ts.setVisibleRange({ from: dates[dates.length - days], to: end });
   }
-  [['lyrSig', 'sig'], ['lyrEvt', 'evt'], ['lyrIns', 'ins']].forEach(([id, key]) => {
-    $(id).addEventListener('click', () => {
+  [['lyrSig', 'sig'], ['lyrEvt', 'evt'], ['lyrIns', 'ins'], ['lyrDark', 'dark'], ['lyrRep', 'rep']].forEach(([id, key]) => {
+    const el = $(id); if (!el) return;
+    el.addEventListener('click', () => {
       layers[key] = !layers[key];
-      $(id).classList.toggle('on', layers[key]);
-      applyMarkers();
+      el.classList.toggle('on', layers[key]);
+      el.setAttribute('aria-pressed', String(layers[key]));
+      if (key === 'rep') applyBands(); else applyMarkers();
       ribbon.setEvents(evtList());
     });
   });
   $('rangeSeg').querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
     $('rangeSeg').querySelectorAll('button').forEach(x => x.classList.toggle('active', x === b));
-    setRange(+b.dataset.d);
+    setRange(b.dataset.d === 'rep' ? 'rep' : +b.dataset.d);
   }));
 
   applyMarkers();
   ribbon.setEvents(evtList());
   setRange(126);
+
+  rpP.then((d) => {
+    if (!d) return;
+    REP = d;
+    repMap = new Map((d.history || []).map(h => [h.report_session, h]));
+    applyBands();
+    applyMarkers();
+    const r = d.radar, btn = $('rangeRep');
+    if (r && btn) { btn.hidden = false; btn.title = `${r.period} ${r.fiscal_year}: from the last report to the next`; }
+    setRange(activeRange);
+    const nPast = [...repMap.keys()].filter(t => dateSet.has(t)).length;
+    $('pcMeta').textContent = metaBase + (nPast || r ? ` · ${nPast} report day${nPast === 1 ? '' : 's'}${r ? ` + ${r.period} on ${r.report_date}` : ''}` : '');
+  });
 })();
 
 /* ══════════ INTRADAY SESSION — 5-min candles from intraday_live ══════════
@@ -1253,7 +1664,7 @@ function nearestIdx(labels, dateStr) {
   const chart = LightweightCharts.createChart(box, {
     autoSize: true,
     layout: { background: { type: 'solid', color: 'transparent' },
-      textColor: '#5a6377', fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, attributionLogo: false },
+      textColor: '#5a6377', fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, attributionLogo: true },
     grid: { vertLines: { color: 'rgba(255,255,255,0.03)' }, horzLines: { color: 'rgba(255,255,255,0.045)' } },
     crosshair: { mode: LightweightCharts.CrosshairMode.Magnet,
       vertLine: { color: 'rgba(79,195,247,0.38)', width: 1, style: LightweightCharts.LineStyle.Dashed, labelBackgroundColor: '#1a212d' },
@@ -1264,7 +1675,7 @@ function nearestIdx(labels, dateStr) {
     localization: { priceFormatter: (v) => fmtNum(v, prec), timeFormatter: (t) => hhmm(t) },
   });
 
-  const candle = chart.addCandlestickSeries({
+  const candle = chart.addSeries(LightweightCharts.CandlestickSeries, {
     upColor: C.green, downColor: C.red, borderUpColor: C.green, borderDownColor: C.red,
     wickUpColor: 'rgba(67,224,151,0.75)', wickDownColor: 'rgba(240,96,96,0.75)',
     priceLineColor: 'rgba(79,195,247,0.5)', priceLineStyle: LightweightCharts.LineStyle.Dotted,
@@ -1908,42 +2319,82 @@ function buildLikert(rt) {
     $('acMeta').textContent = 'yahoo · ' + ccy + (fetched ? ' · fetched ' + fetched : '');
   }
 
+  /* financial statements: Yahoo's quarterly rows (8 quarters, 267 names reach Q2 2026) by default, annual on the
+     tab. The fundamentals job runs Mon–Sat 07:00 through the season, so a quarter lands the morning after the report. */
   const finBody = $('finBody');
-  const F = (financials || []).slice(0, 4);
-  if (!F.length) {
-    finBody.innerHTML = '<div class="empty-note">NO FINANCIAL STATEMENTS</div>';
-  } else {
+  const qLabel = p => { const d = new Date(String(p.period_end).slice(0, 10) + 'T00:00:00Z');
+    return d.toLocaleDateString('en-GB', { month: 'short', timeZone: 'UTC' }) + ' ' + String(d.getUTCFullYear()).slice(2); };
+  const num = v => v == null ? '<span style="color:var(--text4)">—</span>' : fmtCompact(+v);
+  const pct = v => v == null ? '—' : fmtNum(v, 0) + '%';
+  const margin = (a, b) => (a != null && b) ? (+a / +b) * 100 : null;
+  const ROWS = [
+    ['Revenue',        p => num(p.revenue)],
+    ['Gross profit',   p => num(p.gross_profit)],
+    ['EBITDA',         p => num(p.ebitda)],
+    ['EBITDA margin',  p => pct(margin(p.ebitda, p.revenue))],
+    ['EBIT',           p => num(p.ebit)],
+    ['Net income',     p => num(p.net_income)],
+    ['EPS (diluted)',  p => p.diluted_eps == null ? '<span style="color:var(--text4)">—</span>' : fmtNum(+p.diluted_eps, 2)],
+    ['SEP'],
+    ['Total assets',   p => num(p.total_assets)],
+    ['Cash',           p => num(p.cash)],
+    ['Total debt',     p => num(p.total_debt)],
+    ['Net debt',       p => num(p.net_debt)],
+    ['Equity',         p => num(p.equity)],
+    ['SEP'],
+    ['Operating CF',   p => num(p.operating_cf)],
+    ['CapEx',          p => num(p.capex)],
+    ['Free cash flow', p => num(p.fcf)],
+  ];
+  /* quarterly bars: revenue (ice) with EBITDA inside it (amber), net income as a tick, oldest → newest */
+  function finBars(Fq) {
+    const P = Fq.slice().reverse().filter(p => p.revenue != null);
+    if (P.length < 3) return '';
+    const W = 560, H = 120, L = 6, R = 6, T = 14, B = 18, n = P.length, slot = (W - L - R) / n, bw = Math.min(34, slot * 0.62);
+    const vmax = Math.max(...P.map(p => Math.max(+p.revenue || 0, +p.ebitda || 0, +p.net_income || 0)));
+    const vmin = Math.min(0, ...P.map(p => Math.min(+p.ebitda || 0, +p.net_income || 0)));
+    const Y = v => T + (1 - (v - vmin) / ((vmax - vmin) || 1)) * (H - T - B);
+    let g = `<line x1="${L}" x2="${W - R}" y1="${Y(0)}" y2="${Y(0)}" stroke="rgba(255,255,255,.14)"/>`;
+    P.forEach((p, i) => {
+      const cx = L + slot * (i + 0.5), x = cx - bw / 2;
+      g += `<rect x="${x.toFixed(1)}" y="${Y(+p.revenue).toFixed(1)}" width="${bw.toFixed(1)}" height="${(Y(0) - Y(+p.revenue)).toFixed(1)}" rx="2" fill="rgba(79,195,247,.22)"><title>${qLabel(p)} revenue ${fmtCompact(+p.revenue)}</title></rect>`;
+      if (p.ebitda != null) { const e = +p.ebitda, y0 = Math.min(Y(e), Y(0)), hh = Math.abs(Y(0) - Y(e));
+        g += `<rect x="${(cx - bw * 0.3).toFixed(1)}" y="${y0.toFixed(1)}" width="${(bw * 0.6).toFixed(1)}" height="${hh.toFixed(1)}" rx="1.5" fill="${e >= 0 ? 'rgba(245,166,35,.8)' : 'rgba(240,96,96,.8)'}"><title>${qLabel(p)} EBITDA ${fmtCompact(e)} · margin ${pct(margin(e, p.revenue))}</title></rect>`; }
+      if (p.net_income != null) g += `<line x1="${(cx - bw / 2).toFixed(1)}" x2="${(cx + bw / 2).toFixed(1)}" y1="${Y(+p.net_income).toFixed(1)}" y2="${Y(+p.net_income).toFixed(1)}" stroke="${+p.net_income >= 0 ? '#e8eef7' : 'var(--red)'}" stroke-width="2"><title>${qLabel(p)} net income ${fmtCompact(+p.net_income)}</title></line>`;
+      g += `<text x="${cx.toFixed(1)}" y="${H - 4}" text-anchor="middle" fill="var(--text4)" font-size="9">${qLabel(p)}</text>`;
+      if (p.ebitda != null && p.revenue) g += `<text x="${cx.toFixed(1)}" y="${(Y(+p.revenue) - 4).toFixed(1)}" text-anchor="middle" fill="var(--text3)" font-size="8.5">${pct(margin(p.ebitda, p.revenue))}</text>`;
+    });
+    return `<svg class="fin-bars" viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Quarterly revenue, EBITDA and net income">${g}</svg>
+      <div class="fin-bars-l"><span><i style="background:rgba(79,195,247,.35)"></i>revenue</span><span><i style="background:rgba(245,166,35,.8)"></i>EBITDA (margin on top)</span><span><i style="background:#e8eef7;height:2px"></i>net income</span></div>`;
+  }
+  function renderFin(kind) {
+    const quarterly = kind === 'q';
+    const F = quarterly ? (finQ || []).slice(0, 5) : (financials || []).slice(0, 4);
+    if (!F.length) {
+      finBody.innerHTML = `<div class="empty-note">NO ${quarterly ? 'QUARTERLY' : 'ANNUAL'} STATEMENTS</div>`;
+      $('finMeta').textContent = (quarterly ? 'quarterly' : 'annual') + ' · nothing on file';
+      return;
+    }
     const ccy = F[0].report_ccy || '';
-    const yr = p => String(p.period_end).slice(0, 4);
-    $('finMeta').textContent = 'annual · ' + (ccy || 'reporting ccy') + ' · latest ' + (F[0].period_end || '—');
-    const num = v => v == null ? '<span style="color:var(--text4)">—</span>' : fmtCompact(+v);
-    const pct = v => v == null ? '—' : fmtNum(v, 0) + '%';
-    const margin = (a, b) => (a != null && b) ? (+a / +b) * 100 : null;
-    const ROWS = [
-      ['Revenue',        p => num(p.revenue)],
-      ['Gross profit',   p => num(p.gross_profit)],
-      ['EBITDA',         p => num(p.ebitda)],
-      ['EBITDA margin',  p => pct(margin(p.ebitda, p.revenue))],
-      ['EBIT',           p => num(p.ebit)],
-      ['Net income',     p => num(p.net_income)],
-      ['SEP'],
-      ['Total assets',   p => num(p.total_assets)],
-      ['Cash',           p => num(p.cash)],
-      ['Total debt',     p => num(p.total_debt)],
-      ['Net debt',       p => num(p.net_debt)],
-      ['Equity',         p => num(p.equity)],
-      ['SEP'],
-      ['Operating CF',   p => num(p.operating_cf)],
-      ['CapEx',          p => num(p.capex)],
-      ['Free cash flow', p => num(p.fcf)],
-    ];
-    const head = `<th>${ccy}</th>` + F.map(p => `<th class="r">${yr(p)}</th>`).join('');
+    const col = p => quarterly ? qLabel(p) : String(p.period_end).slice(0, 4);
+    $('finMeta').textContent = (quarterly ? 'quarterly' : 'annual') + ' · ' + (ccy || 'reporting ccy') + ' · latest ' + (F[0].period_end || '—');
+    const head = `<th>${ccy}</th>` + F.map(p => `<th class="r">${col(p)}</th>`).join('');
     const body = ROWS.map(r => {
       if (r[0] === 'SEP') return `<tr class="fin-sep"><td colspan="${F.length + 1}"></td></tr>`;
       return `<tr><td>${r[0]}</td>` + F.map(p => `<td class="r">${r[1](p)}</td>`).join('') + '</tr>';
     }).join('');
-    finBody.innerHTML = `<div class="scrollwrap"><table class="intel-table fin-table"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`;
+    finBody.innerHTML = (quarterly ? finBars(finQ || []) : '') +
+      `<div class="scrollwrap"><table class="intel-table fin-table"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`;
   }
+  const finKind = (finQ && finQ.length) ? 'q' : 'a';
+  $('finTabs').querySelectorAll('button').forEach(b => {
+    b.classList.toggle('active', b.dataset.f === finKind); b.setAttribute('aria-selected', String(b.dataset.f === finKind));
+    b.addEventListener('click', () => {
+      $('finTabs').querySelectorAll('button').forEach(x => { x.classList.toggle('active', x === b); x.setAttribute('aria-selected', String(x === b)); });
+      renderFin(b.dataset.f);
+    });
+  });
+  renderFin(finKind);
 })();
 
 /* ══════════ FINANCIAL HEALTH ══════════
@@ -2288,6 +2739,20 @@ function buildLikert(rt) {
       + `<th>Distribution</th><th>AIC</th><th>BIC</th><th>KS</th><th>A–D</th><th>k</th>`
       + `</tr></thead><tbody>${rows}</tbody></table>`;
   })();
+})();
+
+/* ══════════ JUMP BAR — the section most on screen lights its link ══════════ */
+(function jumpSpy() {
+  const links = [...document.querySelectorAll('#jump a')];
+  if (!links.length || !('IntersectionObserver' in window)) return;
+  const seen = new Map();
+  const io = new IntersectionObserver(es => {
+    es.forEach(e => seen.set(e.target.id, e.isIntersecting ? e.intersectionRect.height : 0));
+    let best = null, bh = 0;
+    seen.forEach((h, id) => { if (h > bh) { bh = h; best = id; } });
+    links.forEach(a => a.classList.toggle('on', a.getAttribute('href') === '#' + best));
+  }, { threshold: [0, 0.05, 0.15, 0.3, 0.5, 0.75, 1] });
+  links.forEach(a => { const el = document.getElementById(a.getAttribute('href').slice(1)); if (el) io.observe(el); });
 })();
 
 /* ══════════ LIVE HEADER POLL ══════════
