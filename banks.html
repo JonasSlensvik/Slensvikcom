@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Banks · Slensvik</title>
+<meta name="description" content="The Norwegian credit cycle rung by rung — unsecured debt, liens, car loans, mortgages and business bankruptcies — crossed with what the listed banks lend to and how much provisioning already sits there.">
+<link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/intel.css">
+<script src="assets/intel.js?v=20261028"></script>
+
+<style>
+/* ═══ BANKS — page-local layer on top of assets/intel.css ═══════════════════
+   Stress is never colour alone: every reading is signed text, every chart has a readout.
+   hot ≥ +15 % y/y · warm +5…15 · flat · cool ≤ −10 (prices invert: a falling salmon price is stress). */
+:root {
+  --s1: #23a2d5; --s2: #cb7f00; --s3: #c14489; --s-muted: #3a4252;
+  --grid: rgba(255,255,255,0.055); --axis: rgba(255,255,255,0.16);
+  --hot: #f06060; --warm: #f5a623; --flat: #5a6377; --cool: #43e097;
+  --panel: rgba(11,15,23,0.72); --rail-h: 38px;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; scroll-padding-top: calc(var(--rail-h) + 14px); }
+body { background: var(--bg0); color: var(--text2); font-family: var(--mono); font-size: 12px; line-height: 1.5;
+       min-height: 100vh; overflow-x: hidden; -webkit-font-smoothing: antialiased; }
+a { color: inherit; }
+.page { max-width: 1480px; margin: 0 auto; padding: 0 24px 72px; position: relative; }
+.num { font-variant-numeric: tabular-nums; }
+.muted { color: var(--text3); } .faint { color: var(--text4); }
+.hot { color: var(--hot); } .warm { color: var(--warm); } .cool { color: var(--cool); } .flat { color: var(--text2); }
+
+/* ── header + rail (the World shell) ─────────────────────────────────────── */
+header { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding: 34px 0 20px; }
+.logo-block { display: flex; flex-direction: column; gap: 4px; }
+.logo { font-family: var(--sans); font-weight: 800; font-size: 28px; letter-spacing: -0.5px; color: var(--text1); }
+.logo span { color: var(--amber); }
+.logo-sub { font-size: 10px; letter-spacing: 0.14em; color: var(--text3); text-transform: uppercase; }
+.header-meta { display: flex; gap: 8px; flex-wrap: wrap; }
+.meta-pill { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; padding: 5px 12px; border-radius: 20px;
+             border: 1px solid var(--border2); color: var(--text3); white-space: nowrap; display: inline-flex; gap: 7px; align-items: center; }
+.meta-pill .led { width: 6px; height: 6px; border-radius: 50%; background: var(--text4); }
+.meta-pill.ok .led { background: var(--green); box-shadow: 0 0 8px rgba(67,224,151,.7); }
+.meta-pill.warn .led { background: var(--amber); box-shadow: 0 0 8px rgba(245,166,35,.7); }
+.meta-pill.bad .led { background: var(--red); box-shadow: 0 0 8px rgba(240,96,96,.7); }
+.meta-pill b { color: var(--text1); font-weight: 600; }
+.rail { position: sticky; top: 0; z-index: 40; margin: 0 -24px 18px; padding: 0 24px; height: var(--rail-h);
+        display: flex; align-items: center; gap: 2px; overflow-x: auto; scrollbar-width: none;
+        background: rgba(5,8,16,0.82); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+        border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.rail::-webkit-scrollbar { display: none; }
+.rail a { font-size: 9.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text3); text-decoration: none;
+          padding: 5px 9px; border-radius: 3px; white-space: nowrap; transition: color .15s, background .15s; }
+.rail a:hover { color: var(--text1); background: var(--bg3); }
+.rail a.on { color: var(--amber); background: rgba(245,166,35,0.08); }
+.rail .rail-asof { margin-left: auto; font-size: 9.5px; color: var(--text4); letter-spacing: .08em; white-space: nowrap; padding-left: 12px; }
+
+.sec { margin-top: 44px; }
+.sec-title { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; margin-bottom: 14px; }
+.sec-title h2 { font-family: var(--sans); font-weight: 700; font-size: 20px; color: var(--text1); letter-spacing: -0.01em; }
+.sec-title h2 .g { color: var(--amber); font-family: var(--mono); font-weight: 400; margin-right: 8px; font-size: 15px; }
+.sec-title p { flex: 1 1 360px; font-size: 11px; color: var(--text3); line-height: 1.6; }
+.grid { display: grid; gap: 14px; }
+.g12 { grid-template-columns: repeat(12, minmax(0, 1fr)); }
+.span4 { grid-column: span 4; } .span5 { grid-column: span 5; } .span6 { grid-column: span 6; }
+.span7 { grid-column: span 7; } .span8 { grid-column: span 8; } .span12 { grid-column: span 12; }
+.panel { padding: 16px 18px; min-width: 0; }
+.panel h3 { font-size: 9.5px; font-weight: 500; letter-spacing: .18em; text-transform: uppercase; color: var(--text3);
+            margin-bottom: 12px; display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+.panel h3 .g { color: var(--amber); margin-right: 6px; }
+.panel h3 small { font-size: 9px; letter-spacing: .06em; text-transform: none; color: var(--text4); font-weight: 400; }
+.note { font-size: 10px; color: var(--text4); line-height: 1.6; margin-top: 10px; }
+.empty { padding: 26px; text-align: center; color: var(--text4); font-size: 10.5px; letter-spacing: .08em;
+         border: 1px dashed var(--border2); border-radius: 6px; }
+
+/* ── charts ──────────────────────────────────────────────────────────────── */
+.chart { position: relative; width: 100%; }
+.chart svg { display: block; width: 100%; overflow: visible; }
+.chart .tt { position: absolute; z-index: 20; pointer-events: none; display: none; background: rgba(9,13,21,.96);
+             border: 1px solid var(--border2); border-radius: 5px; padding: 7px 9px; font-size: 10.5px; color: var(--text2);
+             white-space: nowrap; box-shadow: 0 6px 18px rgba(0,0,0,.4); }
+.chart .tt b { color: var(--text1); font-weight: 500; }
+.chart .tt i { display: inline-block; width: 8px; height: 2px; margin-right: 6px; vertical-align: 3px; }
+.legend-row { display: flex; gap: 14px; flex-wrap: wrap; font-size: 10px; color: var(--text3); margin-top: 8px; }
+.legend-row i { display: inline-block; width: 12px; height: 2px; margin-right: 6px; vertical-align: 3px; }
+
+/* ── hero: the ladder ────────────────────────────────────────────────────── */
+.hero { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 8fr); gap: 18px; align-items: stretch; }
+.hero-copy { padding: 22px 22px 18px; display: flex; flex-direction: column; gap: 12px; }
+.hero-kicker { font-size: 9px; letter-spacing: .32em; color: var(--amber); text-transform: uppercase; }
+.hero-title { font-family: var(--sans); font-weight: 800; font-size: 30px; line-height: 1.05; color: var(--text1); letter-spacing: -0.02em; }
+.hero-lede { font-family: var(--sans); font-size: 12.5px; line-height: 1.6; color: var(--text2); }
+.verdict { border: 1px solid var(--border2); border-radius: 8px; padding: 12px 14px; background: rgba(5,8,16,.5); }
+.verdict .lab { font-size: 9px; letter-spacing: .18em; color: var(--text3); text-transform: uppercase; }
+.verdict .val { font-family: var(--sans); font-size: 18px; font-weight: 700; color: var(--text1); margin-top: 3px; line-height: 1.25; }
+.verdict .why { font-size: 10.5px; color: var(--text3); margin-top: 6px; line-height: 1.55; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip { font-size: 9.5px; letter-spacing: .06em; padding: 4px 9px; border-radius: 12px; border: 1px solid var(--border2); color: var(--text2); }
+.chip b { color: var(--text1); font-weight: 500; }
+
+.ladder { padding: 16px 18px 12px; position: relative; }
+.ladder::before, .ladder::after { content: ''; position: absolute; top: 46px; bottom: 30px; width: 2px; border-radius: 2px;
+  background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.16), rgba(255,255,255,.04)); }
+.ladder::before { left: 30px; } .ladder::after { left: 60px; }
+.rung { position: relative; display: grid; grid-template-columns: 74px minmax(0, 2.2fr) minmax(86px, .9fr) minmax(0, 1.5fr) minmax(0, 1.6fr);
+        gap: 12px; align-items: center; padding: 10px 0; }
+.rung .bar { position: relative; height: 34px; }
+.rung .bar::before { content: ''; position: absolute; left: 12px; width: 38px; top: 15px; height: 5px; border-radius: 3px;
+                     background: var(--rc, var(--flat)); box-shadow: 0 0 14px var(--rc, transparent), 0 0 3px var(--rc, transparent); }
+.rung.ended .bar::before { background: repeating-linear-gradient(90deg, var(--text4) 0 5px, transparent 5px 9px); box-shadow: none; }
+.rung .nm { color: var(--text1); font-size: 12px; font-weight: 500; }
+.rung .sb { color: var(--text4); font-size: 9.5px; letter-spacing: .03em; margin-top: 2px; }
+.rung .rd { font-size: 20px; font-weight: 500; text-align: right; }
+.rung .rd small { display: block; font-size: 9px; color: var(--text4); font-weight: 400; letter-spacing: .04em; }
+.rung .sp svg { display: block; width: 100%; height: 34px; }
+.rung .lg { font-size: 9.5px; color: var(--text3); line-height: 1.5; }
+.rung .lg b { color: var(--text2); font-weight: 500; }
+.link { font-size: 9px; letter-spacing: .14em; text-transform: uppercase; color: var(--text4); padding: 0 0 0 76px; position: relative; }
+.link::before { content: '↓'; position: absolute; left: 39px; top: -3px; color: var(--amber); font-size: 12px; }
+.trigger { border-bottom: 1px dashed var(--border2); margin-bottom: 4px; }
+
+/* ── lead-lag table ──────────────────────────────────────────────────────── */
+table.ll { width: 100%; border-collapse: collapse; font-size: 11px; }
+table.ll th { text-align: left; font-weight: 500; font-size: 9px; letter-spacing: .14em; text-transform: uppercase; color: var(--text3);
+              padding: 6px 8px; border-bottom: 1px solid var(--border2); }
+table.ll td { padding: 7px 8px; border-bottom: 1px solid var(--border); color: var(--text2); }
+table.ll td.r { text-align: right; } table.ll th.r { text-align: right; } table.ll td.num { white-space: nowrap; }
+.corr { display: inline-block; height: 6px; border-radius: 3px; background: var(--s1); vertical-align: 1px; margin-right: 7px; opacity: .8; }
+
+/* ── sector tiles ────────────────────────────────────────────────────────── */
+.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(196px, 1fr)); gap: 10px; }
+.tile { border: 1px solid var(--border); border-radius: 8px; padding: 11px 13px 9px; background: var(--panel); min-width: 0;
+        position: relative; overflow: hidden; }
+.tile::after { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 2px; background: var(--rc, transparent); }
+.tile .tl { font-size: 9.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--text3); display: flex; justify-content: space-between; gap: 8px; }
+.tile .tl small { letter-spacing: .04em; text-transform: none; color: var(--text4); font-size: 9px; }
+.tile .tv { font-size: 19px; color: var(--text1); margin-top: 4px; font-weight: 500; }
+.tile .ts { font-size: 9.5px; color: var(--text4); margin-top: 1px; }
+.tile svg { display: block; width: 100%; height: 30px; margin-top: 6px; }
+.tiles-h { font-size: 9px; letter-spacing: .2em; text-transform: uppercase; color: var(--text4); margin: 16px 0 8px; }
+
+/* ── exposure heatmap ────────────────────────────────────────────────────── */
+.hm-wrap { overflow-x: auto; }
+table.hm { width: 100%; border-collapse: separate; border-spacing: 3px; font-size: 11px; min-width: 720px; }
+table.hm th { font-weight: 500; font-size: 9px; letter-spacing: .12em; text-transform: uppercase; color: var(--text3); padding: 4px 8px; text-align: center; }
+table.hm th.l, table.hm td.l { text-align: left; }
+table.hm th .per { display: block; font-size: 8.5px; letter-spacing: .06em; color: var(--text4); text-transform: none; margin-top: 2px; }
+table.hm td { padding: 6px 8px; border-radius: 4px; text-align: center; color: var(--text2); }
+table.hm td.l { color: var(--text1); white-space: nowrap; }
+table.hm td.l small { display: block; color: var(--text4); font-size: 9px; }
+table.hm td.c { background: rgba(255,255,255,0.02); }
+table.hm td.c b { display: block; color: var(--text1); font-weight: 500; font-size: 12px; }
+table.hm td.c span { font-size: 9px; color: rgba(232,238,247,.72); }
+table.hm td.c.na { color: var(--text4); }
+table.hm td.st { text-align: left; font-size: 10px; color: var(--text3); }
+.scale { display: flex; align-items: center; gap: 8px; font-size: 9.5px; color: var(--text4); margin-top: 10px; flex-wrap: wrap; }
+.scale i { display: inline-block; width: 22px; height: 10px; border-radius: 2px; }
+
+/* ── bank cards ──────────────────────────────────────────────────────────── */
+.banks { display: grid; grid-template-columns: repeat(auto-fill, minmax(268px, 1fr)); gap: 12px; }
+.bank { padding: 14px 16px 12px; display: flex; flex-direction: column; gap: 10px; }
+.bank .bh { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.bank .bn { font-family: var(--sans); font-weight: 700; font-size: 15px; color: var(--text1); }
+.bank .bn a { text-decoration: none; } .bank .bn a:hover { color: var(--amber); }
+.bank .bp { font-size: 9.5px; color: var(--text4); letter-spacing: .06em; }
+.kv { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px 10px; }
+.kv div { min-width: 0; }
+.kv .k { font-size: 8.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--text4); }
+.kv .v { font-size: 14px; color: var(--text1); }
+.kv .d { font-size: 9px; }
+.bank .bf { font-size: 9.5px; color: var(--text3); line-height: 1.55; border-top: 1px solid var(--border); padding-top: 8px; }
+
+/* ── method ──────────────────────────────────────────────────────────────── */
+.method { columns: 2 360px; column-gap: 28px; font-size: 11px; color: var(--text3); line-height: 1.7; }
+.method p { break-inside: avoid; margin-bottom: 10px; }
+.method b { color: var(--text2); font-weight: 500; }
+footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--border); font-size: 10px; color: var(--text4); }
+
+@media (max-width: 1100px) {
+  .hero { grid-template-columns: minmax(0, 1fr); }
+  .span4, .span5, .span6, .span7, .span8 { grid-column: span 12; }
+}
+@media (max-width: 760px) {
+  .page { padding: 0 14px 56px; }
+  .rail { margin: 0 -14px 14px; padding: 0 14px; }
+  .rung { grid-template-columns: 54px minmax(0, 1fr) auto; gap: 8px 10px; }
+  .rung .sp, .rung .lg { grid-column: 2 / -1; }
+  .ladder::before { left: 22px; } .ladder::after { left: 44px; }
+  .rung .bar::before { left: 6px; width: 30px; }
+  .link { padding-left: 56px; } .link::before { left: 27px; }
+  .hero-title { font-size: 24px; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <div class="logo-block">
+      <div class="logo">Slensvik<span>banks</span></div>
+      <div class="logo-sub">Norwegian banks · credit cycle · exposures · capital</div>
+    </div>
+    <div data-intel-nav></div>
+    <div class="header-meta">
+      <div class="meta-pill" id="pillData"><span class="led"></span><span id="pillDataT">Connecting …</span></div>
+      <div class="meta-pill" id="pillBanks">—</div>
+    </div>
+  </header>
+
+  <nav class="rail" id="rail" aria-label="Sections">
+    <a href="#ladder">Ladder</a><a href="#history">History</a><a href="#sectors">Sectors</a><a href="#exposure">Exposure</a>
+    <a href="#banks">Banks</a><a href="#households">Households</a><a href="#method">Method</a>
+    <span class="rail-asof" id="railAsof"></span>
+  </nav>
+
+  <!-- ═══ THE LADDER ═════════════════════════════════════════════════════ -->
+  <section id="ladder" aria-label="The credit-stress ladder">
+    <div class="hero">
+      <div class="panel hero-copy">
+        <div class="hero-kicker">◉ Credit cycle · Norway</div>
+        <h1 class="hero-title">Distress climbs down the ladder.</h1>
+        <p class="hero-lede">When money gets tight, households miss the unsecured payments first, then the car, then the
+          mortgage, and companies go under along the way. Each rung is a public count of people or firms that could not pay,
+          so a turn on one rung warns of the next, months before it reaches a bank's loss line.</p>
+        <div class="verdict" id="verdict"><div class="lab">Where the cycle is now</div><div class="val">—</div><div class="why"></div></div>
+        <div class="chips" id="heroChips"></div>
+      </div>
+      <div class="panel ladder" id="ladderBox" aria-live="polite"><div class="empty">Loading the ladder …</div></div>
+    </div>
+  </section>
+
+  <!-- ═══ HISTORY ════════════════════════════════════════════════════════ -->
+  <section class="sec" id="history">
+    <div class="sec-title">
+      <h2><span class="g">∿</span>Three decades of rungs</h2>
+      <p>Each rung as the year-on-year change of its 12-month total, since the series begin. Shaded: the 2008–09 crisis,
+        the 2014–16 oil downturn, the pandemic and Norges Bank's 2021–23 hikes. The lags on the right were measured on
+        1995–2026 against the policy rate: they are priors, not laws — four cycles is not much.</p>
+    </div>
+    <div class="grid g12">
+      <div class="panel span8">
+        <h3><span><span class="g">∿</span>Year-on-year change of the 12-month total</span><small>%, clipped at ±80</small></h3>
+        <div class="chart" id="histChart" style="height:300px"></div>
+        <div class="legend-row" id="histLegend"></div>
+      </div>
+      <div class="panel span4">
+        <h3><span><span class="g">⇢</span>Who leads whom</span><small>peak cross-correlation, 1995–2026</small></h3>
+        <table class="ll" id="leadLag"></table>
+        <p class="note">Rate change = 12-month change of Norges Bank's policy rate; rungs = growth of their 12-month totals.
+          Same-month correlations are negative: rates rise in booms, distress follows.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ SECTORS ════════════════════════════════════════════════════════ -->
+  <section class="sec" id="sectors">
+    <div class="sec-title">
+      <h2><span class="g">▦</span>Sector stress</h2>
+      <p>Bankruptcies by industry (SSB 08551, year-on-year change of the 12-month total) and the prices that decide whether
+        the banks' sector borrowers can pay. Falling prices count as stress for the producers who borrow against them.</p>
+    </div>
+    <div class="tiles-h">Bankruptcies by industry</div>
+    <div class="tiles" id="tilesBk"></div>
+    <div class="tiles-h">Prices borrowers live on</div>
+    <div class="tiles" id="tilesPx"></div>
+  </section>
+
+  <!-- ═══ EXPOSURE ═══════════════════════════════════════════════════════ -->
+  <section class="sec" id="exposure">
+    <div class="sec-title">
+      <h2><span class="g">▤</span>Who lends to what</h2>
+      <p>Each bank's "loans by industry" note mapped to one sector list. Big number: the sector's share of the bank's loans.
+        Small number and colour: stage-3 allowance per NOK lent, in basis points — where credit losses already sit.
+        The right column is that sector's stress reading today.</p>
+    </div>
+    <div class="grid g12">
+      <div class="panel span8">
+        <h3><span><span class="g">▤</span>Exposure map</span><small id="hmAsof"></small></h3>
+        <div class="hm-wrap"><table class="hm" id="heatmap"></table></div>
+        <div class="scale" id="hmScale"></div>
+        <p class="note" id="hmNotes"></p>
+      </div>
+      <div class="panel span4">
+        <h3><span><span class="g">⇅</span>Where DNB's provisions moved</span><small id="shiftAsof"></small></h3>
+        <div class="chart" id="shiftChart" style="height:330px"></div>
+        <p class="note">Change in DNB's stage-3 allowance by sector between its two latest loans-by-industry notes, NOK million.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ BANKS ══════════════════════════════════════════════════════════ -->
+  <section class="sec" id="banks">
+    <div class="sec-title">
+      <h2><span class="g">◧</span>The banks</h2>
+      <p>Latest quarter as each bank reports it (group figures, NOK million). Read by hand for now; the report reader takes
+        over the whole universe of 30 listed banks once it has passed its bake-off.</p>
+    </div>
+    <div class="banks" id="bankCards"><div class="empty">Loading …</div></div>
+    <p class="note">Loss rate = the quarter's credit losses annualised over loans to customers. Stage 3 and ECL as the bank
+      states them (Møre's stage 3 includes guarantees and undrawn lines). Δ = change from the bank's previous reported quarter.
+      Each name opens the company's dossier.</p>
+  </section>
+
+  <!-- ═══ HOUSEHOLDS ═════════════════════════════════════════════════════ -->
+  <section class="sec" id="households">
+    <div class="sec-title">
+      <h2><span class="g">⌂</span>Households</h2>
+      <p>What feeds the top of the ladder: how fast households borrow, what new loans cost against the policy rate, house
+        prices (the collateral) and jobs.</p>
+    </div>
+    <div class="grid g12">
+      <div class="panel span6">
+        <h3><span><span class="g">∿</span>Household credit growth</span><small>% y/y of 3-month averages, banks and mortgage companies</small></h3>
+        <div class="chart" id="hhCredit" style="height:220px"></div>
+        <div class="legend-row" id="hhCreditLeg"></div>
+      </div>
+      <div class="panel span6">
+        <h3><span><span class="g">∿</span>Rates</span><small>%, monthly</small></h3>
+        <div class="chart" id="hhRates" style="height:220px"></div>
+        <div class="legend-row" id="hhRatesLeg"></div>
+      </div>
+      <div class="panel span6">
+        <h3><span><span class="g">∿</span>House prices and jobs</span><small>%</small></h3>
+        <div class="chart" id="hhHouse" style="height:220px"></div>
+        <div class="legend-row" id="hhHouseLeg"></div>
+      </div>
+      <div class="panel span6">
+        <h3><span><span class="g">∿</span>Unsecured debt</span><small>NOK bn, Gjeldsregisteret</small></h3>
+        <div class="chart" id="hhGjr" style="height:220px"></div>
+        <div class="legend-row" id="hhGjrLeg"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ METHOD ═════════════════════════════════════════════════════════ -->
+  <section class="sec" id="method">
+    <div class="sec-title"><h2><span class="g">§</span>Method and sources</h2></div>
+    <div class="panel method">
+      <p><b>Rungs.</b> Unsecured debt: Gjeldsregisteret's monthly key figures (interest-bearing balances — revolving or
+        past due — since 2022). Liens: registered execution proceedings for unpaid debt (tinglyste utlegg, SSB 07218).
+        Car loans: forced-sale requests on chattel (SSB 07218), which SSB stopped in January 2022 — there is no live
+        car-loan rung yet; the candidates are the consumer-finance subsidiaries' stage 3 in the banks' reports.
+        Mortgages: completed forced sales of dwellings (SSB 08948/11500, quarterly). Businesses: enterprise bankruptcies
+        (SSB 07218), by industry from SSB 08551.</p>
+      <p><b>Readings.</b> Counts are compared as their 12-month totals, year on year, which removes seasonality and
+        smooths the monthly noise. Balances and prices compare their 3-month averages year on year. Unemployment (LFS,
+        seasonally adjusted, 3-month average) is shown in percentage points.</p>
+      <p><b>Exposures.</b> Each bank's loans-by-industry note (group), mapped to one sector list. DNB's financial row holds
+        repo trading volumes; Sør-Norge's excludes loans moved to SpareBank 1 Boligkreditt and Næringskreditt; Møre
+        states stage 3 as commitments (loans, guarantees and undrawn lines).</p>
+      <p><b>Banks.</b> Figures are read from the quarterly reports on Oslo Børs NewsWeb, by hand for now and checked against
+        each report's own totals. A cheap model will read every report once it passes a field-by-field test against
+        these hand readings.</p>
+      <p><b>Caveat.</b> The lead times are measured over four Norwegian credit episodes. They are a prior for when to
+        look, not a forecast.</p>
+    </div>
+  </section>
+
+  <footer>Data: SSB, Gjeldsregisteret, Norges Bank, Nord Pool, Yahoo Finance, the banks' quarterly reports (Oslo Børs NewsWeb).
+    Refreshed through World Intel every 12 hours; the bank figures change when a report is read.</footer>
+</div>
+
+<script>
+(() => {
+  const $ = (s, r = document) => r.querySelector(s);
+  const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const get = (p) => window.INTEL ? INTEL.safeGet(p) : fetch('https://api.slensvik.com/' + p).then((r) => r.ok ? r.json() : null).catch(() => null);
+
+  const CREDIT = ['cr.no.gjr_total', 'cr.no.gjr_interest', 'cr.no.gjr_card_revolving', 'cr.no.gjr_consumer_loans', 'cr.no.liens',
+    'cr.no.forced_req_movables', 'cr.no.forced_req_realestate', 'cr.no.forced_dwellings', 'cr.no.forced_coop', 'cr.no.forced_commercial',
+    'cr.no.bankrupt', 'cr.no.bankrupt_primary', 'cr.no.bankrupt_manufacturing', 'cr.no.bankrupt_construction', 'cr.no.bankrupt_trade',
+    'cr.no.bankrupt_transport', 'cr.no.bankrupt_hospitality', 'cr.no.bankrupt_ict', 'cr.no.bankrupt_realestate', 'cr.no.bankrupt_professional',
+    'cr.no.unemployment', 'cr.no.house_prices', 'cr.no.hh_mortgages', 'cr.no.hh_cards', 'cr.no.hh_unsecured', 'cr.no.rate_new_mortgage',
+    'cr.no.rate_new_other'];
+  const MARKET = ['pol.no', 'nor.salmon', 'cmd.brent', 'pwr.no2', 'sh.bdry'];
+  const BANKS = ['DNB', 'SB1NO', 'MORG', 'HELG', 'SPOG'];
+  const EPISODES = [['2008-09', '2009-12', 'Financial crisis'], ['2014-10', '2016-12', 'Oil downturn'],
+                    ['2020-03', '2021-06', 'Pandemic'], ['2021-09', '2023-12', 'Rate hikes']];
+
+  // sector list: research/banks/sectors.py (names, signals); counts are bankruptcies, prices invert
+  const SECTORS = [
+    ['households', 'Households', 'cr.no.liens'], ['cre', 'Commercial real estate', 'cr.no.bankrupt_realestate'],
+    ['residential_dev', 'Residential development', 'cr.no.bankrupt_construction'], ['construction', 'Building and construction', 'cr.no.bankrupt_construction'],
+    ['seafood', 'Fishing and aquaculture', 'nor.salmon'], ['agriculture', 'Agriculture and forestry', 'cr.no.bankrupt_primary'],
+    ['shipping', 'Shipping', 'sh.bdry'], ['oil_offshore', 'Oil, gas and offshore', 'cmd.brent'], ['power', 'Power and renewables', 'pwr.no2'],
+    ['manufacturing', 'Manufacturing', 'cr.no.bankrupt_manufacturing'], ['trade_hospitality', 'Trade, hotels, restaurants', 'cr.no.bankrupt_trade'],
+    ['tmt', 'Technology, media, telecom', 'cr.no.bankrupt_ict'], ['services', 'Business and other services', 'cr.no.bankrupt_professional'],
+    ['transport', 'Transport (excl. shipping)', 'cr.no.bankrupt_transport'], ['finance', 'Financial and insurance', null],
+    ['healthcare', 'Healthcare', null], ['public', 'Public sector', null], ['other', 'Other corporate', 'cr.no.bankrupt'],
+  ];
+  const PRICES = new Set(['nor.salmon', 'cmd.brent', 'sh.bwet', 'sh.bdry', 'pwr.no1', 'pwr.no2', 'pwr.no3', 'pwr.no4', 'pwr.no5']);
+
+  // ── series transforms ───────────────────────────────────────────────────
+  const S = {};            // id → [{k:'YYYY-MM', t: ms, v}]
+  const META = {};
+  const ymShift = (k, n) => { const [y, m] = k.split('-').map(Number); const i = y * 12 + m - 1 + n; return `${Math.floor(i / 12)}-${String(i % 12 + 1).padStart(2, '0')}`; };
+  const kToT = (k) => Date.UTC(+k.slice(0, 4), +k.slice(5, 7) - 1, 15);
+  const mean = (a) => a.reduce((s, x) => s + x, 0) / a.length;
+  function monthly(id) {            // month buckets (mean within a month) — daily/weekly prices, monthly/quarterly series
+    const m = new Map();
+    for (const o of S[id] || []) { const a = m.get(o.k) || [0, 0]; a[0] += o.v; a[1]++; m.set(o.k, a); }
+    return new Map([...m].sort((a, b) => a[0] < b[0] ? -1 : 1).map(([k, [s, n]]) => [k, s / n]));
+  }
+  function yoy12(id) {              // counts: y/y change of the 12-month total (monthly → 12 obs, quarterly → 4)
+    const m = monthly(id); const freq = (META[id] || {}).frequency === 'Q' ? 4 : 12;
+    const tot = new Map();
+    for (const k of m.keys()) {
+      let s = 0, n = 0; for (let i = 0; i < 12; i++) { const v = m.get(ymShift(k, -i)); if (v != null) { s += v; n++; } }
+      if (n === freq) tot.set(k, s);
+    }
+    const out = [];
+    for (const [k, s] of tot) { const p = tot.get(ymShift(k, -12)); if (p) out.push({ k, t: kToT(k), v: (s / p - 1) * 100, tot: s }); }
+    return out;
+  }
+  function total12(id) { const r = yoy12(id); return r.length ? r[r.length - 1].tot : null; }
+  function yoyLevel(id) {           // balances and prices: 3-month average vs a year earlier
+    const m = monthly(id); const out = [];
+    for (const k of m.keys()) {
+      const now = [0, -1, -2].map((i) => m.get(ymShift(k, i))).filter((v) => v != null);
+      const then = [0, -1, -2].map((i) => m.get(ymShift(k, i - 12))).filter((v) => v != null);
+      if (now.length && then.length && mean(then) > 0) out.push({ k, t: kToT(k), v: (mean(now) / mean(then) - 1) * 100 });
+    }
+    return out;
+  }
+  function yoyStock(id) {           // stocks (credit): value vs 12 months earlier
+    const m = monthly(id); const out = [];
+    for (const [k, v] of m) { const p = m.get(ymShift(k, -12)); if (p) out.push({ k, t: kToT(k), v: (v / p - 1) * 100 }); }
+    return out;
+  }
+  function levels(id) { return [...monthly(id)].map(([k, v]) => ({ k, t: kToT(k), v })); }
+  const last = (a) => a && a.length ? a[a.length - 1] : null;
+  const isPrice = (id) => PRICES.has(id) || /house_prices/.test(id);
+  function reading(id) {            // the sector/rung reading used for stress colour
+    if (!id) return null;
+    const r = id.startsWith('cr.no.bankrupt') || id === 'cr.no.liens' || id.startsWith('cr.no.forced') ? last(yoy12(id)) : last(yoyLevel(id));
+    return r ? { ...r, invert: isPrice(id) } : null;
+  }
+  function stress(v, invert) {
+    if (v == null || isNaN(v)) return 'na';
+    const x = invert ? -v : v;
+    return x >= 15 ? 'hot' : x >= 5 ? 'warm' : x <= -10 ? 'cool' : 'flat';
+  }
+  const CLR = { hot: 'var(--hot)', warm: 'var(--warm)', flat: 'var(--flat)', cool: 'var(--cool)', na: 'var(--text4)' };
+  const sgn = (v, dp = 0) => v == null || isNaN(v) ? '—' : (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(dp) + '%';
+  const fmtN = (v, dp = 0) => v == null || isNaN(v) ? '—' : (+v).toLocaleString('nb-NO', { minimumFractionDigits: dp, maximumFractionDigits: dp });
+  const monthName = (k) => k ? new Date(kToT(k)).toLocaleString('en-GB', { month: 'short', year: 'numeric', timeZone: 'UTC' }) : '—';
+
+  // ── tiny SVG charts ─────────────────────────────────────────────────────
+  function spark(pts, color, { zero = false, h = 34 } = {}) {
+    if (!pts || pts.length < 2) return '<svg></svg>';
+    const W = 200, H = h, vs = pts.map((p) => p.v);
+    let lo = Math.min(...vs), hi = Math.max(...vs); if (zero) { lo = Math.min(lo, 0); hi = Math.max(hi, 0); }
+    if (hi === lo) hi = lo + 1;
+    const x = (i) => (i / (pts.length - 1)) * W, y = (v) => H - 3 - ((v - lo) / (hi - lo)) * (H - 6);
+    const d = pts.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(p.v).toFixed(1)}`).join('');
+    const z = zero && lo < 0 && hi > 0 ? `<line x1="0" x2="${W}" y1="${y(0).toFixed(1)}" y2="${y(0).toFixed(1)}" stroke="rgba(255,255,255,.14)" stroke-dasharray="2 3"/>` : '';
+    return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${z}<path d="${d}" fill="none" stroke="${color}" stroke-width="1.4" vector-effect="non-scaling-stroke"/>` +
+      `<circle cx="${x(pts.length - 1).toFixed(1)}" cy="${y(vs[vs.length - 1]).toFixed(1)}" r="2.2" fill="${color}"/></svg>`;
+  }
+
+  function lineChart(el, lines, { yFmt = (v) => v.toFixed(0), clamp = null, zero = true, bands = false, unit = '' } = {}) {
+    lines = lines.filter((l) => l.pts && l.pts.length > 1);
+    if (!el) return;
+    if (!lines.length) { el.innerHTML = '<div class="empty">No data</div>'; return; }
+    const W = el.clientWidth || 700, H = el.clientHeight || 220, L = 40, R = 10, T = 8, B = 22;
+    const cl = (v) => clamp ? Math.max(-clamp, Math.min(clamp, v)) : v;
+    const ts = lines.flatMap((l) => l.pts.map((p) => p.t)), vs = lines.flatMap((l) => l.pts.map((p) => cl(p.v)));
+    const t0 = Math.min(...ts), t1 = Math.max(...ts);
+    let lo = Math.min(...vs), hi = Math.max(...vs); if (zero) { lo = Math.min(lo, 0); hi = Math.max(hi, 0); }
+    const pad = (hi - lo) * 0.06 || 1; lo -= pad; hi += pad;
+    const x = (t) => L + ((t - t0) / (t1 - t0 || 1)) * (W - L - R), y = (v) => T + (1 - (cl(v) - lo) / (hi - lo)) * (H - T - B);
+    const step = niceStep((hi - lo) / 5); const ticks = []; for (let v = Math.ceil(lo / step) * step; v <= hi; v += step) ticks.push(v);
+    const yrs = []; const y0 = new Date(t0).getUTCFullYear(), y1 = new Date(t1).getUTCFullYear();
+    const every = Math.max(1, Math.ceil((y1 - y0 + 1) / Math.max(2, Math.floor((W - L) / 70))));
+    for (let yr = y0; yr <= y1 + 1; yr++) { const t = Date.UTC(yr, 0, 1); if (t >= t0 && t <= t1 && (yr - y0) % every === 0) yrs.push([yr, t]); }
+    let s = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">`;
+    if (bands) for (const [ei, [a, b, name]] of EPISODES.entries()) {
+      const ta = kToT(a), tb = kToT(b); if (tb < t0 || ta > t1) continue;
+      const xa = x(Math.max(ta, t0)), xb = x(Math.min(tb, t1));
+      s += `<rect x="${xa}" y="${T}" width="${Math.max(1, xb - xa)}" height="${H - T - B}" fill="rgba(245,166,35,0.055)"/>` +
+           `<text x="${xa + 3}" y="${T + 9 + (ei % 2) * 11}" fill="rgba(245,166,35,0.5)" font-size="8.5" letter-spacing=".08em">${esc(name.toUpperCase())}</text>`;
+    }
+    for (const v of ticks) s += `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="${Math.abs(v) < 1e-9 && zero ? 'rgba(255,255,255,.2)' : 'var(--grid)'}"/>` +
+      `<text x="${L - 6}" y="${y(v) + 3}" text-anchor="end" fill="var(--text4)" font-size="9">${esc(yFmt(v))}</text>`;
+    for (const [yr, t] of yrs) s += `<text x="${x(t)}" y="${H - 6}" text-anchor="middle" fill="var(--text4)" font-size="9">${yr}</text>`;
+    for (const l of lines) {
+      const d = l.pts.map((p, i) => `${i ? 'L' : 'M'}${x(p.t).toFixed(1)},${y(p.v).toFixed(1)}`).join('');
+      s += `<path d="${d}" fill="none" stroke="${l.color}" stroke-width="${l.w || 1.5}" ${l.dash ? `stroke-dasharray="${l.dash}"` : ''} stroke-linejoin="round"/>`;
+    }
+    s += `<line class="xh" x1="0" x2="0" y1="${T}" y2="${H - B}" stroke="rgba(255,255,255,.25)" visibility="hidden"/></svg><div class="tt"></div>`;
+    el.innerHTML = s;
+    const svg = el.querySelector('svg'), tt = el.querySelector('.tt'), xh = el.querySelector('.xh');
+    el.onmousemove = (e) => {
+      const r = svg.getBoundingClientRect(); const px = (e.clientX - r.left) * (W / r.width);
+      const t = t0 + ((px - L) / (W - L - R)) * (t1 - t0);
+      const rows = lines.map((l) => { let best = null; for (const p of l.pts) if (!best || Math.abs(p.t - t) < Math.abs(best.t - t)) best = p; return [l, best]; })
+        .filter(([, p]) => p && Math.abs(p.t - t) < 1000 * 86400 * 70);
+      if (!rows.length) { tt.style.display = 'none'; xh.setAttribute('visibility', 'hidden'); return; }
+      const tx = x(rows[0][1].t); xh.setAttribute('x1', tx); xh.setAttribute('x2', tx); xh.setAttribute('visibility', 'visible');
+      tt.innerHTML = `<b>${monthName(rows[0][1].k)}</b><br>` + rows.map(([l, p]) => `<i style="background:${l.color}"></i>${esc(l.name)} <b>${esc(yFmt(p.v))}${unit}</b>`).join('<br>');
+      tt.style.display = 'block';
+      const left = (tx / W) * r.width; tt.style.left = Math.min(r.width - tt.offsetWidth - 4, Math.max(0, left + 12)) + 'px'; tt.style.top = '6px';
+    };
+    el.onmouseleave = () => { tt.style.display = 'none'; xh.setAttribute('visibility', 'hidden'); };
+  }
+  function niceStep(raw) { const p = Math.pow(10, Math.floor(Math.log10(raw || 1))); const f = raw / p; return (f < 1.5 ? 1 : f < 3.5 ? 2 : f < 7.5 ? 5 : 10) * p; }
+  const legend = (el, lines) => { if (el) el.innerHTML = lines.map((l) => `<span><i style="background:${l.color}"></i>${esc(l.name)}</span>`).join(''); };
+
+  // ── the ladder ──────────────────────────────────────────────────────────
+  const RUNGS = [
+    { id: 'cr.no.gjr_interest', name: 'Unsecured debt', sub: 'interest-bearing balances · Gjeldsregisteret', kind: 'level',
+      lag: 'Pressure gauge: balances that are revolving or past due. <b>Since 2022</b> — too short to time.' },
+    { id: 'cr.no.liens', name: 'Liens for unpaid debt', sub: 'tinglyste utlegg · SSB 07218', kind: 'count',
+      lag: 'Rates → peak <b>29 months</b> later. Business bankruptcies lead it by <b>~6 months</b> (r 0.62).' },
+    { id: 'cr.no.forced_req_movables', name: 'Car loans', sub: 'forced-sale requests, chattel · ended Jan 2022', kind: 'count', ended: true,
+      lag: 'Liens lead by <b>~10 months</b> (r 0.57); rates by <b>41</b> — the cleanest link. Needs a live successor.' },
+    { id: 'cr.no.forced_dwellings', name: 'Mortgages', sub: 'completed forced home sales · SSB 08948', kind: 'count',
+      lag: 'Liens lead by <b>~11 months</b> (r 0.33); rates by <b>41</b>. The 2022–23 hikes land around now.' },
+    { id: 'cr.no.bankrupt', name: 'Business bankruptcies', sub: 'all enterprises · SSB 07218', kind: 'count',
+      lag: 'Rates → peak <b>18 months</b> later: the fastest rung, and it pulls households after it.' },
+  ];
+  const LINKS = ['→ defaults start', '~10 months', 'about the same time', 'parallel rung · leads household liens by ~6 months'];
+
+  function renderLadder() {
+    const box = $('#ladderBox'); const pol = monthly('pol.no'); const polNow = last([...pol.values()]);
+    const polK = last([...pol.keys()]); const polYago = pol.get(ymShift(polK || '2026-01', -12));
+    let html = `<div class="rung trigger"><div class="bar" style="--rc:var(--amber)"></div>
+      <div><div class="nm">Policy rate · the trigger</div><div class="sb">Norges Bank${polYago != null ? ` · ${polYago.toFixed(2)} % a year ago` : ''}</div></div>
+      <div class="rd num">${polNow != null ? polNow.toFixed(2) + '<small>%</small>' : '—'}</div>
+      <div class="sp">${spark(levels('pol.no').slice(-60), 'var(--amber)')}</div>
+      <div class="lg">Rate rises reach the rungs below <b>18–41 months</b> later; cuts take as long to help.</div></div>`;
+    const states = [];
+    RUNGS.forEach((g, i) => {
+      const series = g.kind === 'level' ? yoyLevel(g.id) : yoy12(g.id);
+      const now = last(series); const st = g.ended ? 'na' : stress(now && now.v, false);
+      if (!g.ended && now) states.push([g, now, st]);
+      const sp = spark(series.slice(g.kind === 'level' ? 0 : -72), g.ended ? 'var(--text4)' : CLR[st], { zero: true });
+      html += `<div class="rung${g.ended ? ' ended' : ''}"><div class="bar" style="--rc:${CLR[st]}"></div>
+        <div><div class="nm">${esc(g.name)}</div><div class="sb">${esc(g.sub)}</div></div>
+        <div class="rd num ${g.ended ? 'faint' : st}">${now ? sgn(now.v) : '—'}<small>${g.ended ? 'last ' + monthName(now && now.k) : (g.kind === 'level' ? '3m avg y/y · ' : '12m total y/y · ') + monthName(now && now.k)}</small></div>
+        <div class="sp">${sp}</div><div class="lg">${g.lag}</div></div>`;
+      if (i < RUNGS.length - 1) html += `<div class="link">${esc(LINKS[i])}</div>`;
+    });
+    box.innerHTML = html;
+    // verdict: count the live rungs heating up; the mortgage rung is what banks provision against
+    const hot = states.filter(([, , s]) => s === 'hot' || s === 'warm'), cool = states.filter(([, , s]) => s === 'cool');
+    const names = (a) => a.map(([g, n]) => `${g.name.toLowerCase()} ${sgn(n.v)}`).join(', ');
+    const v = $('#verdict');
+    const label = hot.length >= 3 ? 'Stress is spreading down the ladder' : hot.length ? 'Pockets of stress, not a wave' : cool.length >= 2 ? 'Easing' : 'Quiet';
+    v.querySelector('.val').textContent = label;
+    v.querySelector('.why').innerHTML = (hot.length ? `Rising: ${esc(names(hot))}. ` : '') + (cool.length ? `Falling: ${esc(names(cool))}. ` : '') +
+      'Readings are 12-month totals against the year before, so one bad month does not move them.';
+    const un = last(levels('cr.no.unemployment')); const unY = un && monthly('cr.no.unemployment').get(ymShift(un.k, -12));
+    const hp = last(yoyLevel('cr.no.house_prices'));
+    $('#heroChips').innerHTML = [
+      un ? `<span class="chip">Unemployment <b>${un.v.toFixed(1)} %</b>${unY != null ? ` (${(un.v - unY >= 0 ? '+' : '−') + Math.abs(un.v - unY).toFixed(1)} pp y/y)` : ''}</span>` : '',
+      hp ? `<span class="chip">House prices <b>${sgn(hp.v, 1)}</b> y/y</span>` : '',
+      polNow != null ? `<span class="chip">Policy rate <b>${polNow.toFixed(2)} %</b></span>` : '',
+    ].join('');
+  }
+
+  // ── history ─────────────────────────────────────────────────────────────
+  function renderHistory() {
+    const lines = [
+      { name: 'Business bankruptcies', color: 'var(--s3)', pts: yoy12('cr.no.bankrupt') },
+      { name: 'Liens', color: 'var(--s1)', pts: yoy12('cr.no.liens') },
+      { name: 'Car forced-sale requests (to 2022)', color: 'var(--s2)', pts: yoy12('cr.no.forced_req_movables'), dash: '3 3' },
+      { name: 'Forced home sales', color: '#e8eef7', pts: yoy12('cr.no.forced_dwellings'), w: 1.8 },
+    ];
+    lineChart($('#histChart'), lines, { clamp: 80, bands: true, yFmt: (v) => (v > 0 ? '+' : '') + v.toFixed(0), unit: '%' });
+    legend($('#histLegend'), lines);
+    const LL = [['Rate change', 'Business bankruptcies', 18, 0.41], ['Rate change', 'Liens', 29, 0.38], ['Rate change', 'Car forced sales', 41, 0.55],
+                ['Rate change', 'Forced home sales', 41, 0.29], ['Business bankruptcies', 'Liens', 6, 0.62], ['Liens', 'Car forced sales', 10, 0.57],
+                ['Liens', 'Forced home sales', 11, 0.33], ['Car forced sales', 'Forced home sales', 0, 0.45]];
+    $('#leadLag').innerHTML = '<tr><th>Leader</th><th>Follower</th><th class="r">Lag</th><th>r</th></tr>' +
+      LL.map(([a, b, m, r]) => `<tr><td>${esc(a)}</td><td>${esc(b)}</td><td class="r num">${m} mo</td><td class="num"><span class="corr" style="width:${Math.round(r * 60)}px"></span>${r.toFixed(2)}</td></tr>`).join('');
+  }
+
+  // ── sectors ─────────────────────────────────────────────────────────────
+  function tile(label, sub, id, kind) {
+    const series = kind === 'count' ? yoy12(id) : yoyLevel(id); const now = last(series);
+    const inv = kind !== 'count'; const st = stress(now && now.v, inv);
+    const lvl = kind === 'count' ? total12(id) : last(levels(id));
+    const unit = (META[id] || {}).unit || '';
+    const lv = kind === 'count' ? `${fmtN(lvl)} in 12 months` : lvl ? `${fmtN(lvl.v, lvl.v < 10 ? 2 : 1)} ${unit}` : '';
+    const pts = kind === 'count' ? yoy12(id).slice(-60) : levels(id).slice(-40);
+    return `<div class="tile" style="--rc:${CLR[st]}"><div class="tl"><span>${esc(label)}</span><small>${esc(sub)}</small></div>
+      <div class="tv num ${st}">${now ? sgn(now.v) : '—'}</div><div class="ts">${esc(lv)} · ${monthName(now && now.k)}</div>
+      ${spark(pts, CLR[st], { zero: kind === 'count' })}</div>`;
+  }
+  function renderSectors() {
+    const bk = [['All enterprises', 'cr.no.bankrupt'], ['Construction', 'cr.no.bankrupt_construction'], ['Real estate', 'cr.no.bankrupt_realestate'],
+                ['Trade', 'cr.no.bankrupt_trade'], ['Hotels, restaurants', 'cr.no.bankrupt_hospitality'], ['Transport', 'cr.no.bankrupt_transport'],
+                ['Manufacturing', 'cr.no.bankrupt_manufacturing'], ['Primary (agri, fish)', 'cr.no.bankrupt_primary'], ['ICT', 'cr.no.bankrupt_ict'],
+                ['Professional services', 'cr.no.bankrupt_professional'], ['Forced sales, commercial', 'cr.no.forced_commercial']];
+    $('#tilesBk').innerHTML = bk.map(([l, id]) => tile(l, 'y/y', id, 'count')).join('');
+    const px = [['Salmon', 'NOK/kg · seafood', 'nor.salmon'], ['Brent', 'USD · oil & offshore', 'cmd.brent'], ['Power NO2', 'NOK/kWh · producers', 'pwr.no2'],
+                ['Dry-bulk freight', 'BDRY · shipping', 'sh.bdry'], ['House prices', 'index · collateral', 'cr.no.house_prices']];
+    $('#tilesPx').innerHTML = px.map(([l, s, id]) => tile(l, s, id, 'price')).join('');
+  }
+
+  // ── exposure ────────────────────────────────────────────────────────────
+  function s3Colour(bp) {          // stage-3 allowance per NOK lent: 0 → calm, 25 → amber, 100+ → red
+    if (bp == null) return 'rgba(255,255,255,0.02)';
+    const a = Math.min(1, Math.log10(1 + bp) / 2.2);
+    return bp >= 60 ? `rgba(240,96,96,${0.12 + a * 0.45})` : bp >= 20 ? `rgba(245,166,35,${0.10 + a * 0.35})` : `rgba(79,195,247,${0.04 + a * 0.18})`;
+  }
+  function renderExposure(loans, names) {
+    const latest = {};
+    for (const r of loans) if (!latest[r.ticker] || r.period > latest[r.ticker]) latest[r.ticker] = r.period;
+    const banks = Object.keys(latest).sort((a, b) => BANKS.indexOf(a) - BANKS.indexOf(b));
+    if (!banks.length) { $('#heatmap').innerHTML = '<tr><td class="empty">No exposure tables yet</td></tr>'; return; }
+    const agg = {};                 // bank → sector → [gross, s3]; bank → total
+    for (const r of loans) {
+      if (r.period !== latest[r.ticker] || r.sector === 'total') continue;
+      const a = ((agg[r.ticker] ||= {})[r.sector] ||= [0, 0]);
+      a[0] += (r.gross_amortised || 0) + (r.fair_value || 0); a[1] += r.ecl_s3 || 0;
+    }
+    const tot = Object.fromEntries(banks.map((b) => [b, Object.values(agg[b] || {}).reduce((s, a) => s + a[0], 0)]));
+    const rows = SECTORS.filter(([id]) => banks.some((b) => agg[b] && agg[b][id]))
+      .map((s) => [s, banks.reduce((m, b) => m + (agg[b][s[0]] ? agg[b][s[0]][0] / tot[b] : 0), 0) / banks.length])
+      .sort((a, b) => b[1] - a[1]).map(([s]) => s);
+    let h = `<tr><th class="l">Sector</th>${banks.map((b) => `<th>${esc(names[b] || b)}<span class="per">${esc(latest[b])}</span></th>`).join('')}<th class="l">Stress now</th></tr>`;
+    for (const [id, name, sig] of rows) {
+      h += `<tr><td class="l">${esc(name)}</td>`;
+      for (const b of banks) {
+        const a = agg[b][id];
+        if (!a || !a[0]) { h += '<td class="c na">—</td>'; continue; }
+        const bp = 1e4 * a[1] / a[0];
+        h += `<td class="c" style="background:${s3Colour(bp)}" title="${esc(names[b] || b)}: NOK ${fmtN(a[0])} m, stage-3 allowance NOK ${fmtN(a[1])} m">` +
+             `<b class="num">${(100 * a[0] / tot[b]).toFixed(1)}%</b><span class="num">${bp.toFixed(0)} bp</span></td>`;
+      }
+      const rd = sig ? reading(sig) : null;
+      const st = rd ? stress(rd.v, rd.invert) : 'na';
+      const lab = sig ? ((META[sig] || {}).short || sig) : '';
+      h += `<td class="st">${rd ? `<span class="${st}">${sgn(rd.v)}</span> ${esc(lab)}` : '<span class="faint">no signal yet</span>'}</td></tr>`;
+    }
+    $('#heatmap').innerHTML = h;
+    $('#hmAsof').textContent = 'latest loans-by-industry note per bank';
+    $('#hmScale').innerHTML = 'stage-3 allowance per NOK lent: ' + [[5, '5 bp'], [25, '25'], [60, '60'], [120, '120+']]
+      .map(([bp, l]) => `<span><i style="background:${s3Colour(bp)}"></i>${l}</span>`).join('');
+    const notes = [...new Map(loans.filter((r) => r.note && r.period === latest[r.ticker]).map((r) => [r.ticker, r.note])).entries()];
+    $('#hmNotes').textContent = notes.map(([b, n]) => `${names[b] || b}: ${n}.`).join(' ');
+    // DNB's shift between its two latest notes
+    const dnbPer = [...new Set(loans.filter((r) => r.ticker === 'DNB').map((r) => r.period))].sort();
+    if (dnbPer.length >= 2) {
+      const [p0, p1] = dnbPer.slice(-2), by = (p) => { const m = {}; for (const r of loans) if (r.ticker === 'DNB' && r.period === p && r.sector !== 'total') m[r.sector] = (m[r.sector] || 0) + (r.ecl_s3 || 0); return m; };
+      const a = by(p0), b = by(p1);
+      const d = SECTORS.map(([id, nm]) => [nm, (b[id] || 0) - (a[id] || 0)]).filter(([, v]) => Math.abs(v) >= 1).sort((x, y) => y[1] - x[1]);
+      $('#shiftAsof').textContent = `${p0} → ${p1}`;
+      bars($('#shiftChart'), d);
+    }
+  }
+  function bars(el, data) {
+    const W = el.clientWidth || 380, rowH = 19, H = Math.max(120, data.length * rowH + 16), L = 150, R = 8;
+    const mx = Math.max(...data.map(([, v]) => Math.abs(v)), 1), mid = L + (W - L - R) / 2, sc = ((W - L - R) / 2 - 42) / mx;
+    let s = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}"><line x1="${mid}" x2="${mid}" y1="0" y2="${H}" stroke="rgba(255,255,255,.18)"/>`;
+    data.forEach(([nm, v], i) => {
+      const y = 8 + i * rowH, w = Math.abs(v) * sc, x = v >= 0 ? mid : mid - w, c = v >= 0 ? 'var(--hot)' : 'var(--cool)';
+      s += `<text x="${L - 8}" y="${y + 11}" text-anchor="end" fill="var(--text3)" font-size="10">${esc(nm.length > 24 ? nm.slice(0, 23) + '…' : nm)}</text>` +
+           `<rect x="${x}" y="${y + 2}" width="${Math.max(1, w)}" height="${rowH - 7}" rx="2" fill="${c}" opacity=".75"/>` +
+           `<text x="${v >= 0 ? x + w + 5 : x - 5}" y="${y + 11}" text-anchor="${v >= 0 ? 'start' : 'end'}" fill="var(--text2)" font-size="10">${v >= 0 ? '+' : '−'}${fmtN(Math.abs(v))}</text>`;
+    });
+    el.style.height = H + 'px'; el.innerHTML = s + '</svg>';
+  }
+
+  // ── bank cards ──────────────────────────────────────────────────────────
+  function renderBanks(metrics, names, isins) {
+    const by = {};
+    for (const r of metrics) ((by[r.ticker] ||= {})[r.period] ||= {})[r.metric] = r.value;
+    const banks = Object.keys(by).sort((a, b) => BANKS.indexOf(a) - BANKS.indexOf(b));
+    if (!banks.length) { $('#bankCards').innerHTML = '<div class="empty">No bank figures yet</div>'; return; }
+    $('#pillBanks').innerHTML = `<b>${banks.length}</b>&nbsp;of 30 banks read`;
+    $('#bankCards').innerHTML = banks.map((b) => {
+      const pers = Object.keys(by[b]).sort(), p = last(pers), m = by[b][p], prev = pers.length > 1 ? by[b][pers[pers.length - 2]] : null;
+      const loans = m.loans_to_customers;
+      const s3 = m.stage3_gross_loans != null && loans ? 100 * m.stage3_gross_loans / loans : null;
+      const cov = m.ecl_allowance_total != null && loans ? 1e4 * m.ecl_allowance_total / loans : null;
+      const loss = m.impairment_losses != null && loans ? 4e4 * m.impairment_losses / loans : null;
+      const delta = (k, dp = 1, inv = false) => {
+        if (!prev || prev[k] == null || m[k] == null) return '';
+        const d = m[k] - prev[k]; const good = inv ? d < 0 : d > 0;
+        return `<span class="d ${Math.abs(d) < 1e-9 ? 'muted' : good ? 'cool' : 'hot'}">${d >= 0 ? '+' : '−'}${Math.abs(d).toFixed(dp)}</span>`;
+      };
+      const cell = (k, v, extra = '') => `<div><div class="k">${k}</div><div class="v num">${v} ${extra}</div></div>`;
+      const roeHist = pers.map((q) => ({ v: by[b][q].return_on_equity_pct })).filter((x) => x.v != null);
+      const href = isins[b] && window.INTEL ? INTEL.dossierHref(isins[b]) : null;
+      return `<div class="panel bank"><div class="bh"><div class="bn">${href ? `<a href="${href}">${esc(names[b] || b)}</a>` : esc(names[b] || b)}</div>
+          <div class="bp">${esc(p)}${prev ? ` · Δ vs ${esc(pers[pers.length - 2])}` : ''}</div></div>
+        <div class="kv">
+          ${cell('CET1', m.cet1_ratio_pct != null ? m.cet1_ratio_pct.toFixed(1) + '%' : '—', delta('cet1_ratio_pct'))}
+          ${cell('ROE', m.return_on_equity_pct != null ? m.return_on_equity_pct.toFixed(1) + '%' : '—', delta('return_on_equity_pct'))}
+          ${cell('Cost/income', m.cost_income_ratio_pct != null ? m.cost_income_ratio_pct.toFixed(1) + '%' : '—', delta('cost_income_ratio_pct', 1, true))}
+          ${cell('Loss rate', loss != null ? loss.toFixed(0) + ' bp' : '—')}
+          ${cell('Stage 3', s3 != null ? s3.toFixed(2) + '%' : '—')}
+          ${cell('ECL / loans', cov != null ? cov.toFixed(0) + ' bp' : '—')}
+          ${cell('NII', fmtN(m.net_interest_income), delta('net_interest_income', 0))}
+          ${cell('Leverage', m.leverage_ratio_pct != null ? m.leverage_ratio_pct.toFixed(1) + '%' : '—')}
+          ${cell('Loans', m.loans_to_customers != null ? fmtN(m.loans_to_customers / 1000, 0) + ' bn' : '—')}
+        </div>
+        ${roeHist.length > 2 ? `<div>${spark(roeHist.map((x, i) => ({ v: x.v, i })), 'var(--s1)')}<div class="note" style="margin-top:2px">ROE over ${roeHist.length} reported quarters</div></div>` : ''}
+        <div class="bf">Profit ${fmtN(m.net_profit)} · losses ${fmtN(m.impairment_losses)} · deposits ${m.deposits_from_customers ? fmtN(m.deposits_from_customers / 1000, 0) + ' bn' : '—'}</div></div>`;
+    }).join('');
+  }
+
+  // ── households ──────────────────────────────────────────────────────────
+  function renderHouseholds() {
+    const since = Date.UTC(2015, 0, 1), cut = (a) => a.filter((p) => p.t >= since);
+    const credit = [{ name: 'Mortgages', color: 'var(--s1)', pts: cut(yoyLevel('cr.no.hh_mortgages')) },
+                    { name: 'Unsecured', color: 'var(--s3)', pts: cut(yoyLevel('cr.no.hh_unsecured')) },
+                    { name: 'Credit cards', color: 'var(--s2)', pts: cut(yoyLevel('cr.no.hh_cards')) }];
+    lineChart($('#hhCredit'), credit, { yFmt: (v) => v.toFixed(0), unit: '%' }); legend($('#hhCreditLeg'), credit);
+    const rates = [{ name: 'Policy rate', color: 'var(--amber)', pts: cut(levels('pol.no')) },
+                   { name: 'New mortgages', color: 'var(--s1)', pts: cut(levels('cr.no.rate_new_mortgage')) },
+                   { name: 'New other loans', color: 'var(--s3)', pts: cut(levels('cr.no.rate_new_other')) }];
+    lineChart($('#hhRates'), rates, { yFmt: (v) => v.toFixed(1), zero: true, unit: ' %' }); legend($('#hhRatesLeg'), rates);
+    const house = [{ name: 'House prices, % y/y', color: 'var(--s1)', pts: cut(yoyLevel('cr.no.house_prices')) },
+                   { name: 'Unemployment, %', color: 'var(--s3)', pts: cut(levels('cr.no.unemployment')) }];
+    lineChart($('#hhHouse'), house, { yFmt: (v) => v.toFixed(0) }); legend($('#hhHouseLeg'), house);
+    const gjr = [{ name: 'Unsecured debt', color: '#e8eef7', pts: levels('cr.no.gjr_total') },
+                 { name: 'Interest-bearing', color: 'var(--s3)', pts: levels('cr.no.gjr_interest') },
+                 { name: 'Consumer loans', color: 'var(--s1)', pts: levels('cr.no.gjr_consumer_loans') },
+                 { name: 'Cards revolving', color: 'var(--s2)', pts: levels('cr.no.gjr_card_revolving') }];
+    lineChart($('#hhGjr'), gjr, { yFmt: (v) => v.toFixed(0), unit: ' bn' }); legend($('#hhGjrLeg'), gjr);
+  }
+
+  function scrollSpy() {
+    const links = [...document.querySelectorAll('#rail a')];
+    if (!('IntersectionObserver' in window)) return;
+    const vis = new Map();
+    const io = new IntersectionObserver((es) => {
+      for (const e of es) vis.set(e.target.id, e.isIntersecting ? e.intersectionRatio : 0);
+      let best = null, br = 0; for (const [id, r] of vis) if (r > br) { br = r; best = id; }
+      links.forEach((a) => a.classList.toggle('on', a.getAttribute('href') === '#' + best));
+    }, { threshold: [0, 0.15, 0.4, 0.7], rootMargin: '-40px 0px -40% 0px' });
+    for (const a of links) { const s = document.getElementById(a.getAttribute('href').slice(1)); if (s) io.observe(s); }
+  }
+
+  async function init() {
+    if (window.INTEL && INTEL.injectNav) INTEL.injectNav();
+    scrollSpy();
+    const ids = (a) => encodeURIComponent('{' + a.join(',') + '}');
+    const [credit, market, board, metrics, loans, inst] = await Promise.all([
+      get(`rpc/world_history?ids=${ids(CREDIT)}&since=1995-01-01`),
+      get(`rpc/world_history?ids=${ids(MARKET)}&since=2014-01-01`),
+      get(`world_board?series_id=in.(${[...CREDIT, ...MARKET].join(',')})&select=series_id,short,unit,frequency,last_date,stale`),
+      get('bank_metrics?select=ticker,period,metric,value'),
+      get('bank_sector_loans?select=ticker,period,row_label,sector,gross_amortised,fair_value,ecl_s1,ecl_s2,ecl_s3,net,note'),
+      get(`instruments?ticker=in.(${BANKS.join(',')})&select=ticker,name,isin`),
+    ]);
+    for (const r of [...(credit || []), ...(market || [])]) S[r.series_id] = r.dates.map((d, i) => ({ k: d.slice(0, 7), t: Date.parse(d + 'T00:00:00Z'), v: +r.vals[i] })).filter((o) => isFinite(o.v));
+    for (const r of board || []) META[r.series_id] = r;
+    const NAME = { DNB: 'DNB', SB1NO: 'SpareBank 1 Sør-Norge', MORG: 'Sparebanken Møre', HELG: 'SpareBank 1 Helgeland', SPOG: 'Sparebanken Øst' };
+    const isins = Object.fromEntries((inst || []).map((r) => [r.ticker, r.isin]));
+    const LIMIT = { D: 10, W: 14, M: 75, Q: 150 }, now = Date.now();
+    const staleIds = (board || []).filter((r) => !/forced_req/.test(r.series_id) && r.last_date &&
+      (now - Date.parse(r.last_date)) / 864e5 > (LIMIT[r.frequency] || 75)).map((r) => (r.short || r.series_id));
+    const pill = $('#pillData'), n = Object.keys(S).length, stale = staleIds.length;
+    if (stale) pill.title = 'Behind their usual publication lag: ' + staleIds.join(', ');
+    pill.className = 'meta-pill ' + (!n ? 'bad' : stale > 3 ? 'warn' : 'ok');
+    $('#pillDataT').textContent = n ? `${n} series${stale ? ` · ${stale} stale` : ''}` : 'API unreachable';
+    const newest = (board || []).filter((r) => r.series_id.startsWith('cr.no.')).map((r) => r.last_date).sort().pop();
+    $('#railAsof').textContent = newest ? 'credit data to ' + newest : '';
+    const steps = [renderLadder, renderHistory, renderSectors, () => renderExposure(loans || [], NAME), () => renderBanks(metrics || [], NAME, isins), renderHouseholds];
+    for (const f of steps) { try { f(); } catch (e) { console.error(e); } }
+    let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { renderHistory(); renderHouseholds(); renderExposure(loans || [], NAME); }, 200); });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
+})();
+</script>
+</body>
+</html>

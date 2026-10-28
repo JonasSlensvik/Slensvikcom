@@ -260,6 +260,7 @@
     { kind: 'page', glyph: '⧉', tick: 'MARKETMAKER', name: 'Deribit options market maker',              href: 'marketmaker.html' },
     { kind: 'page', glyph: '⊕', tick: 'WORLD',       name: 'World intelligence — markets, rates, conflict, shipping, sanctions', href: 'world.html' },
     { kind: 'page', glyph: '▥', tick: 'FASTRENTE',   name: 'Fixed-rate mortgage strategy',              href: 'fastrente.html' },
+    { kind: 'page', glyph: '◧', tick: 'BANKS',       name: 'Norwegian banks — credit-stress ladder, exposures, capital', href: 'banks.html' },
     { kind: 'page', glyph: '◇', tick: 'TERMINAL',    name: 'Front page — instrument gateway',           href: 'index.html' },
   ];
 
@@ -437,6 +438,7 @@
     { href: 'marketmaker.html',  label: 'MarketMaker' },
     { href: 'dossier.html',     label: 'Dossier' },
     { href: 'world.html',       label: 'World' },
+    { href: 'banks.html',       label: 'Banks' },
     { href: 'fastrente.html',    label: 'Fastrente' },
   ];
 

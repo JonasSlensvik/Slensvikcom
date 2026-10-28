@@ -94,6 +94,17 @@ backend architecture, scheduled jobs, DB access, and working agreements.
   commodities/vol, geopolitics, chokepoints, sanctions, Norway lens, live data-health table. Reads the
   ENEXT `api.world_*` tables (see `../ENEXT/docs/world-intel.md`); `?static=1` freezes animation for
   screenshots.
+- `banks.html` — Norwegian banks (2026-10-28), World shell. **Ladder** hero (policy rate → unsecured debt → liens →
+  car loans (SSB stopped the series in 2022, drawn dashed) → mortgages, business bankruptcies as the parallel rung;
+  each rung = y/y change of its 12-month total, stress hot ≥ +15 / warm ≥ +5 / cool ≤ −10, prices inverted) →
+  **History** (rungs since 1995 with episode bands, static lead-lag table from ENEXT `research/banks/ladder.py`) →
+  **Sectors** (bankruptcies by industry, salmon / Brent / NO2 power / dry-bulk freight / house prices) →
+  **Exposure** (banks × sectors heatmap: share of loans, colour = stage-3 allowance bp; DNB's provision shift) →
+  **Banks** (cards from `api.bank_metrics`) → **Households**. Data: `rpc/world_history` (`cr.no.*` = World Intel
+  source `credit`), `api.world_board`, `api.bank_metrics`, `api.bank_sector_loans` (ENEXT `sql/banks_schema.sql`,
+  loaded by `research/banks/load_db.py`; the report reader will write them). The sector list mirrors ENEXT
+  `research/banks/sectors.py` — keep the two in step. Tanker freight (`sh.bwet`) is left out until its ~80× rise in
+  2025–26 is verified. Runbook: `../ENEXT/docs/banks.md`.
 
 ## Useful API views
 
