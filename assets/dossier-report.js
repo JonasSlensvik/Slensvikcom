@@ -150,7 +150,7 @@
       const verdict = g.surprise_pct == null ? 'no consensus captured yet'
         : Math.abs(+g.surprise_pct) < 5 ? 'in line with consensus' : +g.surprise_pct > 0 ? 'above consensus' : 'below consensus';
       s += `<div class="rp-ncq"><div class="rp-h"><b>${esc(q)}</b><span>${g.report_date ? `report ${dLabel(g.report_date)} · ` : ''}built on ${esc(g.base || '')}</span></div>${ncStrip(rows)}
-        <div class="rp-note">Adjusted EBITDA ${mnok(+g.ebitda)} MNOK (${mnok(+g.ebitda_low)}–${mnok(+g.ebitda_high)}), EPS ${(+g.eps_low).toFixed(2)}–${(+g.eps_high).toFixed(2)}: ${verdict}.${v.power ? ` With the fitted Nordic-power effect, ${(+v.power.eps_mid).toFixed(2)}.` : ''}</div>
+        <div class="rp-note">${(g.segments || []).some((sg) => sg.key === 'NII') ? 'Pre-tax profit' : 'Adjusted EBITDA'} ${mnok(+g.ebitda)} MNOK (${mnok(+g.ebitda_low)}–${mnok(+g.ebitda_high)}), EPS ${(+g.eps_low).toFixed(2)}–${(+g.eps_high).toFixed(2)}: ${verdict}.${v.power ? ` With the fitted Nordic-power effect, ${(+v.power.eps_mid).toFixed(2)}.` : ''}</div>
         <details class="rp-seg"><summary>Segments and bridge</summary><div class="rp-list">${(g.segments || []).map((sg) =>
           `<div class="rp-li"><span class="dt">${esc(sg.key)}</span><span class="n">${esc(sg.name)}<small>${mnok(+sg.base)} the quarter before</small></span><span class="r">${mnok(+sg.value)}<small> ${mnok(+sg.low)}–${mnok(+sg.high)}</small></span></div>`).join('')}
           ${(g.items || []).map((it) => `<div class="rp-li sub"><span class="dt">${esc(it.segment)}</span><span class="n">${esc(it.item)}<small>${esc(it.basis)}</small></span><span class="r">${signed(+it.mnok, 0)}</span></div>`).join('')}</div></details></div>`;

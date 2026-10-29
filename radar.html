@@ -2957,7 +2957,7 @@ function drNowcast(nc, attr, hist) {
       : Math.abs(+g.surprise_pct) < 5 ? 'in line with consensus' : +g.surprise_pct > 0 ? 'above consensus' : 'below consensus';
     s += `<div class="dr-nc-q"><div class="dr-nc-h"><b>${erEsc(q)}</b><span>${g.report_date ? `report ${erDate(g.report_date, false)} · ` : ''}built on ${erEsc(String(g.base || ''))}</span></div>` +
       drNcStrip(q, rows) +
-      `<div class="note" style="margin-top:4px">Adjusted EBITDA ${ncM(+g.ebitda)} MNOK (${ncM(+g.ebitda_low)}–${ncM(+g.ebitda_high)}), ` +
+      `<div class="note" style="margin-top:4px">${(g.segments || []).some(sg => sg.key === 'NII') ? 'Pre-tax profit' : 'Adjusted EBITDA'} ${ncM(+g.ebitda)} MNOK (${ncM(+g.ebitda_low)}–${ncM(+g.ebitda_high)}), ` +
       `EPS ${(+g.eps_low).toFixed(2)}–${(+g.eps_high).toFixed(2)}: ${verdict}.${v.power ? ` With the fitted Nordic-power effect, ${(+v.power.eps_mid).toFixed(2)}.` : ''}</div>` +
       `<details class="dr-nc-seg"><summary>Segments and bridge</summary><div class="dr-list">${(g.segments || []).map(sg =>
         `<div class="dr-li"><span class="d">${erEsc(sg.key)}</span><span class="n">${erEsc(sg.name)}<small>${ncM(+sg.base)} before</small></span>` +
