@@ -157,19 +157,31 @@ table.hm td.st { text-align: left; font-size: 10px; color: var(--text3); }
 .scale { display: flex; align-items: center; gap: 8px; font-size: 9.5px; color: var(--text4); margin-top: 10px; flex-wrap: wrap; }
 .scale i { display: inline-block; width: 22px; height: 10px; border-radius: 2px; }
 
-/* ── bank cards ──────────────────────────────────────────────────────────── */
-.banks { display: grid; grid-template-columns: repeat(auto-fill, minmax(268px, 1fr)); gap: 12px; }
-.bank { padding: 14px 16px 12px; display: flex; flex-direction: column; gap: 10px; }
-.bank .bh { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
-.bank .bn { font-family: var(--sans); font-weight: 700; font-size: 15px; color: var(--text1); }
-.bank .bn a { text-decoration: none; } .bank .bn a:hover { color: var(--amber); }
-.bank .bp { font-size: 9.5px; color: var(--text4); letter-spacing: .06em; }
-.kv { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px 10px; }
-.kv div { min-width: 0; }
-.kv .k { font-size: 8.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--text4); }
-.kv .v { font-size: 14px; color: var(--text1); }
-.kv .d { font-size: 9px; }
-.bank .bf { font-size: 9.5px; color: var(--text3); line-height: 1.55; border-top: 1px solid var(--border); padding-top: 8px; }
+/* ── universe table ──────────────────────────────────────────────────────── */
+.ut-wrap { overflow-x: auto; }
+table.ut { width: 100%; border-collapse: collapse; font-size: 11.5px; min-width: 980px; }
+table.ut th { text-align: right; font-weight: 500; font-size: 9px; letter-spacing: .12em; text-transform: uppercase; color: var(--text3);
+              padding: 7px 8px; border-bottom: 1px solid var(--border2); cursor: pointer; white-space: nowrap; user-select: none; }
+table.ut th:hover { color: var(--text1); }
+table.ut th.on { color: var(--amber); }
+table.ut th.l, table.ut td.l { text-align: left; }
+table.ut td { text-align: right; padding: 7px 8px; border-bottom: 1px solid var(--border); color: var(--text2); white-space: nowrap; }
+table.ut tr.row { cursor: pointer; }
+table.ut tr.row:hover td { background: rgba(255,255,255,0.025); }
+table.ut tr.open td { background: rgba(245,166,35,0.05); }
+table.ut td.bn { color: var(--text1); font-weight: 500; }
+table.ut td.bn small { display: block; color: var(--text4); font-size: 9px; font-weight: 400; }
+table.ut td.sp { width: 110px; } table.ut td.sp svg { display: block; width: 110px; height: 22px; }
+table.ut tr.detail td { padding: 10px 12px 14px; background: rgba(5,8,16,.55); white-space: normal; text-align: left; }
+.mk { display: inline-block; font-size: 9px; font-weight: 600; margin-left: 3px; padding: 0 3px; border-radius: 3px; vertical-align: 1px; cursor: help; }
+.mk.q { color: var(--amber); border: 1px solid rgba(245,166,35,.5); }
+.mk.x { color: var(--red); border: 1px solid rgba(240,96,96,.5); }
+.mk.s { color: var(--text4); padding: 0 1px; }
+table.hist { border-collapse: collapse; font-size: 10.5px; margin-top: 6px; }
+table.hist th, table.hist td { padding: 4px 9px; text-align: right; border-bottom: 1px solid var(--border); white-space: nowrap; }
+table.hist th { font-weight: 500; font-size: 9px; color: var(--text3); letter-spacing: .08em; }
+table.hist th.l, table.hist td.l { text-align: left; color: var(--text3); }
+.dlink { font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--amber); text-decoration: none; margin-left: 10px; }
 
 /* ── method ──────────────────────────────────────────────────────────────── */
 .method { columns: 2 360px; column-gap: 28px; font-size: 11px; color: var(--text3); line-height: 1.7; }
@@ -293,13 +305,15 @@ footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--border
   <section class="sec" id="banks">
     <div class="sec-title">
       <h2><span class="g">◧</span>The banks</h2>
-      <p>Latest quarter as each bank reports it (group figures, NOK million). Read by hand for now; the report reader takes
-        over the whole universe of 30 listed banks once it has passed its bake-off.</p>
+      <p>Every listed Norwegian bank, latest reported quarter (group figures). DeepSeek reads each report twice; a value
+        is published when both readings agree. <span class="mk q">?</span> the readings disagree (the careful one is shown),
+        <span class="mk x">!</span> a check failed, <span class="mk s">·</span> one reading so far. Five banks were also read
+        by hand. Click a bank for its quarters.</p>
     </div>
-    <div class="banks" id="bankCards"><div class="empty">Loading …</div></div>
-    <p class="note">Loss rate = the quarter's credit losses annualised over loans to customers. Stage 3 and ECL as the bank
-      states them (Møre's stage 3 includes guarantees and undrawn lines). Δ = change from the bank's previous reported quarter.
-      Each name opens the company's dossier.</p>
+    <div class="panel"><div class="ut-wrap"><table class="ut" id="universe"><tr><td class="empty">Loading …</td></tr></table></div>
+      <p class="note">Loss rate = the quarter's credit losses annualised over loans to customers. Stage 3 and ECL as the bank
+        states them (Møre's stage 3 includes guarantees and undrawn lines). Loans exclude those moved to SpareBank 1 or Eika
+        Boligkreditt. Small banks print in NOK thousands; everything here is converted to NOK.</p></div>
   </section>
 
   <!-- ═══ HOUSEHOLDS ═════════════════════════════════════════════════════ -->
@@ -374,7 +388,16 @@ footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--border
     'cr.no.unemployment', 'cr.no.house_prices', 'cr.no.hh_mortgages', 'cr.no.hh_cards', 'cr.no.hh_unsecured', 'cr.no.rate_new_mortgage',
     'cr.no.rate_new_other'];
   const MARKET = ['pol.no', 'nor.salmon', 'cmd.brent', 'pwr.no2', 'sh.bdry'];
-  const BANKS = ['DNB', 'SB1NO', 'MORG', 'HELG', 'SPOG'];
+  const BANKS = ['DNB', 'SB1NO', 'MING', 'NONG', 'SPOL', 'SBNOR', 'MORG', 'HELG', 'SOAG', 'RING', 'SPOG', 'PARB', 'INSTA', 'KRAB',
+                 'JAREN', 'SKUE', 'MELG', 'AURG', 'BIEN', 'GRONG', 'NISB', 'SNOR', 'ROGS', 'SOGN', 'TINDE', 'TRSB', 'VVL', 'HSPG', 'HGSB', 'AASB'];
+  const NAMES = { DNB: 'DNB', SB1NO: 'SpareBank 1 Sør-Norge', MING: 'SpareBank 1 SMN', NONG: 'SpareBank 1 Nord-Norge',
+    SPOL: 'SpareBank 1 Østlandet', SBNOR: 'Sparebanken Norge', MORG: 'Sparebanken Møre', HELG: 'SpareBank 1 Helgeland',
+    SOAG: 'SpareBank 1 Østfold Akershus', RING: 'SpareBank 1 Ringerike Hadeland', SPOG: 'Sparebanken Øst', PARB: 'Pareto Bank',
+    INSTA: 'Instabank', KRAB: 'Kraft Bank', JAREN: 'Jæren Sparebank', SKUE: 'Skue Sparebank', MELG: 'Melhus Sparebank',
+    AURG: 'Aurskog Sparebank', BIEN: 'Bien Sparebank', GRONG: 'Grong Sparebank', NISB: 'Nidaros Sparebank',
+    SNOR: 'SpareBank 1 Nordmøre', ROGS: 'Rogaland Sparebank', SOGN: 'Sogn Sparebank', TINDE: 'Tinde Sparebank',
+    TRSB: 'Trøndelag Sparebank', VVL: 'Voss Veksel- og Landmandsbank', HSPG: 'Høland og Setskog Sparebank',
+    HGSB: 'Haugesund Sparebank', AASB: 'Aasen Sparebank' };
   const EPISODES = [['2008-09', '2009-12', 'Financial crisis'], ['2014-10', '2016-12', 'Oil downturn'],
                     ['2020-03', '2021-06', 'Pandemic'], ['2021-09', '2023-12', 'Rate hikes']];
 
@@ -665,43 +688,75 @@ footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--border
     el.style.height = H + 'px'; el.innerHTML = s + '</svg>';
   }
 
-  // ── bank cards ──────────────────────────────────────────────────────────
+  // ── the universe table ──────────────────────────────────────────────────
+  const COLS = [
+    ['loans', 'Loans', (m) => m.loans_to_customers && m.loans_to_customers.v / 1000, (v) => fmtN(v, v < 10 ? 1 : 0) + ' bn', ['loans_to_customers']],
+    ['cet1', 'CET1', (m) => m.cet1_ratio_pct && m.cet1_ratio_pct.v, (v) => v.toFixed(1) + '%', ['cet1_ratio_pct']],
+    ['roe', 'ROE', (m) => m.return_on_equity_pct && m.return_on_equity_pct.v, (v) => v.toFixed(1) + '%', ['return_on_equity_pct']],
+    ['ci', 'Cost/inc.', (m) => m.cost_income_ratio_pct && m.cost_income_ratio_pct.v, (v) => v.toFixed(1) + '%', ['cost_income_ratio_pct']],
+    ['loss', 'Loss rate', (m) => ratio(m, 'impairment_losses', 'loans_to_customers', 4e4), (v) => v.toFixed(0) + ' bp', ['impairment_losses', 'loans_to_customers']],
+    ['s3', 'Stage 3', (m) => ratio(m, 'stage3_gross_loans', 'loans_to_customers', 100), (v) => v.toFixed(2) + '%', ['stage3_gross_loans', 'loans_to_customers']],
+    ['ecl', 'ECL cover', (m) => ratio(m, 'ecl_allowance_total', 'loans_to_customers', 1e4), (v) => v.toFixed(0) + ' bp', ['ecl_allowance_total', 'loans_to_customers']],
+    ['dep', 'Dep./loans', (m) => ratio(m, 'deposits_from_customers', 'loans_to_customers', 100), (v) => v.toFixed(0) + '%', ['deposits_from_customers', 'loans_to_customers']],
+  ];
+  function ratio(m, a, b, k) { return m[a] && m[b] && m[b].v ? k * m[a].v / m[b].v : null; }
+  function marks(m, keys) {
+    let q = [], x = [], one = false;
+    for (const k of keys) {
+      const c = m[k]; if (!c) continue;
+      if (c.status === 'single') one = true;
+      if (c.status === 'disputed') q.push(`${k}: second reading ${c.alt == null ? 'empty' : fmtN(c.alt, 2)}`);
+      if (c.flags && c.flags.length) x.push(`${k}: ${c.flags.join('; ')}`);
+    }
+    return (q.length ? `<span class="mk q" title="${esc(q.join('\n'))}">?</span>` : '') + (x.length ? `<span class="mk x" title="${esc(x.join('\n'))}">!</span>` : '') +
+      (one && !q.length && !x.length ? '<span class="mk s" title="one reading so far — the second, careful reading has not run yet">·</span>' : '');
+  }
+  let UT = null;
   function renderBanks(metrics, names, isins) {
     const by = {};
-    for (const r of metrics) ((by[r.ticker] ||= {})[r.period] ||= {})[r.metric] = r.value;
-    const banks = Object.keys(by).sort((a, b) => BANKS.indexOf(a) - BANKS.indexOf(b));
-    if (!banks.length) { $('#bankCards').innerHTML = '<div class="empty">No bank figures yet</div>'; return; }
-    $('#pillBanks').innerHTML = `<b>${banks.length}</b>&nbsp;of 30 banks read`;
-    $('#bankCards').innerHTML = banks.map((b) => {
-      const pers = Object.keys(by[b]).sort(), p = last(pers), m = by[b][p], prev = pers.length > 1 ? by[b][pers[pers.length - 2]] : null;
-      const loans = m.loans_to_customers;
-      const s3 = m.stage3_gross_loans != null && loans ? 100 * m.stage3_gross_loans / loans : null;
-      const cov = m.ecl_allowance_total != null && loans ? 1e4 * m.ecl_allowance_total / loans : null;
-      const loss = m.impairment_losses != null && loans ? 4e4 * m.impairment_losses / loans : null;
-      const delta = (k, dp = 1, inv = false) => {
-        if (!prev || prev[k] == null || m[k] == null) return '';
-        const d = m[k] - prev[k]; const good = inv ? d < 0 : d > 0;
-        return `<span class="d ${Math.abs(d) < 1e-9 ? 'muted' : good ? 'cool' : 'hot'}">${d >= 0 ? '+' : '−'}${Math.abs(d).toFixed(dp)}</span>`;
-      };
-      const cell = (k, v, extra = '') => `<div><div class="k">${k}</div><div class="v num">${v} ${extra}</div></div>`;
-      const roeHist = pers.map((q) => ({ v: by[b][q].return_on_equity_pct })).filter((x) => x.v != null);
-      const href = isins[b] && window.INTEL ? INTEL.dossierHref(isins[b]) : null;
-      return `<div class="panel bank"><div class="bh"><div class="bn">${href ? `<a href="${href}">${esc(names[b] || b)}</a>` : esc(names[b] || b)}</div>
-          <div class="bp">${esc(p)}${prev ? ` · Δ vs ${esc(pers[pers.length - 2])}` : ''}</div></div>
-        <div class="kv">
-          ${cell('CET1', m.cet1_ratio_pct != null ? m.cet1_ratio_pct.toFixed(1) + '%' : '—', delta('cet1_ratio_pct'))}
-          ${cell('ROE', m.return_on_equity_pct != null ? m.return_on_equity_pct.toFixed(1) + '%' : '—', delta('return_on_equity_pct'))}
-          ${cell('Cost/income', m.cost_income_ratio_pct != null ? m.cost_income_ratio_pct.toFixed(1) + '%' : '—', delta('cost_income_ratio_pct', 1, true))}
-          ${cell('Loss rate', loss != null ? loss.toFixed(0) + ' bp' : '—')}
-          ${cell('Stage 3', s3 != null ? s3.toFixed(2) + '%' : '—')}
-          ${cell('ECL / loans', cov != null ? cov.toFixed(0) + ' bp' : '—')}
-          ${cell('NII', fmtN(m.net_interest_income), delta('net_interest_income', 0))}
-          ${cell('Leverage', m.leverage_ratio_pct != null ? m.leverage_ratio_pct.toFixed(1) + '%' : '—')}
-          ${cell('Loans', m.loans_to_customers != null ? fmtN(m.loans_to_customers / 1000, 0) + ' bn' : '—')}
-        </div>
-        ${roeHist.length > 2 ? `<div>${spark(roeHist.map((x, i) => ({ v: x.v, i })), 'var(--s1)')}<div class="note" style="margin-top:2px">ROE over ${roeHist.length} reported quarters</div></div>` : ''}
-        <div class="bf">Profit ${fmtN(m.net_profit)} · losses ${fmtN(m.impairment_losses)} · deposits ${m.deposits_from_customers ? fmtN(m.deposits_from_customers / 1000, 0) + ' bn' : '—'}</div></div>`;
-    }).join('');
+    for (const r of metrics) ((by[r.ticker] ||= {})[r.period] ||= {})[r.metric] = { v: r.value, status: r.status, alt: r.alt_value, flags: r.flags, src: r.source };
+    const rows = Object.keys(by).map((t) => {
+      const pers = Object.keys(by[t]).filter((p) => by[t][p].cet1_ratio_pct || by[t][p].net_interest_income).sort();
+      const p = last(pers); if (!p) return null;
+      const m = by[t][p];
+      const roe = pers.slice(-8).map((q) => by[t][q].return_on_equity_pct).filter((c) => c && c.v != null).map((c) => ({ v: c.v }));
+      return { t, p, m, pers, roe, hand: Object.values(m).some((c) => c.src === 'hand-read'), vals: Object.fromEntries(COLS.map(([k, , f]) => [k, f(m)])) };
+    }).filter(Boolean);
+    if (!rows.length) { $('#universe').innerHTML = '<tr><td class="empty">No bank figures yet</td></tr>'; return; }
+    $('#pillBanks').innerHTML = `<b>${rows.length}</b>&nbsp;of 30 banks read`;
+    UT = { rows, by, names, isins, sort: UT ? UT.sort : ['loans', -1], open: UT ? UT.open : null };
+    drawUniverse();
+  }
+  function drawUniverse() {
+    const { rows, by, names, isins, sort: [sk, dir] } = UT;
+    rows.sort((a, b) => sk === 'bank' ? dir * (names[a.t] || a.t).localeCompare(names[b.t] || b.t)
+      : ((a.vals[sk] ?? -Infinity) - (b.vals[sk] ?? -Infinity)) * dir);
+    let h = `<tr><th class="l${sk === 'bank' ? ' on' : ''}" data-k="bank">Bank</th><th>Quarter</th>` +
+      COLS.map(([k, lab]) => `<th data-k="${k}" class="${sk === k ? 'on' : ''}">${lab}${sk === k ? (dir < 0 ? ' ↓' : ' ↑') : ''}</th>`).join('') + '<th>ROE, 8 q</th></tr>';
+    for (const r of rows) {
+      const nm = names[r.t] || r.t;
+      h += `<tr class="row${UT.open === r.t ? ' open' : ''}" data-t="${esc(r.t)}"><td class="l bn">${esc(nm)}<small>${esc(r.t)}${r.hand ? ' · hand-read' : ''}</small></td><td class="num">${esc(r.p)}</td>` +
+        COLS.map(([k, , , fmt, keys]) => { const v = r.vals[k]; return `<td class="num">${v == null ? '<span class="faint">—</span>' : fmt(v) + marks(r.m, keys)}</td>`; }).join('') +
+        `<td class="sp">${r.roe.length > 1 ? spark(r.roe, 'var(--s1)', { h: 22 }) : ''}</td></tr>`;
+      if (UT.open === r.t) h += `<tr class="detail"><td colspan="${COLS.length + 3}">${detail(r, by[r.t], isins[r.t])}</td></tr>`;
+    }
+    const tb = $('#universe'); tb.innerHTML = h;
+    tb.querySelectorAll('th[data-k]').forEach((th) => th.onclick = () => {
+      const k = th.dataset.k; UT.sort = UT.sort[0] === k ? [k, -UT.sort[1]] : [k, k === 'bank' ? 1 : -1]; drawUniverse();
+    });
+    tb.querySelectorAll('tr.row').forEach((tr) => tr.onclick = () => { UT.open = UT.open === tr.dataset.t ? null : tr.dataset.t; drawUniverse(); });
+  }
+  function detail(r, perBank, isin) {
+    const pers = r.pers.slice(-8);
+    const lines = [['NII, NOK m', 'net_interest_income', (c) => fmtN(c.v, c.v < 100 ? 1 : 0)], ['Profit, NOK m', 'net_profit', (c) => fmtN(c.v, c.v < 100 ? 1 : 0)],
+                   ['Losses, NOK m', 'impairment_losses', (c) => fmtN(c.v, Math.abs(c.v) < 100 ? 1 : 0)], ['CET1 %', 'cet1_ratio_pct', (c) => c.v.toFixed(1)],
+                   ['ROE %', 'return_on_equity_pct', (c) => c.v.toFixed(1)], ['Cost/income %', 'cost_income_ratio_pct', (c) => c.v.toFixed(1)],
+                   ['Stage 3, NOK m', 'stage3_gross_loans', (c) => fmtN(c.v, c.v < 100 ? 1 : 0)], ['Loans, NOK bn', 'loans_to_customers', (c) => fmtN(c.v / 1000, 1)]];
+    const href = isin && window.INTEL ? INTEL.dossierHref(isin) : null;
+    return `<b style="color:var(--text1)">${esc(UT.names[r.t] || r.t)}</b>${href ? `<a class="dlink" href="${href}">Dossier →</a>` : ''}
+      <table class="hist"><tr><th class="l"></th>${pers.map((p) => `<th>${esc(p)}</th>`).join('')}</tr>` +
+      lines.map(([lab, k, f]) => `<tr><td class="l">${lab}</td>${pers.map((p) => { const c = perBank[p][k]; return `<td class="num">${c && c.v != null ? f(c) + marks(perBank[p], [k]) : '<span class="faint">—</span>'}</td>`; }).join('')}</tr>`).join('') +
+      '</table>';
   }
 
   // ── households ──────────────────────────────────────────────────────────
@@ -745,13 +800,13 @@ footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--border
       get(`rpc/world_history?ids=${ids(CREDIT)}&since=1995-01-01`),
       get(`rpc/world_history?ids=${ids(MARKET)}&since=2014-01-01`),
       get(`world_board?series_id=in.(${[...CREDIT, ...MARKET].join(',')})&select=series_id,short,unit,frequency,last_date,stale`),
-      get('bank_metrics?select=ticker,period,metric,value'),
+      get('bank_metrics?select=ticker,period,metric,value,status,alt_value,flags,source'),
       get('bank_sector_loans?select=ticker,period,row_label,sector,gross_amortised,fair_value,ecl_s1,ecl_s2,ecl_s3,net,note'),
       get(`instruments?ticker=in.(${BANKS.join(',')})&select=ticker,name,isin`),
     ]);
     for (const r of [...(credit || []), ...(market || [])]) S[r.series_id] = r.dates.map((d, i) => ({ k: d.slice(0, 7), t: Date.parse(d + 'T00:00:00Z'), v: +r.vals[i] })).filter((o) => isFinite(o.v));
     for (const r of board || []) META[r.series_id] = r;
-    const NAME = { DNB: 'DNB', SB1NO: 'SpareBank 1 Sør-Norge', MORG: 'Sparebanken Møre', HELG: 'SpareBank 1 Helgeland', SPOG: 'Sparebanken Øst' };
+    const NAME = NAMES;
     const isins = Object.fromEntries((inst || []).map((r) => [r.ticker, r.isin]));
     const LIMIT = { D: 10, W: 14, M: 75, Q: 150 }, now = Date.now();
     const staleIds = (board || []).filter((r) => !/forced_req/.test(r.series_id) && r.last_date &&

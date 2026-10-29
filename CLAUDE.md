@@ -100,7 +100,9 @@ backend architecture, scheduled jobs, DB access, and working agreements.
   **History** (rungs since 1995 with episode bands, static lead-lag table from ENEXT `research/banks/ladder.py`) →
   **Sectors** (bankruptcies by industry, salmon / Brent / NO2 power / dry-bulk freight / house prices) →
   **Exposure** (banks × sectors heatmap: share of loans, colour = stage-3 allowance bp; DNB's provision shift) →
-  **Banks** (cards from `api.bank_metrics`) → **Households**. Data: `rpc/world_history` (`cr.no.*` = World Intel
+  **Banks** (universe table: every listed bank's latest quarter from `api.bank_metrics`, sortable, click a row for its
+  quarters; markers from the reader's `status` / `flags`: `?` disputed, `!` a check failed, faint `·` one reading so
+  far) → **Households**. Data: `rpc/world_history` (`cr.no.*` = World Intel
   source `credit`), `api.world_board`, `api.bank_metrics`, `api.bank_sector_loans` (ENEXT `sql/banks_schema.sql`,
   loaded by `research/banks/load_db.py`; the report reader will write them). The sector list mirrors ENEXT
   `research/banks/sectors.py` — keep the two in step. Tanker freight (`sh.bwet`) is left out until its ~80× rise in
