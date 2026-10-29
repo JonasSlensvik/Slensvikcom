@@ -101,8 +101,12 @@ backend architecture, scheduled jobs, DB access, and working agreements.
   **Sectors** (bankruptcies by industry, salmon / Brent / NO2 power / dry-bulk freight / house prices) →
   **Exposure** (banks × sectors heatmap: share of loans, colour = stage-3 allowance bp; DNB's provision shift) →
   **Banks** (universe table: every listed bank's latest quarter from `api.bank_metrics`, sortable, click a row for its
-  quarters; markers from the reader's `status` / `flags`: `?` disputed, `!` a check failed, faint `·` one reading so
-  far) → **Households**. Data: `rpc/world_history` (`cr.no.*` = World Intel
+  quarters, margins, posted products and Finanstilsynet reports; markers from the reader's `status` / `flags`: `?`
+  disputed, `!` a check failed, faint `·` one reading so far; FSA column; "Next Q EPS vs cons." from `api.nowcast_latest`)
+  → **What they charge** (`api.bank_pricing` latest day: savings ↔ mortgage dumbbell per bank against the policy rate
+  and the median lender, other brands hollow; repricing feed from `api.bank_pricing_events`. `NOT_HEAD` mirrors
+  ENEXT `research/banks/pricing.py`'s `NOT_HEADLINE` — keep them in step) → **What Finanstilsynet found**
+  (`api.bank_supervision`) → **Households**. Data: `rpc/world_history` (`cr.no.*` = World Intel
   source `credit`), `api.world_board`, `api.bank_metrics`, `api.bank_sector_loans` (ENEXT `sql/banks_schema.sql`,
   loaded by `research/banks/load_db.py`; the report reader will write them). The sector list mirrors ENEXT
   `research/banks/sectors.py` — keep the two in step. Tanker freight (`sh.bwet`) is left out until its ~80× rise in
