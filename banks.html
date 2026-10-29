@@ -162,7 +162,7 @@ table.hm td.st { text-align: left; font-size: 10px; color: var(--text3); }
 
 /* ── universe table ──────────────────────────────────────────────────────── */
 .ut-wrap { overflow-x: auto; }
-table.ut { width: 100%; border-collapse: collapse; font-size: 11.5px; min-width: 980px; }
+table.ut { width: 100%; border-collapse: collapse; font-size: 11.5px; min-width: 1120px; }
 table.ut th { text-align: right; font-weight: 500; font-size: 9px; letter-spacing: .12em; text-transform: uppercase; color: var(--text3);
               padding: 7px 8px; border-bottom: 1px solid var(--border2); cursor: pointer; white-space: nowrap; user-select: none; }
 table.ut th:hover { color: var(--text1); }
@@ -317,7 +317,8 @@ footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--border
       <p>Every listed Norwegian bank, latest reported quarter (group figures). DeepSeek reads each report twice; a value
         is published when both readings agree. <span class="mk q">?</span> the readings disagree (the careful one is shown),
         <span class="mk x">!</span> a check failed, <span class="mk s">·</span> one reading so far. Five banks were also read
-        by hand. Click a bank for its quarters.</p>
+        by hand. Click a bank for its quarters. "Next Q": our EPS forecast for the coming quarter against analyst consensus
+        (policy rate → interest income, fees and costs by season, losses at run-rate; the bridge is in each dossier).</p>
     </div>
     <div class="panel"><div class="ut-wrap"><table class="ut" id="universe"><tr><td class="empty">Loading …</td></tr></table></div>
       <p class="note">Loss rate = the quarter's credit losses annualised over loans to customers. Stage 3 and ECL as the bank
@@ -752,7 +753,12 @@ footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--border
       (one && !q.length && !x.length ? '<span class="mk s" title="one reading so far — the second, careful reading has not run yet">·</span>' : '');
   }
   let UT = null;
-  function renderBanks(metrics, names, isins) {
+  function renderBanks(metrics, names, isins, ncRows) {
+    const NC = {};
+    for (const r of ncRows || []) {                     // the next unreported quarter per bank
+      const k = r.fiscal_year * 10 + +r.period[1];
+      if (!NC[r.ticker] || k < NC[r.ticker].k) NC[r.ticker] = { ...r, k };
+    }
     const by = {};
     for (const r of metrics) ((by[r.ticker] ||= {})[r.period] ||= {})[r.metric] = { v: r.value, status: r.status, alt: r.alt_value, flags: r.flags, src: r.source };
     const rows = Object.keys(by).map((t) => {
@@ -760,7 +766,9 @@ footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--border
       const p = last(pers); if (!p) return null;
       const m = by[t][p];
       const roe = pers.slice(-8).map((q) => by[t][q].return_on_equity_pct).filter((c) => c && c.v != null).map((c) => ({ v: c.v }));
-      return { t, p, m, pers, roe, hand: Object.values(m).some((c) => c.src === 'hand-read'), vals: Object.fromEntries(COLS.map(([k, , f]) => [k, f(m)])) };
+      const vals = Object.fromEntries(COLS.map(([k, , f]) => [k, f(m)]));
+      vals.nc = NC[t] && NC[t].surprise_pct != null ? +NC[t].surprise_pct : null;
+      return { t, p, m, pers, roe, nc: NC[t], hand: Object.values(m).some((c) => c.src === 'hand-read'), vals };
     }).filter(Boolean);
     if (!rows.length) { $('#universe').innerHTML = '<tr><td class="empty">No bank figures yet</td></tr>'; return; }
     $('#pillBanks').innerHTML = `<b>${rows.length}</b>&nbsp;of 30 banks read`;
@@ -772,19 +780,32 @@ footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--border
     rows.sort((a, b) => sk === 'bank' ? dir * (names[a.t] || a.t).localeCompare(names[b.t] || b.t)
       : ((a.vals[sk] ?? -Infinity) - (b.vals[sk] ?? -Infinity)) * dir);
     let h = `<tr><th class="l${sk === 'bank' ? ' on' : ''}" data-k="bank">Bank</th><th>Quarter</th>` +
-      COLS.map(([k, lab]) => `<th data-k="${k}" class="${sk === k ? 'on' : ''}">${lab}${sk === k ? (dir < 0 ? ' ↓' : ' ↑') : ''}</th>`).join('') + '<th>ROE, 8 q</th></tr>';
+      COLS.map(([k, lab]) => `<th data-k="${k}" class="${sk === k ? 'on' : ''}">${lab}${sk === k ? (dir < 0 ? ' ↓' : ' ↑') : ''}</th>`).join('') +
+      `<th data-k="nc" class="${sk === 'nc' ? 'on' : ''}" title="Our forecast of the next quarter's EPS against analyst consensus (radar drawer / dossier: the bridge)">Next Q EPS vs cons.${sk === 'nc' ? (dir < 0 ? ' ↓' : ' ↑') : ''}</th><th>ROE, 8 q</th></tr>`;
     for (const r of rows) {
       const nm = names[r.t] || r.t;
       h += `<tr class="row${UT.open === r.t ? ' open' : ''}" data-t="${esc(r.t)}"><td class="l bn">${esc(nm)}<small>${esc(r.t)}${r.hand ? ' · hand-read' : ''}</small></td><td class="num">${esc(r.p)}</td>` +
-        COLS.map(([k, , , fmt, keys]) => { const v = r.vals[k]; return `<td class="num">${v == null ? '<span class="faint">—</span>' : fmt(v) + marks(r.m, keys)}</td>`; }).join('') +
-        `<td class="sp">${r.roe.length > 1 ? spark(r.roe, 'var(--s1)', { h: 22 }) : ''}</td></tr>`;
-      if (UT.open === r.t) h += `<tr class="detail"><td colspan="${COLS.length + 3}">${detail(r, by[r.t], isins[r.t])}</td></tr>`;
+        COLS.map(([k, , , fmt, keys]) => {
+          const v = r.vals[k], bad = keys.some((x) => r.m[x] && r.m[x].flags && r.m[x].flags.length);   // failed a check: faded
+          return `<td class="num">${v == null ? '<span class="faint">—</span>' : (bad ? `<span class="faint">${fmt(v)}</span>` : fmt(v)) + marks(r.m, keys)}</td>`;
+        }).join('') +
+        `<td class="num">${ncCell(r.nc)}</td><td class="sp">${r.roe.length > 1 ? spark(r.roe, 'var(--s1)', { h: 22 }) : ''}</td></tr>`;
+      if (UT.open === r.t) h += `<tr class="detail"><td colspan="${COLS.length + 4}">${detail(r, by[r.t], isins[r.t])}</td></tr>`;
     }
     const tb = $('#universe'); tb.innerHTML = h;
     tb.querySelectorAll('th[data-k]').forEach((th) => th.onclick = () => {
       const k = th.dataset.k; UT.sort = UT.sort[0] === k ? [k, -UT.sort[1]] : [k, k === 'bank' ? 1 : -1]; drawUniverse();
     });
     tb.querySelectorAll('tr.row').forEach((tr) => tr.onclick = () => { UT.open = UT.open === tr.dataset.t ? null : tr.dataset.t; drawUniverse(); });
+  }
+  function ncCell(n) {
+    if (!n || n.eps_mid == null) return '<span class="faint">—</span>';
+    const sp = n.surprise_pct, cls = sp == null ? 'muted' : Math.abs(sp) < 5 ? 'flat' : sp > 0 ? 'cool' : 'hot';
+    const tip = `${n.period} ${n.fiscal_year}: our EPS ${(+n.eps_mid).toFixed(2)} (${(+n.eps_low).toFixed(2)}–${(+n.eps_high).toFixed(2)})` +
+      (n.consensus_eps != null ? ` vs consensus ${(+n.consensus_eps).toFixed(2)} from ${n.consensus_n} analyst${n.consensus_n > 1 ? 's' : ''}` : ', no consensus yet') +
+      (n.report_date ? `; report ${n.report_date}` : '');
+    return `<span title="${esc(tip)}">${(+n.eps_mid).toFixed(2)}${n.consensus_eps != null ? ` <span class="faint">vs ${(+n.consensus_eps).toFixed(2)}</span>` : ''}` +
+      `${sp != null && Math.abs(sp) < 200 ? ` <span class="${cls}">${sp >= 0 ? '+' : '−'}${Math.abs(sp).toFixed(0)}%</span>` : ''}</span>`;
   }
   function detail(r, perBank, isin) {
     const pers = r.pers.slice(-8);
@@ -836,13 +857,14 @@ footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--border
     if (window.INTEL && INTEL.injectNav) INTEL.injectNav();
     scrollSpy();
     const ids = (a) => encodeURIComponent('{' + a.join(',') + '}');
-    const [credit, market, board, metrics, loans, inst] = await Promise.all([
+    const [credit, market, board, metrics, loans, inst, nc] = await Promise.all([
       get(`rpc/world_history?ids=${ids(CREDIT)}&since=1995-01-01`),
       get(`rpc/world_history?ids=${ids(MARKET)}&since=2014-01-01`),
       get(`world_board?series_id=in.(${[...CREDIT, ...MARKET].join(',')})&select=series_id,short,unit,frequency,last_date,stale`),
       get('bank_metrics?select=ticker,period,metric,value,status,alt_value,flags,source'),
       get('bank_sector_loans?select=ticker,period,row_label,sector,gross_amortised,fair_value,ecl_s1,ecl_s2,ecl_s3,net,note,source'),
       get(`instruments?ticker=in.(${BANKS.join(',')})&select=ticker,name,isin`),
+      get(`nowcast_latest?ticker=in.(${BANKS.join(',')})&variant=eq.guided&select=ticker,fiscal_year,period,eps_mid,eps_low,eps_high,consensus_eps,consensus_n,surprise_pct,report_date`),
     ]);
     for (const r of [...(credit || []), ...(market || [])]) S[r.series_id] = r.dates.map((d, i) => ({ k: d.slice(0, 7), t: Date.parse(d + 'T00:00:00Z'), v: +r.vals[i] })).filter((o) => isFinite(o.v));
     for (const r of board || []) META[r.series_id] = r;
@@ -857,7 +879,7 @@ footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--border
     $('#pillDataT').textContent = n ? `${n} series${stale ? ` · ${stale} stale` : ''}` : 'API unreachable';
     const newest = (board || []).filter((r) => r.series_id.startsWith('cr.no.')).map((r) => r.last_date).sort().pop();
     $('#railAsof').textContent = newest ? 'credit data to ' + newest : '';
-    const steps = [renderLadder, renderHistory, renderSectors, () => renderExposure(loans || [], NAME), () => renderBanks(metrics || [], NAME, isins), renderHouseholds];
+    const steps = [renderLadder, renderHistory, renderSectors, () => renderExposure(loans || [], NAME), () => renderBanks(metrics || [], NAME, isins, nc || []), renderHouseholds];
     for (const f of steps) { try { f(); } catch (e) { console.error(e); } }
     let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { renderHistory(); renderHouseholds(); renderExposure(loans || [], NAME); }, 200); });
   }
