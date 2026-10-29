@@ -162,7 +162,7 @@ table.hm td.st { text-align: left; font-size: 10px; color: var(--text3); }
 
 /* ── universe table ──────────────────────────────────────────────────────── */
 .ut-wrap { overflow-x: auto; }
-table.ut { width: 100%; border-collapse: collapse; font-size: 11.5px; min-width: 1120px; }
+table.ut { width: 100%; border-collapse: collapse; font-size: 11.5px; min-width: 1220px; }
 table.ut th { text-align: right; font-weight: 500; font-size: 9px; letter-spacing: .12em; text-transform: uppercase; color: var(--text3);
               padding: 7px 8px; border-bottom: 1px solid var(--border2); cursor: pointer; white-space: nowrap; user-select: none; }
 table.ut th:hover { color: var(--text1); }
@@ -185,6 +185,18 @@ table.hist th, table.hist td { padding: 4px 9px; text-align: right; border-botto
 table.hist th { font-weight: 500; font-size: 9px; color: var(--text3); letter-spacing: .08em; }
 table.hist th.l, table.hist td.l { text-align: left; color: var(--text3); }
 .dlink { font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--amber); text-decoration: none; margin-left: 10px; }
+
+/* ── supervision ── */
+.fsa-feed { display: grid; grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); gap: 12px; }
+.fsa-card { padding: 14px 16px; }
+.fsa-card .bh { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+.fsa-card .bn { font-family: var(--sans); font-weight: 700; font-size: 14px; color: var(--text1); }
+.fsa-card .bp { font-size: 9.5px; color: var(--text4); letter-spacing: .06em; }
+.fsa-item { font-size: 10.5px; color: var(--text2); line-height: 1.55; margin-bottom: 8px; white-space: normal; }
+.fsa-item ul { margin: 4px 0 0 16px; } .fsa-item li { margin-bottom: 3px; } .fsa-item li b { color: var(--text1); font-weight: 500; }
+.fsa-item p { margin-top: 3px; }
+.chip-s { font-size: 8.5px; letter-spacing: .1em; text-transform: uppercase; border: 1px solid var(--border2); border-radius: 8px; padding: 0 5px; color: var(--amber); }
+@media (max-width: 760px) { .fsa-feed { grid-template-columns: minmax(0, 1fr); } }
 
 /* ── method ──────────────────────────────────────────────────────────────── */
 .method { columns: 2 360px; column-gap: 28px; font-size: 11px; color: var(--text3); line-height: 1.7; }
@@ -225,7 +237,7 @@ footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--border
 
   <nav class="rail" id="rail" aria-label="Sections">
     <a href="#ladder">Ladder</a><a href="#history">History</a><a href="#sectors">Sectors</a><a href="#exposure">Exposure</a>
-    <a href="#banks">Banks</a><a href="#households">Households</a><a href="#method">Method</a>
+    <a href="#banks">Banks</a><a href="#supervision">Supervision</a><a href="#households">Households</a><a href="#method">Method</a>
     <span class="rail-asof" id="railAsof"></span>
   </nav>
 
@@ -324,6 +336,18 @@ footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--border
       <p class="note">Loss rate = the quarter's credit losses annualised over loans to customers. Stage 3 and ECL as the bank
         states them (Møre's stage 3 includes guarantees and undrawn lines). Loans exclude those moved to SpareBank 1 or Eika
         Boligkreditt. Small banks print in NOK thousands; everything here is converted to NOK.</p></div>
+  </section>
+
+  <!-- ═══ SUPERVISION ════════════════════════════════════════════════════ -->
+  <section class="sec" id="supervision">
+    <div class="sec-title">
+      <h2><span class="g">⚖</span>What Finanstilsynet found</h2>
+      <p>The latest supervision reports on the listed banks (Tilsynsportalen), with the findings Finanstilsynet itemises.
+        Graded from its own wording: a breach of rules (law, regulation, a sanction), a weakness (including deviations from
+        the bank's own credit policy), or a recommendation. "Credit" marks findings on credit risk, loss provisions, defaults
+        or models — the ones that bear on future losses.</p>
+    </div>
+    <div class="fsa-feed" id="fsaFeed"><div class="empty">Loading …</div></div>
   </section>
 
   <!-- ═══ HOUSEHOLDS ═════════════════════════════════════════════════════ -->
@@ -753,7 +777,12 @@ footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--border
       (one && !q.length && !x.length ? '<span class="mk s" title="one reading so far — the second, careful reading has not run yet">·</span>' : '');
   }
   let UT = null;
-  function renderBanks(metrics, names, isins, ncRows) {
+  const SEV = { breach: 3, weakness: 2, recommendation: 1, none: 0 };
+  const SEV_LAB = { breach: 'breach of rules', weakness: 'weakness', recommendation: 'recommendation', none: 'no grade' };
+  function renderBanks(metrics, names, isins, ncRows, fsaRows) {
+    const FSA = {};
+    const cutoff = new Date(Date.now() - 730 * 864e5).toISOString().slice(0, 10);
+    for (const r of fsaRows || []) (FSA[r.ticker] ||= []).push(r);
     const NC = {};
     for (const r of ncRows || []) {                     // the next unreported quarter per bank
       const k = r.fiscal_year * 10 + +r.period[1];
@@ -768,7 +797,10 @@ footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--border
       const roe = pers.slice(-8).map((q) => by[t][q].return_on_equity_pct).filter((c) => c && c.v != null).map((c) => ({ v: c.v }));
       const vals = Object.fromEntries(COLS.map(([k, , f]) => [k, f(m)]));
       vals.nc = NC[t] && NC[t].surprise_pct != null ? +NC[t].surprise_pct : null;
-      return { t, p, m, pers, roe, nc: NC[t], hand: Object.values(m).some((c) => c.src === 'hand-read'), vals };
+      const recent = (FSA[t] || []).filter((x) => x.report_date >= cutoff);
+      const worst = recent.reduce((w, x) => (SEV[x.severity] || 0) > (SEV[w] || 0) ? x.severity : w, 'none');
+      vals.fsa = recent.length ? (SEV[worst] || 0) * 10 + recent.length : null;
+      return { t, p, m, pers, roe, nc: NC[t], fsa: FSA[t] || [], fsaRecent: recent, fsaWorst: worst, hand: Object.values(m).some((c) => c.src === 'hand-read'), vals };
     }).filter(Boolean);
     if (!rows.length) { $('#universe').innerHTML = '<tr><td class="empty">No bank figures yet</td></tr>'; return; }
     $('#pillBanks').innerHTML = `<b>${rows.length}</b>&nbsp;of 30 banks read`;
@@ -781,6 +813,7 @@ footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--border
       : ((a.vals[sk] ?? -Infinity) - (b.vals[sk] ?? -Infinity)) * dir);
     let h = `<tr><th class="l${sk === 'bank' ? ' on' : ''}" data-k="bank">Bank</th><th>Quarter</th>` +
       COLS.map(([k, lab]) => `<th data-k="${k}" class="${sk === k ? 'on' : ''}">${lab}${sk === k ? (dir < 0 ? ' ↓' : ' ↑') : ''}</th>`).join('') +
+      `<th data-k="fsa" class="${sk === 'fsa' ? 'on' : ''}" title="Finanstilsynet's supervision reports in the last two years: the worst finding, and how many reports">FSA, 2 yrs${sk === 'fsa' ? (dir < 0 ? ' ↓' : ' ↑') : ''}</th>` +
       `<th data-k="nc" class="${sk === 'nc' ? 'on' : ''}" title="Our forecast of the next quarter's EPS against analyst consensus (radar drawer / dossier: the bridge)">Next Q EPS vs cons.${sk === 'nc' ? (dir < 0 ? ' ↓' : ' ↑') : ''}</th><th>ROE, 8 q</th></tr>`;
     for (const r of rows) {
       const nm = names[r.t] || r.t;
@@ -789,14 +822,36 @@ footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--border
           const v = r.vals[k], bad = keys.some((x) => r.m[x] && r.m[x].flags && r.m[x].flags.length);   // failed a check: faded
           return `<td class="num">${v == null ? '<span class="faint">—</span>' : (bad ? `<span class="faint">${fmt(v)}</span>` : fmt(v)) + marks(r.m, keys)}</td>`;
         }).join('') +
-        `<td class="num">${ncCell(r.nc)}</td><td class="sp">${r.roe.length > 1 ? spark(r.roe, 'var(--s1)', { h: 22 }) : ''}</td></tr>`;
-      if (UT.open === r.t) h += `<tr class="detail"><td colspan="${COLS.length + 4}">${detail(r, by[r.t], isins[r.t])}</td></tr>`;
+        `<td class="num">${fsaCell(r)}</td><td class="num">${ncCell(r.nc)}</td><td class="sp">${r.roe.length > 1 ? spark(r.roe, 'var(--s1)', { h: 22 }) : ''}</td></tr>`;
+      if (UT.open === r.t) h += `<tr class="detail"><td colspan="${COLS.length + 5}">${detail(r, by[r.t], isins[r.t])}</td></tr>`;
     }
     const tb = $('#universe'); tb.innerHTML = h;
     tb.querySelectorAll('th[data-k]').forEach((th) => th.onclick = () => {
       const k = th.dataset.k; UT.sort = UT.sort[0] === k ? [k, -UT.sort[1]] : [k, k === 'bank' ? 1 : -1]; drawUniverse();
     });
     tb.querySelectorAll('tr.row').forEach((tr) => tr.onclick = () => { UT.open = UT.open === tr.dataset.t ? null : tr.dataset.t; drawUniverse(); });
+  }
+  function fsaCell(r) {
+    if (!r.fsaRecent.length) return '<span class="faint">—</span>';
+    const w = r.fsaWorst, cls = w === 'breach' ? 'hot' : w === 'weakness' ? 'warm' : 'muted';
+    const tip = r.fsaRecent.map((x) => `${x.report_date}: ${SEV_LAB[x.severity] || x.severity}${x.credit ? ', credit' : ''} — ${(x.summary || '').slice(0, 160)}`).join('\n');
+    return `<span class="${cls}" title="${esc(tip)}">${w === 'breach' ? '▲' : w === 'weakness' ? '◆' : '·'} ${r.fsaRecent.length}${r.fsaRecent.some((x) => x.credit) ? ' <small>credit</small>' : ''}</span>`;
+  }
+  function fsaItem(x) {
+    const cls = x.severity === 'breach' ? 'hot' : x.severity === 'weakness' ? 'warm' : 'muted';
+    const fs = (x.findings || []).filter((f) => f.severity !== 'none').slice(0, 3);
+    return `<div class="fsa-item"><span class="num">${esc(x.report_date)}</span> <span class="${cls}">${esc(SEV_LAB[x.severity] || '')}</span>` +
+      `${x.credit ? ' <span class="chip-s">credit</span>' : ''} <span class="muted">${esc((x.topics || []).join(' · '))}</span>` +
+      `${x.source_url ? ` <a class="dlink" href="${esc(x.source_url)}" target="_blank" rel="noopener">report →</a>` : ''}` +
+      (fs.length ? `<ul>${fs.map((f) => `<li><b>${esc(f.subtopic || f.topic || '')}</b> ${esc(f.finding)}</li>`).join('')}</ul>`
+        : `<p class="muted">${esc((x.summary || '').slice(0, 320))}${(x.summary || '').length > 320 ? '…' : ''}</p>`) + '</div>';
+  }
+  function renderSupervision(rows, names) {
+    const el = document.getElementById('fsaFeed'); if (!el) return;
+    const recent = rows.filter((x) => x.source === 'tilsynsportalen').slice(0, 10);
+    if (!recent.length) { el.innerHTML = '<div class="empty">No supervision reports yet</div>'; return; }
+    el.innerHTML = recent.map((x) => `<div class="panel fsa-card"><div class="bh"><div class="bn">${esc(names[x.ticker] || x.ticker)}</div>` +
+      `<div class="bp">${esc(x.report_type || '')}</div></div>${fsaItem(x)}</div>`).join('');
   }
   function ncCell(n) {
     if (!n || n.eps_mid == null) return '<span class="faint">—</span>';
@@ -817,7 +872,7 @@ footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--border
     return `<b style="color:var(--text1)">${esc(UT.names[r.t] || r.t)}</b>${href ? `<a class="dlink" href="${href}">Dossier →</a>` : ''}
       <table class="hist"><tr><th class="l"></th>${pers.map((p) => `<th>${esc(p)}</th>`).join('')}</tr>` +
       lines.map(([lab, k, f]) => `<tr><td class="l">${lab}</td>${pers.map((p) => { const c = perBank[p][k]; return `<td class="num">${c && c.v != null ? f(c) + marks(perBank[p], [k]) : '<span class="faint">—</span>'}</td>`; }).join('')}</tr>`).join('') +
-      '</table>';
+      '</table>' + (r.fsa.length ? `<div class="fsa-list"><div class="tiles-h" style="margin:12px 0 6px">Finanstilsynet</div>${r.fsa.slice(0, 4).map(fsaItem).join('')}</div>` : '');
   }
 
   // ── households ──────────────────────────────────────────────────────────
@@ -857,7 +912,7 @@ footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--border
     if (window.INTEL && INTEL.injectNav) INTEL.injectNav();
     scrollSpy();
     const ids = (a) => encodeURIComponent('{' + a.join(',') + '}');
-    const [credit, market, board, metrics, loans, inst, nc] = await Promise.all([
+    const [credit, market, board, metrics, loans, inst, nc, fsa] = await Promise.all([
       get(`rpc/world_history?ids=${ids(CREDIT)}&since=1995-01-01`),
       get(`rpc/world_history?ids=${ids(MARKET)}&since=2014-01-01`),
       get(`world_board?series_id=in.(${[...CREDIT, ...MARKET].join(',')})&select=series_id,short,unit,frequency,last_date,stale`),
@@ -865,6 +920,7 @@ footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--border
       get('bank_sector_loans?select=ticker,period,row_label,sector,gross_amortised,fair_value,ecl_s1,ecl_s2,ecl_s3,net,note,source'),
       get(`instruments?ticker=in.(${BANKS.join(',')})&select=ticker,name,isin`),
       get(`nowcast_latest?ticker=in.(${BANKS.join(',')})&variant=eq.guided&select=ticker,fiscal_year,period,eps_mid,eps_low,eps_high,consensus_eps,consensus_n,surprise_pct,report_date`),
+      get('bank_supervision?select=ticker,report_date,report_type,conclusion,severity,credit,topics,summary,findings,source_url,source&order=report_date.desc'),
     ]);
     for (const r of [...(credit || []), ...(market || [])]) S[r.series_id] = r.dates.map((d, i) => ({ k: d.slice(0, 7), t: Date.parse(d + 'T00:00:00Z'), v: +r.vals[i] })).filter((o) => isFinite(o.v));
     for (const r of board || []) META[r.series_id] = r;
@@ -879,7 +935,7 @@ footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--border
     $('#pillDataT').textContent = n ? `${n} series${stale ? ` · ${stale} stale` : ''}` : 'API unreachable';
     const newest = (board || []).filter((r) => r.series_id.startsWith('cr.no.')).map((r) => r.last_date).sort().pop();
     $('#railAsof').textContent = newest ? 'credit data to ' + newest : '';
-    const steps = [renderLadder, renderHistory, renderSectors, () => renderExposure(loans || [], NAME), () => renderBanks(metrics || [], NAME, isins, nc || []), renderHouseholds];
+    const steps = [renderLadder, renderHistory, renderSectors, () => renderExposure(loans || [], NAME), () => renderBanks(metrics || [], NAME, isins, nc || [], fsa || []), () => renderSupervision(fsa || [], NAME), renderHouseholds];
     for (const f of steps) { try { f(); } catch (e) { console.error(e); } }
     let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { renderHistory(); renderHouseholds(); renderExposure(loans || [], NAME); }, 200); });
   }
