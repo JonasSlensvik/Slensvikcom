@@ -142,7 +142,10 @@ table.ll td.r { text-align: right; } table.ll th.r { text-align: right; } table.
 
 /* ── exposure heatmap ────────────────────────────────────────────────────── */
 .hm-wrap { overflow-x: auto; }
-table.hm { width: 100%; border-collapse: separate; border-spacing: 3px; font-size: 11px; min-width: 720px; }
+table.hm { width: 100%; border-collapse: separate; border-spacing: 2px; font-size: 10.5px; min-width: 1180px; }
+table.hm th.hmc { cursor: pointer; vertical-align: bottom; white-space: normal; line-height: 1.25; min-width: 64px; }
+table.hm th.hmc:hover { color: var(--text1); } table.hm th.hmc.on { color: var(--amber); }
+table.hm th .per.hot { color: var(--hot); } table.hm th .per.warm { color: var(--warm); } table.hm th .per.cool { color: var(--cool); }
 table.hm th { font-weight: 500; font-size: 9px; letter-spacing: .12em; text-transform: uppercase; color: var(--text3); padding: 4px 8px; text-align: center; }
 table.hm th.l, table.hm td.l { text-align: left; }
 table.hm th .per { display: block; font-size: 8.5px; letter-spacing: .06em; color: var(--text4); text-transform: none; margin-top: 2px; }
@@ -150,7 +153,7 @@ table.hm td { padding: 6px 8px; border-radius: 4px; text-align: center; color: v
 table.hm td.l { color: var(--text1); white-space: nowrap; }
 table.hm td.l small { display: block; color: var(--text4); font-size: 9px; }
 table.hm td.c { background: rgba(255,255,255,0.02); }
-table.hm td.c b { display: block; color: var(--text1); font-weight: 500; font-size: 12px; }
+table.hm td.c b { display: block; color: var(--text1); font-weight: 500; font-size: 11px; }
 table.hm td.c span { font-size: 9px; color: rgba(232,238,247,.72); }
 table.hm td.c.na { color: var(--text4); }
 table.hm td.st { text-align: left; font-size: 10px; color: var(--text3); }
@@ -283,17 +286,23 @@ footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--border
     <div class="sec-title">
       <h2><span class="g">▤</span>Who lends to what</h2>
       <p>Each bank's "loans by industry" note mapped to one sector list. Big number: the sector's share of the bank's loans.
-        Small number and colour: stage-3 allowance per NOK lent, in basis points — where credit losses already sit.
-        The right column is that sector's stress reading today.</p>
+        Small number and colour: stage-3 allowance per NOK lent, in basis points — where credit losses already sit. Under
+        each sector: its stress reading today. Click a sector to rank the banks by how much of their book sits there.</p>
     </div>
     <div class="grid g12">
-      <div class="panel span8">
+      <div class="panel span12">
         <h3><span><span class="g">▤</span>Exposure map</span><small id="hmAsof"></small></h3>
         <div class="hm-wrap"><table class="hm" id="heatmap"></table></div>
         <div class="scale" id="hmScale"></div>
         <p class="note" id="hmNotes"></p>
       </div>
-      <div class="panel span4">
+      <div class="panel span6">
+        <h3><span><span class="g">▥</span>Where the system's provisions sit</span><small id="sysAsof"></small></h3>
+        <div class="chart" id="sysChart" style="height:330px"></div>
+        <p class="note">Stage-3 allowance per NOK lent, by sector, pooled over every bank whose note splits its allowance by
+          stage — basis points. A sector's losses show here first.</p>
+      </div>
+      <div class="panel span6">
         <h3><span><span class="g">⇅</span>Where DNB's provisions moved</span><small id="shiftAsof"></small></h3>
         <div class="chart" id="shiftChart" style="height:330px"></div>
         <p class="note">Change in DNB's stage-3 allowance by sector between its two latest loans-by-industry notes, NOK million.</p>
@@ -410,7 +419,8 @@ footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--border
     ['manufacturing', 'Manufacturing', 'cr.no.bankrupt_manufacturing'], ['trade_hospitality', 'Trade, hotels, restaurants', 'cr.no.bankrupt_trade'],
     ['tmt', 'Technology, media, telecom', 'cr.no.bankrupt_ict'], ['services', 'Business and other services', 'cr.no.bankrupt_professional'],
     ['transport', 'Transport (excl. shipping)', 'cr.no.bankrupt_transport'], ['finance', 'Financial and insurance', null],
-    ['healthcare', 'Healthcare', null], ['public', 'Public sector', null], ['other', 'Other corporate', 'cr.no.bankrupt'],
+    ['healthcare', 'Healthcare', null], ['public', 'Public sector', null], ['corporate', 'Corporate, not split', 'cr.no.bankrupt'],
+    ['other', 'Other corporate', 'cr.no.bankrupt'],
   ];
   const PRICES = new Set(['nor.salmon', 'cmd.brent', 'sh.bwet', 'sh.bdry', 'pwr.no1', 'pwr.no2', 'pwr.no3', 'pwr.no4', 'pwr.no5']);
 
@@ -629,51 +639,81 @@ footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--border
     const a = Math.min(1, Math.log10(1 + bp) / 2.2);
     return bp >= 60 ? `rgba(240,96,96,${0.12 + a * 0.45})` : bp >= 20 ? `rgba(245,166,35,${0.10 + a * 0.35})` : `rgba(79,195,247,${0.04 + a * 0.18})`;
   }
+  // banks as rows, sectors as columns (largest first, the small ones folded into "other"); the column header carries
+  // the sector's stress reading; a click on a sector ranks the banks by their exposure to it
+  const HM_MAIN = ['households', 'cre', 'residential_dev', 'construction', 'seafood', 'agriculture', 'shipping', 'oil_offshore',
+                   'power', 'manufacturing', 'trade_hospitality', 'services', 'tmt', 'transport'];
+  let HM = { sort: null };
   function renderExposure(loans, names) {
     const latest = {};
     for (const r of loans) if (!latest[r.ticker] || r.period > latest[r.ticker]) latest[r.ticker] = r.period;
-    const banks = Object.keys(latest).sort((a, b) => BANKS.indexOf(a) - BANKS.indexOf(b));
+    const banks = Object.keys(latest);
     if (!banks.length) { $('#heatmap').innerHTML = '<tr><td class="empty">No exposure tables yet</td></tr>'; return; }
-    const agg = {};                 // bank → sector → [gross, s3]; bank → total
+    const agg = {};
     for (const r of loans) {
       if (r.period !== latest[r.ticker] || r.sector === 'total') continue;
-      const a = ((agg[r.ticker] ||= {})[r.sector] ||= [0, 0]);
-      a[0] += (r.gross_amortised || 0) + (r.fair_value || 0); a[1] += r.ecl_s3 || 0;
+      const col = HM_MAIN.includes(r.sector) ? r.sector : 'other';
+      const a = ((agg[r.ticker] ||= {})[col] ||= [0, 0, false]);
+      a[0] += (r.gross_amortised || 0) + (r.fair_value || 0); a[1] += r.ecl_s3 || 0; if (r.ecl_s3 != null) a[2] = true;
     }
     const tot = Object.fromEntries(banks.map((b) => [b, Object.values(agg[b] || {}).reduce((s, a) => s + a[0], 0)]));
-    const rows = SECTORS.filter(([id]) => banks.some((b) => agg[b] && agg[b][id]))
-      .map((s) => [s, banks.reduce((m, b) => m + (agg[b][s[0]] ? agg[b][s[0]][0] / tot[b] : 0), 0) / banks.length])
-      .sort((a, b) => b[1] - a[1]).map(([s]) => s);
-    let h = `<tr><th class="l">Sector</th>${banks.map((b) => `<th>${esc(names[b] || b)}<span class="per">${esc(latest[b])}</span></th>`).join('')}<th class="l">Stress now</th></tr>`;
-    for (const [id, name, sig] of rows) {
-      h += `<tr><td class="l">${esc(name)}</td>`;
-      for (const b of banks) {
-        const a = agg[b][id];
-        if (!a || !a[0]) { h += '<td class="c na">—</td>'; continue; }
-        const bp = 1e4 * a[1] / a[0];
-        h += `<td class="c" style="background:${s3Colour(bp)}" title="${esc(names[b] || b)}: NOK ${fmtN(a[0])} m, stage-3 allowance NOK ${fmtN(a[1])} m">` +
-             `<b class="num">${(100 * a[0] / tot[b]).toFixed(1)}%</b><span class="num">${bp.toFixed(0)} bp</span></td>`;
+    const cols = [...HM_MAIN, 'other'].filter((c) => banks.some((b) => agg[b] && agg[b][c] && agg[b][c][0] > 0));
+    const sname = Object.fromEntries(SECTORS.map(([id, nm]) => [id, nm])); sname.other = 'Other corporate';
+    const ssig = Object.fromEntries(SECTORS.map(([id, , sig]) => [id, sig]));
+    const share = (b, c) => agg[b] && agg[b][c] && tot[b] ? agg[b][c][0] / tot[b] : 0;
+    const order = HM.sort ? [...banks].sort((x, y) => share(y, HM.sort) - share(x, HM.sort)) : [...banks].sort((x, y) => tot[y] - tot[x]);
+    let h = '<tr><th class="l">Bank</th>' + cols.map((c) => {
+      const rd = ssig[c] ? reading(ssig[c]) : null, st = rd ? stress(rd.v, rd.invert) : 'na';
+      return `<th data-c="${c}" class="hmc${HM.sort === c ? ' on' : ''}" title="Rank the banks by their ${esc(sname[c])} share">${esc(sname[c] || c)}` +
+        `<span class="per ${st}">${rd ? sgn(rd.v) + ' ' + esc(((META[ssig[c]] || {}).short || '').replace('Bankruptcies, ', 'bankr. ').replace('Bankruptcies', 'bankruptcies')) : '·'}</span></th>`;
+    }).join('') + '</tr>';
+    for (const b of order) {
+      h += `<tr><td class="l">${esc(names[b] || b)}<small>${esc(latest[b])} · NOK ${fmtN(tot[b] / 1000, tot[b] < 1e4 ? 1 : 0)} bn</small></td>`;
+      for (const c of cols) {
+        const a = agg[b] && agg[b][c];
+        if (!a || !a[0]) { h += '<td class="c na">·</td>'; continue; }
+        const bp = a[2] ? 1e4 * a[1] / a[0] : null;
+        h += `<td class="c" style="background:${s3Colour(bp)}" title="${esc(names[b] || b)} · ${esc(sname[c])}: NOK ${fmtN(a[0])} m${bp != null ? `, stage-3 allowance ${bp.toFixed(0)} bp` : ', no stage split'}">` +
+             `<b class="num">${(100 * a[0] / tot[b]).toFixed(1)}%</b>${bp != null ? `<span class="num">${bp.toFixed(0)} bp</span>` : ''}</td>`;
       }
-      const rd = sig ? reading(sig) : null;
-      const st = rd ? stress(rd.v, rd.invert) : 'na';
-      const lab = sig ? ((META[sig] || {}).short || sig) : '';
-      h += `<td class="st">${rd ? `<span class="${st}">${sgn(rd.v)}</span> ${esc(lab)}` : '<span class="faint">no signal yet</span>'}</td></tr>`;
+      h += '</tr>';
     }
-    $('#heatmap').innerHTML = h;
-    $('#hmAsof').textContent = 'latest loans-by-industry note per bank';
+    const t = $('#heatmap'); t.innerHTML = h;
+    t.querySelectorAll('th[data-c]').forEach((th) => th.onclick = () => { HM.sort = HM.sort === th.dataset.c ? null : th.dataset.c; renderExposure(loans, names); });
+    $('#hmAsof').textContent = `${banks.length} banks · latest loans-by-industry note · click a sector to rank`;
     $('#hmScale').innerHTML = 'stage-3 allowance per NOK lent: ' + [[5, '5 bp'], [25, '25'], [60, '60'], [120, '120+']]
-      .map(([bp, l]) => `<span><i style="background:${s3Colour(bp)}"></i>${l}</span>`).join('');
+      .map(([bp, l]) => `<span><i style="background:${s3Colour(bp)}"></i>${l}</span>`).join('') + ' · uncoloured: the note has no stage split';
     const notes = [...new Map(loans.filter((r) => r.note && r.period === latest[r.ticker]).map((r) => [r.ticker, r.note])).entries()];
-    $('#hmNotes').textContent = notes.map(([b, n]) => `${names[b] || b}: ${n}.`).join(' ');
-    // DNB's shift between its two latest notes
-    const dnbPer = [...new Set(loans.filter((r) => r.ticker === 'DNB').map((r) => r.period))].sort();
+    $('#hmNotes').textContent = notes.map(([b, n]) => `${names[b] || b}: ${n}.`).join(' ') +
+      ' Read from each bank’s latest report; banks whose report has no industry table are missing (Instabank and Kraft Bank lend to households only).';
+    const pool = {}; let nb = new Set();
+    for (const r of loans) {
+      if (r.period !== latest[r.ticker] || r.sector === 'total' || r.ecl_s3 == null) continue;
+      const x = (pool[r.sector] ||= [0, 0]); x[0] += (r.gross_amortised || 0) + (r.fair_value || 0); x[1] += r.ecl_s3; nb.add(r.ticker);
+    }
+    const sys = Object.entries(pool).filter(([, [g]]) => g > 2000).map(([c, [g, s3]]) => [sname[c] || c, 1e4 * s3 / g]).sort((x, y) => y[1] - x[1]);
+    $('#sysAsof').textContent = `${nb.size} banks with a stage split`;
+    hbars($('#sysChart'), sys, (v) => v.toFixed(0) + ' bp');
+    const dnbPer = [...new Set(loans.filter((r) => r.ticker === 'DNB' && r.source === 'hand-read').map((r) => r.period))].sort();
     if (dnbPer.length >= 2) {
       const [p0, p1] = dnbPer.slice(-2), by = (p) => { const m = {}; for (const r of loans) if (r.ticker === 'DNB' && r.period === p && r.sector !== 'total') m[r.sector] = (m[r.sector] || 0) + (r.ecl_s3 || 0); return m; };
-      const a = by(p0), b = by(p1);
-      const d = SECTORS.map(([id, nm]) => [nm, (b[id] || 0) - (a[id] || 0)]).filter(([, v]) => Math.abs(v) >= 1).sort((x, y) => y[1] - x[1]);
+      const a = by(p0), b2 = by(p1);
+      const d = SECTORS.map(([id, nm]) => [nm, (b2[id] || 0) - (a[id] || 0)]).filter(([, v]) => Math.abs(v) >= 1).sort((x, y) => y[1] - x[1]);
       $('#shiftAsof').textContent = `${p0} → ${p1}`;
       bars($('#shiftChart'), d);
     }
+  }
+  function hbars(el, data, fmt) {
+    const W = el.clientWidth || 380, rowH = 19, H = Math.max(120, data.length * rowH + 16), L = 170, R = 56;
+    const mx = Math.max(...data.map(([, v]) => v), 1), sc = (W - L - R) / mx;
+    let s = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">`;
+    data.forEach(([nm, v], i) => {
+      const y = 8 + i * rowH, w = Math.max(1, v * sc), c = v >= 60 ? 'var(--hot)' : v >= 20 ? 'var(--warm)' : 'var(--s1)';
+      s += `<text x="${L - 8}" y="${y + 11}" text-anchor="end" fill="var(--text3)" font-size="10">${esc(nm.length > 26 ? nm.slice(0, 25) + '…' : nm)}</text>` +
+           `<rect x="${L}" y="${y + 2}" width="${w}" height="${rowH - 7}" rx="2" fill="${c}" opacity=".75"/>` +
+           `<text x="${L + w + 5}" y="${y + 11}" fill="var(--text2)" font-size="10">${fmt(v)}</text>`;
+    });
+    el.style.height = H + 'px'; el.innerHTML = s + '</svg>';
   }
   function bars(el, data) {
     const W = el.clientWidth || 380, rowH = 19, H = Math.max(120, data.length * rowH + 16), L = 150, R = 8;
@@ -801,7 +841,7 @@ footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--border
       get(`rpc/world_history?ids=${ids(MARKET)}&since=2014-01-01`),
       get(`world_board?series_id=in.(${[...CREDIT, ...MARKET].join(',')})&select=series_id,short,unit,frequency,last_date,stale`),
       get('bank_metrics?select=ticker,period,metric,value,status,alt_value,flags,source'),
-      get('bank_sector_loans?select=ticker,period,row_label,sector,gross_amortised,fair_value,ecl_s1,ecl_s2,ecl_s3,net,note'),
+      get('bank_sector_loans?select=ticker,period,row_label,sector,gross_amortised,fair_value,ecl_s1,ecl_s2,ecl_s3,net,note,source'),
       get(`instruments?ticker=in.(${BANKS.join(',')})&select=ticker,name,isin`),
     ]);
     for (const r of [...(credit || []), ...(market || [])]) S[r.series_id] = r.dates.map((d, i) => ({ k: d.slice(0, 7), t: Date.parse(d + 'T00:00:00Z'), v: +r.vals[i] })).filter((o) => isFinite(o.v));
