@@ -335,7 +335,8 @@ footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--border
     <div class="panel"><div class="ut-wrap"><table class="ut" id="universe"><tr><td class="empty">Loading …</td></tr></table></div>
       <p class="note">Loss rate = the quarter's credit losses annualised over loans to customers. Stage 3 and ECL as the bank
         states them (Møre's stage 3 includes guarantees and undrawn lines). Loans exclude those moved to SpareBank 1 or Eika
-        Boligkreditt. Small banks print in NOK thousands; everything here is converted to NOK.</p></div>
+        Boligkreditt. Small banks print in NOK thousands; everything here is converted to NOK. Margins are the ones each bank
+        publishes (lending and deposit margins against 3-month NIBOR, retail and corporate where split); † = year to date.</p></div>
   </section>
 
   <!-- ═══ SUPERVISION ════════════════════════════════════════════════════ -->
@@ -868,10 +869,17 @@ footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--border
                    ['Losses, NOK m', 'impairment_losses', (c) => fmtN(c.v, Math.abs(c.v) < 100 ? 1 : 0)], ['CET1 %', 'cet1_ratio_pct', (c) => c.v.toFixed(1)],
                    ['ROE %', 'return_on_equity_pct', (c) => c.v.toFixed(1)], ['Cost/income %', 'cost_income_ratio_pct', (c) => c.v.toFixed(1)],
                    ['Stage 3, NOK m', 'stage3_gross_loans', (c) => fmtN(c.v, c.v < 100 ? 1 : 0)], ['Loans, NOK bn', 'loans_to_customers', (c) => fmtN(c.v / 1000, 1)]];
+    // the margins banks publish (margin_reader.py): shown where the bank prints them; † = year to date
+    const pct2 = (c) => c.v.toFixed(2);
+    for (const [lab, k] of [['Lending margin, retail %', 'lending_margin_retail_pct'], ['Deposit margin, retail %', 'deposit_margin_retail_pct'],
+                            ['Lending margin, corporate %', 'lending_margin_corporate_pct'], ['Deposit margin, corporate %', 'deposit_margin_corporate_pct'],
+                            ['Lending margin, total %', 'lending_margin_total_pct'], ['Deposit margin, total %', 'deposit_margin_total_pct'],
+                            ['Net interest margin %', 'net_interest_margin_pct']])
+      if (pers.some((p) => perBank[p][k])) lines.push([lab, k, (c, p) => pct2(c) + (perBank[p].margin_basis && perBank[p].margin_basis.v === 0 ? '†' : '')]);
     const href = isin && window.INTEL ? INTEL.dossierHref(isin) : null;
     return `<b style="color:var(--text1)">${esc(UT.names[r.t] || r.t)}</b>${href ? `<a class="dlink" href="${href}">Dossier →</a>` : ''}
       <table class="hist"><tr><th class="l"></th>${pers.map((p) => `<th>${esc(p)}</th>`).join('')}</tr>` +
-      lines.map(([lab, k, f]) => `<tr><td class="l">${lab}</td>${pers.map((p) => { const c = perBank[p][k]; return `<td class="num">${c && c.v != null ? f(c) + marks(perBank[p], [k]) : '<span class="faint">—</span>'}</td>`; }).join('')}</tr>`).join('') +
+      lines.map(([lab, k, f]) => `<tr><td class="l">${lab}</td>${pers.map((p) => { const c = perBank[p][k]; return `<td class="num">${c && c.v != null ? f(c, p) + marks(perBank[p], [k]) : '<span class="faint">—</span>'}</td>`; }).join('')}</tr>`).join('') +
       '</table>' + (r.fsa.length ? `<div class="fsa-list"><div class="tiles-h" style="margin:12px 0 6px">Finanstilsynet</div>${r.fsa.slice(0, 4).map(fsaItem).join('')}</div>` : '');
   }
 
