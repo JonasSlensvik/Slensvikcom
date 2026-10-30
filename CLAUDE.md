@@ -74,9 +74,21 @@ backend architecture, scheduled jobs, DB access, and working agreements.
   return distribution. `DossierReport.render(isin)` fetches and renders the report sections and resolves to the data the
   tape takes its bands from. The "Radar Book" KPI is `api.conviction` (select `model` + `ev_*`, or
   `INTEL.convictionBreakdown` falls back to v3's NULL `pts_*`).
-- `galton.html` — Galton weekly-strategy page; live tracker mirrors the portfolio's
+- `galton.html` + `assets/galton3d.js` — Galton weekly-strategy page; live tracker mirrors the portfolio's
   minute-level resolution (cold-start seeds `prev_close` at week-open, then merges
   `api.intraday_live`; refreshes every 3 min, paused during what-if slider previews).
+  Since 2026-10-30 it opens with **Lifetime** and **Which one is riskier?** (galton3d.js).
+  - **Daily path:** rebuilt from every book in `api.galton_weights`. Each book is held from the Friday close before its
+    Monday to the next Friday close and marked on `daily_close_adj`, against World's `eq.osebx` (OSEBX, total return).
+    It compounds to the weekly record within a few bp.
+  - **Risk comparison:** daily and weekly measures side by side, plus a verdict, ridges of daily returns, the VaR95
+    backtest and weekly bars.
+  - **Pairing rule:** `realized_return` on metrics row *d* is the PREVIOUS book's week. The old chart compared it with
+    row *d*'s forecast, one week off; galton3d.js pairs each book with its own forecast.
+  - **Later sections:** "This week", the book as a draggable 3D skyline, and ρ̂ / ρ_G / Σ_G as linked 3D landscapes
+    with a Flat toggle. `window.galtonMats` and the `galton:mats` event hand the matrices over.
+  - **Style hooks:** the Chart.js `glow` plugin (in `<head>`; `dataset.glow` = blur px) and a depth-layer stylesheet
+    (glass panels, tilt cards, `minmax(0, …)` grids so wide tables can't push the page sideways).
 - `fastrente.html` — Lånekassen fixed-rate decision page (rebuilt 2026-10-05): should you lock in the
   coming 10.–17. window? The offer is the average of the *previous* month's Wednesday Finansportalen
   top-5 readings, so when yields have moved since, you lock off-market and can break in the next window

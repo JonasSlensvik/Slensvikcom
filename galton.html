@@ -9,6 +9,17 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=Syne:wght@500;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+  // glow: a soft light under the datasets that ask for it (dataset.glow = blur in px)
+  if (window.Chart) Chart.register({
+    id: 'glow',
+    beforeDatasetDraw(chart, args) {
+      const ds = chart.data.datasets[args.index]; if (!ds.glow) return;
+      chart.ctx.save(); chart.ctx.shadowColor = typeof ds.borderColor === 'string' ? ds.borderColor : 'rgba(245,166,35,0.6)'; chart.ctx.shadowBlur = ds.glow;
+    },
+    afterDatasetDraw(chart, args) { if (chart.data.datasets[args.index].glow) chart.ctx.restore(); },
+  });
+</script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
 <link rel="stylesheet" href="assets/intel.css">
@@ -236,6 +247,158 @@
     .eig-strip { grid-column:1 / -1; }
   }
 </style>
+<style>
+  /* ═══ DEPTH LAYER (2026-10-30) ═══════════════════════════════════════════
+     Glass with real depth: lit top edges, layered shadows, cards that tilt toward the pointer, a horizon floor under
+     the lifetime chart, extruded bars, and canvas 3D (assets/galton3d.js). Motion is off under prefers-reduced-motion. */
+  body { background:
+    radial-gradient(1100px 520px at 78% -6%, rgba(245,166,35,0.075), transparent 62%),
+    radial-gradient(900px 480px at 8% 4%, rgba(79,195,247,0.06), transparent 60%), var(--bg0); }
+  html { scroll-behavior:smooth; scroll-padding-top:52px; }
+  .faint { color:var(--text4); }
+  .topbar { position:relative; z-index:41; background:rgba(5,8,16,0.72); -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px); }
+  .rail { position:sticky; top:0; z-index:40; display:flex; align-items:center; gap:2px; height:38px; padding:0 28px; overflow-x:auto; scrollbar-width:none;
+          background:rgba(5,8,16,0.84); -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px); border-bottom:1px solid var(--border); }
+  .rail::-webkit-scrollbar { display:none; }
+  .rail a { font-size:9.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--text3); text-decoration:none; padding:5px 9px; border-radius:3px; white-space:nowrap; transition:color .15s, background .15s; }
+  .rail a:hover { color:var(--text1); background:var(--bg3); }
+  .rail a.on { color:var(--amber); background:rgba(245,166,35,0.08); }
+
+  .panel { position:relative; border-radius:12px; border:1px solid rgba(255,255,255,0.07);
+           background:linear-gradient(180deg, rgba(21,27,39,0.86), rgba(9,12,19,0.9));
+           -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px);
+           box-shadow:inset 0 1px 0 rgba(255,255,255,0.07), inset 0 -1px 0 rgba(0,0,0,0.55), 0 22px 44px -22px rgba(0,0,0,0.85), 0 2px 8px rgba(0,0,0,0.35); }
+  .panel::before { content:''; position:absolute; left:16px; right:16px; top:-1px; height:1px; pointer-events:none; opacity:.6;
+                   background:linear-gradient(90deg, transparent, rgba(245,166,35,0.5), rgba(79,195,247,0.4), transparent); }
+  .sec-head .glyph { text-shadow:0 0 12px rgba(245,166,35,0.7); }
+  .grid-2 { grid-template-columns:minmax(0, 1.4fr) minmax(0, 1fr); }   /* minmax(0, …): a wide table can't push the page sideways */
+  .grid-3 { grid-template-columns:repeat(3, minmax(0, 1fr)); }
+  @media (max-width:1100px) { .grid-2, .grid-3 { grid-template-columns:minmax(0, 1fr); } }
+  .sec-title2 { display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; margin:34px 0 12px; }
+  .sec-title2 h2 { font-family:var(--sans); font-weight:700; font-size:22px; letter-spacing:-0.01em; color:var(--text1); }
+  .sec-title2 h2 .g { color:var(--amber); font-family:var(--mono); font-weight:400; font-size:15px; margin-right:9px; text-shadow:0 0 14px rgba(245,166,35,0.7); }
+  .sec-title2 p { flex:1 1 380px; font-size:11px; color:var(--text3); line-height:1.65; }
+
+  .kpi { position:relative; border-radius:10px; border:1px solid rgba(255,255,255,0.08);
+         background:linear-gradient(160deg, rgba(28,35,48,0.92), rgba(10,13,20,0.94));
+         box-shadow:inset 0 1px 0 rgba(255,255,255,0.09), 0 16px 26px -16px rgba(0,0,0,0.9);
+         transform:perspective(700px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+         transition:transform .3s cubic-bezier(.2,.8,.2,1), box-shadow .3s; }
+  .kpi::after { content:''; position:absolute; inset:0; border-radius:inherit; pointer-events:none; opacity:var(--lit, 0); transition:opacity .3s;
+                background:radial-gradient(240px circle at var(--mx, 50%) var(--my, 0%), rgba(255,255,255,0.09), transparent 62%); }
+  .kpi:hover { box-shadow:inset 0 1px 0 rgba(255,255,255,0.12), 0 22px 34px -16px rgba(0,0,0,0.95), 0 0 22px rgba(245,166,35,0.08); }
+  .kpi-lbl .sw { display:inline-block; width:8px; height:8px; border-radius:2px; margin-right:6px; }
+
+  /* lifetime hero */
+  .life-panel { overflow:hidden; padding-bottom:14px; }
+  .life-panel::after { content:''; position:absolute; left:-25%; right:-25%; bottom:-34px; height:250px; pointer-events:none; z-index:0; opacity:.5;
+    background-image:linear-gradient(rgba(245,166,35,0.11) 1px, transparent 1px), linear-gradient(90deg, rgba(245,166,35,0.11) 1px, transparent 1px);
+    background-size:46px 46px; transform:perspective(420px) rotateX(64deg); transform-origin:bottom;
+    -webkit-mask-image:linear-gradient(to top, rgba(0,0,0,0.85), transparent 80%); mask-image:linear-gradient(to top, rgba(0,0,0,0.85), transparent 80%); }
+  .life-panel > * { position:relative; z-index:1; }
+  .life-cards { display:grid; grid-template-columns:1.25fr 1.25fr 1fr 1fr 1.2fr; gap:10px; margin-bottom:16px; }
+  .life-card .kpi-val { font-size:21px; }
+  .life-card .kpi-val small { font-size:12px; color:var(--text3); }
+  .life-card.c-amber .kpi-val { color:var(--amber); font-size:30px; text-shadow:0 0 24px rgba(245,166,35,0.45); }
+  .life-card.c-ice .kpi-val { color:var(--ice); font-size:30px; text-shadow:0 0 24px rgba(79,195,247,0.4); }
+  .life-chart { position:relative; height:430px; }
+  .life-chart canvas { display:block; width:100%; height:100%; cursor:crosshair; }
+  .c-tip { position:absolute; z-index:5; display:none; pointer-events:none; background:rgba(9,13,21,0.95); border:1px solid var(--border2); border-radius:6px;
+           padding:8px 10px; font-size:10.5px; line-height:1.65; color:var(--text2); white-space:nowrap; box-shadow:0 10px 28px rgba(0,0,0,0.55); }
+  .c-tip b { color:var(--text1); font-weight:500; }
+  .c-tip i { display:inline-block; width:8px; height:2px; margin-right:6px; vertical-align:3px; }
+  .life-foot { font-size:10px; color:var(--text3); line-height:1.65; margin-top:10px; }
+
+  /* risk */
+  .risk-verdict { display:grid; grid-template-columns:86px 1fr; gap:20px; align-items:center; margin-bottom:14px; }
+  .rv-scale { height:110px; padding-top:22px; display:flex; align-items:flex-end; justify-content:center; gap:12px; border-bottom:1px solid rgba(255,255,255,0.14); }
+  .rv-scale span { position:relative; width:22px; height:var(--h); min-height:3px; border-radius:2px 2px 0 0; }
+  .rv-scale b { position:absolute; left:0; right:-6px; bottom:calc(100% + 8px); text-align:center; font-size:12px; font-weight:500; color:var(--text1); }
+  .rv-scale .rv-g b { color:var(--amber); } .rv-scale .rv-o b { color:var(--ice); }
+  .rv-scale span::before { content:''; position:absolute; left:0; right:0; top:-6px; height:6px; transform:skewX(-45deg); transform-origin:bottom; }
+  .rv-scale span::after { content:''; position:absolute; right:-6px; top:0; width:6px; height:100%; transform:skewY(-45deg); transform-origin:left center; }
+  .rv-g { background:linear-gradient(180deg, #f8bb4d, #b9741a); box-shadow:0 0 18px rgba(245,166,35,0.35); }
+  .rv-g::before { background:#ffd58a; } .rv-g::after { background:#7c510f; }
+  .rv-o { background:linear-gradient(180deg, #7dd3fa, #2585b1); box-shadow:0 0 18px rgba(79,195,247,0.3); }
+  .rv-o::before { background:#b5e7fd; } .rv-o::after { background:#195a77; }
+  .rv-kicker { font-size:9.5px; letter-spacing:.2em; text-transform:uppercase; color:var(--amber); margin-bottom:5px; }
+  .rv-main { font-family:var(--sans); font-size:19px; font-weight:700; color:var(--text1); line-height:1.4; }
+  .rv-main em { font-style:normal; } .rv-main b { color:var(--amber); font-weight:700; } .rv-main .hot { color:var(--red); }
+  .rv-sub { font-size:11px; color:var(--text3); margin-top:7px; line-height:1.65; }
+
+  .duel-row { display:grid; grid-template-columns:200px 1fr 104px; gap:14px; align-items:center; padding:9px 0; border-bottom:1px dashed var(--border); }
+  .duel-row:last-child { border-bottom:none; }
+  .duel-lbl { font-size:11px; color:var(--text1); } .duel-lbl small { display:block; font-size:9.5px; color:var(--text3); margin-top:1px; }
+  .duel-bars { display:flex; flex-direction:column; gap:8px; padding:5px 60px 1px 0; }
+  .bar3d { position:relative; height:11px; width:0; border-radius:1px; transition:width 1.1s cubic-bezier(.2,.8,.2,1); transition-delay:var(--d, 0ms); }
+  .duel-row .bar3d { transition-delay:var(--d, 0ms); }
+  .in .bar3d { width:var(--w); }
+  .bar3d::before { content:''; position:absolute; left:0; right:0; top:-4px; height:4px; transform:skewX(-45deg); transform-origin:bottom; }
+  .bar3d::after { content:''; position:absolute; right:-4px; top:0; width:4px; height:100%; transform:skewY(-45deg); transform-origin:left center; }
+  .bar3d.g { background:linear-gradient(180deg, #f8bb4d, #c27c19); box-shadow:0 7px 12px -7px rgba(245,166,35,0.7); }
+  .bar3d.g::before { background:#ffd58a; } .bar3d.g::after { background:#86580f; }
+  .bar3d.o { background:linear-gradient(180deg, #7dd3fa, #2789b6); box-shadow:0 7px 12px -7px rgba(79,195,247,0.6); }
+  .bar3d.o::before { background:#b5e7fd; } .bar3d.o::after { background:#1b6080; }
+  .bar3d span { position:absolute; left:calc(100% + 11px); top:50%; transform:translateY(-50%); font-size:10.5px; color:var(--text3); white-space:nowrap; font-variant-numeric:tabular-nums; }
+  .bar3d.hi span { color:var(--text1); font-weight:500; }
+  .duel-v { font-size:9px; letter-spacing:.1em; text-transform:uppercase; text-align:right; color:var(--text4); }
+  .duel-v.g { color:var(--amber); } .duel-v.o { color:var(--ice); }
+  table.rw { width:100%; border-collapse:collapse; font-size:11px; font-variant-numeric:tabular-nums; }
+  table.rw th { font-size:9px; letter-spacing:.14em; text-transform:uppercase; color:var(--text3); font-weight:400; text-align:right; padding:6px 8px; border-bottom:1px solid var(--border2); }
+  table.rw th.g { color:var(--amber); } table.rw th.o { color:var(--ice); }
+  table.rw td { padding:8px 8px; border-bottom:1px dashed var(--border); text-align:right; color:var(--text1); white-space:nowrap; }
+  table.rw tr:last-child td { border-bottom:none; }
+  table.rw td:first-child { text-align:left; color:var(--text2); white-space:normal; }
+  table.rw td small { display:block; font-size:9px; color:var(--text4); }
+  .ridge-wrap { position:relative; height:270px; } .ridge-wrap canvas { display:block; width:100%; height:100%; }
+  .vb-strip { position:relative; display:flex; align-items:stretch; gap:3px; height:132px; }
+  .vb { flex:1; position:relative; }
+  .vb::before { content:''; position:absolute; left:0; right:0; border-radius:2px; height:calc(var(--h) / 2); transform:scaleY(0);
+                transition:transform .8s cubic-bezier(.2,.8,.2,1); transition-delay:var(--d, 0ms); }
+  .vb.up::before { bottom:50%; transform-origin:bottom; background:linear-gradient(180deg, rgba(67,224,151,0.95), rgba(67,224,151,0.2)); }
+  .vb.dn::before { top:50%; transform-origin:top; background:linear-gradient(0deg, rgba(240,96,96,0.85), rgba(240,96,96,0.2)); }
+  .vb.br::before { background:linear-gradient(0deg, #ff6b6b, rgba(240,96,96,0.45)); box-shadow:0 0 16px rgba(240,96,96,0.85); }
+  .in .vb::before { transform:scaleY(1); }
+  .vb-strip::after { content:''; position:absolute; left:0; right:0; top:50%; border-top:1px solid rgba(255,255,255,0.14); }
+  .vb-line { position:absolute; left:0; right:0; top:calc(50% + var(--h) / 2); border-top:1px dashed rgba(240,96,96,0.85); }
+  .vb-axis { display:flex; justify-content:space-between; gap:10px; font-size:9px; color:var(--text3); margin-top:7px; letter-spacing:.05em; }
+  .vb-stats { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:12px 18px; margin-top:16px; }
+  .vb-stats b { font-size:19px; font-weight:500; color:var(--text1); font-variant-numeric:tabular-nums; }
+  .vb-stats small { display:block; font-size:9.5px; color:var(--text3); margin-top:2px; line-height:1.5; }
+
+  /* 3D canvases */
+  .sky-wrap { position:relative; height:370px; }
+  .sky-wrap canvas, .hm-3d canvas { display:block; width:100%; height:100%; cursor:grab; }
+  canvas.grab { cursor:grabbing !important; }
+  .hm-3d { width:100%; height:330px; position:relative; }
+  .hm-bar { display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:12px; }
+  .hm-bar .note3d { flex:1 1 320px; font-size:11px; color:var(--text3); line-height:1.6; }
+  .legend3d { display:flex; gap:16px; flex-wrap:wrap; font-size:10px; color:var(--text3); margin-top:8px; }
+  .legend3d i { display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:6px; vertical-align:-1px; }
+
+  @media (max-width:1000px) {
+    .life-cards { grid-template-columns:repeat(2, minmax(0, 1fr)); }
+    .life-chart { height:360px; }
+  }
+  @media (max-width:640px) {
+    .rail { padding:0 14px; }
+    .life-card.c-amber .kpi-val, .life-card.c-ice .kpi-val { font-size:24px; }
+    .life-chart { height:320px; }
+    .risk-verdict { grid-template-columns:1fr; }
+    .rv-scale { justify-content:flex-start; height:70px; }
+    .rv-main { font-size:16px; }
+    .duel-row { grid-template-columns:1fr; gap:6px; }
+    .duel-bars { padding-right:64px; }
+    .duel-v { text-align:left; }
+    .sky-wrap { height:280px; }
+    .hm-3d { height:280px; }
+    table.bt { display:block; overflow-x:auto; }       /* the backtest tables scroll inside their panel */
+  }
+  @media (prefers-reduced-motion:reduce) {
+    .bar3d, .vb::before { transition:none; }
+    .kpi { transform:none; }
+  }
+</style>
 </head>
 <body>
 
@@ -244,6 +407,10 @@
   <div data-intel-nav style="margin-left:auto"></div>
   <span style="font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--text3)">REBALANCE <strong id="rebDate" style="color:var(--text1)">—</strong></span>
 </header>
+<nav class="rail" id="rail" aria-label="Sections">
+  <a href="#life">Lifetime</a><a href="#risk">Risk vs OSEBX</a><a href="#week">This week</a><a href="#book">The book</a>
+  <a href="#shrink">Shrinkage</a><a href="#structure">Structure</a><a href="#btSection">Research backtest</a>
+</nav>
 
 <main>
 
@@ -254,6 +421,51 @@
     Σ_G rebuilt as diag(σ_G)·ρ_G·diag(σ_G) for invertibility. Solved via the Markowitz tangency
     formula (Slensvik 2021, eq. 16; standard sum-to-1 normalisation).
   </p>
+
+  <!-- LIFETIME · GALTON vs OSEBX (assets/galton3d.js) -->
+  <section class="sec" id="life">
+    <div class="panel life-panel">
+      <div class="sec-head"><span class="glyph">◆</span>LIFETIME · GALTON vs OSEBX<span class="desc">Every book since the first rebalance, held from Friday's close to the next and marked daily on dividend-adjusted closes, against the Oslo Børs Benchmark Index (total return). The shaded stretch is this week's book, still live.</span><span class="meta" id="lifeAsOf">—</span></div>
+      <div class="life-cards" id="lifeCards"><div class="ph">LOADING …</div></div>
+      <div class="life-chart"><canvas id="lifeCanvas"></canvas><div class="c-tip" id="lifeTip"></div></div>
+      <div class="life-foot">Rebuilt day by day from the weekly books in <code>galton_weights</code>; it compounds to the weekly record except in a few weeks where a dividend was registered after the week was booked (a few basis points). Ticks on the zero line mark each Friday's rebalance.</div>
+    </div>
+  </section>
+
+  <!-- RISK · WHICH ONE IS RISKIER? -->
+  <section id="risk">
+    <div class="sec-title2"><h2><span class="g">⚖</span>Which one is riskier?</h2>
+      <p>The same days, measured both ways: one-day moves (about five a week) and Friday-to-Friday weeks. Value at Risk (VaR) is the loss exceeded on only 5 % (or 1 %) of days; expected shortfall is the average loss on those days.</p></div>
+    <div class="panel risk-verdict" id="riskVerdict"><div class="ph">LOADING …</div></div>
+    <div class="grid-2" style="margin-top:14px">
+      <div class="panel">
+        <div class="sec-head"><span class="glyph">▥</span>RISK, SIDE BY SIDE<span class="desc"><span style="color:var(--amber)">■</span> Galton &nbsp;<span style="color:var(--ice)">■</span> OSEBX — longer is riskier</span></div>
+        <div id="duel"><div class="ph">LOADING …</div></div>
+      </div>
+      <div class="panel">
+        <div class="sec-head"><span class="glyph">◎</span>WHAT THE RISK BOUGHT<span class="desc">Return, and return per unit of risk</span></div>
+        <table class="rw" id="reward"></table>
+      </div>
+    </div>
+    <div class="grid-2" style="margin-top:14px">
+      <div class="panel">
+        <div class="sec-head"><span class="glyph">∿</span>DAILY RETURNS · THE LEFT TAIL<span class="desc">Smoothed distribution of every day's return; red = the days beyond VaR 95, dots = the worst day</span></div>
+        <div class="ridge-wrap"><canvas id="ridgeCanvas"></canvas></div>
+      </div>
+      <div class="panel">
+        <div class="sec-head"><span class="glyph">▢</span>VaR₉₅ FORECAST vs REALISED<span class="desc">Each completed week against the VaR its own book was forecast with</span></div>
+        <div id="varBt"><div class="ph">LOADING …</div></div>
+      </div>
+    </div>
+    <div class="panel" style="margin-top:14px">
+      <div class="sec-head"><span class="glyph">▮</span>WEEK BY WEEK · GALTON vs OSEBX<span class="desc">Each book's Friday-to-Friday return beside the index's, with the book's own VaR₉₅ forecast — a Galton bar below the red line is a breach</span></div>
+      <div style="height:240px"><canvas id="wkDuel"></canvas></div>
+    </div>
+  </section>
+
+  <!-- THIS WEEK -->
+  <div class="sec-title2" id="week"><h2><span class="g">◫</span>This week</h2>
+    <p>The live book: its forecast risk, and 100,000 NOK of it marked minute by minute since Monday's open.</p></div>
 
   <!-- HERO KPIS -->
   <div class="kpis">
@@ -283,6 +495,15 @@
         <span class="pp-note" id="ppNote">—</span>
       </div>
       <div style="height:280px"><canvas id="ppCanvas"></canvas></div>
+    </div>
+  </div>
+
+  <!-- THE BOOK IN 3D (assets/galton3d.js) -->
+  <div class="sec" id="book">
+    <div class="panel">
+      <div class="sec-head"><span class="glyph">▦</span>THE BOOK IN 3D<span class="desc">This week's weights as a skyline: longs rise, shorts sink, brighter = bigger share of the risk; dashed wires = last week's weight. Drag to turn, hover a bar.</span><span class="meta" id="skyMeta">—</span></div>
+      <div class="sky-wrap"><canvas id="skyCanvas"></canvas><div class="c-tip" id="skyTip"></div></div>
+      <div class="legend3d"><span><i style="background:#43e097"></i>long</span><span><i style="background:#f06060"></i>short</span><span><i style="border:1px dashed rgba(232,238,247,.6);background:none"></i>last week</span></div>
     </div>
   </div>
 
@@ -331,7 +552,7 @@
   </div>
 
   <!-- COEFFICIENT SENSITIVITY SLIDERS -->
-  <div class="sec">
+  <div class="sec" id="shrink">
     <div class="panel">
       <div class="sec-head"><span class="glyph">◴</span>COEFFICIENT SENSITIVITY · INTERACTIVE<span class="desc">Slide a coefficient to see how the weights, σ_port and VaR move in real time</span><span class="meta" id="slStatus">paused</span></div>
       <div id="sliders">
@@ -359,12 +580,16 @@
     </div>
   </div>
 
-  <!-- HEATMAPS ρ + Σ -->
-  <div class="sec">
+  <!-- HEATMAPS ρ + Σ — flat or as 3D landscapes (assets/galton3d.js) -->
+  <div class="sec" id="structure">
+    <div class="hm-bar">
+      <div class="pp-seg" id="hmMode"><button data-mode="3d" class="active">3D landscape</button><button data-mode="flat">Flat</button></div>
+      <span class="note3d">Each pillar is one pair of stocks; height and colour are the correlation (blue +, red −). Galton shrinkage flattens the sample's peaks toward the cross-section. Drag any of the three: they turn together.</span>
+    </div>
     <div class="grid-3">
-      <div class="panel"><div class="hm-wrap"><div class="hm-title">SAMPLE ρ̂</div><canvas id="hmRhoHat"></canvas></div></div>
-      <div class="panel"><div class="hm-wrap"><div class="hm-title">GALTON ρ_G</div><canvas id="hmRhoG"></canvas></div></div>
-      <div class="panel"><div class="hm-wrap"><div class="hm-title">Σ_G (RECONSTRUCTED)</div><canvas id="hmSigmaG"></canvas></div></div>
+      <div class="panel"><div class="hm-wrap"><div class="hm-title">SAMPLE ρ̂</div><canvas id="hmRhoHat" class="hm-flat" style="display:none"></canvas><div class="hm-3d"><canvas id="hm3RhoHat"></canvas></div></div></div>
+      <div class="panel"><div class="hm-wrap"><div class="hm-title">GALTON ρ_G</div><canvas id="hmRhoG" class="hm-flat" style="display:none"></canvas><div class="hm-3d"><canvas id="hm3RhoG"></canvas></div></div></div>
+      <div class="panel"><div class="hm-wrap"><div class="hm-title">Σ_G (RECONSTRUCTED)</div><canvas id="hmSigmaG" class="hm-flat" style="display:none"></canvas><div class="hm-3d"><canvas id="hm3SigmaG"></canvas></div></div></div>
     </div>
   </div>
 
@@ -398,33 +623,6 @@
     <div class="panel">
       <div class="sec-head"><span class="glyph">∆</span>EXPOSURE OVER TIME<span class="desc">Per-week gross long / gross short / net</span></div>
       <div style="height:200px"><canvas id="expCanvas"></canvas></div>
-    </div>
-  </div>
-
-  <!-- HISTORICAL WEEKLY RETURN -->
-  <div class="sec">
-    <div class="panel">
-      <div class="sec-head"><span class="glyph">▮</span>HISTORICAL WEEKLY RETURN<span class="desc">Realised return each rebalance week vs the forecast VaR₉₅ floor — bars below the dashed line are breaches</span><span class="meta" id="wrCount">—</span></div>
-      <div id="wrWrap" style="height:200px"><canvas id="wrCanvas"></canvas></div>
-      <div id="wrEmpty" class="ph" style="display:none">No realised weeks yet — the first return lands the Monday after the opening rebalance.</div>
-    </div>
-  </div>
-
-  <!-- PERFORMANCE — accumulators -->
-  <div class="sec">
-    <div class="grid-3">
-      <div class="panel">
-        <div class="sec-head"><span class="glyph">↗</span>CUMULATIVE RETURN</div>
-        <div id="perfEquity" class="ph">Accumulates from the first realised week. <strong id="perfEquityMsg">0 weeks so far</strong></div>
-      </div>
-      <div class="panel">
-        <div class="sec-head"><span class="glyph">▢</span>VaR₉₅ BACKTEST<span class="desc">Kupiec-style breach counter</span></div>
-        <div id="perfVaR" class="ph">Breach counter starts populating next Monday. <strong id="perfVaRMsg">0 / 0 weeks</strong></div>
-      </div>
-      <div class="panel">
-        <div class="sec-head"><span class="glyph">▽</span>MAX DRAWDOWN</div>
-        <div id="perfDD" class="ph">Drawdown tracker requires equity curve. <strong id="perfDDMsg">—</strong></div>
-      </div>
     </div>
   </div>
 
@@ -1121,7 +1319,7 @@ function renderPP(mode) {
       { label: ppState.isLive ? 'Portfolio value' : 'Live coeffs (baseline)', data: ppState.baseline,
         borderColor: baseColor, backgroundColor: baseFill,
         borderWidth: ppState.isLive ? (ppState.granular ? 1.5 : 2) : 1.2, fill:true, tension: ppState.granular ? 0 : .15,
-        pointRadius: ppState.labels.length < 8 ? 3 : 0, pointHoverRadius:4, pointBackgroundColor: baseColor },
+        pointRadius: ppState.labels.length < 8 ? 3 : 0, pointHoverRadius:4, pointBackgroundColor: baseColor, glow: ppState.isLive ? 10 : 0 },
     ];
     if (!ppState.isLive) ds.push(
       { label:'What-if coeffs', data: ppState.active, borderColor: AMBER, backgroundColor:'rgba(245,166,35,0.10)',
@@ -1229,6 +1427,9 @@ function renderPP(mode) {
   const sFlat = mat.sigma_matrix.flat();
   const sMax = Math.max(...sFlat.map(Math.abs)) || 1;
   drawHeatmap(document.getElementById('hmSigmaG'),  mat.sigma_matrix.map(row => row.map(v => v / sMax)));
+  // the 3D landscapes (assets/galton3d.js) draw from the same matrices
+  window.galtonMats = mat;
+  document.dispatchEvent(new CustomEvent('galton:mats', { detail: mat }));
 
   // Eigenstructure
   renderEigen(mat.eigen_top || [], mat.tickers);
@@ -1262,8 +1463,8 @@ function renderPP(mode) {
       data:{
         labels: allMetrics.map(r => r.rebalance_date),
         datasets:[
-          { label:'Gross long',  data:allMetrics.map(r => Number(r.gross_long)*100),  borderColor:'#43e097', backgroundColor:'rgba(67,224,151,0.08)', borderWidth:1.5, fill:true, tension:.2, pointRadius:allMetrics.length<6?3:0 },
-          { label:'Gross short', data:allMetrics.map(r => Number(r.gross_short)*100), borderColor:'#f06060', backgroundColor:'rgba(240,96,96,0.08)', borderWidth:1.5, fill:true, tension:.2, pointRadius:allMetrics.length<6?3:0 },
+          { label:'Gross long',  data:allMetrics.map(r => Number(r.gross_long)*100),  borderColor:'#43e097', backgroundColor:'rgba(67,224,151,0.08)', borderWidth:1.5, fill:true, tension:.2, pointRadius:allMetrics.length<6?3:0, glow:8 },
+          { label:'Gross short', data:allMetrics.map(r => Number(r.gross_short)*100), borderColor:'#f06060', backgroundColor:'rgba(240,96,96,0.08)', borderWidth:1.5, fill:true, tension:.2, pointRadius:allMetrics.length<6?3:0, glow:8 },
           { label:'Net',         data:allMetrics.map(r => Number(r.net)*100),         borderColor:'#f5a623', borderDash:[4,4], borderWidth:1, fill:false, pointRadius:0 },
         ],
       },
@@ -1273,57 +1474,8 @@ function renderPP(mode) {
     });
   }
 
-  // Historical weekly return — realised return per rebalance week vs VaR floor
-  {
-    const wk = (allMetrics || []).filter(r => r.realized_return != null);
-    document.getElementById('wrCount').textContent = `${wk.length} wk`;
-    if (!wk.length) {
-      document.getElementById('wrWrap').style.display = 'none';
-      document.getElementById('wrEmpty').style.display = '';
-    } else {
-      new Chart(document.getElementById('wrCanvas'), {
-        type:'bar',
-        data:{
-          labels: wk.map(r => r.rebalance_date),
-          datasets:[
-            { label:'Realised return', type:'bar',
-              data: wk.map(r => Number(r.realized_return)*100),
-              backgroundColor: wk.map(r => Number(r.realized_return) >= 0 ? 'rgba(67,224,151,0.55)' : 'rgba(240,96,96,0.55)'),
-              borderColor:    wk.map(r => Number(r.realized_return) >= 0 ? '#43e097' : '#f06060'),
-              borderWidth:1, borderRadius:2,
-              categoryPercentage:0.6, barPercentage:0.8 },
-            { label:'VaR₉₅ floor', type:'line',
-              data: wk.map(r => -Number(r.forecast_var95)*100),
-              borderColor:'#f5a623', borderDash:[4,4], borderWidth:1, fill:false, pointRadius:0, tension:0 },
-          ],
-        },
-        options:{ responsive:true, maintainAspectRatio:false,
-          plugins:{ legend:{ labels:{ color:'#a4adbf', font:{ family:'IBM Plex Mono', size:10 }, boxWidth:12 } },
-            tooltip:{ callbacks:{ label: c => `${c.dataset.label}: ${c.parsed.y.toFixed(2)}%` } } },
-          scales:{ x:{ ticks:{ color:'#5a6377', font:{ family:'IBM Plex Mono', size:9 }, maxTicksLimit:12 }, grid:{ color:'rgba(255,255,255,0.04)' } },
-            y:{ ticks:{ color:'#5a6377', font:{ family:'IBM Plex Mono', size:9 }, callback:v=>v.toFixed(1)+'%' }, grid:{ color:'rgba(255,255,255,0.04)' } } } },
-      });
-    }
-  }
-
-  // Performance placeholders
-  const realized = (allMetrics || []).filter(r => r.realized_return != null);
-  if (realized.length) {
-    document.getElementById('perfEquityMsg').textContent = `${realized.length} weeks tracked`;
-    // Compute cumulative
-    let eq = 100; const series = [{x: '', y: 100}];
-    for (const r of realized) { eq *= (1 + Number(r.realized_return)); series.push({x: r.rebalance_date, y: eq}); }
-    document.getElementById('perfEquity').innerHTML = `Indexed 100 → <strong>${eq.toFixed(2)}</strong> · ${realized.length} weeks`;
-    // VaR breaches
-    const breaches = realized.filter(r => Number(r.realized_return) < -Number(r.forecast_var95));
-    document.getElementById('perfVaRMsg').textContent = `${breaches.length} / ${realized.length} weeks`;
-    document.getElementById('perfVaR').innerHTML = `<strong>${breaches.length}</strong> breaches in ${realized.length} weeks · expected 5% / week = ${(realized.length*0.05).toFixed(1)}`;
-    // Drawdown
-    let peak = 100, maxDD = 0; let cum = 100;
-    for (const r of realized) { cum *= (1 + Number(r.realized_return)); if (cum > peak) peak = cum; const dd = (cum/peak - 1); if (dd < maxDD) maxDD = dd; }
-    document.getElementById('perfDDMsg').textContent = `${(maxDD*100).toFixed(2)}%`;
-    document.getElementById('perfDD').innerHTML = `Max drawdown <strong>${(maxDD*100).toFixed(2)}%</strong> over ${realized.length} weeks`;
-  }
+  // Lifetime return, drawdown, VaR backtest and the weekly bars now live in assets/galton3d.js: it rebuilds the daily
+  // path and pairs each book's realised week with that book's own forecast (realized_return sits on the NEXT row).
 
   // Slider wiring
   document.querySelectorAll('#sliders input[type=range]').forEach(el => el.addEventListener('input', applySliders));
@@ -1553,7 +1705,7 @@ function renderPP(mode) {
     const datasets = METHODS.map(m=>({
       label: STYLE[m].label, data: byM[m].y,
       borderColor: STYLE[m].c, borderWidth: STYLE[m].w, borderDash: STYLE[m].dash,
-      pointRadius:0, tension:.12, fill:false,
+      pointRadius:0, tension:.12, fill:false, glow: m === 'cvar' ? 8 : 0,
     }));
     if (equityChart) equityChart.destroy();
     equityChart = new Chart(document.getElementById('btEquity'), {
@@ -1743,6 +1895,7 @@ function renderPP(mode) {
   await selectN(30);
 })();
 </script>
+<script src="assets/galton3d.js?v=20261030"></script>
 
 </body>
 </html>
