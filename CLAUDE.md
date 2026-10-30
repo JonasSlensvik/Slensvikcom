@@ -94,10 +94,16 @@ backend architecture, scheduled jobs, DB access, and working agreements.
   top-5 readings, so when yields have moved since, you lock off-market and can break in the next window
   for a credited gain. Leads with a decision panel (verdict, per-tenor forecast with 80 % band, P(gain),
   net NOK after two months of fixed-vs-floating carry, dated plan, "already locked?" advice), then
-  lockable-vs-market chart, calibration on every official cycle since 2021, live Norges Bank, the
-  observation tracker. Data: `api.lanekassen_rates` (official), `rpc/world_history` (NGB 3/5/10Y +
-  `pol.no`), and the Google Sheet's `fp_obs_*` Wednesday readings — the sheet's swap tab died
-  2026-08-19 and its `rate_variabel` in June 2026; don't reuse them. Gain = Lånekassen's described
+  lockable-vs-market chart, calibration on every official cycle since 2021, live Norges Bank, **NOK-swapkurven ·
+  SEB**, the observation tracker.
+  - **The SEB card (back 2026-10-30)** has six tabs: today's curve against −7/−30/−90 days, 3/5/10-year history
+    beside the NGB yield, forward rates (1-year forwards bootstrapped from the par curve, plus the 3-year rate one
+    year ahead), and an animated curve.
+  - **SEB data:** `rpc/world_history` `sw.nok.{1..10,12,15}y`, from ENEXT World Intel source `seb`. The weeks
+    2026-08-20 → 2026-10-29 are missing, and the history tabs show that as a band, never a bridging line.
+  - **Other data:** `api.lanekassen_rates` (official), `rpc/world_history` (NGB 3/5/10Y + `pol.no`), and the Google
+    Sheet's `fp_obs_*` Wednesday readings. Don't read the sheet's swap tab (dead since 2026-08-19; its history now
+    lives in `sw.nok.*`) or its `rate_variabel` (dead since June 2026). Gain = Lånekassen's described
   method (same remaining term, fixed repayment plan); `?today=YYYY-MM-DD` replays another date's logic.
   Rule that shapes it: after a break you must float ≥ 2 months — no break-and-relock in one window.
 - `world.html` + `assets/world.js` — World Intel: canvas globe (d3-geo + topojson, layers: tension,

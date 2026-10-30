@@ -228,12 +228,15 @@
 <script>
 'use strict';
 // ── CONFIG ───────────────────────────────────────────────────────────────────
-// Three independent feeds, loaded in parallel; any one failing degrades its own section only.
+// Four independent feeds, loaded in parallel; any one failing degrades its own section only.
 //  · Finansportalen top-5 fixed rates, read every Wednesday — the observations Lånekassen
 //    averages. Google Sheet maintained outside these repos (gviz CSV). Its swap-curve tab
-//    stopped on 2026-08-19 and its floating-rate column in June 2026; neither is used any more.
+//    stopped on 2026-08-19 and its floating-rate column in June 2026; neither is read any more.
 //  · Official Lånekassen rates → api.lanekassen_rates (ENEXT World Intel source "lanekassen").
 //  · Norway government yields 3/5/10Y + Norges Bank policy rate → api.world_history (ENEXT).
+//  · SEB's NOK swap curve 1–15 years (sw.nok.*) → api.world_history (ENEXT World Intel source
+//    "seb", since 2026-10-30; 2026-04-06 → 2026-08-19 loaded from the old sheet tab, the weeks
+//    between are lost — SEB publishes no history).
 const SHEET_ID = '1PIZWStO5waUY7He56kiqK683_SpyM3UOiNo5pIZaT7Y';
 const GID_RENTER = '70515895';
 const API = 'https://api.slensvik.com';
@@ -376,7 +379,45 @@ function loadAll() {
     fetchSheet(GID_RENTER),
     getJSON(`${API}/lanekassen_rates?order=valid_from.asc`),
     getJSON(`${API}/rpc/world_history?ids=${ids}&since=2021-07-01`),
+    getJSON(`${API}/rpc/world_history?ids=${encodeURIComponent('{' + SWAP_IDS.join(',') + '}')}&since=2026-01-01`),
   ]);
+}
+
+// ── SEB: the NOK swap curve ─────────────────────────────────────────────────
+const SWAP_TENORS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 15];
+const SWAP_IDS = SWAP_TENORS.map(n => `sw.nok.${n}y`);
+const SWAP_MODES = [['curve', 'Kurve i dag'], ['h3', '3 år'], ['h5', '5 år'], ['h10', '10 år'], ['fwd', 'Terminrenter'], ['anim', 'Animert']];
+const SWAP_BLUE = '#4d8fff', FWD_AMBER = '#ffb020';
+function swapModel(rows) {
+  const by = new Map();
+  for (const r of rows || []) {
+    const m = /^sw\.nok\.(\d+)y$/.exec(r.series_id); if (!m) continue;
+    r.dates.forEach((d, i) => { const v = r.vals[i]; if (v == null) return; if (!by.has(d)) by.set(d, {}); by.get(d)[+m[1]] = +v; });
+  }
+  const dates = [...by.keys()].filter(d => SWAP_TENORS.every(n => by.get(d)[n] != null)).sort();
+  if (!dates.length) return null;
+  const set = new Set(dates);
+  return {
+    by, dates, last: dates[dates.length - 1],
+    curve: d => SWAP_TENORS.map(n => by.get(d)[n]),
+    // the latest full curve on or up to `back` days before d
+    near(d, back = 5) { for (let k = 0; k <= back; k++) { const s = iso(addDays(d, -k)); if (set.has(s)) return s; } return null; },
+  };
+}
+// Par swap rates → annual discount factors → forwards. Simplified: annual fixed payments, no NIBOR/OIS basis;
+// tenors between 10, 12 and 15 years interpolated linearly in rate.
+function swapForwards(par) {
+  const at = n => {
+    const i = SWAP_TENORS.indexOf(n); if (i >= 0) return par[i];
+    const j = SWAP_TENORS.findIndex(t => t > n), a = SWAP_TENORS[j - 1], b = SWAP_TENORS[j];
+    return par[j - 1] + (par[j] - par[j - 1]) * (n - a) / (b - a);
+  };
+  const D = [1]; let ann = 0;
+  for (let n = 1; n <= 15; n++) { const s = at(n) / 100; D[n] = (1 - s * ann) / (1 + s); ann += D[n]; }
+  return {
+    f1: n => (D[n - 1] / D[n] - 1) * 100,                                  // the 1-year rate for year n (n−1 → n)
+    fpar: (start, m) => { let a = 0; for (let i = start + 1; i <= start + m; i++) a += D[i]; return (D[start] - D[start + m]) / a * 100; },
+  };
 }
 
 // ── MODEL: series, cycle, rates ─────────────────────────────────────────────
@@ -827,6 +868,28 @@ function nbCard(ctx) {
   </div>`;
 }
 
+// ── RENDER: SEB's NOK swap curve ────────────────────────────────────────────
+function swapStats(S) {
+  const c = S.curve(S.last), wk = S.near(addDays(parseISO(S.last), -7)), cw = wk ? S.curve(wk) : null;
+  const F = swapForwards(c), ix = n => SWAP_TENORS.indexOf(n);
+  const cell = (k, v, sub) => `<div class="stat"><div class="k">${k}</div><div class="v">${v}</div>${sub ? `<div class="tc-sub">${sub}</div>` : ''}</div>`;
+  return [3, 5, 10].map(n => cell(`Swap ${n} år`, pct(c[ix(n)], 2), cw ? `${bp((c[ix(n)] - cw[ix(n)]) * 100)} siste uke` : '')).join('') +
+    cell('3 år om ett år', pct(F.fpar(1, 3), 2), `termin · i dag ${pct(c[ix(3)], 2)}`) +
+    cell('Kurven 1 → 10 år', bp((c[ix(10)] - c[ix(1)]) * 100), c[ix(10)] < c[ix(1)] ? 'fallende: korte renter høyest' : 'stigende');
+}
+function swapCard(ctx) {
+  const S = ctx.swap, head = '<span class="card-title">NOK-swapkurven · SEB</span>';
+  if (!S) return `<div class="card" id="swaps"><div class="card-header">${head}</div><div class="error-box">SEB-swapkurven kunne ikke lastes.</div></div>`;
+  return `<div class="card" id="swaps">
+    <div class="card-header">${head}<div class="seg" id="segSwap" role="tablist" aria-label="Velg visning">${SWAP_MODES.map(([k, l]) =>
+      `<button role="tab" data-mode="${k}" aria-selected="${k === ctx.swapMode}" class="${k === ctx.swapMode ? 'active' : ''}">${l}</button>`).join('')}</div></div>
+    <div class="stat-strip">${swapStats(S)}</div>
+    <div class="chart-outer"><canvas id="swapChart" aria-label="NOK-swaprenter fra SEB"></canvas></div>
+    <div class="legend" id="swapLegend"></div>
+    <p class="note" style="margin-top:12px" id="swapNote"></p>
+  </div>`;
+}
+
 // ── RENDER: observation tracker + tables ────────────────────────────────────
 function trackerCard(ctx) {
   const { cyc, rd, rates, ngb, spreads } = ctx;
@@ -871,6 +934,8 @@ function healthStrip(ctx) {
   const y = ngb['yc.no.3y'];
   items.push(y ? `<span class="${age(y.last) > 7 ? 'warn' : 'ok'}">Statsrenter: ${fmtDay(y.last)}</span>` : '<span class="bad">Statsrenter mangler</span>');
   items.push(pol ? `<span class="${age(pol.last) > 7 ? 'warn' : 'ok'}">Styringsrente: ${fmtDay(pol.last)}</span>` : '<span class="bad">Styringsrente mangler</span>');
+  const sl = ctx.swap ? parseISO(ctx.swap.last) : null;
+  items.push(sl ? `<span class="${age(sl) > 4 ? 'warn' : 'ok'}">SEB-swapkurve: ${fmtDay(sl)}</span>` : '<span class="bad">SEB-swapkurve mangler</span>');
   return `<div class="card" style="padding:14px 20px"><div class="health">${items.join('')}</div></div>`;
 }
 
@@ -1031,6 +1096,114 @@ function drawCalibration(ctx) {
   if (more) more.onclick = () => { ctx.calAll = !ctx.calAll; drawCalibration(ctx); };
 }
 
+let swapTimer = null;
+function drawSwap(ctx) {
+  const S = ctx.swap, el = document.getElementById('swapChart');
+  if (charts.swap) { charts.swap.destroy(); charts.swap = null; }
+  if (swapTimer) { clearInterval(swapTimer); swapTimer = null; }
+  if (!S || !el) return;
+  const mode = ctx.swapMode, legend = document.getElementById('swapLegend'), note = document.getElementById('swapNote');
+  const lastD = parseISO(S.last), g2 = el.getContext('2d');
+  const font = { size: 9, family: 'IBM Plex Mono' };
+  const yAxis = (extra = {}) => Object.assign({ grid: { color: GRID }, border: { color: GRID }, ticks: { color: TICK, font, callback: v => nf(v, 2) + ' %' } }, extra);
+  const tenorAxis = (min = 0.5) => ({ type: 'linear', min, max: 15.5, grid: { color: GRID }, border: { color: GRID },
+    title: { display: true, text: 'Løpetid (år)', color: TICK, font },
+    afterBuildTicks: ax => { ax.ticks = (min < 0.5 ? [0] : []).concat(SWAP_TENORS).map(v => ({ value: v })); },
+    ticks: { color: TICK, font, callback: v => v } });
+  const pts = c => SWAP_TENORS.map((n, i) => ({ x: n, y: c[i] }));
+  const tip = title => Object.assign({}, baseOpts().plugins.tooltip, { filter: c => c.parsed.y != null,
+    callbacks: { title, label: c => ` ${c.dataset.label}: ${pct(c.parsed.y, 2)}` } });
+  const src = `Kilde: SEB (sebgroup.com), lest hver dag. Siste kurve ${fmtDayY(lastD)}.`;
+  const ix = n => SWAP_TENORS.indexOf(n);
+
+  if (mode === 'curve') {
+    const refs = [['I dag', 0, SWAP_BLUE, 2.5, []], ['−7 dager', 7, 'rgba(77,143,255,0.62)', 1.6, [5, 3]],
+                  ['−30 dager', 30, 'rgba(77,143,255,0.40)', 1.4, [4, 3]], ['−90 dager', 90, 'rgba(77,143,255,0.24)', 1.2, [2, 4]]]
+      .map(([lab, back, col, w, dash]) => ({ lab, col, w, dash, d: back ? S.near(addDays(lastD, -back)) : S.last }));
+    charts.swap = new Chart(g2, {
+      type: 'line',
+      data: { datasets: refs.filter(r => r.d).map(r => ({ label: `${r.lab} (${fmtDay(parseISO(r.d))})`, data: pts(S.curve(r.d)),
+        borderColor: r.col, backgroundColor: r.col, borderWidth: r.w, borderDash: r.dash, pointRadius: r.lab === 'I dag' ? 3.5 : 0, pointHoverRadius: 4, tension: 0.35 })) },
+      options: baseOpts({ interaction: { mode: 'index', intersect: false },
+        scales: { x: tenorAxis(), y: yAxis() }, plugins: Object.assign(baseOpts().plugins, { tooltip: tip(it => `${it[0].parsed.x} år`) }) }),
+    });
+    legend.innerHTML = refs.map(r => r.d ? `<span><span class="sw line" style="background:${r.col}"></span>${r.lab} · ${fmtDay(parseISO(r.d))}</span>`
+      : `<span style="color:var(--text3)">${r.lab}: ingen kurve (hull i dataene)</span>`).join('');
+    note.innerHTML = `Renten for å bytte flytende rente (NIBOR) mot fast rente i 1–15 år. Bankene sikrer fastrentelån med slike swapper, så bankenes fastrenter — og dermed Lånekassens — følger swaprentene tett. ${src}`;
+  } else if (mode === 'fwd') {
+    const c = S.curve(S.last), F = swapForwards(c), mo = S.near(addDays(lastD, -30)), Fm = mo ? swapForwards(S.curve(mo)) : null;
+    // explicit steps: year n's 1-year rate held flat from n−1 to n (no `stepped`, whose direction is easy to get wrong)
+    const step = f => Array.from({ length: 15 }, (_, k) => [{ x: k, y: f.f1(k + 1), yr: k + 1 }, { x: k + 1, y: f.f1(k + 1), yr: k + 1 }]).flat();
+    charts.swap = new Chart(g2, {
+      type: 'line',
+      data: { datasets: [
+        { label: 'Swaprente i dag', data: pts(c), borderColor: SWAP_BLUE, backgroundColor: SWAP_BLUE, borderWidth: 2, pointRadius: 3, pointHoverRadius: 4, tension: 0.35 },
+        { label: '1-årsrenten for året, i dag', data: step(F), borderColor: FWD_AMBER, backgroundColor: 'rgba(255,176,32,0.10)', borderWidth: 2, pointRadius: 0, pointHoverRadius: 3, fill: 'origin' },
+        ...(Fm ? [{ label: `… for 30 dager siden (${fmtDay(parseISO(mo))})`, data: step(Fm), borderColor: 'rgba(255,176,32,0.45)', borderDash: [4, 3], borderWidth: 1.2, pointRadius: 0, pointHoverRadius: 0 }] : []),
+      ] },
+      options: baseOpts({ interaction: { mode: 'nearest', axis: 'x', intersect: false },
+        scales: { x: tenorAxis(0), y: yAxis({ min: Math.floor(Math.min(...c, F.f1(1), ...Array.from({ length: 15 }, (_, k) => F.f1(k + 1))) * 4) / 4 - 0.25 }) },
+        plugins: Object.assign(baseOpts().plugins, { tooltip: tip(it => { const r = it[0].raw; return it[0].datasetIndex === 0 ? `${r.x} år` : `år ${r.yr}: fra ${r.yr - 1} til ${r.yr} år fram`; }) }) }),
+    });
+    legend.innerHTML = `<span><span class="sw line" style="background:${SWAP_BLUE}"></span>Swaprente i dag</span>` +
+      `<span><span class="sw line" style="background:${FWD_AMBER}"></span>Terminrente: 1-årsrenten kurven priser for hvert år</span>` +
+      (Fm ? `<span><span class="sw dash" style="border-color:rgba(255,176,32,0.6)"></span>Samme for 30 dager siden</span>` : '');
+    note.innerHTML = `Terminrentene er det swapkurven priser inn: 1-årsrenten markedet låser for hvert år framover. Den er <strong>${pct(F.f1(2), 2)}</strong> om ett år og ${pct(F.f1(6), 2)} om fem år, mot ${pct(c[0], 2)} i dag; 3-årsrenten om ett år er ${pct(F.fpar(1, 3), 2)}.
+      Terminrenter er markedets pris, ikke en prognose — de inneholder også en løpetidspremie. Forenklet beregning: årlige fastrentebetalinger, uten justering for NIBOR-basis. ${src}`;
+  } else if (mode === 'anim') {
+    const frames = S.dates.slice(-20), all = frames.flatMap(d => S.curve(d));
+    const lo = Math.floor(Math.min(...all) * 10) / 10 - 0.05, hi = Math.ceil(Math.max(...all) * 10) / 10 + 0.05;
+    const reduce = STATIC || (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+    charts.swap = new Chart(g2, {
+      type: 'line',
+      data: { datasets: [
+        { label: 'Kurve', data: pts(S.curve(frames[0])), borderColor: SWAP_BLUE, backgroundColor: SWAP_BLUE, borderWidth: 2.5, pointRadius: 3.5, tension: 0.35 },
+        { label: 'Siste kurve', data: pts(S.curve(S.last)), borderColor: 'rgba(255,255,255,0.28)', borderDash: [3, 3], borderWidth: 1, pointRadius: 0, pointHoverRadius: 0, tension: 0.35 },
+      ] },
+      options: baseOpts({ animation: { duration: 300 }, interaction: { mode: 'index', intersect: false },
+        scales: { x: tenorAxis(), y: yAxis({ min: lo, max: hi }) }, plugins: Object.assign(baseOpts().plugins, { tooltip: tip(it => `${it[0].parsed.x} år`) }) }),
+    });
+    const show = d => {
+      charts.swap.data.datasets[0].data = pts(S.curve(d)); charts.swap.update();
+      legend.innerHTML = `<span><span class="sw line" style="background:${SWAP_BLUE}"></span>${fmtDayY(parseISO(d))}</span><span><span class="sw dash" style="border-color:rgba(255,255,255,0.45)"></span>Siste kurve (${fmtDay(lastD)})</span>`;
+    };
+    let k = 0;
+    if (reduce) show(S.last);
+    else { show(frames[0]); swapTimer = setInterval(() => { k = (k + 1) % frames.length; if (charts.swap) show(frames[k]); }, 650); }
+    note.innerHTML = `De ${frames.length} siste kurvene etter hverandre. Hopp i datoene er hull i dataene (SEB-feeden lå nede 20. august–29. oktober). ${src}`;
+  } else {
+    const n = +mode.slice(1), t = tenorOf(n), gov = ctx.ngb[t.ngb], start = parseISO(S.dates[0]), days = [];
+    for (let d = new Date(start); d <= lastD; d = addDays(d, 1)) if (d.getDay() % 6 !== 0) days.push(new Date(d));
+    const sv = days.map(d => { const r = S.by.get(iso(d)); return r && r[n] != null ? r[n] : null; });
+    const gv = days.map(d => gov ? gov.at(d) : null);
+    const nullRun = k => { let a = k, b = k; while (a >= 0 && sv[a] == null) a--; while (b < sv.length && sv[b] == null) b++; return b - a - 1; };
+    // a segment across more than a week without data, however Chart.js hands it over (one wide segment, or ones touching skipped points)
+    const longGap = c => c.p1DataIndex - c.p0DataIndex > 5 || [c.p0DataIndex, c.p1DataIndex].some(k => sv[k] == null && nullRun(k) > 5);
+    const bands = []; let run = null;                      // a stretch of more than a week without SEB data
+    sv.forEach((v, k) => { if (v == null) { if (run == null) run = k; } else { if (run != null && k - run > 5) bands.push({ from: run, to: k - 1, label: 'ingen SEB-data' }); run = null; } });
+    const spread = gov && gov.at(lastD) != null ? (S.curve(S.last)[ix(n)] - gov.at(lastD)) * 100 : null;
+    charts.swap = new Chart(g2, {
+      type: 'line',
+      data: { labels: days.map(d => fmtDay(d)), datasets: [
+        { label: `Swap ${t.label} (SEB)`, data: sv, borderColor: t.color, pointBackgroundColor: t.color, borderWidth: 2, tension: 0.2, pointHoverRadius: 3,
+          // bridge a missing day or two, but never the weeks SEB's feed was down: those segments stay invisible
+          spanGaps: true, segment: { borderColor: c => longGap(c) ? 'transparent' : undefined, backgroundColor: c => longGap(c) ? 'transparent' : undefined },
+          // a day with no neighbour has no line to show it: give such days a dot
+          pointRadius: c => { const k = c.dataIndex; return sv[k] != null && sv[k - 1] == null && sv[k + 1] == null ? 3 : 0; },
+          backgroundColor: c => { const a = c.chart.chartArea; if (!a) return 'transparent'; const gr = c.chart.ctx.createLinearGradient(0, a.top, 0, a.bottom); gr.addColorStop(0, t.color + '30'); gr.addColorStop(1, t.color + '02'); return gr; }, fill: true },
+        { label: `Statsrente ${t.label} (Norges Bank)`, data: gv, borderColor: NEUTRAL, borderWidth: 1.4, borderDash: [4, 3], pointRadius: 0, pointHoverRadius: 3, tension: 0.2, spanGaps: true },
+      ] },
+      options: baseOpts({
+        scales: { x: { grid: { color: GRID }, border: { color: GRID }, ticks: { color: TICK, font, maxTicksLimit: 9, maxRotation: 0 } }, y: yAxis() },
+        plugins: Object.assign(baseOpts().plugins, { tooltip: tip(it => it[0].label), annotate: { bands } }),
+      }),
+      plugins: [annotate],
+    });
+    legend.innerHTML = `<span><span class="sw line" style="background:${t.color}"></span>Swap ${t.label} (SEB)</span><span><span class="sw dash" style="border-color:${NEUTRAL}"></span>Statsrente ${t.label} (Norges Bank)</span>`;
+    note.innerHTML = `${spread != null ? `Swaprenten ligger ${bp(spread)} over statsrenten (swapspreaden) — bankenes fastrenter prises ut fra swaprenten pluss et påslag. ` : ''}Historikken 6. april–19. august kommer fra det gamle regnearket; 20. august–29. oktober mangler, fordi SEB bare publiserer dagens kurve. ${src}`;
+  }
+}
+
 // ── WIRING ──────────────────────────────────────────────────────────────────
 function render(ctx) {
   const { cyc, rd } = ctx;
@@ -1053,6 +1226,7 @@ function render(ctx) {
       ${marketCard(ctx)}
       ${calibrationCard(ctx)}
       ${nbCard(ctx)}
+      ${swapCard(ctx)}
       ${trackerCard(ctx)}
       <div class="two-col">
         ${wedTable(`${MONTHS[cyc.src.getMonth()]} ${cyc.src.getFullYear()} · satte ${MONTHS[cyc.winOpen.getMonth()]}-satsen`, 'historisk', srcWeds, rd)}
@@ -1062,12 +1236,13 @@ function render(ctx) {
     </div>
     <div class="footer">
       <div class="footer-text">Slensvik.com · Fastrente Strategi<br>Kun til informasjonsformål. Ikke finansiell rådgivning.</div>
-      <div class="footer-text" style="text-align:right">Data: Lånekassen (offisielle satser) · Finansportalen topp-5 (onsdager)<br>Norges Bank (styringsrente, statsrenter) · beregning av rentegevinst etter Lånekassens beskrivelse</div>
+      <div class="footer-text" style="text-align:right">Data: Lånekassen (offisielle satser) · Finansportalen topp-5 (onsdager)<br>Norges Bank (styringsrente, statsrenter) · SEB (NOK-swapkurve) · beregning av rentegevinst etter Lånekassens beskrivelse</div>
     </div>`;
   if (window.INTEL) INTEL.injectNav();
   wire(ctx);
   drawMarket(ctx);
   drawCalibration(ctx);
+  drawSwap(ctx);
 }
 function wire(ctx) {
   const reDecide = () => {
@@ -1078,6 +1253,13 @@ function wire(ctx) {
   const bal = document.getElementById('inBalance'), yrs = document.getElementById('inYears');
   if (bal) bal.addEventListener('input', () => { const v = +bal.value; if (v >= 1000) { ctx.inputs.balance = v; store.set('balance', v); reDecide(); } });
   if (yrs) yrs.addEventListener('input', () => { const v = +yrs.value; if (v >= 3 && v <= 30) { ctx.inputs.years = v; store.set('years', v); reDecide(); } });
+  const segSwap = document.getElementById('segSwap');
+  if (segSwap) segSwap.addEventListener('click', e => {
+    const btn = e.target.closest('button[data-mode]'); if (!btn) return;
+    ctx.swapMode = btn.dataset.mode; store.set('swapMode', ctx.swapMode);
+    segSwap.querySelectorAll('button').forEach(b => { const on = b.dataset.mode === ctx.swapMode; b.classList.toggle('active', on); b.setAttribute('aria-selected', on); });
+    drawSwap(ctx);
+  });
   for (const id of ['segMarket', 'segCal']) {
     const seg = document.getElementById(id);
     if (!seg) continue;
@@ -1092,7 +1274,7 @@ function wire(ctx) {
 
 (async () => {
   try {
-    const [sheet, lkRes, hist] = await loadAll();
+    const [sheet, lkRes, hist, swapRes] = await loadAll();
     const errors = [];
     const rd = sheet.status === 'fulfilled' ? parseReadings(sheet.value) : (errors.push('Finansportalen-regnearket (' + sheet.reason.message + ')'), { byIso: new Map(), readings: [] });
     const lk = lkRes.status === 'fulfilled' && lkRes.value.length ? lkModel(lkRes.value) : (errors.push('Lånekassen-satser' + (lkRes.reason ? ' (' + lkRes.reason.message + ')' : '')), null);
@@ -1100,11 +1282,13 @@ function wire(ctx) {
     if (hist.status === 'fulfilled') {
       for (const s of hist.value) { const ser = makeSeries(s.dates, s.vals); if (s.series_id === 'pol.no') pol = ser; else ngb[s.series_id] = ser; }
     } else errors.push('Norges Bank-data (' + hist.reason.message + ')');
+    const swap = swapRes.status === 'fulfilled' ? swapModel(swapRes.value) : (errors.push('SEB-swapkurven (' + swapRes.reason.message + ')'), null);
+    const swapMode = SWAP_MODES.some(([k]) => k === store.get('swapMode', 'curve')) ? store.get('swapMode', 'curve') : 'curve';
     const cyc = cycleFor(TODAY);
     const spreads = {}, sig = {};
     for (const t of TENORS) { spreads[t.k] = spreadStats(rd.readings, ngb[t.ngb], t.fp); sig[t.k] = signalFor(cyc, ngb[t.ngb]); }
     const inputs = { balance: +store.get('balance', DEFAULTS.balance) || DEFAULTS.balance, years: +store.get('years', DEFAULTS.years) || DEFAULTS.years };
-    const ctx = { cyc, rd, lk, ngb, pol, spreads, sig, errors, inputs, tenor: tenorOf(store.get('tenor', DEFAULTS.tenor)).k, calAll: false };
+    const ctx = { cyc, rd, lk, ngb, pol, swap, swapMode, spreads, sig, errors, inputs, tenor: tenorOf(store.get('tenor', DEFAULTS.tenor)).k, calAll: false };
     ctx.rates = windowRates(cyc, lk, rd, ngb, spreads);
     ctx.cal = calibrate(lk, ngb, inputs.years);
     ctx.nb = nbModel(pol, cyc);
