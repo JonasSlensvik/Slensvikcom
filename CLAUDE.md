@@ -99,8 +99,9 @@ backend architecture, scheduled jobs, DB access, and working agreements.
   - **The SEB card (back 2026-10-30)** has six tabs: today's curve against −7/−30/−90 days, 3/5/10-year history
     beside the NGB yield, forward rates (1-year forwards bootstrapped from the par curve, plus the 3-year rate one
     year ahead), and an animated curve.
-  - **SEB data:** `rpc/world_history` `sw.nok.{1..10,12,15}y`, from ENEXT World Intel source `seb`. The weeks
-    2026-08-20 → 2026-10-29 are missing, and the history tabs show that as a band, never a bridging line.
+  - **SEB data:** `rpc/world_history` `sw.nok.{1..10,12,15}y`. Since 2026-11-02 ENEXT `seb_swap_mail.py` writes SEB's
+    quotes at 10:00 each weekday; World Intel's `seb` source is retired. The weeks 2026-08-20 → 2026-10-29 are missing,
+    and the history tabs show that as a band, never a bridging line.
   - **Other data:** `api.lanekassen_rates` (official), `rpc/world_history` (NGB 3/5/10Y + `pol.no`), and the Google
     Sheet's `fp_obs_*` Wednesday readings. Don't read the sheet's swap tab (dead since 2026-08-19; its history now
     lives in `sw.nok.*`) or its `rate_variabel` (dead since June 2026). Gain = Lånekassen's described

@@ -234,9 +234,10 @@
 //    stopped on 2026-08-19 and its floating-rate column in June 2026; neither is read any more.
 //  · Official Lånekassen rates → api.lanekassen_rates (ENEXT World Intel source "lanekassen").
 //  · Norway government yields 3/5/10Y + Norges Bank policy rate → api.world_history (ENEXT).
-//  · SEB's NOK swap curve 1–15 years (sw.nok.*) → api.world_history (ENEXT World Intel source
-//    "seb", since 2026-10-30; 2026-04-06 → 2026-08-19 loaded from the old sheet tab, the weeks
-//    between are lost — SEB publishes no history).
+//  · SEB's NOK swap curve 1–15 years (sw.nok.*) → api.world_history. Since 2026-11-02 ENEXT
+//    seb_swap_mail.py writes SEB's quotes at 10:00 each weekday (30 Oct is that day's close);
+//    2026-04-06 → 2026-08-19 are daytime readings from the old sheet tab, the weeks between are
+//    lost — SEB publishes no history.
 const SHEET_ID = '1PIZWStO5waUY7He56kiqK683_SpyM3UOiNo5pIZaT7Y';
 const GID_RENTER = '70515895';
 const API = 'https://api.slensvik.com';
@@ -1113,7 +1114,7 @@ function drawSwap(ctx) {
   const pts = c => SWAP_TENORS.map((n, i) => ({ x: n, y: c[i] }));
   const tip = title => Object.assign({}, baseOpts().plugins.tooltip, { filter: c => c.parsed.y != null,
     callbacks: { title, label: c => ` ${c.dataset.label}: ${pct(c.parsed.y, 2)}` } });
-  const src = `Kilde: SEB (sebgroup.com), lest hver dag. Siste kurve ${fmtDayY(lastD)}.`;
+  const src = `Kilde: SEB (sebgroup.com), lest kl. 10 hver virkedag. Siste kurve ${fmtDayY(lastD)}.`;
   const ix = n => SWAP_TENORS.indexOf(n);
 
   if (mode === 'curve') {
