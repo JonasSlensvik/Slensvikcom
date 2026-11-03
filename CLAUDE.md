@@ -119,6 +119,14 @@ backend architecture, scheduled jobs, DB access, and working agreements.
   **History** (rungs since 1995 with episode bands, static lead-lag table from ENEXT `research/banks/ladder.py`) →
   **Sectors** (bankruptcies by industry, salmon / Brent / NO2 power / dry-bulk freight / house prices) →
   **Exposure** (banks × sectors heatmap: share of loans, colour = stage-3 allowance bp; DNB's provision shift) →
+  **Capital** and **Models** (2026-11-03, `assets/banks-capital.js`, `BankCapital.render` called from init with the names,
+  `bank_metrics` and `bank_supervision` the page already holds): who models what (banks × portfolios, A-IRB / F-IRB / SA
+  by exposure share from CR6 + CR4), the standardised banks as chips, a modelling scorecard, risk weights against
+  Norway's floors, then one portfolio selector scoping the capital curve (performing PD × LGD against CRR3 iso-RW lines,
+  `rwOf`), EL vs UL per NOK 100 and the CR9 back-test; the output floor (TREA at the CMS1 date ÷ CMS1's floor base),
+  Finanstilsynet's model findings by theme since 2025 and the IRB timeline. Data: `api.bank_pillar3` (long format),
+  `api.bank_irb_status`, `api.bank_pillar3_docs`; runbook `../ENEXT/docs/banks.md` → Capital. `SUSPECT` marks back-test
+  blocks the bank's own table gets wrong. Labels are placed by `placeLabels` (first free spot, leader line when pushed) →
   **Banks** (universe table: every listed bank's latest quarter from `api.bank_metrics`, sortable, click a row for its
   quarters, margins, posted products and Finanstilsynet reports; markers from the reader's `status` / `flags`: `?`
   disputed, `!` a check failed, faint `·` one reading so far; FSA column; "Next Q EPS vs cons." from `api.nowcast_latest`)

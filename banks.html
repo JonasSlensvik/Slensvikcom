@@ -10,6 +10,7 @@
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/intel.css">
 <script src="assets/intel.js?v=20261028"></script>
+<script src="assets/banks-capital.js?v=20261103"></script>
 
 <style>
 /* ═══ BANKS — page-local layer on top of assets/intel.css ═══════════════════
@@ -212,6 +213,88 @@ table.hist th.l, table.hist td.l { text-align: left; color: var(--text3); }
 .posted b { color: var(--text1); font-weight: 500; }
 .posted .k { display: inline-block; min-width: 64px; color: var(--text4); letter-spacing: .08em; text-transform: uppercase; font-size: 9px; }
 
+/* ── capital (assets/banks-capital.js) ───────────────────────────────────── */
+.cap-hero { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 14px; margin-bottom: 14px; }
+.cap-hero .hero-copy { gap: 10px; }
+.kpis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.kpi { border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px 11px; background: var(--panel); min-width: 0; }
+.kpi .kl { font-size: 9.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--text3); }
+.kpi .kv { font-family: var(--sans); font-size: 27px; font-weight: 700; color: var(--text1); margin-top: 5px; line-height: 1.1; }
+.kpi .kv small { font-size: 14px; font-weight: 600; color: var(--text3); }
+.kpi .ks { font-size: 10px; color: var(--text3); margin-top: 6px; line-height: 1.55; }
+.cap-legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 10px; color: var(--text3); margin-top: 10px; align-items: center; }
+.cap-legend i { display: inline-block; width: 14px; height: 6px; border-radius: 3px; margin-right: 6px; vertical-align: 1px; }
+.cap-legend i.dot { width: 9px; height: 9px; border-radius: 50%; }
+.cap-legend i.ring { width: 9px; height: 9px; border-radius: 50%; background: none !important; border: 1.4px solid var(--text3); }
+.cap-legend i.rule { width: 2px; height: 11px; border-radius: 0; vertical-align: -1px; }
+.am-wrap, .score-wrap, .fd-wrap { overflow-x: auto; }
+table.am { width: 100%; border-collapse: separate; border-spacing: 3px; font-size: 10.5px; min-width: 1160px; }
+table.am th { font-weight: 500; font-size: 9px; letter-spacing: .1em; text-transform: uppercase; color: var(--text3); padding: 4px 6px;
+              text-align: left; vertical-align: bottom; line-height: 1.3; }
+table.am td { padding: 7px 8px 8px; border-radius: 5px; background: rgba(255,255,255,0.025); vertical-align: top; min-width: 96px; }
+table.am td.l { background: none; color: var(--text1); white-space: nowrap; min-width: 0; }
+table.am td.l b { font-weight: 500; }
+table.am td.l small { display: block; color: var(--text4); font-size: 9px; margin-top: 2px; }
+table.am td.na { color: var(--text4); text-align: center; background: rgba(255,255,255,0.01); }
+table.am td.c { cursor: default; }
+table.am td.c:hover, table.am td.c:focus { background: rgba(255,255,255,0.06); outline: none; }
+.am-bar { display: flex; gap: 2px; height: 6px; border-radius: 3px; overflow: hidden; margin-bottom: 6px; }
+.am-bar i { display: block; height: 100%; min-width: 2px; }
+.am-lab { display: block; color: var(--text1); font-size: 10.5px; }
+.am-lab b { font-weight: 600; letter-spacing: .03em; }
+.am-sub { display: block; color: var(--text3); font-size: 9.5px; margin-top: 2px; white-space: nowrap; }
+.am-meter { display: block; height: 6px; border-radius: 3px; background: rgba(90,99,119,.45); overflow: hidden; margin-bottom: 6px; }
+.am-meter i { display: block; height: 100%; background: var(--s1); }
+.sa-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(232px, 1fr)); gap: 8px; margin-top: 10px; }
+.sa-chip { border: 1px solid var(--border); border-radius: 7px; padding: 8px 10px 9px; background: rgba(5,8,16,.45); font-size: 10.5px; min-width: 0; }
+.sa-chip:hover, .sa-chip:focus { border-color: var(--border2); outline: none; }
+.sa-chip b { color: var(--text1); font-weight: 500; }
+.sa-chip .num { display: block; color: var(--text3); font-size: 9.5px; margin-top: 3px; }
+.sa-chip .chip-s { margin-left: 6px; color: var(--s1); border-color: rgba(35,162,213,.45); cursor: help; }
+.sa-bar { display: flex; gap: 2px; height: 5px; border-radius: 3px; overflow: hidden; margin-top: 6px; }
+.sa-bar i { display: block; height: 100%; }
+table.score { width: 100%; border-collapse: collapse; font-size: 11px; min-width: 1180px; }
+table.score th { font-weight: 500; font-size: 9px; letter-spacing: .1em; text-transform: uppercase; color: var(--text3); padding: 6px 8px;
+                 border-bottom: 1px solid var(--border2); text-align: right; vertical-align: bottom; line-height: 1.3; }
+table.score th.l, table.score td.l { text-align: left; }
+table.score td { padding: 8px; border-bottom: 1px solid var(--border); text-align: right; color: var(--text2); white-space: nowrap; vertical-align: top; }
+table.score td small { display: block; color: var(--text4); font-size: 9px; margin-top: 2px; }
+table.score td small.hot { color: var(--hot); }
+table.score td.l b { color: var(--text1); font-weight: 500; }
+table.score tr { cursor: pointer; }
+table.score tr:hover td, table.score tr:focus td { background: rgba(255,255,255,0.03); outline: none; }
+.cap-focus-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 18px 0 12px; }
+.cap-focus-row .lab { font-size: 9.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--text3); }
+.seg-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.seg-tabs button { font: inherit; font-size: 10.5px; color: var(--text2); background: rgba(5,8,16,.5); border: 1px solid var(--border2);
+                   border-radius: 14px; padding: 5px 12px; cursor: pointer; }
+.seg-tabs button:hover { color: var(--text1); border-color: var(--border3); }
+.seg-tabs button.on { color: var(--amber); border-color: rgba(245,166,35,.55); background: rgba(245,166,35,.08); }
+table.fd { width: 100%; border-collapse: separate; border-spacing: 3px; font-size: 10.5px; min-width: 1100px; }
+table.fd th { font-weight: 500; font-size: 9px; letter-spacing: .1em; text-transform: uppercase; color: var(--text3); padding: 4px 6px; text-align: center;
+              vertical-align: bottom; line-height: 1.3; }
+table.fd th.l, table.fd td.l { text-align: left; }
+table.fd td { padding: 7px 8px; border-radius: 5px; text-align: center; color: var(--text2); background: rgba(255,255,255,0.02); }
+table.fd td.l { background: none; color: var(--text1); white-space: nowrap; }
+table.fd td.l small { display: block; color: var(--text4); font-size: 9px; }
+table.fd td.c { cursor: pointer; }
+table.fd td.c:hover, table.fd td.c:focus { outline: 1px solid var(--border3); }
+table.fd td b { color: var(--text1); font-weight: 500; }
+.cap-tt { position: fixed; z-index: 80; display: none; pointer-events: none; max-width: 420px; background: rgba(9,13,21,.97);
+          border: 1px solid var(--border2); border-radius: 6px; padding: 8px 10px; font-size: 10.5px; color: var(--text2); line-height: 1.55;
+          box-shadow: 0 8px 24px rgba(0,0,0,.5); white-space: normal; }
+.cap-tt b { color: var(--text1); font-weight: 500; }
+.cap-tt .tl { display: flex; gap: 6px; align-items: baseline; margin-top: 2px; }
+.cap-tt .tl i { display: inline-block; width: 10px; height: 2px; flex: 0 0 10px; transform: translateY(-3px); }
+.cap-tt .tl span { color: var(--text3); }
+.cap-tt .tm { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--border); color: var(--text3); }
+.cap-tt ul.tf { margin: 6px 0 2px 15px; } .cap-tt ul.tf li { margin-bottom: 3px; color: var(--text2); }
+.cap-tt table.tg { border-collapse: collapse; margin-top: 6px; font-size: 9.5px; }
+.cap-tt table.tg th, .cap-tt table.tg td { padding: 1px 6px; text-align: right; } .cap-tt table.tg th { color: var(--text4); font-weight: 400; }
+.cap-tt table.tg td:first-child, .cap-tt table.tg th:first-child { text-align: left; }
+@media (max-width: 1100px) { .cap-hero { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 760px) { .kpis { grid-template-columns: minmax(0, 1fr); } .kpi .kv { font-size: 24px; } }
+
 /* ── method ──────────────────────────────────────────────────────────────── */
 .method { columns: 2 360px; column-gap: 28px; font-size: 11px; color: var(--text3); line-height: 1.7; }
 .method p { break-inside: avoid; margin-bottom: 10px; }
@@ -250,8 +333,8 @@ footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--border
   </header>
 
   <nav class="rail" id="rail" aria-label="Sections">
-    <a href="#ladder">Ladder</a><a href="#history">History</a><a href="#sectors">Sectors</a><a href="#exposure">Exposure</a>
-    <a href="#banks">Banks</a><a href="#pricing">Prices</a><a href="#supervision">Supervision</a><a href="#households">Households</a><a href="#method">Method</a>
+    <a href="#ladder">Ladder</a><a href="#history">History</a><a href="#sectors">Sectors</a><a href="#exposure">Exposure</a><a href="#capital">Capital</a>
+    <a href="#models">Models</a><a href="#banks">Banks</a><a href="#pricing">Prices</a><a href="#supervision">Supervision</a><a href="#households">Households</a><a href="#method">Method</a>
     <span class="rail-asof" id="railAsof"></span>
   </nav>
 
@@ -333,6 +416,133 @@ footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--border
         <div class="chart" id="shiftChart" style="height:330px"></div>
         <p class="note">Change in DNB's stage-3 allowance by sector between its two latest loans-by-industry notes, NOK million.</p>
       </div>
+    </div>
+  </section>
+
+  <!-- ═══ CAPITAL (assets/banks-capital.js) ══════════════════════════════ -->
+  <section class="sec" id="capital">
+    <div class="sec-title">
+      <h2><span class="g">⛁</span>Capital: what the models say</h2>
+      <p>The capital side of the exposure map, read from every listed bank's Pillar 3 report. Seven banks set their own risk
+        weights with internal models Finanstilsynet has approved (IRB): <b>A-IRB</b> estimates PD, LGD and conversion factors
+        itself, <b>F-IRB</b> estimates PD and takes the supervisory LGD. Retail IRB always uses own estimates, so it counts as
+        A-IRB here. Everything else, and every exposure of the other banks, sits on the standardised approach (<b>SA</b>), where
+        the regulation sets the weight. Norway put CRR3 in force on 1 April 2025 and raised the mortgage floor from 20 to 25 %
+        on 1 July. <span id="capAsof" class="faint"></span></p>
+    </div>
+    <div class="cap-body">
+      <div class="cap-hero">
+        <div class="panel hero-copy">
+          <div class="hero-kicker">◉ Capital · IRB and the standardised approach</div>
+          <div class="verdict" id="capVerdict"><div class="lab">What the reports say</div><div class="val">—</div><div class="why"></div></div>
+          <p class="note">Unexpected loss is the capital the IRB formula sets for a one-in-a-thousand-year loss year: 8 % of the
+            risk-weighted assets as the Pillar 1 minimum. Expected loss is what the bank should lose in an average year and is
+            covered by provisions and pricing. Shortfalls of provisions against EL come off CET1.</p>
+        </div>
+        <div class="kpis" id="capKpis"><div class="empty">Loading the Pillar 3 data …</div></div>
+      </div>
+
+      <div class="panel">
+        <h3><span><span class="g">▦</span>Who models what</span><small id="capMatrixAsof"></small></h3>
+        <div class="am-wrap"><table class="am" id="capMatrix"><tr><td class="empty">Loading …</td></tr></table></div>
+        <div class="cap-legend"><span><i style="background:var(--s1)"></i>A-IRB (incl. retail IRB)</span><span><i style="background:var(--s2)"></i>F-IRB</span>
+          <span><i style="background:#5a6377"></i>Standardised approach</span>
+          <span>Bar: share of the portfolio's exposure under each approach · below it, exposure (NOK bn) and the average risk weight</span></div>
+        <p class="note">Exposure after conversion factors and credit-risk mitigation: CR6 for the IRB classes, CR4 for the
+          standardised ones, mapped to one list of portfolios. Hover a cell for each class's PD and LGD and the bank's own approach
+          table. "PPU" is the permanent partial use of the standardised approach the bank reports in CR6-A (governments,
+          institutions, equity, exempt subsidiaries). SpareBank 1 SMN publishes no Excel annex after 30 June 2025, so its
+          IRB figures are from year-end 2024; Møre and Sparebanken Norge from 30 September 2025.</p>
+        <div class="tiles-h">The standardised banks</div>
+        <div class="sa-grid" id="capSA"></div>
+        <p class="note">Risk-weighted assets and CET1 ratio from the bank's Pillar 3 report, or from its quarterly report where
+          the Pillar 3 document prints its tables as images. Bar: credit risk on the standardised approach (grey), IRB risk
+          weights from part-owned IRB mortgage companies it consolidates proportionally (blue: SpareBank 1 Boligkreditt,
+          BN Bank), operational risk (magenta), the rest.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ MODELS ═════════════════════════════════════════════════════════ -->
+  <section class="sec" id="models">
+    <div class="sec-title">
+      <h2><span class="g">⚙</span>How well the models work</h2>
+      <p>Seven readings of the modelling departments, side by side. A model that sits below a floor does not set the bank's
+        capital; a back-test compares the year's defaults with the PDs assigned at its start; the output floor caps the whole
+        IRB benefit at 72.5 % of the standardised approach from 2030. Finanstilsynet's own inspection reports and the errors we
+        found in each bank's Pillar 3 tables speak to model governance and data quality. Click a row for the bank's report.</p>
+    </div>
+    <div class="panel">
+      <h3><span><span class="g">◈</span>Modelling scorecard</span><small>hover a row for the bank's approvals, conditions and the errors we found</small></h3>
+      <div class="score-wrap"><table class="score" id="capScore"><tr><td class="empty">Loading …</td></tr></table></div>
+      <p class="note">On IRB: share of credit exposure on IRB. Mortgage RW: the model's average risk weight on mortgages before
+        the 25 % floor. Floors &amp; add-ons: risk-weighted assets the bank reports on top of its CR6 model numbers (OV1 credit
+        risk less the standardised part less CR6), as a share of the model numbers. Model vs SA: the models' risk-weighted
+        assets as a share of the standardised approach on the same loans (CMS2). Defaults / PD: 2025 defaults divided by the
+        PD-implied number (below 1 is conservative). Output floor: total risk exposure as a share of the floor's standardised
+        base; below 72.5 % the floor would bind in 2030.</p>
+    </div>
+    <div class="panel" style="margin-top:14px">
+      <h3><span><span class="g">┃</span>Risk weights: model, floor and standard</span><small>average risk weight per portfolio</small></h3>
+      <div class="chart" id="capTracks" style="height:330px"></div>
+      <div class="cap-legend"><span><i class="dot" style="background:var(--s1)"></i>A-IRB model</span><span><i class="dot" style="background:var(--s2)"></i>F-IRB model (·F)</span>
+        <span><i class="ring"></i>Standardised approach, any bank</span><span><i class="rule" style="background:var(--amber)"></i>Norway's floors</span></div>
+      <p class="note">The mortgage floor (25 % since 1 July 2025) and the commercial-property floor (35 %) apply to the
+        portfolio average of IRB loans secured on Norwegian property. Standardised risk weights for the same kinds of loan come
+        from CR4: the IRB banks' own standardised portfolios and the standardised banks that publish CR4.</p>
+    </div>
+
+    <div class="cap-focus-row"><span class="lab">Portfolio</span><div class="seg-tabs" id="capFocus"></div>
+      <span class="faint" style="font-size:10px">scopes the three views below</span></div>
+    <div class="grid g12">
+      <div class="panel span6">
+        <h3><span><span class="g">◍</span>On the capital curve · <span class="cap-seg"></span></span><small>bubble = exposure</small></h3>
+        <div class="chart" id="capCurve" style="height:330px"></div>
+        <p class="note" id="capCurveNote"></p>
+        <p class="note">Each bank's average PD and LGD on its performing exposure, against the IRB formula's lines of equal risk
+          weight. Two banks with the same risk weight can get there differently: a low LGD with a higher PD, or the reverse.</p>
+      </div>
+      <div class="panel span6">
+        <h3><span><span class="g">▤</span>Expected and unexpected loss · <span class="cap-seg"></span></span><small>per NOK 100 of exposure</small></h3>
+        <div class="chart" id="capLoss" style="height:240px"></div>
+        <div class="cap-legend"><span><i style="background:var(--s2)"></i>Expected loss (EL)</span><span><i style="background:var(--s1)"></i>Unexpected loss: 8 % of RWA</span>
+          <span><i class="rule" style="background:#e8eef7"></i>Provisions held</span><span><span style="color:var(--text3)">▲</span> CET1 at the bank's ratio</span></div>
+        <p class="note">From CR6: EL, risk-weighted assets and provisions for the portfolio, before the floors. When provisions
+          fall short of EL, the gap is deducted from CET1.</p>
+      </div>
+      <div class="panel span6">
+        <h3><span><span class="g">⊿</span>Do the PDs hold? · <span class="cap-seg"></span></span><small>2025 defaults against the PDs assigned</small></h3>
+        <div class="chart" id="capCalib" style="height:330px"></div>
+        <p class="note">CR9: obligors at the end of 2024, how many defaulted in 2025, and their average PD; the default grade is
+          left out. Whiskers: 95 % interval of the observed rate. PDs are set for the long run, with margins of conservatism,
+          so a calm year should land below the line; a bank above it in a calm year needs a look. A hollow dot (!) means the
+          bank's own table is wrong. SMN: 2024; Sparebanken Norge: September 2025.</p>
+      </div>
+      <div class="panel span6">
+        <h3><span><span class="g">⫠</span>The output floor</span><small>total risk exposure as % of the standardised base</small></h3>
+        <div class="chart" id="capFloor" style="height:240px"></div>
+        <p class="note">CRR3 caps the IRB benefit: from 2025 a bank's risk-weighted assets cannot fall below 50 % of what the
+          standardised approach would give, rising to 72.5 % in 2030 (amber steps). The base is CMS1's output-floor base at
+          the bank's latest disclosure. Norway's mortgage floor already lifts IRB banks' assets, so the output floor is far from
+          binding for most.</p>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top:14px">
+      <h3><span><span class="g">⚖</span>What Finanstilsynet found in the models</span><small>model inspections since 2025 · findings per theme · click for the report</small></h3>
+      <div class="fd-wrap"><table class="fd" id="capFindings"><tr><td class="empty">Loading …</td></tr></table></div>
+      <p class="note">Findings from Finanstilsynet's IRB inspections and credit inspections that cover the models
+        (Tilsynsportalen and the archive), sorted into themes by their wording; one finding can touch several themes. The
+        "use test" is the CRR's requirement that the IRB estimates are actually used in granting and pricing credit.</p>
+    </div>
+    <div class="panel" style="margin-top:14px">
+      <h3><span><span class="g">⟿</span>Two decades of IRB</span><small>approvals, applications, rejections, inspections</small></h3>
+      <div class="chart" id="capTimeline" style="height:300px"></div>
+      <div class="cap-legend"><span><i class="dot" style="background:var(--s1)"></i>Approval</span><span><i class="ring" style="border-color:var(--s3)"></i>Application</span>
+        <span><i style="background:var(--s3);opacity:.6"></i>Still pending</span><span><span style="color:var(--hot)">✕</span> Rejection</span>
+        <span><span style="color:var(--text3)">◆</span> Merger</span><span><span style="color:var(--hot)">▲</span> Inspection with model findings</span></div>
+      <p class="note">From each bank's 2025 Pillar 3 report (approval dates where the report states them) and Finanstilsynet's
+        inspection reports.</p>
     </div>
   </section>
 
@@ -444,13 +654,24 @@ footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--border
         no standard loan) and its best floating savings rate, leaving out BSU, pension, green, lock-in and special-terms
         products. Every product is recorded, so a repricing is a change in a product's own price, not a new product
         taking the lead.</p>
+      <p><b>Capital and models.</b> Each bank's Pillar 3 disclosure (risk and capital management): the EBA templates KM1,
+        OV1, CMS1/2, CR4, CR6, CR6-A and CR9, usually from the Excel annex, for the small banks from the PDF. DeepSeek reads
+        each template twice; a value is published when both readings agree and every number must appear in the source. Code
+        then checks the template's own arithmetic (approaches add up to credit risk, density = RWA / exposure, PD ranges add
+        up to their class) and that templates agree with each other; values the readers got wrong are read by hand. The
+        approach tables, approvals and pending applications are read by hand from each report. Year-end 2025 is the common
+        date: it is the one every bank discloses in full.</p>
+      <p><b>Formula lines.</b> The CRR3 IRB risk-weight function without the 1.06 scaling factor: correlation 15 % for
+        mortgages, the corporate correlation at 2.5 years maturity, the other-retail correlation. Unexpected loss is shown as
+        8 % of risk-weighted assets, the Pillar 1 minimum. The output-floor base is the bank's own CMS1 figure.</p>
       <p><b>Caveat.</b> The lead times are measured over four Norwegian credit episodes. They are a prior for when to
-        look, not a forecast.</p>
+        look, not a forecast. Banks label and lay out the same EBA templates differently, and some of their tables contain
+        errors; the scorecard counts the ones we found.</p>
     </div>
   </section>
 
   <footer>Data: SSB, Gjeldsregisteret, Norges Bank, Nord Pool, Yahoo Finance, the banks' quarterly reports (Oslo Børs NewsWeb),
-    Finanstilsynet, Finansportalen (Forbrukerrådet). Refreshed through World Intel every 12 hours; the bank figures change
+    Finanstilsynet, Finansportalen (Forbrukerrådet), the banks' Pillar 3 reports. Refreshed through World Intel every 12 hours; the bank figures change
     when a report is read, the posted prices every evening.</footer>
 </div>
 
@@ -1100,7 +1321,8 @@ footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--border
     const newest = (board || []).filter((r) => r.series_id.startsWith('cr.no.')).map((r) => r.last_date).sort().pop();
     $('#railAsof').textContent = newest ? 'credit data to ' + newest : '';
     const steps = [renderLadder, renderHistory, renderSectors, () => renderExposure(loans || [], NAME), () => renderBanks(metrics || [], NAME, isins, nc || [], fsa || []),
-                   () => renderPricing(priced || [], repricing || [], NAME), () => renderSupervision(fsa || [], NAME), renderHouseholds];
+                   () => renderPricing(priced || [], repricing || [], NAME), () => renderSupervision(fsa || [], NAME), renderHouseholds,
+                   () => window.BankCapital && BankCapital.render({ names: NAME, metrics: metrics || [], fsa: fsa || [], banks: BANKS })];
     for (const f of steps) { try { f(); } catch (e) { console.error(e); } }
     let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { renderHistory(); renderHouseholds(); renderExposure(loans || [], NAME); renderPricing(priced || [], repricing || [], NAME); }, 200); });
   }
