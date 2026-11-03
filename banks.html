@@ -10,7 +10,7 @@
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/intel.css">
 <script src="assets/intel.js?v=20261028"></script>
-<script src="assets/banks-capital.js?v=20261103b"></script>
+<script src="assets/banks-capital.js?v=20261103e"></script>
 
 <style>
 /* ═══ BANKS — page-local layer on top of assets/intel.css ═══════════════════
@@ -237,6 +237,8 @@ table.am td.l b { font-weight: 500; }
 table.am td.l small { display: block; color: var(--text4); font-size: 9px; margin-top: 2px; }
 table.am td.na { color: var(--text4); text-align: center; background: rgba(255,255,255,0.01); }
 table.am td.c { cursor: default; }
+table.am tr.am-div td, table.score tr.sc-div td, table.fd tr.am-div td { background: none; padding: 14px 6px 4px; font-size: 9px; letter-spacing: .16em; text-align: left;
+  text-transform: uppercase; color: var(--amber); border-bottom: 1px solid var(--border2); cursor: default; }
 table.am td.c:hover, table.am td.c:focus { background: rgba(255,255,255,0.06); outline: none; }
 .am-bar { display: flex; gap: 2px; height: 6px; border-radius: 3px; overflow: hidden; margin-bottom: 6px; }
 .am-bar i { display: block; height: 100%; min-width: 2px; }
@@ -428,7 +430,9 @@ footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--border
         itself, <b>F-IRB</b> estimates PD and takes the supervisory LGD. Retail IRB always uses own estimates, so it counts as
         A-IRB here. Everything else, and every exposure of the other banks, sits on the standardised approach (<b>SA</b>), where
         the regulation sets the weight. Norway put CRR3 in force on 1 April 2025 and raised the mortgage floor from 20 to 25 %
-        on 1 July. <span id="capAsof" class="faint"></span></p>
+        on 1 July. Two lenders not listed in Oslo sit beside them for comparison: Nordea, whose Norwegian mortgages are in
+        Nordea Eiendomskreditt and whose models the ECB approves, and Santander Consumer Bank, the Nordic car- and
+        consumer-finance bank licensed in Norway. <span id="capAsof" class="faint"></span></p>
     </div>
     <div class="cap-body">
       <div class="cap-hero">
@@ -467,7 +471,7 @@ footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--border
   <section class="sec" id="models">
     <div class="sec-title">
       <h2><span class="g">⚙</span>How well the models work</h2>
-      <p>Seven readings of the modelling departments, side by side. A model that sits below a floor does not set the bank's
+      <p>The seven listed IRB banks' modelling departments side by side, with Nordea and Santander Consumer below them. A model that sits below a floor does not set the bank's
         capital; a back-test compares the year's defaults with the PDs assigned at its start; the output floor caps the whole
         IRB benefit at 72.5 % of the standardised approach from 2030. Finanstilsynet's own inspection reports and the errors we
         found in each bank's Pillar 3 tables speak to model governance and data quality. Click a row for the bank's report.</p>
@@ -697,7 +701,8 @@ footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--border
     AURG: 'Aurskog Sparebank', BIEN: 'Bien Sparebank', GRONG: 'Grong Sparebank', NISB: 'Nidaros Sparebank',
     SNOR: 'SpareBank 1 Nordmøre', ROGS: 'Rogaland Sparebank', SOGN: 'Sogn Sparebank', TINDE: 'Tinde Sparebank',
     TRSB: 'Trøndelag Sparebank', VVL: 'Voss Veksel- og Landmandsbank', HSPG: 'Høland og Setskog Sparebank',
-    HGSB: 'Haugesund Sparebank', AASB: 'Aasen Sparebank' };
+    HGSB: 'Haugesund Sparebank', AASB: 'Aasen Sparebank',
+    NDA: 'Nordea (group)', NDAEK: 'Nordea Eiendomskreditt', SCB: 'Santander Consumer Bank' };   // the last three: capital section only
   const EPISODES = [['2008-09', '2009-12', 'Financial crisis'], ['2014-10', '2016-12', 'Oil downturn'],
                     ['2020-03', '2021-06', 'Pandemic'], ['2021-09', '2023-12', 'Rate hikes']];
 
@@ -1322,7 +1327,7 @@ footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--border
     $('#railAsof').textContent = newest ? 'credit data to ' + newest : '';
     const steps = [renderLadder, renderHistory, renderSectors, () => renderExposure(loans || [], NAME), () => renderBanks(metrics || [], NAME, isins, nc || [], fsa || []),
                    () => renderPricing(priced || [], repricing || [], NAME), () => renderSupervision(fsa || [], NAME), renderHouseholds,
-                   () => window.BankCapital && BankCapital.render({ names: NAME, metrics: metrics || [], fsa: fsa || [], banks: BANKS })];
+                   () => window.BankCapital && BankCapital.render({ names: NAME, metrics: metrics || [], fsa: fsa || [], banks: [...BANKS, 'NDA', 'NDAEK', 'SCB'] })];
     for (const f of steps) { try { f(); } catch (e) { console.error(e); } }
     let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { renderHistory(); renderHouseholds(); renderExposure(loans || [], NAME); renderPricing(priced || [], repricing || [], NAME); }, 200); });
   }

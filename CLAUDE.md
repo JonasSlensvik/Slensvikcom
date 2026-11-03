@@ -126,7 +126,10 @@ backend architecture, scheduled jobs, DB access, and working agreements.
   `rwOf`), EL vs UL per NOK 100 and the CR9 back-test; the output floor (TREA at the CMS1 date ÷ CMS1's floor base),
   Finanstilsynet's model findings by theme since 2025 and the IRB timeline. Data: `api.bank_pillar3` (long format),
   `api.bank_irb_status`, `api.bank_pillar3_docs`; runbook `../ENEXT/docs/banks.md` → Capital. `SUSPECT` marks back-test
-  blocks the bank's own table gets wrong. Labels are placed by `placeLabels` (first free spot, leader line when pushed) →
+  blocks the bank's own table gets wrong. Labels are placed by `placeLabels` (first free spot, leader line when pushed).
+  Nordea (NDA, NDAEK) and Santander Consumer (SCB) are passed in on top of `BANKS` as unlisted comparators
+  (`listed()` from `bank_irb_status.listed`): out of the hero counts, under a divider in the tables and timeline, muted
+  labels in the charts (`LAB`); `GROUP_BOOK` marks Nordea's Nordic mortgage book, which Norway's floor only partly covers →
   **Banks** (universe table: every listed bank's latest quarter from `api.bank_metrics`, sortable, click a row for its
   quarters, margins, posted products and Finanstilsynet reports; markers from the reader's `status` / `flags`: `?`
   disputed, `!` a check failed, faint `·` one reading so far; FSA column; "Next Q EPS vs cons." from `api.nowcast_latest`)

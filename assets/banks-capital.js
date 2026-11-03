@@ -37,7 +37,10 @@
   ];
   const SEG_BY = Object.fromEntries(SEG.map((s) => [s.id, s]));
   const FOCUS = ['mort', 'corp', 'sl', 'cons'];            // the segments the formula, loss and back-test views can show
-  const IRB_ORDER = ['DNB', 'SB1NO', 'SBNOR', 'MING', 'SPOL', 'NONG', 'MORG'];
+  const IRB_ORDER = ['DNB', 'SB1NO', 'SBNOR', 'MING', 'SPOL', 'NONG', 'MORG', 'NDA', 'NDAEK', 'SCB'];
+  const listed = (t) => !ST[t] || ST[t].listed !== false;      // Nordea and Santander Consumer are comparators, not in the counts
+  const LAB = (t, c = 'var(--text2)') => listed(t) ? c : 'var(--text3)';
+  const GROUP_BOOK = { NDA: true };                            // a Nordic group: Norway's 25 % floor covers only part of its mortgages
 
   // ── data ─────────────────────────────────────────────────────────────────────────────────────────────────────────
   const IX = new Map(), DATES = {};
@@ -187,8 +190,9 @@
 
   // ── hero ─────────────────────────────────────────────────────────────────────────────────────────────────────────
   function renderHero(models, saBanks) {
-    const irb = models.filter((m) => ST[m.t]);
+    const irb = models.filter((m) => ST[m.t] && listed(m.t));
     const treaIrb = sum(irb.map((m) => m.trea)), treaAll = treaIrb + sum(saBanks.map((b) => b.trea));
+    const ndaek = models.find((m) => m.t === 'NDAEK'), nMort = ndaek && ndaek.cls.find((c) => c.cls === 'ret_re');
     const mort = irb.map((m) => { const c = m.cls.find((x) => x.cls === 'ret_re'); return c ? [m.t, c.density] : null; }).filter(Boolean);
     const mlo = Math.min(...mort.map((x) => x[1])), mhi = Math.max(...mort.map((x) => x[1]));
     const under = mort.filter(([, v]) => v < 25).length;
@@ -199,9 +203,10 @@
     const kp = (l, v, s) => `<div class="kpi"><div class="kl">${l}</div><div class="kv">${v}</div><div class="ks">${s}</div></div>`;
     $('#capKpis').innerHTML = [
       kp('Banks on their own models', `${irb.length} <small>of ${irb.length + saBanks.length}</small>`,
-        `They carry ${pc(100 * treaIrb / treaAll, 0)} of the listed banks' risk-weighted assets. The other ${saBanks.length} use the standardised approach.`),
+        `They carry ${pc(100 * treaIrb / treaAll, 0)} of the listed banks' risk-weighted assets. The other ${saBanks.length} use the standardised approach. Nordea and Santander Consumer, not listed in Oslo, are shown beside them.`),
       kp('Mortgage risk weight, models', `${mlo.toFixed(0)}–${mhi.toFixed(0)} <small>%</small>`,
-        `${under} of ${mort.length} sit below the 25 % floor in force since 1 July 2025, so the floor, not the model, sets their mortgage capital.`),
+        `${under} of ${mort.length} sit below the 25 % floor in force since 1 July 2025, so the floor, not the model, sets their mortgage capital.` +
+        (nMort ? ` Nordea's Norwegian mortgages: ${pc(nMort.density, 1)} (Nordea Eiendomskreditt).` : '')),
       kp('Lifted by floors and add-ons', `${bn(addSum)}`,
         `Risk-weighted assets on top of what ${adds.length} banks' models produce: ${adds.map((m) => `${m.t} ${bn(m.addon)}`).join(', ')}.`),
       kp('Model RWA vs the standard', `${Math.min(...vs).toFixed(0)}–${Math.max(...vs).toFixed(0)} <small>%</small>`,
@@ -210,7 +215,7 @@
     ].join('');
     const calTxt = cal.length ? `In 2025, mortgage defaults ran at ${Math.round(100 * Math.min(...cal))}–${Math.round(100 * Math.max(...cal))} % of the PDs the models had assigned: conservative, in a calm year.` : '';
     $('#capVerdict').innerHTML = `<div class="lab">What the reports say</div><div class="val">The floors set the capital; the models set the ranking.</div>
-      <div class="why">${esc(calTxt)} Every IRB bank's latest inspection by Finanstilsynet found weaknesses in how the models are
+      <div class="why">${esc(calTxt)} Every listed IRB bank's latest inspection by Finanstilsynet found weaknesses in how the models are
       estimated or used — most often IRB estimates that play little part in credit decisions, and collateral counted in LGD
       where the rules do not allow it.</div>`;
   }
@@ -220,10 +225,25 @@
     const cols = SEG.filter((s) => s.id !== 'dflt');
     const irb = IRB_ORDER.map((t) => models.find((m) => m.t === t)).filter(Boolean);
     let h = `<thead><tr><th class="l">Bank</th>${cols.map((s) => `<th>${esc(s.name)}</th>`).join('')}<th>Credit exposure on IRB</th></tr></thead><tbody>`;
+    let divided = false;
     for (const m of irb) {
       const st = ST[m.t] || {};
+      if (!listed(m.t) && !divided) {
+        divided = true;
+        h += `<tr class="am-div"><td colspan="${cols.length + 2}">Not listed in Oslo · for comparison</td></tr>`;
+      }
       const since = [st.irb_since ? `IRB ${st.irb_since}` : null, st.airb_corp_since ? `A-IRB corporates ${st.airb_corp_since}` : null].filter(Boolean).join(' · ');
-      h += `<tr><td class="l"><b>${esc(NAMES[m.t] || m.t)}</b><small>${esc(since || 'IRB')} · ${esc(dlabel(m.d6))}</small></td>`;
+      h += `<tr><td class="l"><b>${esc(NAMES[m.t] || m.t)}</b><small>${esc(since || 'IRB')} · ${esc(dlabel(m.d6 || m.dO))}</small></td>`;
+      const anyEad = cols.some((s) => m.segs[s.id].A.ead + m.segs[s.id].F.ead + m.segs[s.id].SA.ead > 0);
+      if (!anyEad && ok(m.credit)) {          // Santander Consumer: no Pillar 3 since 2021, only RWA by approach in its reports
+        const airb = val(m.t, m.dO, 'OV1', 'credit_airb') || 0, csa = m.csa || 0, tot = airb + csa;
+        h += `<td class="c" colspan="${cols.length}" tabindex="0" data-tip="${m.t}|rwa"><span class="am-bar">` +
+          `<i style="flex:${airb};background:${C.A}"></i><i style="flex:${csa};background:${C.SA}"></i></span>` +
+          `<span class="am-lab"><b>A-IRB</b> private car loans in Norway, Sweden and Finland · <b>SA</b> the rest</span>` +
+          `<span class="am-sub num">credit RWA ${bn(airb)} A-IRB (${pc(100 * airb / tot, 0)}) · ${bn(csa)} SA · no exposures published</span></td>` +
+          `<td class="c"><span class="am-meter"><i style="width:${(100 * airb / tot).toFixed(1)}%"></i></span><span class="am-sub num">${pc(100 * airb / tot, 0)} of RWA</span></td></tr>`;
+        continue;
+      }
       for (const s of cols) {
         const g = m.segs[s.id], tot = g.A.ead + g.F.ead + g.SA.ead;
         if (!tot) { h += '<td class="c na">·</td>'; continue; }
@@ -242,6 +262,8 @@
     const t = $('#capMatrix'); t.innerHTML = h;
     bindTips(t, (id) => {
       const [tk, sid] = id.split('|'), m = models.find((x) => x.t === tk), st = ST[tk] || {};
+      if (sid === 'rwa') return `<b>${esc(NAMES[tk] || tk)}</b> · ${esc(dlabel(m.dO))}<br>${esc(st.summary || '')}` +
+        (st.methods ? '<div class="tm">' + st.methods.map((x) => `${esc(x.portfolio)}: <b>${esc(x.method)}</b>`).join('<br>') + '</div>' : '');
       if (sid === 'share') return `<b>${esc(NAMES[tk] || tk)}</b><br>Exposure after CCF and CRM on IRB: <b>${pc(m.irbShare, 1)}</b> (CR6 against CR4)` +
         (ok(m.cr6aIrb) ? `<br>The bank's own CR6-A: IRB ${pc(m.cr6aIrb, 1)}, permanent partial use ${pc(m.cr6aPpu, 1)}${ok(m.cr6aRoll) ? `, roll-out ${pc(m.cr6aRoll, 1)}` : ''}` : '') +
         (st.methods ? '<div class="tm">' + st.methods.map((x) => `${esc(x.portfolio)}: <b>${esc(x.method)}</b>`).join('<br>') + '</div>' : '');
@@ -294,7 +316,7 @@
     return items;
   }
   const labelSvg = (it, color = 'var(--text2)') => (it.far ? `<line x1="${it.x.toFixed(1)}" y1="${it.y.toFixed(1)}" x2="${it.lx.toFixed(1)}" y2="${(it.ly - 4).toFixed(1)}" stroke="rgba(255,255,255,.2)"/>` : '') +
-    `<text x="${it.lx.toFixed(1)}" y="${it.ly.toFixed(1)}" text-anchor="${it.anchor}" fill="${color}" font-size="9.5">${esc(it.text)}</text>`;
+    `<text x="${it.lx.toFixed(1)}" y="${it.ly.toFixed(1)}" text-anchor="${it.anchor}" fill="${it.col || color}" font-size="9.5">${esc(it.text)}</text>`;
   const LOG_TICKS = [0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50];
   const logTicks = (lo, hi) => { const t = LOG_TICKS.filter((v) => v >= lo * 0.999 && v <= hi * 1.001); return t.length > 7 ? t.filter((_, i) => i % 2 === 0) : t; };
   const tickTxt = (v) => (v < 0.1 ? v.toFixed(2) : v < 1 ? String(+v.toFixed(2)) : String(v)) + ' %';
@@ -331,7 +353,7 @@
     for (const p of irb) s += `<circle cx="${p.cx}" cy="${p.y}" r="5.5" fill="${C[p.kind]}" stroke="var(--bg1)" stroke-width="2"/>`;
     // on a phone only each row's lowest and highest model carry a name; the rest are in the tooltip
     const shown = narrow ? irb.filter((p) => { const row = irb.filter((q) => q.sid === p.sid).map((q) => q.v); return p.v === Math.min(...row) || p.v === Math.max(...row); }) : irb;
-    const labs = placeLabels(shown.map((p) => ({ x: p.cx, y: p.y, r: 5.5, text: p.t + (p.kind === 'F' ? '·F' : ''), circle: p.circle,
+    const labs = placeLabels(shown.map((p) => ({ x: p.cx, y: p.y, r: 5.5, text: p.t + (p.kind === 'F' ? '·F' : ''), circle: p.circle, col: listed(p.t) ? 'var(--text3)' : 'var(--text4)',
       bounds: [L, p.y - rowH / 2 + 1, W - R, p.y + rowH / 2 - 1] })), { avoid: pts.map((p) => p.circle) });
     for (const it of labs) s += labelSvg(it, 'var(--text3)');
     s += '</svg>';
@@ -343,7 +365,10 @@
       if (!best || bd > 22) { tip(null); return; }
       const m = models.find((q) => q.t === best.t), lbl = { A: 'A-IRB model', F: 'F-IRB model', SA: 'standardised approach' }[best.kind];
       tip(`<b>${esc(NAMES[best.t] || best.t)} · ${esc(SEG_BY[best.sid].name)}</b><br>${esc(lbl)}: risk weight <b>${pc(best.v, 1)}</b><br>Exposure ${bn(best.ead)} · ${esc(dlabel(best.kind === 'SA' ? m.d4 : m.d6))}` +
-        (best.sid === 'mort' && best.kind !== 'SA' && best.v < 25 ? `<div class="tm">Below the 25 % floor: the floor lifts this book by about ${bn(best.ead * (25 - best.v) / 100)} of RWA.</div>` : ''), e);
+        (best.sid === 'mort' && best.kind !== 'SA' && best.v < 25 ? (GROUP_BOOK[best.t]
+          ? `<div class="tm">The group's mortgages in all four Nordic countries. Norway's and Sweden's 25 % floors apply to those countries' loans, as Article 458 add-ons outside these numbers.</div>`
+          : `<div class="tm">Below the 25 % floor: the floor lifts this book by about ${bn(best.ead * (25 - best.v) / 100)} of RWA.</div>`) : '') +
+        (listed(best.t) ? '' : '<div class="tm faint">Not listed in Oslo: shown for comparison.</div>'), e);
     };
     el.onpointerleave = () => tip(null);
   }
@@ -407,7 +432,7 @@
       const c = p.appr === 'FIRB' ? C.F : C.A;
       s += `<circle cx="${p.cx.toFixed(1)}" cy="${p.cy.toFixed(1)}" r="${p.r.toFixed(1)}" fill="${c}" fill-opacity=".22" stroke="${c}" stroke-width="1.6"/>`;
     }
-    const labs = placeLabels(pts.map((p) => ({ x: p.cx, y: p.cy, r: p.r, text: p.t + (p.appr === 'FIRB' ? '·F' : ''), circle: p.circle, prio: p.ead })),
+    const labs = placeLabels(pts.map((p) => ({ x: p.cx, y: p.cy, r: p.r, text: p.t + (p.appr === 'FIRB' ? '·F' : ''), circle: p.circle, prio: p.ead, col: LAB(p.t) })),
       { bounds: [L + 2, T, W - R, H - B], avoid: pts.map((p) => p.circle) });
     for (const it of labs) s += labelSvg(it);
     el.style.height = H + 'px'; el.innerHTML = s + '</svg>';
@@ -433,7 +458,7 @@
   // ── expected and unexpected loss per NOK 100 lent ───────────────────────────────────────────────────────────────
   function renderLoss(models) {
     const el = $('#capLoss'), W = el.clientWidth || 640, sid = FOCUS_SEG;
-    const pts = segPoints(models, sid).filter((p) => p.ead > 0 && ok(p.rwa)).map((p) => ({ ...p, elp: 100 * (p.el || 0) / p.ead, ulp: 8 * p.density / 100,
+    const pts = segPoints(models, sid).filter((p) => p.ead > 0 && ok(p.rwa) && p.el > 0).map((p) => ({ ...p, elp: 100 * (p.el || 0) / p.ead, ulp: 8 * p.density / 100,
       prp: 100 * Math.abs(p.prov || 0) / p.ead, cetp: ok(p.cet1) ? p.cet1 * p.density / 100 : null })).sort((a, b) => (b.elp + b.ulp) - (a.elp + a.ulp));
     if (!pts.length) { el.innerHTML = '<div class="empty">No IRB bank reports this portfolio</div>'; return; }
     const L = 96, R = 64, T = 24, rowH = 28, H = T + pts.length * rowH + 28;
@@ -445,7 +470,7 @@
     if (sid === 'mort') s += `<line x1="${x(2)}" x2="${x(2)}" y1="${T - 8}" y2="${H - 24}" stroke="var(--amber)" stroke-width="1.5"/><text x="${x(2) + 4}" y="${T - 11}" fill="var(--amber)" font-size="9">UL at the 25 % floor: 2 %</text>`;
     pts.forEach((p, i) => {
       const y = T + i * rowH, bh = 12, x0 = x(0), xe = x(p.elp), xu = x(p.elp + p.ulp), lab = (p.elp + p.ulp).toFixed(2) + ' %';
-      s += `<text x="${L - 10}" y="${y + 10}" text-anchor="end" fill="var(--text2)" font-size="10">${esc(p.t)}${p.appr === 'FIRB' ? ' ·F' : ''}</text>`;
+      s += `<text x="${L - 10}" y="${y + 10}" text-anchor="end" fill="${LAB(p.t)}" font-size="10">${esc(p.t)}${p.appr === 'FIRB' ? ' ·F' : ''}</text>`;
       if (ok(p.cetp) && x(p.cetp) > xu) s += `<line x1="${xu + 2}" x2="${x(p.cetp)}" y1="${y + bh / 2 + 1}" y2="${y + bh / 2 + 1}" stroke="var(--text4)" stroke-width="1"/>` +
         `<line x1="${x(p.cetp)}" x2="${x(p.cetp)}" y1="${y + 2}" y2="${y + bh}" stroke="var(--text3)" stroke-width="2"/>`;
       s += `<rect x="${x0}" y="${y + 1}" width="${Math.max(0.5, xe - x0 - 1)}" height="${bh}" rx="2" fill="${C.EL}"/>` +
@@ -519,7 +544,7 @@
       s += `<line x1="${p.cx}" x2="${p.cx}" y1="${sy(100 * p.hi)}" y2="${sy(100 * Math.max(p.lo, lo / 100))}" stroke="${col}" stroke-width="1.5" opacity=".5"/>` +
         `<circle cx="${p.cx}" cy="${p.cy}" r="5" fill="${p.suspect ? 'none' : col}" stroke="${p.suspect ? col : 'var(--bg1)'}" stroke-width="${p.suspect ? 1.5 : 2}"/>`;
     }
-    const labs = placeLabels(pts.map((p) => ({ x: p.cx, y: p.cy, r: 5, text: p.t + (p.appr === 'FIRB' ? '·F' : '') + (p.suspect ? ' !' : ''), circle: p.circle, prio: p.n })),
+    const labs = placeLabels(pts.map((p) => ({ x: p.cx, y: p.cy, r: 5, text: p.t + (p.appr === 'FIRB' ? '·F' : '') + (p.suspect ? ' !' : ''), circle: p.circle, prio: p.n, col: LAB(p.t) })),
       { bounds: [L + 2, T + 12, W - R, H - B - 12], avoid: pts.map((p) => p.circle) });
     for (const it of labs) s += labelSvg(it);
     el.style.height = H + 'px'; el.innerHTML = s + '</svg>';
@@ -553,7 +578,7 @@
     });
     rows.forEach((m, i) => {
       const y = T + i * rowH + 10, gap = m.r - 72.5;
-      s += `<text x="${L - 10}" y="${y + 4}" text-anchor="end" fill="var(--text2)" font-size="10">${esc(m.t)}</text>` +
+      s += `<text x="${L - 10}" y="${y + 4}" text-anchor="end" fill="${LAB(m.t)}" font-size="10">${esc(m.t)}</text>` +
         `<line x1="${x(X0)}" x2="${x(m.r)}" y1="${y}" y2="${y}" stroke="${C.A}" stroke-width="2" opacity=".55"/>` +
         `<circle cx="${x(m.r)}" cy="${y}" r="5.5" fill="${C.A}" stroke="var(--bg1)" stroke-width="2"/>` +
         `<text x="${W - R + 8}" y="${y + 4}" fill="${gap < 0 ? 'var(--hot)' : 'var(--text3)'}" font-size="9.5">${m.r.toFixed(1)} %${narrow ? '' : ' · '}${narrow ? (gap < 0 ? ' binds' : '') : gap < 0 ? `binds in ${STEPS.find(([, v]) => v > m.r)[0]}` : `+${gap.toFixed(1)} pp in 2030`}</text>` +
@@ -564,7 +589,8 @@
       const m = rows[+((e.target.dataset || {}).i)]; if (!m) { tip(null); return; }
       tip(`<b>${esc(NAMES[m.t] || m.t)}</b> · ${esc(dlabel(m.dM1))}<br>Total risk exposure ${bn(m.treaBase)} · the floor's standardised base ${bn(m.base)}` +
         `<br>Ratio <b>${pc(m.r, 1)}</b>. At 72.5 % the floor would add ${m.r < 72.5 ? bn(m.base * 0.725 - m.treaBase) : 'nothing'} at this balance sheet.` +
-        `<div class="tm">The base is CMS1's "RWEA that is the base of the output floor" (EU d), which already applies the transitional treatment of mortgages and unrated corporates.</div>`, e);
+        `<div class="tm">The base is CMS1's "RWEA that is the base of the output floor" (EU d), which already applies the transitional treatment of mortgages and unrated corporates.</div>` +
+        (listed(m.t) ? '' : '<div class="tm faint">Not listed in Oslo: shown for comparison.</div>'), e);
     };
     el.onpointerleave = () => tip(null);
   }
@@ -594,14 +620,21 @@
     const cnt = (n) => n ? `rgba(240,96,96,${Math.min(0.62, 0.12 + n * 0.1).toFixed(2)})` : 'rgba(255,255,255,0.02)';
     let h = `<thead><tr><th class="l">Bank</th><th>Model inspections since 2025</th>${THEMES.map(([, nm]) => `<th>${esc(nm)}</th>`).join('')}</tr></thead><tbody>`;
     const detail = {};
+    let divided = false;
     for (const t of banks) {
+      if (!listed(t) && !divided) { divided = true; h += `<tr class="am-div"><td colspan="${THEMES.length + 2}">Not listed in Oslo · for comparison</td></tr>`; }
       const ins = inspections(t), recent = ins.filter((r) => r.report_date >= RECENT && r.irbF.length);
       const last = recent[0] || ins[0];
       detail[t] = last && { ...last, irbF: recent.length ? recent.flatMap((r) => r.irbF.map((f) => ({ ...f, at: r.report_date }))) : last.irbF, reports: recent };
-      if (!last) { h += `<tr><td class="l">${esc(NAMES[t] || t)}</td><td colspan="${THEMES.length + 1}" class="faint">No report in Tilsynsportalen or the archive</td></tr>`; continue; }
+      if (!last) {
+        const why = GROUP_BOOK[t] || t === 'NDAEK' ? 'No model report from Finanstilsynet: Nordea’s models are approved and inspected by the ECB' : 'No report in Tilsynsportalen or the archive';
+        h += `<tr><td class="l">${esc(NAMES[t] || t)}</td><td colspan="${THEMES.length + 1}" class="faint">${why}</td></tr>`; continue;
+      }
+      // archive reports before Tilsynsportalen carry a summary but no itemised findings: say so rather than "0"
+      const itemised = recent.length || (last.findings || []).length;
       const D = detail[t], by = Object.fromEntries(THEMES.map(([id, , re]) => [id, D.irbF.filter((f) => re.test(f.finding || ''))]));
       h += `<tr><td class="l"><b>${esc(NAMES[t] || t)}</b><small>${ins.length} model report${ins.length === 1 ? '' : 's'} since ${esc((ins[ins.length - 1] || {}).report_date || '')}</small></td>` +
-        `<td class="c" tabindex="0" data-tip="${t}|all"><b class="num">${esc(recent.map((r) => r.report_date).join(' · ') || last.report_date)}</b><span class="am-sub">${D.irbF.length} model finding${D.irbF.length === 1 ? '' : 's'}${recent.some((r) => r.severity === 'breach') ? ' · breach' : ''}</span></td>` +
+        `<td class="c" tabindex="0" data-tip="${t}|all"><b class="num">${esc(recent.map((r) => r.report_date).join(' · ') || last.report_date)}</b><span class="am-sub">${itemised ? `${D.irbF.length} model finding${D.irbF.length === 1 ? '' : 's'}` : 'archive report, findings not itemised'}${recent.some((r) => r.severity === 'breach') ? ' · breach' : ''}</span></td>` +
         THEMES.map(([id]) => `<td class="c" tabindex="0" data-tip="${t}|${id}" style="background:${cnt(by[id].length)}">${by[id].length ? `<b class="num">${by[id].length}</b>` : '<span class="faint">·</span>'}</td>`).join('') + '</tr>';
     }
     const tb = $('#capFindings'); tb.innerHTML = h + '</tbody>';
@@ -619,8 +652,8 @@
   // ── the IRB timeline ────────────────────────────────────────────────────────────────────────────────────────────
   function renderTimeline() {
     const el = $('#capTimeline'), W = el.clientWidth || 900, narrow = W < 640;
-    const banks = IRB_ORDER.filter((t) => ST[t]);
-    const y0 = 2006, y1 = 2027, L = narrow ? 64 : 150, R = 16, T = 34, rowH = 34, H = T + banks.length * rowH + 26;
+    const banks = IRB_ORDER.filter((t) => ST[t]), cut = banks.findIndex((t) => !listed(t)), GAP = cut > 0 ? 22 : 0;
+    const y0 = 2006, y1 = 2027, L = narrow ? 64 : 150, R = 16, T = 34, rowH = 34, H = T + banks.length * rowH + GAP + 26;
     const tOf = (d) => { if (!d) return null; const [y, m] = String(d).split('-').map(Number); return y + ((m || 6) - 0.5) / 12; };
     const x = (yr) => L + (yr - y0) / (y1 - y0) * (W - L - R);
     const now = 2026 + 10.1 / 12;
@@ -631,9 +664,11 @@
       `<text x="${x(tOf(d)) + (i === 2 ? 3 : -3)}" y="${T - 18 + (i === 2 ? 9 : 0)}" text-anchor="${i === 2 ? 'start' : 'end'}" fill="var(--amber)" font-size="8.5" opacity=".85">${nm}</text>`);
     s += `<line x1="${x(now)}" x2="${x(now)}" y1="${T - 8}" y2="${H - 20}" stroke="rgba(255,255,255,.3)"/><text x="${x(now) + 3}" y="${H - 22}" fill="var(--text3)" font-size="8.5">today</text>`;
     const marks = [];
+    if (GAP) s += `<line x1="${narrow ? 6 : 16}" x2="${x(y1)}" y1="${T + cut * rowH + 4}" y2="${T + cut * rowH + 4}" stroke="var(--border2)"/>` +
+      `<text x="${narrow ? 6 : L - 10}" y="${T + cut * rowH + 18}" text-anchor="${narrow ? 'start' : 'end'}" fill="var(--amber)" font-size="8.5" letter-spacing="1.4">NOT LISTED IN OSLO</text>`;
     banks.forEach((t, i) => {
-      const y = T + i * rowH + rowH / 2, st = ST[t];
-      s += `<text x="${L - 10}" y="${y + 3}" text-anchor="end" fill="var(--text2)" font-size="10">${esc(narrow ? t : (NAMES[t] || t))}</text><line x1="${x(y0)}" x2="${x(y1)}" y1="${y}" y2="${y}" stroke="rgba(255,255,255,.07)"/>`;
+      const y = T + i * rowH + rowH / 2 + (GAP && i >= cut ? GAP : 0), st = ST[t];
+      s += `<text x="${L - 10}" y="${y + 3}" text-anchor="end" fill="${LAB(t)}" font-size="10">${esc(narrow ? t : (NAMES[t] || t))}</text><line x1="${x(y0)}" x2="${x(y1)}" y1="${y}" y2="${y}" stroke="rgba(255,255,255,.07)"/>`;
       for (const p of st.pending || []) {
         const a = tOf(p.since); if (!a) continue;
         s += `<line x1="${x(a)}" x2="${x(now)}" y1="${y}" y2="${y}" stroke="${C.R}" stroke-width="3" opacity=".55" stroke-linecap="round"/>`;
@@ -670,6 +705,7 @@
   // ── the scorecard ───────────────────────────────────────────────────────────────────────────────────────────────
   function renderScore(models) {
     const banks = IRB_ORDER.map((t) => models.find((m) => m.t === t)).filter((m) => m && ST[m.t]);
+    const ov = (m, k) => m.dO ? val(m.t, m.dO, 'OV1', k) : undefined;
     const nowYM = 2026 * 12 + 10;
     const monthsSince = (d) => { if (!d) return null; const [y, m] = d.split('-').map(Number); return nowYM - (y * 12 + (m || 6) - 1); };
     const rows = banks.map((m) => {
@@ -684,17 +720,20 @@
         pending: (st.pending || []).length, oldest: pend.length ? Math.max(...pend) : null, rej,
         floor: m.base && m.treaBase ? 100 * m.treaBase / m.base : null, findings: recent.length ? sum(recent.map((r) => r.irbF.length)) : null,
         insDate: recent.length ? recent.map((r) => r.report_date.slice(0, 7)).join(', ') : null,
-        issues: (st.disclosure || []).length };
+        issues: (st.disclosure || []).length,
+        rwaShare: !ok(m.irbShare) && ok(m.csa) && ok(ov(m, 'credit_airb')) ? 100 * ov(m, 'credit_airb') / (ov(m, 'credit_airb') + m.csa) : null };
     });
     const H = ['Bank', 'IRB since', 'On IRB', 'A-IRB share of IRB', 'Mortgage RW (model)', 'Floors & add-ons', 'Model vs SA', 'Defaults / PD, mortgages', 'Defaults / PD, corporates',
       'Output floor 2030', 'Applications pending', 'Model findings since 2025', 'Errors in own tables'];
     let h = `<thead><tr>${H.map((x, i) => `<th${i ? '' : ' class="l"'}>${esc(x)}</th>`).join('')}</tr></thead><tbody>`;
+    let divided = false;
     for (const r of rows) {
       const f = (v, dp = 0, suf = ' %') => ok(v) ? v.toFixed(dp) + suf : '—';
+      if (!listed(r.m.t) && !divided) { divided = true; h += `<tr class="sc-div"><td colspan="${H.length}">Not listed in Oslo · for comparison</td></tr>`; }
       h += `<tr tabindex="0" data-tip="${r.m.t}"><td class="l"><b>${esc(NAMES[r.m.t] || r.m.t)}</b></td>` +
         `<td>${esc(r.st.irb_since || '—')}${r.st.airb_corp_since ? `<small>A-IRB corp. ${esc(r.st.airb_corp_since)}</small>` : ''}</td>` +
-        `<td class="num">${f(r.m.irbShare)}</td><td class="num">${f(r.airbShare)}</td>` +
-        `<td class="num ${ok(r.mortRW) && r.mortRW < 25 ? 'warm' : ''}">${f(r.mortRW, 1)}${ok(r.mortRW) && r.mortRW < 25 ? '<small>floor binds</small>' : ''}</td>` +
+        `<td class="num">${ok(r.m.irbShare) ? f(r.m.irbShare) : ok(r.rwaShare) ? `${f(r.rwaShare)}<small>of credit RWA</small>` : '—'}</td><td class="num">${f(r.airbShare)}</td>` +
+        `<td class="num ${ok(r.mortRW) && r.mortRW < 25 && !GROUP_BOOK[r.m.t] ? 'warm' : ''}">${f(r.mortRW, 1)}${ok(r.mortRW) && r.mortRW < 25 ? `<small>${GROUP_BOOK[r.m.t] ? 'Nordic book' : 'floor binds'}</small>` : ''}</td>` +
         `<td class="num">${ok(r.addonPct) && r.addonPct > 0 ? `+${r.addonPct.toFixed(0)} %<small>${bn(r.m.addon)}</small>` : r.addonPct === 0 ? '—<small>inside IRB numbers</small>' : '—'}</td>` +
         `<td class="num">${f(r.m.vsSA)}</td>` +
         `<td class="num ${ok(r.calM) && r.calM > 1 ? 'hot' : ''}">${ok(r.calM) ? r.calM.toFixed(2) + '×' : '—'}</td>` +
@@ -764,7 +803,7 @@
                    () => renderFocus(models), () => drawFocus(models), () => renderFloor(models), () => renderFindings(models), renderTimeline];
     for (const f of steps) { try { f(); } catch (e) { console.error(e); } }
     const n = new Set(p3.map((r) => r.ticker)).size;
-    $('#capAsof').textContent = `${nb(p3.length)} values from ${n} banks' Pillar 3 reports · year-end 2025 unless marked`;
+    $('#capAsof').textContent = `${nb(p3.length)} values from ${n} banks' Pillar 3 reports and capital notes · year-end 2025 unless marked`;
     let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { renderTracks(models); drawFocus(models); renderFloor(models); renderTimeline(); }, 200); });
   }
   window.BankCapital = { render };
