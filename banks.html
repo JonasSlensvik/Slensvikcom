@@ -10,7 +10,7 @@
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/intel.css">
 <script src="assets/intel.js?v=20261028"></script>
-<script src="assets/banks-capital.js?v=20261103e"></script>
+<script src="assets/banks-capital.js?v=20261104a"></script>
 
 <style>
 /* ═══ BANKS — page-local layer on top of assets/intel.css ═══════════════════
@@ -509,10 +509,12 @@ footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--border
       <div class="panel span6">
         <h3><span><span class="g">▤</span>Expected and unexpected loss · <span class="cap-seg"></span></span><small>per NOK 100 of exposure</small></h3>
         <div class="chart" id="capLoss" style="height:240px"></div>
-        <div class="cap-legend"><span><i style="background:var(--s2)"></i>Expected loss (EL)</span><span><i style="background:var(--s1)"></i>Unexpected loss: 8 % of RWA</span>
-          <span><i class="rule" style="background:#e8eef7"></i>Provisions held</span><span><span style="color:var(--text3)">▲</span> CET1 at the bank's ratio</span></div>
-        <p class="note">From CR6: EL, risk-weighted assets and provisions for the portfolio, before the floors. When provisions
-          fall short of EL, the gap is deducted from CET1.</p>
+        <div class="cap-legend"><span><i style="background:var(--s2)"></i>Expected loss, IRB</span><span><i style="background:var(--s1)"></i>Unexpected loss: 8 % of RWA</span>
+          <span><span style="color:var(--text3)">▲</span> CET1 at the bank's ratio</span></div>
+        <p class="note">From CR6, before the floors. The IRB expected loss is the regulatory one: the models' long-run PD and
+          downturn LGD, twelve months ahead for every performing loan. It is not the IFRS 9 loss allowance the provisions
+          hold (point-in-time PD, best-estimate LGD, twelve months or lifetime by stage), so in a calm year it runs well above
+          them. How much of it the provisions cover, bank by bank, is in the panel below the back-test.</p>
       </div>
       <div class="panel span6">
         <h3><span><span class="g">⊿</span>Do the PDs hold? · <span class="cap-seg"></span></span><small>2025 defaults against the PDs assigned</small></h3>
@@ -529,6 +531,16 @@ footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--border
           standardised approach would give, rising to 72.5 % in 2030 (amber steps). The base is CMS1's output-floor base at
           the bank's latest disclosure. Norway's mortgage floor already lifts IRB banks' assets, so the output floor is far from
           binding for most.</p>
+      </div>
+      <div class="panel span12">
+        <h3><span><span class="g">◧</span>Expected loss against provisions · the whole IRB book</span><small>CR6's expected loss and the bank's own deduction (CC1 row 12)</small></h3>
+        <div class="chart" id="capCover" style="height:300px"></div>
+        <div class="cap-legend"><span><i style="background:#c9d3e2"></i>Covered by provisions</span><span><i style="background:var(--hot)"></i>Shortfall, deducted from CET1</span></div>
+        <p class="note">CRR art. 159 sets every provision on the IRB book (stages 1–3) against the IRB expected loss; what the
+          provisions do not cover is deducted from CET1 (art. 36(1)(d)), an excess counts as Tier 2 up to 0.6 % of IRB RWA.
+          Bar: expected loss per NOK 100 of IRB exposure. The deduction is the bank's own figure, so this comparison is like
+          for like; CR6's provisions column often is not: five banks put only the defaulted loans' provisions there, which the
+          EBA instructions do not allow (hover a bar).</p>
       </div>
     </div>
 

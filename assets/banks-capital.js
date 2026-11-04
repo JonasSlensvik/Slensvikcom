@@ -16,6 +16,7 @@
   const nb = (v, dp = 0) => !ok(v) ? '—' : (+v).toLocaleString('nb-NO', { minimumFractionDigits: dp, maximumFractionDigits: dp });
   const pc = (v, dp = 1) => !ok(v) ? '—' : (+v).toFixed(dp) + ' %';
   const bn = (mnok, dp) => !ok(mnok) ? '—' : 'NOK ' + nb(mnok / 1000, dp ?? (Math.abs(mnok) < 10000 ? 1 : 0)) + ' bn';
+  const amt = (mnok) => ok(mnok) && Math.abs(mnok) < 1000 ? `NOK ${nb(mnok)} m` : bn(mnok);   // millions below a billion
   const sum = (a) => a.reduce((s, x) => s + (x || 0), 0);
   const median = (a) => { const s = a.filter(ok).sort((x, y) => x - y); if (!s.length) return null; const m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
 
@@ -41,6 +42,7 @@
   const listed = (t) => !ST[t] || ST[t].listed !== false;      // Nordea and Santander Consumer are comparators, not in the counts
   const LAB = (t, c = 'var(--text2)') => listed(t) ? c : 'var(--text3)';
   const GROUP_BOOK = { NDA: true };                            // a Nordic group: Norway's 25 % floor covers only part of its mortgages
+  const cover = (t) => (ST[t] || {}).cr6_provisions;           // what CR6's provisions column holds: all grades, the default grade, …
 
   // ── data ─────────────────────────────────────────────────────────────────────────────────────────────────────────
   const IX = new Map(), DATES = {};
@@ -462,7 +464,7 @@
       prp: 100 * Math.abs(p.prov || 0) / p.ead, cetp: ok(p.cet1) ? p.cet1 * p.density / 100 : null })).sort((a, b) => (b.elp + b.ulp) - (a.elp + a.ulp));
     if (!pts.length) { el.innerHTML = '<div class="empty">No IRB bank reports this portfolio</div>'; return; }
     const L = 96, R = 64, T = 24, rowH = 28, H = T + pts.length * rowH + 28;
-    const mx = Math.max(...pts.map((p) => Math.max(p.elp + p.ulp, p.cetp || 0, p.prp)), sid === 'mort' ? 2.2 : 1) * 1.06;
+    const mx = Math.max(...pts.map((p) => Math.max(p.elp + p.ulp, p.cetp || 0)), sid === 'mort' ? 2.2 : 1) * 1.06;
     const x = (v) => L + v / mx * (W - L - R);
     let s = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="Expected and unexpected loss per NOK 100 of exposure">`;
     const step = mx > 8 ? 2 : mx > 4 ? 1 : 0.5;
@@ -474,8 +476,7 @@
       if (ok(p.cetp) && x(p.cetp) > xu) s += `<line x1="${xu + 2}" x2="${x(p.cetp)}" y1="${y + bh / 2 + 1}" y2="${y + bh / 2 + 1}" stroke="var(--text4)" stroke-width="1"/>` +
         `<line x1="${x(p.cetp)}" x2="${x(p.cetp)}" y1="${y + 2}" y2="${y + bh}" stroke="var(--text3)" stroke-width="2"/>`;
       s += `<rect x="${x0}" y="${y + 1}" width="${Math.max(0.5, xe - x0 - 1)}" height="${bh}" rx="2" fill="${C.EL}"/>` +
-        `<rect x="${xe + 1}" y="${y + 1}" width="${Math.max(0.5, xu - xe - 1)}" height="${bh}" rx="2" fill="${C.UL}"/>` +
-        (p.prp > 0 ? `<line x1="${x(p.prp)}" x2="${x(p.prp)}" y1="${y - 2}" y2="${y + bh + 3}" stroke="#e8eef7" stroke-width="2"/>` : '');
+        `<rect x="${xe + 1}" y="${y + 1}" width="${Math.max(0.5, xu - xe - 1)}" height="${bh}" rx="2" fill="${C.UL}"/>`;
       const lx = ok(p.cetp) && x(p.cetp) > xu ? x(p.cetp) + 6 : xu + 6;
       s += `<text x="${lx}" y="${y + 10}" fill="var(--text2)" font-size="10" class="num">${lab}</text>` +
         `<rect x="0" y="${y - 4}" width="${W}" height="${rowH}" fill="transparent" data-i="${i}"/>`;
@@ -485,11 +486,76 @@
       const i = e.target.dataset ? +e.target.dataset.i : NaN, p = pts[i];
       if (!p) { tip(null); return; }
       tip(`<b>${esc(NAMES[p.t] || p.t)} · ${esc(SEG_BY[sid].name)}${p.appr === 'FIRB' ? ' · F-IRB' : ''}</b>` +
-        tline(C.EL, `expected loss, ${bn(p.el)}`, pc(p.elp, 2)) + tline(C.UL, `unexpected loss, 8 % of ${bn(p.rwa)} RWA`, pc(p.ulp, 2)) +
-        tline('#e8eef7', `provisions held, ${bn(Math.abs(p.prov || 0))}`, pc(p.prp, 2)) +
+        tline(C.EL, `expected loss (IRB), ${bn(p.el)}`, pc(p.elp, 2)) + tline(C.UL, `unexpected loss, 8 % of ${bn(p.rwa)} RWA`, pc(p.ulp, 2)) +
+        (cover(p.t) === 'all' ? tline('#c9d3e2', `provisions on these loans, ${bn(Math.abs(p.prov || 0))} (CR6, every grade)`, pc(p.prp, 2))
+          : cover(p.t) === 'default' ? `<div class="tm faint">CR6's provisions column puts this bank's provisions on the default grade (${bn(Math.abs(p.prov || 0))}), leaving stage 1–2 out: not comparable with EL.</div>` : '') +
         (ok(p.cetp) ? tline('var(--text3)', `CET1 behind it at the bank's ${pc(p.cet1, 1)} ratio, ${bn(p.cet1 / 100 * p.rwa)}`, pc(p.cetp, 2)) : '') +
         `<div class="tm">Per NOK 100 of exposure (${bn(p.ead)}), from the models' own numbers before any floor. The formula sets capital
-          for a one-in-a-thousand-year loss year; EL is what the bank expects to lose in an average one.</div>`, e);
+          for a one-in-a-thousand-year loss year; EL is what the models expect in an average year over the cycle (long-run PD,
+          downturn LGD), not the IFRS 9 allowance.</div>`, e);
+    };
+    el.onpointerleave = () => tip(null);
+  }
+
+  // ── the whole IRB book: expected loss against provisions ─────────────────────────────────────────────────────────
+  // CR6's expected loss (every IRB class) against the bank's own deduction for the part provisions do not cover (CC1
+  // row 12, CRR art. 36(1)(d) and 159). EL − shortfall is the part covered, pool by pool (defaulted, performing).
+  function renderCover(models) {
+    const el = $('#capCover'); if (!el) return;
+    const W = el.clientWidth || 900, narrow = W < 640;
+    const rows = [], only = [];
+    for (const t of IRB_ORDER) {
+      const m = models.find((x) => x.t === t); if (!m || !ST[t]) continue;
+      const elTot = sum(m.cls.map((c) => c.el)), d = m.d6;
+      const sf = d ? val(t, d, 'CC1', 'el_shortfall') : undefined;
+      if (elTot > 0 && ok(sf)) {
+        const trea = val(t, d, 'KM1', 'trea') ?? val(t, d, 'OV1', 'total') ?? m.trea;
+        const prov = sum(m.cls.map((c) => Math.abs(c.prov || 0)));
+        rows.push({ t, d, el: elTot, ead: m.cr6ead, sf: Math.min(sf, elTot), cov: Math.max(0, elTot - sf), prov, trea,
+          bp: trea ? 1e4 * sf / trea : null });
+      } else {                                 // a deduction without an EL in the tables (CR7-A only, no Pillar 3)
+        const dC = latest(t, 'CC1'), v = dC ? val(t, dC, 'CC1', 'el_shortfall') : undefined;
+        const trea = dC ? (val(t, dC, 'KM1', 'trea') ?? val(t, dC, 'OV1', 'total')) : null;
+        if (ok(v)) only.push({ t, d: dC, sf: v, bp: trea ? 1e4 * v / trea : null });
+      }
+    }
+    if (!rows.length) { el.innerHTML = '<div class="empty">No expected-loss figures</div>'; return; }
+    const sorted = [...rows.filter((r) => listed(r.t)).sort((a, b) => a.cov / a.el - b.cov / b.el), ...rows.filter((r) => !listed(r.t))];
+    const L = narrow ? 58 : 190, R = narrow ? 96 : 300, T = 24, rowH = 27, GAP = sorted.some((r) => !listed(r.t)) ? 16 : 0;
+    const H = T + sorted.length * rowH + GAP + only.length * 22 + 26;
+    const mx = Math.max(...sorted.map((r) => 100 * r.el / r.ead)) * 1.08, x = (v) => L + v / mx * (W - L - R);
+    const step = mx > 0.8 ? 0.2 : 0.1;
+    let s = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="IRB expected loss against provisions, per bank">`;
+    for (let v = 0; v <= mx + 1e-9; v += step) s += `<line x1="${x(v)}" x2="${x(v)}" y1="${T - 6}" y2="${T + sorted.length * rowH + GAP}" stroke="var(--grid)"/>` +
+      `<text x="${x(v)}" y="${T - 10}" text-anchor="middle" fill="var(--text4)" font-size="9">${v.toFixed(1)} %</text>`;
+    let y = T, divided = false;
+    sorted.forEach((r, i) => {
+      if (!listed(r.t) && !divided) { divided = true; y += GAP; }
+      const x0 = x(0), xc = x(100 * r.cov / r.ead), xe = x(100 * r.el / r.ead), cy = y + rowH / 2;
+      s += `<text x="${L - 10}" y="${cy + 4}" text-anchor="end" fill="${LAB(r.t)}" font-size="10">${esc(narrow ? r.t : (NAMES[r.t] || r.t))}</text>` +
+        `<rect x="${x0}" y="${cy - 6}" width="${Math.max(0.5, xc - x0 - 1)}" height="12" rx="2" fill="#c9d3e2" opacity=".85"/>` +
+        `<rect x="${xc + 1}" y="${cy - 6}" width="${Math.max(0.5, xe - xc - 1)}" height="12" rx="2" fill="var(--hot)"/>` +
+        `<text x="${xe + 8}" y="${cy + 4}" fill="var(--text2)" font-size="10" class="num">${(100 * r.cov / r.el).toFixed(0)} % covered` +
+        (narrow ? '' : ` · <tspan fill="var(--hot)">${amt(r.sf)}</tspan> deducted${ok(r.bp) ? `, ${r.bp.toFixed(0)} bp of CET1` : ''}`) + `</text>` +
+        `<rect x="0" y="${y}" width="${W}" height="${rowH}" fill="transparent" data-i="${i}"/>`;
+      r.y = y; y += rowH;
+    });
+    only.forEach((r) => {
+      s += `<text x="${L - 10}" y="${y + 16}" text-anchor="end" fill="${LAB(r.t)}" font-size="10">${esc(narrow ? r.t : (NAMES[r.t] || r.t))}</text>` +
+        `<text x="${L}" y="${y + 16}" fill="var(--text3)" font-size="10" class="num"><tspan fill="var(--hot)">${amt(r.sf)}</tspan> deducted${ok(r.bp) ? `, ${r.bp.toFixed(0)} bp${narrow ? '' : ' of CET1'}` : ''}` +
+        (narrow ? '' : ` · ${esc(dlabel(r.d))} · ${r.t === 'NDAEK' ? 'its CR7-A has no expected loss' : 'no Pillar 3 tables'}`) + `</text>`;
+      y += 22;
+    });
+    el.style.height = H + 'px'; el.innerHTML = s + '</svg>';
+    const CR6P = { all: 'every grade, as the EBA template asks', default: 'all or nearly all of it on the default grade, stage 1–2 left off the performing grades', other: 'in its own table layout, not read here' };
+    el.onpointermove = (e) => {
+      const r = sorted[+((e.target.dataset || {}).i)]; if (!r) { tip(null); return; }
+      const c = cover(r.t);
+      tip(`<b>${esc(NAMES[r.t] || r.t)}</b> · ${esc(dlabel(r.d))}<br>IRB expected loss <b>${amt(r.el)}</b> on ${bn(r.ead)} of IRB exposure (${pc(100 * r.el / r.ead, 2)})` +
+        tline('#c9d3e2', `covered by provisions, ${amt(r.cov)}`, pc(100 * r.cov / r.el, 0)) +
+        tline('var(--hot)', `shortfall deducted from CET1 (CC1 row 12)${ok(r.bp) ? `, ${r.bp.toFixed(0)} bp of the CET1 ratio` : ''}`, amt(r.sf)) +
+        (c ? `<div class="tm">CR6's provisions column: ${amt(r.prov)}, ${esc(CR6P[c] || '')}${c === 'default' && r.cov ? ` (${pc(100 * r.prov / r.cov, 0)} of what the bank sets against EL)` : ''}.</div>` : '') +
+        `<div class="tm faint">Provisions are IFRS 9 allowances (point-in-time PD, best-estimate LGD); the IRB EL uses long-run PDs and downturn LGDs, so in a calm year the provisions cover only part of it. Provisions on defaulted loans beyond their EL cannot cover the performing loans' EL (art. 159).</div>`, e);
     };
     el.onpointerleave = () => tip(null);
   }
@@ -800,11 +866,11 @@
       return { t, trea, cet1, irbVia, parts, mortRW, src: ok(m.trea) ? `Pillar 3, ${dlabel(m.dK || m.dO)}` : fb ? `quarterly report ${fb.period}` : 'no figures' };
     }).filter((b) => ok(b.trea));
     const steps = [() => renderHero(models, saBanks), () => renderMatrix(models, saBanks), () => renderScore(models), () => renderTracks(models),
-                   () => renderFocus(models), () => drawFocus(models), () => renderFloor(models), () => renderFindings(models), renderTimeline];
+                   () => renderFocus(models), () => drawFocus(models), () => renderFloor(models), () => renderCover(models), () => renderFindings(models), renderTimeline];
     for (const f of steps) { try { f(); } catch (e) { console.error(e); } }
     const n = new Set(p3.map((r) => r.ticker)).size;
     $('#capAsof').textContent = `${nb(p3.length)} values from ${n} banks' Pillar 3 reports and capital notes · year-end 2025 unless marked`;
-    let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { renderTracks(models); drawFocus(models); renderFloor(models); renderTimeline(); }, 200); });
+    let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { renderTracks(models); drawFocus(models); renderFloor(models); renderCover(models); renderTimeline(); }, 200); });
   }
   window.BankCapital = { render };
 })();
