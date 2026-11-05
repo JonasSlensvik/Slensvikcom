@@ -499,8 +499,11 @@ function windowRates(cyc, lk, rd, ngb, spreads) {
     const k = obs.filter(v => v != null).length;
     const proj = weds.map((w, i) => obs[i] != null ? obs[i] : projectFP(w, ngb[t.ngb], spreads[t.k]));
     const computed = proj.every(v => v != null) ? avg(proj) : null;
+    // the other end of the range: the banks keep the latest Wednesday's prices for the rest of the month
+    const lastObs = [...obs].reverse().find(v => v != null);
+    const hold = lastObs != null ? avg(obs.map(v => v != null ? v : lastObs)) : null;
     out[t.k] = {
-      rate: official != null ? official : computed, official, computed, k, n: weds.length,
+      rate: official != null ? official : computed, official, computed, hold, k, n: weds.length,
       kind: official != null ? 'official' : computed == null ? 'missing' : k === weds.length ? 'computed' : 'provisional',
     };
   }
@@ -803,13 +806,23 @@ function alreadyBox(ctx) {
   const prevName = MONTHS[cyc.prevOpen.getMonth()], winName = MONTHS[cyc.winOpen.getMonth()], nextName = MONTHS[cyc.nextOpen.getMonth()];
   const p3 = dec.prev.find(p => p.t.k === 3) || dec.prev[0];
   const wait = p3.waitAdv > 0;
+  const r3 = ctx.rates[p3.t.k], prov = r3.kind === 'provisional';
+  const srcMonth = MONTHS[cyc.src.getMonth()];
+  const holdBp = r3.hold != null ? (r3.hold - p3.prevRate) * 100 : null;
+  const Win = winName.charAt(0).toUpperCase() + winName.slice(1);
+  const way = r3.hold == null || Math.abs(r3.hold - r3.rate) < 0.005 ? '' : r3.rate < r3.hold ? ' ned' : ' opp';
+  const rateTxt = prov
+    ? `${Win}-satsen er ikke satt ennå: den blir snittet av ${r3.n} onsdager i ${srcMonth}, og ${r3.k} av dem er observert. Anslaget er ${pct(r3.rate)}, altså ${bp(p3.itm)} i pengene`
+      + (way ? `. Anslaget regner med at bankene følger statsrenten${way}; holder de prisene fra siste onsdag (${pct(r3.hold)}), blir det ${bp(holdBp)}.` : '.')
+    : `${Win}-satsen er ${pct(r3.rate)}, altså ${bp(p3.itm)} i pengene.`;
   return `<div class="already">
     <div class="already-title">Bandt du allerede i ${prevName}-vinduet?</div>
     <p>Da gjelder ikke spørsmålet om å binde, men om å <strong>bryte nå eller vente</strong>. Du kan ikke bryte og binde på nytt i samme vindu — etter et brudd må du ha flytende rente i minst to måneder.
-    For ${p3.t.label} bandt du ${pct(p3.prevRate)}; ${winName}-satsen er ${pct(ctx.rates[p3.t.k].rate)}, altså ${bp(p3.itm)} i pengene.
+    For ${p3.t.label} bandt du ${pct(p3.prevRate)}. ${rateTxt}
     ${wait ? `<strong>Vent til ${nextName}</strong>: forventet ekstra gevinst er ${kr(p3.waitAdv)} mer enn å bryte nå, etter at du betaler fastrente i to måneder til.` : `<strong>Bryt i ${winName}-vinduet</strong>: å vente gir ikke forventet merverdi (${kr(p3.waitAdv)}).`}</p>
-    <div class="tbl-wrap"><table class="wed-table"><thead><tr><th>Binding</th><th>Din sats (${prevName})</th><th>${winName}-sats</th><th>I pengene</th><th>Bryt nå</th><th>Vent til ${nextName}</th></tr></thead><tbody>
-    ${dec.prev.map(p => `<tr><td>${sw(p.t)} ${p.t.label}</td><td>${pct(p.prevRate)}</td><td>${pct(ctx.rates[p.t.k].rate)}</td><td class="${p.itm >= 0 ? 'pos' : 'neg'}">${bp(p.itm, 1)}</td><td>${kr(p.nowGain)}</td><td class="${p.waitAdv > 0 ? 'pos' : ''}">${kr(p.waitGain - p.waitCarry)}</td></tr>`).join('')}
+    <div class="tbl-wrap"><table class="wed-table"><thead><tr><th>Binding</th><th>Din sats (${prevName})</th><th>${winName}-sats${prov ? ' (anslag)' : ''}</th>${prov ? '<th>Hvis prisene holder</th>' : ''}<th>I pengene</th><th>Bryt nå</th><th>Vent til ${nextName}</th></tr></thead><tbody>
+    ${dec.prev.map(p => { const r = ctx.rates[p.t.k];
+      return `<tr><td>${sw(p.t)} ${p.t.label}</td><td>${pct(p.prevRate)}</td><td>${pct(r.rate)}</td>${prov ? `<td>${r.hold != null ? pct(r.hold) : '—'}</td>` : ''}<td class="${p.itm >= 0 ? 'pos' : 'neg'}">${bp(p.itm, 1)}</td><td>${kr(p.nowGain)}</td><td class="${p.waitAdv > 0 ? 'pos' : ''}">${kr(p.waitGain - p.waitCarry)}</td></tr>`; }).join('')}
     </tbody></table></div>
   </div>`;
 }
