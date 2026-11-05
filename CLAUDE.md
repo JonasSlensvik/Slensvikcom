@@ -96,6 +96,10 @@ backend architecture, scheduled jobs, DB access, and working agreements.
   net NOK after two months of fixed-vs-floating carry, dated plan, "already locked?" advice), then
   lockable-vs-market chart, calibration on every official cycle since 2021, live Norges Bank, **NOK-swapkurven ·
   SEB**, the observation tracker.
+  - **Before Lånekassen publishes, the window's rate is the average of the Wednesdays observed so far** — no
+    projection (Jonas, 2026-11-05: "only the facts we have observed"; `windowRates`). Before the source month's first
+    Wednesday it is the latest reading before it (kind `prior`). Yield projections stay only where the page
+    forecasts the *next* window (the observation tracker's model line, the market chart's dashed model).
   - **The SEB card (back 2026-10-30)** has six tabs: today's curve against −7/−30/−90 days, 3/5/10-year history
     beside the NGB yield, forward rates (1-year forwards bootstrapped from the par curve, plus the 3-year rate one
     year ahead), and an animated curve.
