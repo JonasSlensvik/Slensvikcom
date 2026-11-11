@@ -117,7 +117,18 @@ backend architecture, scheduled jobs, DB access, and working agreements.
   commodities/vol, geopolitics, chokepoints, sanctions, Norway lens, live data-health table. Reads the
   ENEXT `api.world_*` tables (see `../ENEXT/docs/world-intel.md`); `?static=1` freezes animation for
   screenshots.
-- `banks.html` — Norwegian banks (2026-10-28), World shell. **Ladder** hero (policy rate → unsecured debt → liens →
+- `banks.html` — Nordic banks (2026-11-11) above the Norwegian deep dive (2026-10-28), World shell. **Nordics** hero
+  (`assets/banks-nordic.js`, self-starting; d3 v7 + topojson-client + world-atlas 50m from jsDelivr): an SVG map of NO, SE, DK, FI
+  with Iceland in an inset (the copy sits over the Norwegian Sea; on phones it stacks above a tighter frame); banking groups at
+  their head office sized by Nordic credit exposure (CCyB1), collisions resolved with d3-force around the city; arcs = lending
+  into another Nordic country (amber) and from other EEA banks (magenta, from a node in Schleswig-Holstein); countries shaded by
+  market size / concentration / foreign lenders / IRB mortgage risk weight; latest-per-bank or a reference date. Market-share
+  panel per country and for the Nordics (bars coloured by home / other Nordic / other EEA), the **Nordic league** (sortable:
+  exposure + footprint, TREA, CET1, distance to the MDA trigger, leverage, LCR, NSFR, stage 2/3, S3 cover, CR6 mortgage RW) and
+  the **bank profile** (`#bank=<LEI>`: KM1 history, OV1 split incl. credit RWA on top of the models, CCyB1 by country, CR1 by
+  stage with cover, CR6 per class with the PD-grade distribution, IRRBB1, CC1, and "What we fixed" from `api.nordic_fixes`).
+  Map focus (`ST.focus`) is the last thing clicked, nothing on load. Data: ENEXT `api.nordic_*` / `api.p3dh_*`; runbook
+  `../ENEXT/docs/banks-nordic.md`. Then **Norway** → **Ladder** (policy rate → unsecured debt → liens →
   car loans (SSB stopped the series in 2022, drawn dashed) → mortgages, business bankruptcies as the parallel rung;
   each rung = y/y change of its 12-month total, stress hot ≥ +15 / warm ≥ +5 / cool ≤ −10, prices inverted) →
   **History** (rungs since 1995 with episode bands, static lead-lag table from ENEXT `research/banks/ladder.py`) →
