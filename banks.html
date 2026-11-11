@@ -13,7 +13,7 @@
 <script src="assets/banks-capital.js?v=20261104a"></script>
 <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js" defer></script>
-<script src="assets/banks-nordic.js?v=20261111f" defer></script>
+<script src="assets/banks-nordic.js?v=20261111h" defer></script>
 
 <style>
 /* ═══ BANKS — page-local layer on top of assets/intel.css ═══════════════════
@@ -389,7 +389,7 @@ table.fd td b { color: var(--text1); font-weight: 500; }
 .nm-bar .v { text-align: right; color: var(--text2); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .nm-bar .v small { color: var(--text4); margin-left: 4px; }
 .nm-league-tabs { margin-bottom: 12px; }
-table.nm-ut { min-width: 1260px; }
+table.nm-ut { min-width: 1380px; }
 .nm-foot { display: flex; gap: 2px; width: 120px; height: 8px; border-radius: 4px; overflow: hidden; vertical-align: middle; }
 /* the bank profile */
 .nb-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 14px; }
@@ -491,6 +491,42 @@ ul.nb-notes li { break-inside: avoid; margin-bottom: 4px; } ul.nb-notes b { colo
 @media (max-width: 1100px) { .nh-body { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 760px) { .nh .nm-bar { grid-template-columns: minmax(0, 150px) minmax(0, 1fr) 96px; gap: 8px; } .nh-kpis .big { font-size: 22px; } }
 
+/* the reporting season */
+.rs-season { display: flex; gap: 8px 28px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 14px; }
+.rs-season .big { font-family: var(--sans); font-size: 26px; font-weight: 700; color: var(--text1); line-height: 1.1; }
+.rs-season .k { font-size: 10.5px; color: var(--text3); line-height: 1.5; }
+.rs-season .k b { color: var(--text1); font-weight: 500; font-variant-numeric: tabular-nums; }
+.rs-tabs { margin-bottom: 12px; }
+table.rs-ut { min-width: 760px; }
+table.rs-ut td { padding-top: 6px; padding-bottom: 6px; }
+table.rs-ut td.nowrap { white-space: nowrap; }
+table.rs-ut td.bn { white-space: nowrap; max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
+table.rs-ut td small { font-size: 9px; letter-spacing: .04em; }
+table.rs-ut td.bn small { display: inline; margin-left: 5px; }
+.rs-more { font: inherit; font-size: 10.5px; color: var(--text2); background: rgba(5,8,16,.5); border: 1px solid var(--border2);
+           border-radius: 4px; padding: 5px 12px; margin-top: 10px; cursor: pointer; }
+.rs-more:hover { color: var(--text1); border-color: var(--border3); }
+.rs-day { display: grid; grid-template-columns: 86px minmax(0, 1fr); gap: 10px; padding: 5px 0; border-top: 1px solid var(--border);
+          font-size: 10.5px; }
+.rs-day .d { color: var(--text3); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.rs-day .b { display: flex; flex-wrap: wrap; gap: 4px 12px; color: var(--text1); }
+.rs-day .b small { color: var(--text4); margin-left: 4px; font-size: 9px; }
+.rs-day .lnk { cursor: pointer; } .rs-day .lnk:hover { color: var(--amber); }
+.nb-res .chart svg { display: block; width: 100%; height: auto; }
+.nb-res .chart .ax text { fill: var(--text4); font-size: 9.5px; font-family: var(--mono); }
+.nb-res .chart .ax line, .nb-res .chart .ax path { stroke: var(--axis); }
+.nb-res .chart .gl line { stroke: var(--grid); }
+.legend-row i.sq { width: 9px; height: 9px; border-radius: 2px; vertical-align: -1px; }
+table.nb-res-t { min-width: 760px; font-size: 11px; margin-top: 10px; }
+@media (max-width: 1100px) { .rs-up { grid-column: span 12; } }
+@media (max-width: 760px) {
+  table.rs-ut { min-width: 0; width: 100%; }
+  table.rs-ut .opt, table.rs-ut .opt2 { display: none; }
+  table.rs-ut td, table.rs-ut th { padding-left: 4px; padding-right: 4px; }
+  table.rs-ut td.bn { max-width: 112px; }
+  .rs-season .big { font-size: 22px; }
+}
+
 /* ── method ──────────────────────────────────────────────────────────────── */
 .method { columns: 2 360px; column-gap: 28px; font-size: 11px; color: var(--text3); line-height: 1.7; }
 .method p { break-inside: avoid; margin-bottom: 10px; }
@@ -530,7 +566,7 @@ footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--border
   </header>
 
   <nav class="rail" id="rail" aria-label="Sections">
-    <a href="#nordic">Nordics</a><a href="#nordic-home">Home markets</a><a href="#nordic-league">League</a><a href="#nordic-bank">Bank</a>
+    <a href="#nordic">Nordics</a><a href="#nordic-home">Home markets</a><a href="#nordic-results">Results</a><a href="#nordic-league">League</a><a href="#nordic-bank">Bank</a>
     <a href="#norway">Norway</a><a href="#ladder">Ladder</a><a href="#history">History</a><a href="#sectors">Sectors</a><a href="#exposure">Exposure</a><a href="#capital">Capital</a>
     <a href="#models">Models</a><a href="#banks">Banks</a><a href="#pricing">Prices</a><a href="#supervision">Supervision</a><a href="#households">Households</a><a href="#method">Method</a>
     <span class="rail-asof" id="railAsof"></span>
@@ -564,6 +600,19 @@ footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--border
         foreign banks' branches the EBA hub misses included, with the history behind each share. Pick a country and a measure; drag the
         slider or click the chart to move through time; click a bank for its profile.</p></div>
     <div class="panel nh" id="nhPanel" aria-live="polite"><div class="empty">Loading the national statistics …</div></div>
+  </section>
+
+  <!-- ═══ THE REPORTING SEASON (assets/banks-nordic.js) ═════════════════ -->
+  <section class="sec" id="nordic-results">
+    <div class="sec-title"><h2><span class="g">▦</span>The reporting season</h2>
+      <p>Every Nordic bank's quarterly report as it comes out — the listed banks and the bond issuers on Nasdaq Stockholm, Copenhagen,
+        Helsinki and Iceland, and Oslo Børs — each read twice by a language model and checked against its own totals: profit, net interest
+        income, credit losses, returns and capital against the same quarter a year earlier, and who reports next. Click a bank for its
+        profile.</p></div>
+    <div class="grid g12">
+      <div class="panel span8 rs" id="rsFeed" aria-live="polite"><div class="empty">Loading the reports …</div></div>
+      <div class="panel span4 rs-up" id="rsUp"></div>
+    </div>
   </section>
 
   <!-- ═══ THE NORDIC LEAGUE ══════════════════════════════════════════════ -->

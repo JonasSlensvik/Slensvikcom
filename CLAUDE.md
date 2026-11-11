@@ -127,7 +127,11 @@ backend architecture, scheduled jobs, DB access, and working agreements.
   2026-11-11): each bank's share of lending and deposits in NO/SE/DK/FI from the national statistics (`api.nordic_shares`,
   `api.nordic_share_dates`, ENEXT `research/banks/national.py`) — country, measure and (Norway) banks/alliances tabs, bars with
   the residual hatched, a d3 share-history chart (top six groups + residual, one colour per group from a fixed slot map, click
-  or slider to move the date); clicking a country on the map switches it. The **Nordic league** (sortable:
+  or slider to move the date); clicking a country on the map switches it. **The reporting season** (`#nordic-results`,
+  2026-11-11): every Nordic bank's quarterly report newest first (`api.nordic_report_feed` + `api.nordic_quarters`: net profit and
+  NII y/y, credit losses in annualised bp, ROE, C/I, CET1, link to the announcement), the season's medians and "who reports next"
+  (`api.nordic_report_upcoming`); the bank profile opens with **Quarterly results** (d3 stacked income, costs, losses, profit +
+  an eight-quarter table). The **Nordic league** (sortable:
   exposure + footprint, TREA, CET1, distance to the MDA trigger, leverage, LCR, NSFR, stage 2/3, S3 cover, CR6 mortgage RW) and
   the **bank profile** (`#bank=<LEI>`: KM1 history, OV1 split incl. credit RWA on top of the models, CCyB1 by country, CR1 by
   stage with cover, CR6 per class with the PD-grade distribution, IRRBB1, CC1, and "What we fixed" from `api.nordic_fixes`).

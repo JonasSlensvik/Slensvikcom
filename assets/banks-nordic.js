@@ -466,7 +466,10 @@
       const k = (m) => latestMetric(b.lei, m);
       const cq = latestCQ(b.lei), mort = latestMort(b.lei);
       const cet1 = k('cet1_ratio'), req = (ok(val(k('p2r_cet1'))) && ok(val(k('cbr')))) ? 0.045 + val(k('p2r_cet1')) + val(k('cbr')) : null;
+      const rk = RS.byLei[b.lei], rq = rk && RS.q[rk] ? Object.keys(RS.q[rk]).sort().reverse()
+        .find((p) => mval(RS.q[rk][p], 'return_on_equity_pct') != null || mval(RS.q[rk][p], 'cost_income_ratio_pct') != null) : null;
       out.push({
+        roe: rq ? mval(RS.q[rk][rq], 'return_on_equity_pct') : null, ci: rq ? mval(RS.q[rk][rq], 'cost_income_ratio_pct') : null, rq,
         lei: b.lei, b, v, exp: v ? (v.all || v.nordic) : null, nordic: v ? v.nordic : null,
         trea: k('trea'), cet1, head: cet1 && ok(req) ? cet1.value - req : null, lev: k('lev_ratio'), lcr: k('lcr'), nsfr: k('nsfr'),
         s2: cq ? cq.s2 : null, s3: cq ? cq.s3 : null, cov: cq ? cq.cov : null, cqDate: cq ? cq.date : null, mort,
@@ -501,6 +504,7 @@
     ['trea', 'TREA', (r) => r.trea && +r.trea.value_eur], ['cet1', 'CET1', (r) => val(r.cet1)], ['head', 'Above req.', (r) => r.head],
     ['lev', 'Leverage', (r) => val(r.lev)], ['lcr', 'LCR', (r) => val(r.lcr)], ['nsfr', 'NSFR', (r) => val(r.nsfr)],
     ['s2', 'Stage 2', (r) => r.s2], ['s3', 'Stage 3', (r) => r.s3], ['cov', 'S3 cover', (r) => r.cov], ['mort', 'Mortgage RW', (r) => r.mort && r.mort.density],
+    ['roe', 'ROE', (r) => r.roe], ['ci', 'C/I', (r) => r.ci],
   ];
   function qm(r) { return r && r.quality && !['filed'].includes(r.quality) ? `<span class="mk q" title="${esc(r.quality + (r.note ? ': ' + r.note : ''))}">${r.quality === 'scaled' ? '×' : '~'}</span>` : ''; }
   function renderLeague() {
@@ -530,7 +534,8 @@
       <td>${r.trea ? bnv(r.trea.value_eur) : '—'}${qm(r.trea)}</td>
       <td>${pct(val(r.cet1))}${qm(r.cet1)}</td><td class="${cls(r.head, 0.02, 0.01)}">${ok(r.head) ? (r.head >= 0 ? '+' : '') + nb(r.head * 100, 1) + ' pp' : '—'}</td>
       <td>${pct(val(r.lev))}${qm(r.lev)}</td><td>${pct(val(r.lcr), 0)}${qm(r.lcr)}</td><td>${pct(val(r.nsfr), 0)}${qm(r.nsfr)}</td>
-      <td>${pct(r.s2)}</td><td>${pct(r.s3, 2)}</td><td>${pct(r.cov, 0)}</td><td>${r.mort ? pct(r.mort.density) : '—'}</td></tr>`).join('');
+      <td>${pct(r.s2)}</td><td>${pct(r.s3, 2)}</td><td>${pct(r.cov, 0)}</td><td>${r.mort ? pct(r.mort.density) : '—'}</td>
+      <td title="${r.rq ? esc(qlab(r.rq)) : ''}">${ok(r.roe) ? nb(r.roe, 1) + ' %' : '—'}</td><td>${ok(r.ci) ? nb(r.ci, 0) + ' %' : '—'}</td></tr>`).join('');
     const th = COLS.map(([id, name]) => `<th data-s="${id}" class="${id === 'bank' || id === 'foot' ? 'l' : ''}${ST.sort === id ? ' on' : ''}">${name}${ST.sort === id ? (ST.dir < 0 ? ' ↓' : ' ↑') : ''}</th>`).join('');
     box.innerHTML = `<div class="seg-tabs nm-league-tabs">${chips}</div>
       <div class="ut-wrap"><table class="ut nm-ut"><thead><tr>${th}</tr></thead><tbody>${body}</tbody></table></div>
@@ -538,7 +543,8 @@
         (ice), the other Nordic countries (amber) and the rest of the world (grey). CET1, leverage, LCR and NSFR: KM1 at the latest quarter.
         Above req.: CET1 ratio less 4.5 %, the CET1 part of Pillar 2 and the combined buffer (KM1 rows 5, EU 7e, 11): the distance to the
         MDA trigger. Stage 2 and 3: share of gross loans and advances (CR1), S3 cover: allowances on stage 3 over stage 3 loans. Mortgage RW: the
-        IRB risk-weight density of residential mortgages (CR6). <span class="mk q">×</span> rescaled, <span class="mk q">~</span> derived or taken
+        IRB risk-weight density of residential mortgages (CR6). ROE and C/I: the latest quarterly report, as the bank states them (hover
+        for the quarter). <span class="mk q">×</span> rescaled, <span class="mk q">~</span> derived or taken
         from a fallback row — hover for why.</p>`;
     box.querySelector('.nm-league-tabs').addEventListener('click', (ev) => { const b = ev.target.closest('button'); if (b) { ST.league = b.dataset.c; renderLeague(); } });
     box.querySelector('thead').addEventListener('click', (ev) => {
@@ -600,6 +606,7 @@
         <div class="nb-files">EBA filings ${files || '<span class="faint">—</span>'}</div></div>
       <div class="kpis nb-kpis">${tiles}</div>
       <div class="grid g12 nb-grid">
+        <div class="panel span12"><h3><span><span class="g">▦</span>Quarterly results</span><small>from its own reports, each read twice</small></h3><div id="nbRes"><div class="empty">Loading the quarters …</div></div></div>
         <div class="panel span6"><h3><span><span class="g">◆</span>Capital ratios</span><small>KM1, each quarter filed</small></h3><div class="chart" id="nbCap"></div><div class="legend-row" id="nbCapLeg"></div></div>
         <div class="panel span6"><h3><span><span class="g">▤</span>What the risk exposure is made of</span><small>OV1</small></h3><div id="nbOv1"></div></div>
         <div class="panel span6"><h3><span><span class="g">⌖</span>Where it lends</span><small>CCyB1</small></h3><div id="nbGeo"></div></div>
@@ -617,6 +624,7 @@
     try { rate(M, dates, cur); } catch (e) { console.error(e); }
     try { cc1(M, dates); } catch (e) { console.error(e); }
     try { notes(met || [], fixes || [], scale || []); } catch (e) { console.error(e); }
+    nbResults(lei).catch((e) => console.error(e));
   }
 
   // capital ratios over the filed quarters, with the CET1 requirement as a threshold line
@@ -1079,6 +1087,222 @@
     host.appendChild(svg.node());
   }
 
+  // ── the reporting season: every Nordic bank's quarterly report ───────────────────────────────────────────────────
+  // ENEXT api.nordic_report_feed, api.nordic_quarters, api.nordic_report_upcoming: the Nasdaq banks' reports read by
+  // research/banks/nordic_reports.py and Norway's 30 listed banks' by reader.py — two DeepSeek readings each, a figure
+  // published when they agree, checked against the report's own totals.
+  const RS = { country: 'ALL', n: 25, feed: [], q: {}, up: [], byLei: {} };
+  const RM = ['net_interest_income', 'net_commission_income', 'total_income', 'operating_expenses', 'impairment_losses',
+    'pre_tax_profit', 'net_profit', 'loans_to_customers', 'deposits_from_customers', 'return_on_equity_pct',
+    'cost_income_ratio_pct', 'net_interest_margin_pct', 'cet1_ratio_pct'];
+  const prevYear = (p) => `${+p.slice(0, 4) - 1}${p.slice(4)}`;
+  const qlab = (p) => p ? `Q${p.slice(5)} ${p.slice(0, 4)}` : '—';
+  const mval = (v, m) => v && v[m] && ok(v[m].value) ? +v[m].value : null;
+  const growth = (a, b) => ok(a) && ok(b) && b !== 0 ? (a - b) / Math.abs(b) : null;
+  const lossBp = (v) => { const i = mval(v, 'impairment_losses'), l = mval(v, 'loans_to_customers'); return ok(i) && l ? 4 * i / l * 1e4 : null; };
+  const mm = (v) => !ok(v) ? '—' : nb(v, Math.abs(v) < 100 ? 1 : 0);
+  const sgn = (g, dp = 0) => !ok(g) ? '<span class="faint">—</span>'
+    : `<span class="${g < -0.1 ? 'hot' : g < 0 ? 'warm' : ''}">${g >= 0 ? '+' : '−'}${nb(Math.abs(g) * 100, dp)} %</span>`;
+  const mark = (r) => r && r.status && r.status !== 'agreed' && ok(r.value) ? `<span class="mk q" title="${esc(r.status === 'derived'
+    ? 'derived: the year to date less the previous quarter\'s' : r.status === 'disputed' ? 'the two readings disagree: the careful one is shown' : 'read once so far')}">~</span>` : '';
+
+  async function rsLoad() {
+    const since = new Date(Date.now() - 400 * 864e5).toISOString().slice(0, 10);
+    const from = `${new Date().getUTCFullYear() - 2}Q1`;
+    const [feed, q, up] = await Promise.all([
+      get(`nordic_report_feed?published=gte.${since}&select=key,lei,short,country,period,published,headline,url,src&order=published.desc&limit=800`),
+      get(`nordic_quarters?period=gte.${from}&metric=in.(${RM.join(',')})&select=key,lei,currency,period,metric,value,status`),
+      get('nordic_report_upcoming?select=key,lei,short,country,planned,src&order=planned&limit=120'),
+    ]);
+    if (!feed) return false;
+    RS.feed = feed; RS.up = (up || []).filter((u) => u.planned);
+    RS.q = {};
+    for (const r of q || []) {
+      ((RS.q[r.key] ||= {})[r.period] ||= {})[r.metric] = r;
+      if (r.lei) RS.byLei[r.lei] = r.key;
+    }
+    return true;
+  }
+  function rsSeason() {                              // the newest quarter a third of the banks have reported
+    const byP = {};
+    for (const [k, per] of Object.entries(RS.q)) for (const [p, v] of Object.entries(per)) if (v.net_profit || v.total_income) (byP[p] ||= []).push(k);
+    const n = Object.keys(RS.q).length;
+    const p = Object.keys(byP).sort().reverse().find((x) => byP[x].length >= n / 3);
+    if (!p) return null;
+    const med = (xs) => { const a = xs.filter(ok).sort((x, y) => x - y); return a.length ? a[Math.floor(a.length / 2)] : null; };
+    const ks = byP[p];
+    const roe = med(ks.map((k) => mval(RS.q[k][p], 'return_on_equity_pct')));
+    const nii = med(ks.map((k) => growth(mval(RS.q[k][p], 'net_interest_income'), mval((RS.q[k] || {})[prevYear(p)], 'net_interest_income'))));
+    const prof = med(ks.map((k) => growth(mval(RS.q[k][p], 'net_profit'), mval((RS.q[k] || {})[prevYear(p)], 'net_profit'))));
+    const ci = med(ks.map((k) => mval(RS.q[k][p], 'cost_income_ratio_pct')));
+    const loss = med(ks.map((k) => lossBp(RS.q[k][p])));
+    const expected = Object.values(RS.q).filter((per) => per[prevYear(p)] || Object.keys(per).some((x) => x < p && x >= prevYear(p))).length;
+    return { p, reported: ks.length, expected: Math.max(expected, ks.length), roe, nii, prof, ci, loss };
+  }
+
+  function rsRender() {
+    const box = $('#rsFeed'); if (!box) return;
+    const s = rsSeason();
+    const C = ['ALL', ...NORDIC];
+    const tabs = C.map((k) => `<button data-c="${k}" class="${RS.country === k ? 'on' : ''}" aria-pressed="${RS.country === k}">${k === 'ALL' ? 'All countries' : CNAME[k]}</button>`).join('');
+    const items = RS.feed.filter((it) => (RS.country === 'ALL' || it.country === RS.country) && (RS.q[it.key] || {})[it.period]);
+    const rows = items.slice(0, RS.n).map((it) => {
+      const v = RS.q[it.key][it.period], w = (RS.q[it.key] || {})[prevYear(it.period)];
+      const cur = (v.net_profit || v.total_income || v.net_interest_income || {}).currency || '';
+      const link = it.lei && BANKS[it.lei];
+      const bp = lossBp(v);
+      const pub = String(it.published).slice(0, 10);
+      const day = new Date(pub + 'T00:00:00Z').toLocaleString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC',
+        ...(pub.slice(0, 4) !== String(new Date().getUTCFullYear()) ? { year: '2-digit' } : {}) });
+      return `<tr class="row${link ? '' : ' lite'}" data-key="${esc(it.key)}"${it.lei ? ` data-lei="${it.lei}"` : ''} tabindex="0">
+        <td class="l nowrap opt2">${esc(day)} <small class="faint">Q${it.period.slice(5)}${it.period.slice(0, 4) !== pub.slice(0, 4) ? ' ' + it.period.slice(2, 4) : ''}</small></td>
+        <td class="l bn">${esc(it.short)} <small class="faint">${esc(it.country)}</small></td>
+        <td>${mm(mval(v, 'net_profit'))}${mark(v.net_profit)} <small class="faint">${esc(cur)}</small></td><td>${sgn(growth(mval(v, 'net_profit'), mval(w, 'net_profit')))}</td>
+        <td class="opt">${mm(mval(v, 'net_interest_income'))}${mark(v.net_interest_income)}</td><td class="opt">${sgn(growth(mval(v, 'net_interest_income'), mval(w, 'net_interest_income')))}</td>
+        <td class="opt">${ok(bp) ? nb(bp, 0) : '—'}</td>
+        <td>${ok(mval(v, 'return_on_equity_pct')) ? nb(mval(v, 'return_on_equity_pct'), 1) + ' %' : '—'}${mark(v.return_on_equity_pct)}</td>
+        <td class="opt">${ok(mval(v, 'cost_income_ratio_pct')) ? nb(mval(v, 'cost_income_ratio_pct'), 0) + ' %' : '—'}</td>
+        <td class="opt">${ok(mval(v, 'cet1_ratio_pct')) ? nb(mval(v, 'cet1_ratio_pct'), 1) + ' %' : '—'}</td>
+        <td><a class="dlink" href="${esc(it.url || '#')}" target="_blank" rel="noopener" title="${esc(it.headline || 'the report')}">↗</a></td></tr>`;
+    }).join('');
+    const head = s ? `<div class="rs-season"><div><div class="big">${qlab(s.p)}</div>
+        <div class="k"><b>${s.reported}</b> of ${s.expected} banks have reported</div></div>
+        <div class="k">median net profit <b>${sgn(s.prof)}</b> on the year</div>
+        <div class="k">net interest income <b>${sgn(s.nii)}</b></div>
+        <div class="k">return on equity <b>${ok(s.roe) ? nb(s.roe, 1) + ' %' : '—'}</b></div>
+        <div class="k">cost/income <b>${ok(s.ci) ? nb(s.ci, 0) + ' %' : '—'}</b></div>
+        <div class="k">credit losses <b>${ok(s.loss) ? nb(s.loss, 0) + ' bp' : '—'}</b> of loans</div></div>` : '';
+    box.innerHTML = `${head}<div class="seg-tabs rs-tabs">${tabs}</div>
+      <div class="ut-wrap"><table class="ut rs-ut"><thead><tr><th class="l opt2">Out · quarter</th><th class="l">Bank</th>
+        <th>Net profit, m</th><th>y/y</th><th class="opt">NII, m</th><th class="opt">y/y</th><th class="opt">Losses, bp</th><th>ROE</th><th class="opt">C/I</th><th class="opt">CET1</th><th></th></tr></thead>
+        <tbody>${rows || '<tr><td colspan="11" class="faint">No reports yet</td></tr>'}</tbody></table></div>
+      ${items.length > RS.n ? `<button class="rs-more" type="button">${items.length - RS.n} more reports</button>` : ''}
+      <p class="note">The quarter alone, in millions of the bank's own currency; y/y against the same quarter a year earlier. NII: net interest
+        income. Losses: credit
+        losses for the quarter, annualised, in basis points of loans. ROE, cost/income and CET1 as each bank reports them. Every report is
+        read twice by DeepSeek; <span class="mk q">~</span> marks a figure the two readings disagreed on, read once, or derived from two
+        year-to-date figures — hover for which. Medians across the banks that have reported.</p>`;
+    box.querySelector('.rs-tabs').addEventListener('click', (ev) => { const b = ev.target.closest('button'); if (b) { RS.country = b.dataset.c; RS.n = 25; rsRender(); } });
+    const more = box.querySelector('.rs-more');
+    if (more) more.addEventListener('click', () => { RS.n += 50; rsRender(); });
+    const tb = box.querySelector('tbody');
+    tb.addEventListener('click', (ev) => { if (ev.target.closest('a')) return; const r = ev.target.closest('tr[data-key]'); if (r) openBank(r.dataset.lei, r.dataset.key); });
+    tb.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') { const r = ev.target.closest('tr[data-key]'); if (r) openBank(r.dataset.lei, r.dataset.key); } });
+    rsUpcoming();
+  }
+  function rsUpcoming() {
+    const box = $('#rsUp'); if (!box) return;
+    const today = new Date().toISOString().slice(0, 10);
+    const up = RS.up.filter((u) => u.planned >= today && (RS.country === 'ALL' || u.country === RS.country)).slice(0, 45);
+    const days = {};
+    for (const u of up) (days[u.planned] ||= []).push(u);
+    const wd = (d) => new Date(d + 'T00:00:00Z').toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
+    box.innerHTML = `<h3><span><span class="g">◷</span>Who reports next</span><small>${RS.country === 'ALL' ? 'all countries' : CNAME[RS.country]}</small></h3>
+      ${up.length ? Object.entries(days).map(([d, us]) => `<div class="rs-day"><div class="d">${esc(wd(d))}</div><div class="b">${us.map((u) =>
+        `<span class="lnk" data-key="${esc(u.key)}"${u.lei ? ` data-lei="${u.lei}"` : ''} tabindex="0" role="button">${esc(u.short)}<small>${esc(u.country)}</small></span>`).join('')}</div></div>`).join('')
+        : '<p class="note">No dates announced yet.</p>'}
+      <p class="note">The date each bank's latest report gives for its next one (Nasdaq banks) and Oslo Børs's financial calendar (Norway).</p>`;
+    box.onclick = (ev) => { const b = ev.target.closest('[data-key]'); if (b) openBank(b.dataset.lei, b.dataset.key); };
+  }
+
+  // one bank's quarters, for its profile: income stacked by kind, costs and credit losses, profit; the table under it
+  async function nbResults(lei, rkey) {
+    const host = $('#nbRes'); if (!host) return;
+    const rows = await get(`nordic_quarters?${rkey ? `key=eq.${encodeURIComponent(rkey)}` : `lei=eq.${lei}`}&select=key,period,metric,value,currency,status&order=period`);
+    if (!rows || !rows.length) { host.closest('.panel').hidden = true; return; }
+    const keys = [...new Set(rows.map((r) => r.key))];
+    const key = rkey || (keys.length > 1 ? keys.find((k) => RS.byLei[lei] === k) || keys[0] : keys[0]);
+    const Q = {};
+    for (const r of rows) if (r.key === key) (Q[r.period] ||= {})[r.metric] = r;
+    const ps = Object.keys(Q).sort().slice(-12);
+    const cur = (rows.find((r) => r.currency) || {}).currency || '';
+    const data = ps.map((p) => {
+      const v = Q[p], ti = mval(v, 'total_income'), ni = mval(v, 'net_interest_income'), fe = mval(v, 'net_commission_income');
+      return { p, ni, fe, other: ok(ti) && ok(ni) ? ti - ni - (fe || 0) : null, ti, cost: mval(v, 'operating_expenses'),
+        loss: mval(v, 'impairment_losses'), np: mval(v, 'net_profit'), v };
+    });
+    const tbl = [['Net interest income', 'net_interest_income'], ['Net fees', 'net_commission_income'], ['Total income', 'total_income'],
+      ['Operating expenses', 'operating_expenses'], ['Credit losses', 'impairment_losses'], ['Pre-tax profit', 'pre_tax_profit'],
+      ['Net profit', 'net_profit'], ['Return on equity, %', 'return_on_equity_pct'], ['Cost/income, %', 'cost_income_ratio_pct'],
+      ['Net interest margin, %', 'net_interest_margin_pct'], ['CET1 ratio, %', 'cet1_ratio_pct'], ['Loans', 'loans_to_customers'],
+      ['Deposits', 'deposits_from_customers']];
+    const last8 = ps.slice(-8);
+    host.innerHTML = `<div class="nb-res"><div class="chart" id="nbResChart"></div>
+      <div class="legend-row"><span><i class="sq" style="background:var(--s1)"></i>Net interest income</span><span><i class="sq" style="background:var(--s2)"></i>Net fees</span>
+        <span><i class="sq" style="background:var(--s-muted)"></i>Other income</span><span><i style="background:var(--text2)"></i>Operating expenses (dashed)</span>
+        <span><i style="background:var(--s3)"></i>Net profit</span><span><i class="sq" style="background:var(--hot)"></i>Credit losses (below zero)</span></div></div>
+      <div class="ut-wrap"><table class="ut nb-res-t"><thead><tr><th class="l">${esc(cur)} m</th>${last8.map((p) => `<th>${qlab(p)}</th>`).join('')}</tr></thead>
+        <tbody>${tbl.map(([lab, m]) => `<tr><td class="l">${lab}</td>${last8.map((p) => {
+          const r = Q[p][m]; return `<td>${r && ok(r.value) ? mm(+r.value) : '<span class="faint">—</span>'}${mark(r)}</td>`; }).join('')}</tr>`).join('')}</tbody></table></div>
+      <p class="note">From the bank's own quarterly reports, read twice; the quarter alone. Credit losses: positive = charged.</p>`;
+    resChart($('#nbResChart'), data, cur);
+  }
+  // a bank outside the EBA hub (small and non-complex banks publish Pillar 3 only in their own reports): its results alone
+  function renderResultsOnly(key) {
+    const box = $('#nmBank'); if (!box) return;
+    ++BANK_REQ;
+    ST.focus = null; ST.bank = null;
+    const it = RS.feed.find((f) => f.key === key) || RS.up.find((u) => u.key === key) || { short: key, country: '' };
+    box.innerHTML = `<div class="nb-head"><div><div class="hero-kicker">◉ ${esc(CNAME[it.country] || it.country || '')} · quarterly reports only</div>
+        <h2 class="nb-title">${esc(it.short)}</h2><div class="nb-sub">Not in the EBA's Pillar 3 data hub: a small bank that publishes its
+        Pillar 3 only in its own reports, so its capital, stages and models aren't on this page — its quarterly results are.</div></div></div>
+      <div class="grid g12 nb-grid"><div class="panel span12"><h3><span><span class="g">▦</span>Quarterly results</span><small>from its own reports, each read twice</small></h3>
+        <div id="nbRes"><div class="empty">Loading the quarters …</div></div></div></div>`;
+    paintMap(); renderLeague();
+    nbResults(null, key).catch((e) => console.error(e));
+    const sec = $('#nordic-bank'); if (sec) sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  const openBank = (lei, key) => { if (lei && BANKS[lei]) setBank(lei, true); else if (key) renderResultsOnly(key); };
+
+  function resChart(host, data, cur) {
+    if (!host || !window.d3 || !data.length) return;
+    const W = Math.max(300, host.clientWidth || 600), H = 230, m = { t: 10, r: 10, b: 24, l: 52 };
+    const neg = d3.min(data, (d) => -(Math.max(0, d.loss || 0))) || 0;
+    const top = d3.max(data, (d) => Math.max(d.ti || 0, (d.ni || 0) + (d.fe || 0) + Math.max(0, d.other || 0), d.cost || 0, d.np || 0)) || 1;
+    const x = d3.scaleBand().domain(data.map((d) => d.p)).range([m.l, W - m.r]).padding(0.28);
+    const y = d3.scaleLinear().domain([Math.min(0, neg * 1.1, d3.min(data, (d) => d.np || 0) * 1.1), top * 1.08]).nice().range([H - m.b, m.t]);
+    const svg = d3.create('svg').attr('viewBox', `0 0 ${W} ${H}`).attr('role', 'img').attr('aria-label', 'Quarterly income, costs and profit');
+    svg.append('g').attr('class', 'gl').selectAll('line').data(y.ticks(4)).join('line').attr('x1', m.l).attr('x2', W - m.r).attr('y1', (v) => y(v)).attr('y2', (v) => y(v));
+    svg.append('g').attr('class', 'ax').attr('transform', `translate(0,${H - m.b})`)
+      .call(d3.axisBottom(x).tickFormat((p) => `Q${p.slice(5)}${p.slice(5) === '1' || data.length <= 6 ? ' ' + p.slice(2, 4) : ''}`).tickSizeOuter(0));
+    svg.append('g').attr('class', 'ax').attr('transform', `translate(${m.l},0)`).call(d3.axisLeft(y).ticks(4).tickSize(0).tickPadding(6)
+      .tickFormat((v) => nb(v, 0))).call((g) => g.select('.domain').remove());
+    const bw = x.bandwidth();
+    for (const d of data) {
+      let y0 = 0;
+      for (const [val0, col] of [[d.ni, 'var(--s1)'], [d.fe, 'var(--s2)'], [d.other, 'var(--s-muted)']]) {
+        if (!ok(val0) || val0 <= 0) continue;
+        svg.append('rect').attr('x', x(d.p)).attr('width', bw).attr('y', y(y0 + val0)).attr('height', Math.max(0.5, y(y0) - y(y0 + val0) - 1)).attr('fill', col);
+        y0 += val0;
+      }
+      if (ok(d.loss) && d.loss > 0) svg.append('rect').attr('x', x(d.p) + bw * 0.2).attr('width', bw * 0.6).attr('y', y(0) + 1)
+        .attr('height', Math.max(0.5, y(-d.loss) - y(0))).attr('fill', 'var(--hot)');
+    }
+    const line = (k) => d3.line().defined((d) => ok(d[k])).x((d) => x(d.p) + bw / 2).y((d) => y(d[k]));
+    svg.append('path').attr('d', line('cost')(data)).attr('fill', 'none').attr('stroke', 'var(--text2)').attr('stroke-width', 1.5).attr('stroke-dasharray', '4 3');
+    svg.append('path').attr('d', line('np')(data)).attr('fill', 'none').attr('stroke', 'var(--s3)').attr('stroke-width', 2);
+    svg.append('g').selectAll('circle').data(data.filter((d) => ok(d.np))).join('circle').attr('cx', (d) => x(d.p) + bw / 2).attr('cy', (d) => y(d.np))
+      .attr('r', 3).attr('fill', 'var(--s3)').attr('stroke', 'var(--bg0)').attr('stroke-width', 1.5);
+    svg.append('rect').attr('x', m.l).attr('y', m.t).attr('width', W - m.l - m.r).attr('height', H - m.t - m.b).attr('fill', 'transparent')
+      .on('mousemove', (ev) => {
+        const [px] = d3.pointer(ev);
+        const d = data.find((q) => px >= x(q.p) - x.step() * x.paddingInner() / 2 && px <= x(q.p) + bw + x.step() * x.paddingInner() / 2);
+        if (!d) { tip(null); return; }
+        tip(`<b>${qlab(d.p)}</b><table class="tg">${[['Net interest income', d.ni], ['Net fees', d.fe], ['Other income', d.other], ['Total income', d.ti],
+          ['Operating expenses', d.cost], ['Credit losses', d.loss], ['Net profit', d.np]].map(([l, v]) => `<tr><td>${l}</td><td>${mm(v)}</td></tr>`).join('')}</table>
+          <div class="tm">${esc(cur)} million</div>`, ev);
+      })
+      .on('mouseleave', () => tip(null));
+    host.innerHTML = '';
+    host.appendChild(svg.node());
+  }
+  async function rsInit() {
+    if (!$('#rsFeed')) return;
+    if (!(await rsLoad())) { $('#rsFeed').innerHTML = '<div class="empty">The reports are unavailable</div>'; return; }
+    rsRender();
+    renderLeague();                                  // the league's ROE and C/I come from the reports
+  }
+
   // ── start ────────────────────────────────────────────────────────────────────────────────────────────────────────
   async function init() {
     if (!$('#nordic')) return;
@@ -1092,6 +1316,7 @@
     const want = (location.hash.match(/bank=([A-Z0-9]{20})/) || [])[1];
     if (want && BANKS[want]) setBank(want); else if (first) { ST.bank = first.lei; renderBank(first.lei); paintMap(); renderShares(); renderLeague(); }
     nhRender();
+    rsInit();
     let rt, rw = window.innerWidth;
     window.addEventListener('resize', () => {
       clearTimeout(rt);
