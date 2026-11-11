@@ -3,10 +3,12 @@
    lending as arcs, countries shaded by market size, concentration, foreign lenders or mortgage risk weights), market
    shares per country and for the Nordics, the Nordic league table and one bank's profile (capital over time, risk
    exposure by type, where it lends, stages 1–3 and coverage, IRB parameters with the PD distribution, deposits, rate
-   risk, own funds) with the data-quality notes behind every figure.
+   risk, own funds) with the data-quality notes behind every figure — and the home markets: every bank's share of lending
+   and deposits in Norway, Sweden, Denmark and Finland from the national statistics, with its history.
    Data: ENEXT api.nordic_banks, api.nordic_exposure, api.nordic_metrics, api.nordic_credit_quality, api.nordic_irb,
    api.p3dh_entities, api.p3dh_submissions, api.p3dh_scale — the EBA Pillar 3 data hub, loaded and cleaned by
-   research/banks/nordic.py and nordic_clean.py. Runbook: ../ENEXT/docs/banks-nordic.md.
+   research/banks/nordic.py and nordic_clean.py — and api.nordic_shares, api.nordic_share_dates from the national
+   statistics (research/banks/national.py). Runbook: ../ENEXT/docs/banks-nordic.md.
    Needs d3 v7 and topojson-client (jsDelivr); without them the map is skipped and the rest still renders. */
 (() => {
   const API = 'https://api.slensvik.com/';
@@ -444,6 +446,7 @@
   }
   function setCountry(c) {
     ST.country = c; ST.focus = c === 'NORDIC' ? null : 'country'; renderShares(); paintMap();
+    if (HOME.includes(c) && c !== NH.country) nhSet({ country: c });
     const lg = c === 'NORDIC' ? 'ALL' : c;
     if (ST.league !== lg) { ST.league = lg; renderLeague(); }
   }
@@ -794,6 +797,288 @@
       : '<p class="note">Nothing: every figure on this page is as the bank filed it.</p>';
   }
 
+  // ── home markets: the national statistics ────────────────────────────────────────────────────────────────────────
+  // Every bank's lending and deposits in its home market, small savings banks and foreign branches included — what the
+  // EBA hub above can't show. ENEXT api.nordic_shares / api.nordic_share_dates, built by research/banks/national.py from
+  // SCB (SE), the Bank of Finland (FI), Bankenes sikringsfond + SSB + Norges Bank (NO), Finanstilsynet + Danmarks
+  // Nationalbank (DK).
+  const HOME = ['NO', 'SE', 'DK', 'FI'];
+  const CUR = { NO: 'NOK', SE: 'SEK', DK: 'DKK', FI: 'EUR' };
+  const HM = {                                       // measures per country (Norway has two groupings), in tab order
+    NO: { bank: ['lend', 'lend_hh', 'lend_nfc', 'dep'], alliance: ['lend', 'lend_hh', 'lend_nfc', 'dep', 'dep_hh', 'dep_nfc'] },
+    SE: { bank: ['lend', 'lend_hh', 'lend_housing', 'lend_nfc', 'dep', 'dep_hh', 'dep_nfc'] },
+    DK: { bank: ['lend_mortgage', 'lend_bank', 'dep'] },
+    FI: { bank: ['lend', 'lend_housing', 'lend_nfc', 'dep'] },
+  };
+  const HLAB = { lend: 'All', lend_hh: 'Households', lend_housing: 'Home loans', lend_nfc: 'Companies', lend_mortgage: 'Mortgage banks',
+    lend_bank: 'Banks', dep: 'All', dep_hh: 'Households', dep_nfc: 'Companies' };
+  const HLAB_NO = { lend_hh: 'Retail', lend_nfc: 'Corporate', dep_hh: 'Retail', dep_nfc: 'Corporate' };
+  const HWHAT = {                                    // what the market is, under the total
+    NO: { lend: 'gross lending to the retail and corporate market, mortgage companies included',
+          lend_hh: 'lending to the retail market (wage earners, pensioners, students), mortgage companies included',
+          lend_nfc: 'lending to the corporate market (companies, the self-employed, housing co-operatives)',
+          dep: 'deposits from customers: households, companies and the public sector', dep_hh: 'deposits from the retail market',
+          dep_nfc: 'deposits from the corporate market' },
+    SE: { lend: 'lending to Swedish households and non-financial companies', lend_hh: 'lending to Swedish households',
+          lend_housing: 'household loans secured on homes', lend_nfc: 'lending to Swedish non-financial companies',
+          dep: 'deposits from Swedish households and non-financial companies', dep_hh: 'deposits from Swedish households',
+          dep_nfc: 'deposits from Swedish non-financial companies' },
+    DK: { lend_mortgage: 'lending by the Danish mortgage banks', lend_bank: 'loans by banks in Denmark to Danish borrowers',
+          dep: 'deposits in banks in Denmark from Danish depositors' },
+    FI: { lend: 'loans to the Finnish public (non-MFIs)', lend_housing: 'housing loans to Finnish households',
+          lend_nfc: 'loans to Finnish companies, housing corporations excluded', dep: 'deposits from the Finnish public (non-MFIs)' },
+  };
+  const HDEF = {
+    NO: { bank: `Each Norwegian bank's lending to the retail and corporate market — the loans it has moved to a mortgage company counted with it —
+            and its customer deposits, from the quarterly figures every bank reports to Bankenes sikringsfond, against SSB's totals for all banks
+            and mortgage companies in Norway. Foreign banks' branches (Nordea, Handelsbanken, Danske Bank …) don't report there and sit in
+            <i>foreign branches and others</i>, with Santander Consumer, whose Norwegian business can't be told from its Nordic branches. DNB's
+            parent-bank figures include its branches abroad and are scaled to its domestic share in Norges Bank's statistics (marked ~).`,
+          alliance: `Norges Bank's own grouping of the Norwegian market (banking statistics, table 6): banks and mortgage companies by alliance,
+            domestic business only, at year-ends, shares rounded to whole percent.` },
+    SE: `Every institution's lending to and deposits from Swedish households and non-financial companies, as reported to SCB each month (the MFI
+         statistics, table MFIM1). Banking groups include their mortgage and finance companies (Stadshypotek in Handelsbanken, Swedbank Hypotek in
+         Swedbank …), foreign banks their Swedish branches. <i>Others</i> are the institutions SCB doesn't publish by name — smaller savings banks,
+         finance companies, Kommuninvest; mortgage funds are the non-bank lenders that take no deposits.`,
+    DK: `Mortgage banks: the six Danish mortgage banks' loans, from Finanstilsynet's accounts statistics at year-ends — the whole mortgage market,
+         about three quarters of what Danish households and companies borrow. Banks: each Danish bank's loans and deposits against Danmarks
+         Nationalbank's domestic totals. Danske Bank A/S books its Swedish, Norwegian and Finnish branches in the Danish entity, so its Danish
+         banking and the foreign banks' branches (Nordea Danmark …) form the residual; bank figures are legal-entity balances and can include a
+         little business abroad.`,
+    FI: `The Bank of Finland's market-share report: each banking group's loans to and deposits from the Finnish public (non-MFIs), half-yearly
+         since 2017, groups as the Bank of Finland draws them (OP with OP Mortgage Bank, Nordea with its mortgage bank and finance company);
+         <i>others</i> as published.`,
+  };
+  const HSRC = {
+    NO: [['Bankenes sikringsfond', 'https://www.bankenessikringsfond.no/for-foretakene/regnskapstall-for-norske-banker-fra-3-kvartal-2024/'],
+         ['SSB 09560, 09565', 'https://www.ssb.no/statbank/table/09560/'], ['Norges Bank', 'https://www.norges-bank.no/en/topics/statistics/banking-statistics/']],
+    SE: [['SCB, MFIM1', 'https://www.statistikdatabasen.scb.se/pxweb/sv/ssd/START__FM__FM0401__FM0401X/MFIM1/']],
+    DK: [['Finanstilsynet', 'https://www.finanstilsynet.dk/tal-og-fakta/statistik/tidsserier'], ['Danmarks Nationalbank', 'https://www.statbank.dk/DNMUDL']],
+    FI: [['Suomen Pankki', 'https://reports.suomenpankki.fi/WebForms/ReportViewerPage.aspx?report=%2ftilastot%2frahalaitosten_lainat_talletukset_ja_korot%2flainat%2fmarkkinaosuudet_luottolaitokset_fi&output=']],
+  };
+  // the dark steps of a validated eight-hue categorical palette; a group keeps its slot across measures and dates
+  const PAL = ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181', '#008300', '#9085e9', '#e66767'];
+  const SLOT = { nordea: 0, danske: 1, handelsbanken: 2, swedbank: 3, seb: 4, dnb: 5, sbab: 6, lansforsakringar: 7,
+    'no:832554332': 6, 'no:937895321': 3, 'no:937901003': 4, 'no:920426530': 2, 'no:952706365': 7, 'no:937899319': 0,
+    sb1: 3, eika: 4, other_savings: 6, other_commercial: 2, branches: 7,
+    nykredit: 2, jyske: 3, dlr: 4, al_sydbank: 6, 'dk:9380': 5, 'dk:1149': 7, 'dk:9070': 0, 'dk:7670': 4,
+    op: 3, munifin: 6, savings_banks_fi: 5, s_bank: 4, aktia: 2, pop: 7 };
+  const NH = { country: 'NO', view: 'bank', measure: 'lend', date: null, cache: {}, color: {}, x: null, dragging: false };
+  const SHARE_COLS = 'grp,name,lei,tag,value,total,share,n,quality,source,note';
+  const hbase = () => `country=eq.${NH.country}&measure=eq.${NH.measure}&view=eq.${NH.view}`;
+  const hkey = () => `${NH.country}|${NH.measure}|${NH.view}`;
+  const money = (v, c) => !ok(v) ? '—' : `${CUR[c]} ${nb(v / 1000, Math.abs(v) < 1e4 ? 1 : 0)} bn`;     // v in millions
+  const isRes = (r) => r.grp === '_other';
+
+  async function nhData() {                          // per country × measure × view: the dates, the top groups' history
+    const k = hkey();
+    if (NH.cache[k]) return NH.cache[k];
+    const dates = await get(`nordic_share_dates?${hbase()}&select=ref_date,total,groups,sources&order=ref_date`);
+    if (!dates || !dates.length) return null;
+    const last = dates[dates.length - 1].ref_date;
+    const rows = await get(`nordic_shares?${hbase()}&ref_date=eq.${last}&select=${SHARE_COLS}&order=value.desc.nullslast`) || [];
+    const top = rows.filter((r) => !isRes(r) && ok(r.share)).slice(0, 6).map((r) => r.grp);
+    const keys = [...top, ...(rows.some(isRes) ? ['_other'] : [])];
+    const hist = keys.length ? await get(`nordic_shares?${hbase()}&grp=${encodeURIComponent(`in.(${keys.map((g) => `"${g}"`).join(',')})`)}`
+      + '&select=ref_date,grp,share,value&order=ref_date') : [];
+    const names = Object.fromEntries(rows.map((r) => [r.grp, r.name]));
+    return (NH.cache[k] = { dates, rows: { [last]: rows }, top, keys, hist: hist || [], names });
+  }
+  async function nhRowsAt(d, date) {
+    if (!d.rows[date]) d.rows[date] = await get(`nordic_shares?${hbase()}&ref_date=eq.${date}&select=${SHARE_COLS}&order=value.desc.nullslast`) || [];
+    return d.rows[date];
+  }
+  function nhColors(top) {                           // a group's own slot when it is free, else the first free one
+    const used = new Set(), col = {};
+    for (const g of top) {
+      let s = SLOT[g];
+      if (s == null || used.has(s)) s = PAL.findIndex((_, i) => !used.has(i));
+      used.add(s); col[g] = PAL[s];
+    }
+    return col;
+  }
+  async function nhSet(patch) {
+    const before = hkey();
+    Object.assign(NH, patch);
+    if (NH.country !== 'NO') NH.view = 'bank';
+    const ms = HM[NH.country][NH.view] || HM[NH.country].bank;
+    if (!ms.includes(NH.measure)) NH.measure = ms.includes(patch.measure) ? patch.measure : ms[0];
+    if (hkey() !== before) NH.date = null;
+    await nhRender();
+  }
+
+  async function nhRender() {
+    const box = $('#nhPanel'); if (!box) return;
+    const d = await nhData();
+    const c = NH.country, ms = HM[c][NH.view] || HM[c].bank;
+    const lab = (m) => (c === 'NO' && HLAB_NO[m]) || HLAB[m];
+    const tabs = (pre) => ms.filter((m) => m.startsWith(pre)).map((m) =>
+      `<button data-m="${m}" class="${m === NH.measure ? 'on' : ''}" aria-pressed="${m === NH.measure}">${lab(m)}</button>`).join('');
+    const ctrl = `<div class="nh-ctrl">
+        <div class="seg-tabs nh-c">${HOME.map((k) => `<button data-c="${k}" class="${k === c ? 'on' : ''}" aria-pressed="${k === c}">${CNAME[k]}</button>`).join('')}</div>
+        <div class="grp"><span class="lt">Lending</span><div class="seg-tabs nh-m">${tabs('lend')}</div></div>
+        <div class="grp"><span class="lt">Deposits</span><div class="seg-tabs nh-m">${tabs('dep')}</div></div>
+        ${c === 'NO' ? `<div class="grp"><span class="lt">Grouped as</span><div class="seg-tabs nh-v">
+          <button data-v="bank" class="${NH.view === 'bank' ? 'on' : ''}" aria-pressed="${NH.view === 'bank'}">Banks · quarterly</button>
+          <button data-v="alliance" class="${NH.view === 'alliance' ? 'on' : ''}" aria-pressed="${NH.view === 'alliance'}">Alliances · Norges Bank</button></div></div>` : ''}
+      </div>`;
+    if (!d) { box.innerHTML = ctrl + '<div class="empty">No national statistics for this selection yet</div>'; nhBind(box); return; }
+    NH.color = nhColors(d.top);
+    const dates = d.dates.map((x) => x.ref_date);
+    const def = typeof HDEF[c] === 'string' ? HDEF[c] : HDEF[c][NH.view];
+    const src = HSRC[c].map(([t, u]) => `<a href="${u}" target="_blank" rel="noopener">${esc(t)}</a>`).join(' · ');
+    box.innerHTML = `${ctrl}
+      <div class="nh-kpis" id="nhKpis"></div>
+      <div class="nh-body">
+        <div class="nh-left"><div class="nm-bars" id="nhBars"></div></div>
+        <div class="nh-right">
+          <div class="nh-ch-h">Share of the market over time <small>${esc(dl(dates[0]))} – ${esc(dl(dates[dates.length - 1]))} · ${dates.length} ${
+            c === 'SE' ? 'months' : c === 'FI' ? 'half-years' : c === 'DK' || NH.view === 'alliance' ? 'year-ends' : 'quarters'} · click to pick a date</small></div>
+          <div class="nh-chart" id="nhChart"></div>
+          ${dates.length > 1 ? `<div class="nh-slide"><span>${esc(dl(dates[0]))}</span>
+            <input type="range" id="nhSlide" min="0" max="${dates.length - 1}" step="1" value="${dates.length - 1}" aria-label="Reference date">
+            <span>${esc(dl(dates[dates.length - 1]))}</span></div>` : ''}
+        </div>
+      </div>
+      <p class="note">${def} Sources: ${src}. <span id="nhNotes"></span></p>`;
+    nhBind(box);
+    nhChart($('#nhChart'), d);
+    const sl = $('#nhSlide');
+    if (sl) {
+      let t;
+      sl.addEventListener('input', () => { clearTimeout(t); NH.date = dates[+sl.value]; t = setTimeout(() => nhPaint(d), 90); });
+    }
+    await nhPaint(d);
+  }
+  function nhBind(box) {
+    box.querySelector('.nh-c').addEventListener('click', (ev) => { const b = ev.target.closest('button'); if (b) nhSet({ country: b.dataset.c }); });
+    for (const el of box.querySelectorAll('.nh-m')) el.addEventListener('click', (ev) => { const b = ev.target.closest('button'); if (b) nhSet({ measure: b.dataset.m }); });
+    const v = box.querySelector('.nh-v');
+    if (v) v.addEventListener('click', (ev) => { const b = ev.target.closest('button'); if (b) nhSet({ view: b.dataset.v }); });
+  }
+
+  async function nhPaint(d) {                        // the bars, the readout and the chart's marker at NH.date
+    const c = NH.country, dates = d.dates.map((x) => x.ref_date);
+    const date = NH.date && dates.includes(NH.date) ? NH.date : dates[dates.length - 1];
+    const rows = await nhRowsAt(d, date);
+    if (date !== (NH.date && dates.includes(NH.date) ? NH.date : dates[dates.length - 1])) return;   // a newer pick won
+    const sl = $('#nhSlide'); if (sl && +sl.value !== dates.indexOf(date)) sl.value = dates.indexOf(date);
+    const named = rows.filter((r) => !isRes(r) && ok(r.share));
+    const res = rows.find(isRes);
+    const meta = d.dates.find((x) => x.ref_date === date) || {};
+    const total = +meta.total;
+    const yearAgo = new Date(Date.parse(date) - 365.25 * 864e5);
+    const prev = d.dates.filter((x) => Math.abs(Date.parse(x.ref_date) - yearAgo) < 46 * 864e5).pop();
+    const yoy = prev && +prev.total ? total / prev.total - 1 : null;
+    const sh = named.map((r) => +r.share).sort((a, b) => b - a);
+    const cr3 = sum(sh.slice(0, 3)), hhi = sum(sh.map((s) => s * s * 1e4));
+    const inst = sum(named.map((r) => r.n || 1));
+    $('#nhKpis').innerHTML = `<div><div class="big">${money(total, c)}</div>
+        <div class="k">${esc(HWHAT[c][NH.measure] || '')} · ${dlong(date)}</div></div>
+      ${ok(yoy) ? `<div class="k">growth on the year <b class="${yoy >= 0 ? '' : 'hot'}">${yoy >= 0 ? '+' : '−'}${nb(Math.abs(yoy) * 100, 1)} %</b></div>` : ''}
+      <div class="k">three largest <b>${pct(cr3, 0)}</b></div>
+      <div class="k">HHI <b>${nb(hhi)}</b></div>
+      <div class="k">${res ? `named ${NH.view === 'alliance' || c === 'FI' ? 'groups' : 'institutions'} cover <b>${pct(1 - +res.share, 0)}</b>` : `<b>${named.length}</b> groups`}${
+        c !== 'FI' && NH.view !== 'alliance' ? ` · <b>${nb(inst)}</b> institutions` : ''}</div>`;
+    // bars: the twelve largest, the rest folded, the residual last
+    const TOP = 15, list = named.slice(0, TOP), more = named.slice(TOP);
+    const max = Math.max(0.01, ...[...list, res].filter(Boolean).map((r) => +r.share));
+    const bar = (r, o = {}) => {
+      const s = +r.share, link = r.lei && BANKS[r.lei], col = NH.color[r.grp];
+      return `<div class="nm-bar${o.res ? ' res' : ''}${link ? '' : ' static'}${link && ST.bank === r.lei ? ' on' : ''}" data-g="${esc(r.grp)}"${
+        link ? ` data-lei="${r.lei}" tabindex="0" role="button"` : ''}>
+        <span class="n">${col ? `<i class="sw" style="background:${col}"></i>` : '<i class="sw"></i>'}${esc(o.label || r.name)}${
+          r.tag && !String(r.name).toLowerCase().includes(r.tag.toLowerCase()) ? `<small>${esc(r.tag)}</small>` : ''}${
+          r.quality === 'derived' ? '<small title="adjusted: see the note below">~</small>' : ''}</span>
+        <span class="t"><i style="width:${Math.max(0.6, s / max * 100).toFixed(1)}%"></i></span>
+        <span class="v">${pct(s)} <small>${nb(r.value / 1000, Math.abs(r.value) < 1e4 ? 1 : 0)}</small></span></div>`;
+    };
+    const mv = sum(more.map((r) => +r.value)), msh = sum(more.map((r) => +r.share));
+    $('#nhBars').innerHTML = list.map((r) => bar(r)).join('')
+      + (more.length ? bar({ grp: '_more', name: `${more.length} smaller ${c === 'FI' || NH.view === 'alliance' ? 'groups' : 'institutions'}`, share: msh, value: mv }) : '')
+      + (res ? bar(res, { res: true }) : '')
+      + `<div class="nh-unit">${CUR[c]} bn · share of ${esc(HWHAT[c][NH.measure] || 'the market')}</div>`;
+    const notes = [...new Set(rows.filter((r) => r.note && r.quality === 'derived').map((r) => `${r.name}: ${r.note}.`))];
+    $('#nhNotes').textContent = notes.join(' ');
+    const bars = $('#nhBars');
+    bars.onclick = (ev) => { const b = ev.target.closest('[data-lei]'); if (b) setBank(b.dataset.lei, true); };
+    bars.onkeydown = (ev) => { if (ev.key !== 'Enter') return; const b = ev.target.closest('[data-lei]'); if (b) setBank(b.dataset.lei, true); };
+    bars.onmousemove = (ev) => {
+      const b = ev.target.closest('[data-g]'); if (!b) { tip(null); return; }
+      const g = b.dataset.g, r = g === '_more' ? null : rows.find((x) => x.grp === g);
+      if (g === '_more') { tip(`<b>${more.length} smaller institutions</b><div class="tm">${more.slice(0, 14).map((x) => `${esc(x.name)} ${pct(+x.share, 2)}`).join(' · ')}${more.length > 14 ? ' …' : ''}</div>`, ev); return; }
+      if (!r) { tip(null); return; }
+      tip(`<b>${esc(r.name)}</b>${r.tag ? ` <span class="faint">· ${esc(r.tag)}</span>` : ''}
+        <table class="tg"><tr><td>share</td><td>${pct(+r.share, 2)}</td></tr><tr><td>${CUR[c]}</td><td>${nb(r.value / 1000, 1)} bn</td></tr>
+        ${r.n > 1 ? `<tr><td>institutions</td><td>${r.n}</td></tr>` : ''}</table>
+        ${r.note ? `<div class="tm">${esc(r.note)}</div>` : ''}${r.lei && BANKS[r.lei] ? '<div class="tm">Click for the bank profile</div>' : ''}`, ev);
+    };
+    bars.onmouseleave = () => tip(null);
+    if (NH.x) {                                      // move the chart's date marker
+      const m = $('#nhChart .cur');
+      if (m) { const x = NH.x(new Date(date + 'T00:00:00Z')); m.setAttribute('x1', x); m.setAttribute('x2', x); }
+    }
+  }
+
+  function nhChart(host, d) {                        // the top groups' shares over time, one line each, the residual dashed
+    if (!host) return;
+    if (!window.d3) { host.innerHTML = ''; return; }
+    const W = Math.max(300, host.clientWidth || 600), narrow = W < 520, H = narrow ? 240 : 300;
+    const m = { t: 10, r: narrow ? 92 : 148, b: 24, l: 40 };
+    const series = d.keys.map((g) => ({ g, pts: d.hist.filter((h) => h.grp === g && ok(h.share))
+      .map((h) => ({ t: new Date(h.ref_date + 'T00:00:00Z'), v: +h.share, d: h.ref_date })) })).filter((s) => s.pts.length);
+    const all = series.flatMap((s) => s.pts);
+    if (!all.length) { host.innerHTML = ''; return; }
+    const ext = d3.extent(all, (p) => p.t);
+    if (+ext[0] === +ext[1]) { ext[0] = new Date(+ext[0] - 180 * 864e5); ext[1] = new Date(+ext[1] + 180 * 864e5); }
+    const x = d3.scaleUtc().domain(ext).range([m.l, W - m.r]);
+    const y = d3.scaleLinear().domain([0, d3.max(all, (p) => p.v) * 1.08]).nice().range([H - m.b, m.t]);
+    NH.x = x;
+    const col = (g) => g === '_other' ? 'var(--text4)' : NH.color[g] || 'var(--text3)';
+    const svg = d3.create('svg').attr('viewBox', `0 0 ${W} ${H}`).attr('role', 'img')
+      .attr('aria-label', `Market shares in ${CNAME[NH.country]} over time`);
+    svg.append('g').attr('class', 'gl').selectAll('line').data(y.ticks(5)).join('line')
+      .attr('x1', m.l).attr('x2', W - m.r).attr('y1', (v) => y(v)).attr('y2', (v) => y(v));
+    svg.append('g').attr('class', 'ax').attr('transform', `translate(0,${H - m.b})`)
+      .call(d3.axisBottom(x).ticks(Math.max(2, Math.min(8, Math.floor((W - m.l - m.r) / 80)))).tickSizeOuter(0));
+    svg.append('g').attr('class', 'ax').attr('transform', `translate(${m.l},0)`)
+      .call(d3.axisLeft(y).ticks(5).tickSize(0).tickPadding(6).tickFormat((v) => `${Math.round(v * 100)} %`))
+      .call((g) => g.select('.domain').remove());
+    const line = d3.line().x((p) => x(p.t)).y((p) => y(p.v));
+    for (const s of [...series].reverse()) {         // the largest drawn last, on top
+      if (s.pts.length > 1) svg.append('path').attr('class', 'ln' + (s.g === '_other' ? ' res' : '')).attr('d', line(s.pts)).attr('stroke', col(s.g));
+      if (s.pts.length <= 12) svg.append('g').selectAll('circle').data(s.pts).join('circle')
+        .attr('cx', (p) => x(p.t)).attr('cy', (p) => y(p.v)).attr('r', 3).attr('fill', col(s.g)).attr('stroke', 'var(--bg0)').attr('stroke-width', 1.5);
+    }
+    // direct labels at the line ends, nudged apart
+    const ends = series.map((s) => { const p = s.pts[s.pts.length - 1]; return { g: s.g, v: p.v, x: x(p.t), y: y(p.v) }; }).sort((a, b) => a.y - b.y);
+    for (let i = 1; i < ends.length; i++) if (ends[i].y - ends[i - 1].y < 12) ends[i].y = ends[i - 1].y + 12;
+    const over = ends.length ? ends[ends.length - 1].y - (H - m.b - 2) : 0;
+    if (over > 0) for (const e of ends) e.y -= over;
+    const lbl = (g) => { const n = d.names[g] || (g === '_other' ? 'Others' : g); return n.length > (narrow ? 11 : 19) ? n.slice(0, narrow ? 10 : 18) + '…' : n; };
+    svg.append('g').selectAll('text').data(ends).join('text').attr('class', 'lab')
+      .attr('x', (e) => e.x + 7).attr('y', (e) => e.y + 3.5).attr('fill', 'var(--text2)')
+      .text((e) => `${lbl(e.g)} ${nb(e.v * 100, 0)} %`);
+    svg.append('g').selectAll('rect').data(ends).join('rect').attr('x', (e) => e.x + 1).attr('y', (e) => e.y - 1).attr('width', 4).attr('height', 2).attr('fill', (e) => col(e.g));
+    svg.append('line').attr('class', 'cur').attr('y1', m.t).attr('y2', H - m.b).attr('x1', W - m.r).attr('x2', W - m.r);
+    const hov = svg.append('line').attr('class', 'hov').attr('y1', m.t).attr('y2', H - m.b).style('display', 'none');
+    const dates = d.dates.map((q) => q.ref_date), dts = dates.map((q) => +new Date(q + 'T00:00:00Z'));
+    const near = (px) => { const t = +x.invert(px); let b = 0; for (let i = 1; i < dts.length; i++) if (Math.abs(dts[i] - t) < Math.abs(dts[b] - t)) b = i; return b; };
+    svg.append('rect').attr('x', m.l).attr('y', m.t).attr('width', W - m.l - m.r).attr('height', H - m.t - m.b).attr('fill', 'transparent')
+      .style('cursor', 'crosshair')
+      .on('mousemove', (ev) => {
+        const [px] = d3.pointer(ev), i = near(px), dd = dates[i], xx = x(new Date(dd + 'T00:00:00Z'));
+        hov.style('display', null).attr('x1', xx).attr('x2', xx);
+        const vals = series.map((s) => ({ g: s.g, p: s.pts.find((p) => p.d === dd) })).filter((o) => o.p).sort((a, b) => b.p.v - a.p.v);
+        tip(`<b>${dlong(dd)}</b><table class="tg">${vals.map((o) => `<tr><td><i style="background:${col(o.g)}"></i>${esc(d.names[o.g] || o.g)}</td><td>${pct(o.p.v)}</td></tr>`).join('')}</table>
+          <div class="tm">Market ${money(+d.dates[i].total, NH.country)}</div>`, ev);
+      })
+      .on('mouseleave', () => { hov.style('display', 'none'); tip(null); })
+      .on('click', (ev) => { const [px] = d3.pointer(ev); NH.date = dates[near(px)]; nhPaint(d); });
+    host.innerHTML = '';
+    host.appendChild(svg.node());
+  }
+
   // ── start ────────────────────────────────────────────────────────────────────────────────────────────────────────
   async function init() {
     if (!$('#nordic')) return;
@@ -806,7 +1091,12 @@
     const first = leagueRows().sort((a, b) => (b.exp || 0) - (a.exp || 0))[0];
     const want = (location.hash.match(/bank=([A-Z0-9]{20})/) || [])[1];
     if (want && BANKS[want]) setBank(want); else if (first) { ST.bank = first.lei; renderBank(first.lei); paintMap(); renderShares(); renderLeague(); }
-    let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { drawMap(); }, 250); });
+    nhRender();
+    let rt, rw = window.innerWidth;
+    window.addEventListener('resize', () => {
+      clearTimeout(rt);
+      rt = setTimeout(() => { if (window.innerWidth === rw) return; rw = window.innerWidth; drawMap(); nhRender(); }, 250);
+    });
     const pill = $('#pillNordic'); if (pill) pill.innerHTML = `<b>${Object.values(BANKS).filter((b) => b.nordic).length}</b>&nbsp;Nordic banks · EBA`;
   }
   window.BankNordic = { init, state: ST };

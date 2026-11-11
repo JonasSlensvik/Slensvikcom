@@ -13,7 +13,7 @@
 <script src="assets/banks-capital.js?v=20261104a"></script>
 <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js" defer></script>
-<script src="assets/banks-nordic.js?v=20261111d" defer></script>
+<script src="assets/banks-nordic.js?v=20261111f" defer></script>
 
 <style>
 /* ═══ BANKS — page-local layer on top of assets/intel.css ═══════════════════
@@ -456,6 +456,41 @@ ul.nb-notes li { break-inside: avoid; margin-bottom: 4px; } ul.nb-notes b { colo
   .nb-divs { grid-template-columns: minmax(0, 1fr); }
 }
 
+/* the home markets: national statistics */
+.nh-ctrl { display: flex; gap: 10px 22px; flex-wrap: wrap; align-items: center; margin-bottom: 16px; }
+.nh-ctrl .grp { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.nh-ctrl .lt { font-size: 9px; letter-spacing: .14em; text-transform: uppercase; color: var(--text4); }
+.nh-kpis { display: flex; gap: 8px 28px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 16px; }
+.nh-kpis .big { font-family: var(--sans); font-size: 26px; font-weight: 700; color: var(--text1); line-height: 1.1; }
+.nh-kpis .k { font-size: 10.5px; color: var(--text3); line-height: 1.5; }
+.nh-kpis .k b { color: var(--text1); font-weight: 500; font-variant-numeric: tabular-nums; }
+.nh-kpis .k b.hot { color: var(--hot); }
+.nh-body { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 26px; align-items: start; }
+.nh-left, .nh-right { min-width: 0; }
+.nh .nm-bar { grid-template-columns: minmax(0, 230px) minmax(0, 1fr) 112px; }
+.nh .nm-bar .sw { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 7px; vertical-align: 0; background: transparent; }
+.nh .nm-bar .t i { background: var(--s1); }
+.nh .nm-bar.res .t i { background: repeating-linear-gradient(135deg, var(--s-muted) 0 3px, rgba(58,66,82,.35) 3px 6px); }
+.nh .nm-bar.res .n { color: var(--text3); font-style: italic; }
+.nh-unit { font-size: 9.5px; color: var(--text4); margin-top: 8px; }
+.nh-ch-h { font-size: 9.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--text3); margin-bottom: 6px; }
+.nh-ch-h small { letter-spacing: .04em; text-transform: none; color: var(--text4); margin-left: 6px; }
+.nh-chart { position: relative; min-width: 0; }
+.nh-chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.nh-chart .ax text { fill: var(--text4); font-size: 9.5px; font-family: var(--mono); }
+.nh-chart .ax line, .nh-chart .ax path { stroke: var(--axis); }
+.nh-chart .gl line { stroke: var(--grid); }
+.nh-chart .ln { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.nh-chart .ln.res { stroke-width: 1.5; stroke-dasharray: 4 3; }
+.nh-chart .lab { font-size: 10px; font-family: var(--mono); }
+.nh-chart .cur { stroke: var(--amber); stroke-width: 1; stroke-dasharray: 2 3; }
+.nh-chart .hov { stroke: var(--text3); stroke-width: 1; }
+.nh-slide { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: center; margin-top: 10px;
+            font-size: 10px; color: var(--text4); font-variant-numeric: tabular-nums; }
+.nh-slide input[type=range] { width: 100%; accent-color: var(--amber); }
+@media (max-width: 1100px) { .nh-body { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 760px) { .nh .nm-bar { grid-template-columns: minmax(0, 150px) minmax(0, 1fr) 96px; gap: 8px; } .nh-kpis .big { font-size: 22px; } }
+
 /* ── method ──────────────────────────────────────────────────────────────── */
 .method { columns: 2 360px; column-gap: 28px; font-size: 11px; color: var(--text3); line-height: 1.7; }
 .method p { break-inside: avoid; margin-bottom: 10px; }
@@ -495,7 +530,7 @@ footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--border
   </header>
 
   <nav class="rail" id="rail" aria-label="Sections">
-    <a href="#nordic">Nordics</a><a href="#nordic-league">League</a><a href="#nordic-bank">Bank</a>
+    <a href="#nordic">Nordics</a><a href="#nordic-home">Home markets</a><a href="#nordic-league">League</a><a href="#nordic-bank">Bank</a>
     <a href="#norway">Norway</a><a href="#ladder">Ladder</a><a href="#history">History</a><a href="#sectors">Sectors</a><a href="#exposure">Exposure</a><a href="#capital">Capital</a>
     <a href="#models">Models</a><a href="#banks">Banks</a><a href="#pricing">Prices</a><a href="#supervision">Supervision</a><a href="#households">Households</a><a href="#method">Method</a>
     <span class="rail-asof" id="railAsof"></span>
@@ -520,6 +555,15 @@ footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--border
       </div>
       <div class="panel nm-share" id="nmShares" aria-live="polite"><div class="empty">Loading market shares …</div></div>
     </div>
+  </section>
+
+  <!-- ═══ HOME MARKETS: THE NATIONAL STATISTICS (assets/banks-nordic.js) ══ -->
+  <section class="sec" id="nordic-home">
+    <div class="sec-title"><h2><span class="g">◧</span>Who lends at home</h2>
+      <p>Every bank's share of lending and deposits in its home market, from the national statistics — the small savings banks and the
+        foreign banks' branches the EBA hub misses included, with the history behind each share. Pick a country and a measure; drag the
+        slider or click the chart to move through time; click a bank for its profile.</p></div>
+    <div class="panel nh" id="nhPanel" aria-live="polite"><div class="empty">Loading the national statistics …</div></div>
   </section>
 
   <!-- ═══ THE NORDIC LEAGUE ══════════════════════════════════════════════ -->
@@ -863,6 +907,14 @@ footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--border
         banks that need not file do not. Filings break the EBA's rules often (amounts in millions instead of units, blank or
         mislabelled rows, ratios typed as percentages, tables copied from other tables); each is checked against its own totals,
         the bank's other filings and its size, and every correction is listed on the bank's profile.</p>
+      <p><b>Home markets.</b> Each bank's lending and deposits at home from the national statistics, so the small savings banks
+        and the foreign banks' branches count: SCB's monthly MFI statistics per institution (Sweden, since 2005), the Bank of
+        Finland's market-share report (half-yearly, since 2017), the quarterly figures every Norwegian bank reports to Bankenes
+        sikringsfond against SSB's market totals, with Norges Bank's alliance shares (year-ends), and Finanstilsynet's accounts
+        per Danish bank and mortgage bank against Danmarks Nationalbank's totals (year-ends, since 2016). Banking groups add up
+        their mortgage and finance companies. Where a legal entity books branches abroad — DNB, Danske Bank, Santander Consumer —
+        its home figure is scaled to the central bank's domestic one or left in the residual, and the note says which. What no
+        named institution accounts for is shown as its own bar, never spread over the others.</p>
       <p><b>Rungs.</b> Unsecured debt: Gjeldsregisteret's monthly key figures (interest-bearing balances — revolving or
         past due — since 2022). Liens: registered execution proceedings for unpaid debt (tinglyste utlegg, SSB 07218).
         Car loans: forced-sale requests on chattel (SSB 07218), which SSB stopped in January 2022 — there is no live
@@ -900,7 +952,8 @@ footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--border
     </div>
   </section>
 
-  <footer>Data: the European Banking Authority (Pillar 3 data hub, credit-institution register), SSB, Gjeldsregisteret, Norges Bank, Nord Pool, Yahoo Finance, the banks' quarterly reports (Oslo Børs NewsWeb),
+  <footer>Data: the European Banking Authority (Pillar 3 data hub, credit-institution register), SCB, Suomen Pankki, Bankenes sikringsfond, Finanstilsynet (Denmark),
+    Danmarks Nationalbank, SSB, Gjeldsregisteret, Norges Bank, Nord Pool, Yahoo Finance, the banks' quarterly reports (Oslo Børs NewsWeb),
     Finanstilsynet, Finansportalen (Forbrukerrådet), the banks' Pillar 3 reports. Refreshed through World Intel every 12 hours; the bank figures change
     when a report is read, the posted prices every evening.</footer>
 </div>

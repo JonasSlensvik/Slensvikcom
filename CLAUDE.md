@@ -123,7 +123,11 @@ backend architecture, scheduled jobs, DB access, and working agreements.
   their head office sized by Nordic credit exposure (CCyB1), collisions resolved with d3-force around the city; arcs = lending
   into another Nordic country (amber) and from other EEA banks (magenta, from a node in Schleswig-Holstein); countries shaded by
   market size / concentration / foreign lenders / IRB mortgage risk weight; latest-per-bank or a reference date. Market-share
-  panel per country and for the Nordics (bars coloured by home / other Nordic / other EEA), the **Nordic league** (sortable:
+  panel per country and for the Nordics (bars coloured by home / other Nordic / other EEA); **Home markets** (`#nordic-home`,
+  2026-11-11): each bank's share of lending and deposits in NO/SE/DK/FI from the national statistics (`api.nordic_shares`,
+  `api.nordic_share_dates`, ENEXT `research/banks/national.py`) — country, measure and (Norway) banks/alliances tabs, bars with
+  the residual hatched, a d3 share-history chart (top six groups + residual, one colour per group from a fixed slot map, click
+  or slider to move the date); clicking a country on the map switches it. The **Nordic league** (sortable:
   exposure + footprint, TREA, CET1, distance to the MDA trigger, leverage, LCR, NSFR, stage 2/3, S3 cover, CR6 mortgage RW) and
   the **bank profile** (`#bank=<LEI>`: KM1 history, OV1 split incl. credit RWA on top of the models, CCyB1 by country, CR1 by
   stage with cover, CR6 per class with the PD-grade distribution, IRRBB1, CC1, and "What we fixed" from `api.nordic_fixes`).
