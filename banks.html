@@ -13,7 +13,8 @@
 <script src="assets/banks-capital.js?v=20261104a"></script>
 <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js" defer></script>
-<script src="assets/banks-nordic.js?v=20261111h" defer></script>
+<script src="assets/banks-nordic.js?v=20261112a" defer></script>
+<script src="assets/banks-nordic-capital.js?v=20261112a" defer></script>
 
 <style>
 /* ═══ BANKS — page-local layer on top of assets/intel.css ═══════════════════
@@ -527,6 +528,78 @@ table.nb-res-t { min-width: 760px; font-size: 11px; margin-top: 10px; }
   .rs-season .big { font-size: 22px; }
 }
 
+/* capital and models across the Nordics (assets/banks-nordic-capital.js) */
+.nc-top { margin-bottom: 18px; }
+.nc-ctrl { display: flex; gap: 10px 22px; flex-wrap: wrap; align-items: center; margin-bottom: 16px; }
+.nc-subs { font-size: 10.5px; color: var(--text3); display: flex; gap: 6px; align-items: center; cursor: pointer; }
+.nc-subs input { accent-color: var(--amber); margin: 0; }
+.nc-kpis { display: flex; gap: 10px 30px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 16px; }
+.nc-kpis .big { font-family: var(--sans); font-size: 26px; font-weight: 700; color: var(--text1); line-height: 1.1; }
+.nc-kpis .k { font-size: 10.5px; color: var(--text3); line-height: 1.5; }
+.nc-kpis .k b { color: var(--text1); font-weight: 500; font-size: 13px; font-variant-numeric: tabular-nums; }
+.nc-kpis .k b.warm { color: var(--warm); }
+.nc-sort { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+.nc-sort .lt { font-size: 9px; letter-spacing: .14em; text-transform: uppercase; color: var(--text4); }
+.nc-head, .nc-row { display: grid; grid-template-columns: minmax(0, 170px) minmax(0, 3fr) 116px minmax(0, 2fr) 132px; gap: 14px; align-items: center; }
+.nc-head { font-size: 9px; letter-spacing: .14em; text-transform: uppercase; color: var(--text4); padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+.nc-row { padding: 4px 4px; margin: 0 -4px; font-size: 11px; cursor: pointer; border-radius: 3px; }
+.nc-row:hover, .nc-row:focus-visible, .nc-drow:hover, .nc-frow:hover, .nc-mrow:hover,
+.nc-drow:focus-visible, .nc-frow:focus-visible, .nc-mrow:focus-visible { background: rgba(255,255,255,.035); outline: none; }
+.nc-row .n, .nc-drow .n, .nc-frow .n, .nc-mrow .n { color: var(--text1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nc-row .n small, .nc-drow .n small, .nc-frow .n small, .nc-mrow .n small { color: var(--text4); font-size: 9px; margin-left: 6px; letter-spacing: .06em; }
+.nc-row .cap { position: relative; height: 13px; background: rgba(255,255,255,.025); border-radius: 2px; }
+.nc-row .cap i { position: absolute; top: 2px; bottom: 2px; }
+.nc-p1 { background: #33415a; } .nc-p2 { background: #4f6286; } .nc-cb { background: #7a8db3; }
+.nc-hd, .nc-hdl { background: rgba(67,224,151,.26); } .nc-hd.neg { background: rgba(240,96,96,.5); }
+.nc-row .cap b { position: absolute; top: -1px; bottom: -1px; width: 2px; margin-left: -1px; background: var(--text1); border-radius: 1px; }
+.nc-row .cap em { position: absolute; right: -1px; top: -5px; font-style: normal; color: var(--text1); font-size: 14px; line-height: 1; }
+.nc-row .v { text-align: right; color: var(--text1); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.nc-row .v small { color: var(--text3); font-size: 10px; margin-left: 4px; } .nc-row .v small.warm { color: var(--warm); }
+.nc-row .mix { display: flex; gap: 2px; height: 9px; border-radius: 2px; overflow: hidden; }
+.nc-row .mix i { display: block; min-width: 1px; }
+.nc-row .v2 { color: var(--text3); font-size: 10px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.nc-leg { margin-top: 14px; } .nc-leg .nc-legsep { width: 1px; background: var(--border2); align-self: stretch; }
+.legend-row i.nc-tick { width: 2px; height: 11px; background: var(--text1); vertical-align: -2px; }
+.nc-tt-i, .nm-tt table.tg i.nc-p1, .nm-tt table.tg i.nc-p2, .nm-tt table.tg i.nc-cb { display: inline-block; }
+.nc-grid { margin-top: 0; }
+.nc-drow, .nc-axis, .nc-frow, .nc-mrow { display: grid; grid-template-columns: minmax(0, 150px) minmax(0, 1fr) 86px; gap: 12px; align-items: center; }
+.nc-drow, .nc-frow, .nc-mrow { padding: 3px 4px; margin: 0 -4px; font-size: 10.5px; cursor: pointer; border-radius: 3px; }
+.nc-drow.pool { cursor: default; border-top: 1px dashed var(--border2); margin-top: 6px; padding-top: 8px; border-radius: 0; }
+.nc-drow.pool:hover { background: none; }
+.nc-drow .trk, .nc-frow .trk, .nc-mrow .trk, .nc-axis .trk { position: relative; height: 14px; }
+.nc-drow .trk u, .nc-frow .trk u, .nc-mrow .trk u { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--grid); }
+.nc-drow .pt { position: absolute; top: 50%; width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px; border-radius: 50%; border: 1.5px solid; box-sizing: border-box; }
+.nc-drow .pt.A { background: var(--s1); border-color: var(--s1); }
+.nc-drow .pt.F { background: var(--s2); border-color: var(--s2); }
+.nc-drow .pt.S { background: rgba(90,99,119,.6); border-color: #8a93a8; width: 7px; height: 7px; margin: -3.5px 0 0 -3.5px; }
+.nc-drow .pt.sus { background: transparent; }
+.nc-drow .trk s { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--text2); text-decoration: none; }
+.nc-drow .v, .nc-frow .v, .nc-mrow .v { text-align: right; color: var(--text2); font-variant-numeric: tabular-nums; white-space: nowrap; font-size: 10px; }
+.nc-axis { margin-top: 2px; } .nc-axis .trk { height: 12px; }
+.nc-axis em { position: absolute; transform: translateX(-50%); font-style: normal; font-size: 9px; color: var(--text4); white-space: nowrap; }
+.nc-axis em.fl { color: var(--amber); }
+.legend-row i.dotA, .legend-row i.dotF, .legend-row i.dotS { width: 9px; height: 9px; border-radius: 50%; vertical-align: -1px; }
+.legend-row i.dotA { background: var(--s1); } .legend-row i.dotF { background: var(--s2); }
+.legend-row i.dotS { background: rgba(90,99,119,.6); border: 1.5px solid #8a93a8; width: 7px; height: 7px; box-sizing: border-box; }
+.legend-row i.medS { width: 2px; height: 11px; background: var(--text2); vertical-align: -2px; }
+.legend-row i.sq.nc-p1, .legend-row i.sq.nc-p2, .legend-row i.sq.nc-cb, .legend-row i.sq.nc-hdl { height: 9px; }
+.nc-frow .trk i { position: absolute; left: 0; top: 3px; bottom: 3px; background: var(--s1); border-radius: 0 2px 2px 0; opacity: .85; }
+.nc-frow .trk i.low { background: var(--warm); }
+.nc-frow .trk u.fl, .nc-mrow .trk u { background: var(--axis); }
+.nc-frow .trk u.fl { background: var(--amber); opacity: .8; }
+.nc-mrow .trk i { position: absolute; top: 3px; bottom: 3px; border-radius: 1px; }
+.nc-mrow .trk i.mu { background: var(--s1); } .nc-mrow .trk i.me { background: var(--s2); }
+.nc-chart svg { display: block; width: 100%; height: auto; }
+.nc-p { margin-bottom: 10px; }
+@media (max-width: 760px) {
+  .nc-head { display: none; }
+  .nc-row { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "n v" "cap cap" "mix v2"; gap: 4px 10px; padding: 7px 4px; }
+  .nc-row .n { grid-area: n; } .nc-row .v { grid-area: v; } .nc-row .cap { grid-area: cap; } .nc-row .mix { grid-area: mix; }
+  .nc-row .v2 { grid-area: v2; text-align: right; }
+  .nc-drow, .nc-axis, .nc-frow, .nc-mrow { grid-template-columns: minmax(0, 96px) minmax(0, 1fr) 58px; gap: 8px; }
+  .nc-kpis { gap: 10px 20px; } .nc-kpis .big { font-size: 22px; }
+}
+
 /* ── method ──────────────────────────────────────────────────────────────── */
 .method { columns: 2 360px; column-gap: 28px; font-size: 11px; color: var(--text3); line-height: 1.7; }
 .method p { break-inside: avoid; margin-bottom: 10px; }
@@ -566,8 +639,8 @@ footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--border
   </header>
 
   <nav class="rail" id="rail" aria-label="Sections">
-    <a href="#nordic">Nordics</a><a href="#nordic-home">Home markets</a><a href="#nordic-results">Results</a><a href="#nordic-league">League</a><a href="#nordic-bank">Bank</a>
-    <a href="#norway">Norway</a><a href="#ladder">Ladder</a><a href="#history">History</a><a href="#sectors">Sectors</a><a href="#exposure">Exposure</a><a href="#capital">Capital</a>
+    <a href="#nordic">Nordics</a><a href="#nordic-home">Home markets</a><a href="#nordic-results">Results</a><a href="#nordic-league">League</a><a href="#nordic-capital">Capital</a><a href="#nordic-bank">Bank</a>
+    <a href="#norway">Norway</a><a href="#ladder">Ladder</a><a href="#history">History</a><a href="#sectors">Sectors</a><a href="#exposure">Exposure</a><a href="#capital">IRB</a>
     <a href="#models">Models</a><a href="#banks">Banks</a><a href="#pricing">Prices</a><a href="#supervision">Supervision</a><a href="#households">Households</a><a href="#method">Method</a>
     <span class="rail-asof" id="railAsof"></span>
   </nav>
@@ -622,6 +695,16 @@ footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--border
         it sits above its requirement, liquidity, how much of its book is in stage 2 and 3, and the risk weight its models put on a mortgage.
         Sort by any column; click a bank for its profile.</p></div>
     <div class="panel" id="nmLeague"><div class="empty">Loading the league …</div></div>
+  </section>
+
+  <!-- ═══ CAPITAL AND MODELS ACROSS THE NORDICS (assets/banks-nordic-capital.js) ═══ -->
+  <section class="sec" id="nordic-capital">
+    <div class="sec-title"><h2><span class="g">⛁</span>Capital and models across the Nordics</h2>
+      <p>Every Nordic bank's Pillar 3 on one scale: how far its CET1 sits above what it must hold and what its risk exposure is made of;
+        the risk weights its own models put on a mortgage and on a company against the standardised approach; where its PDs and LGDs sit
+        on the IRB formula; how close the output floor is; whether a year's defaults matched its PDs; and how much its models moved its
+        capital. Banking groups by default, with the mortgage banks and part-owned companies a tick away. Click any bank for its profile.</p></div>
+    <div id="ncPanel" aria-live="polite"><div class="panel"><div class="empty">Loading the Pillar 3 data …</div></div></div>
   </section>
 
   <!-- ═══ ONE BANK ═══════════════════════════════════════════════════════ -->
@@ -724,7 +807,7 @@ footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--border
   <!-- ═══ CAPITAL (assets/banks-capital.js) ══════════════════════════════ -->
   <section class="sec" id="capital">
     <div class="sec-title">
-      <h2><span class="g">⛁</span>Capital: what the models say</h2>
+      <h2><span class="g">⛁</span>Norway's IRB banks: what the models say</h2>
       <p>The capital side of the exposure map, read from every listed bank's Pillar 3 report. Seven banks set their own risk
         weights with internal models Finanstilsynet has approved (IRB): <b>A-IRB</b> estimates PD, LGD and conversion factors
         itself, <b>F-IRB</b> estimates PD and takes the supervisory LGD. Retail IRB always uses own estimates, so it counts as
@@ -732,7 +815,9 @@ footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--border
         the regulation sets the weight. Norway put CRR3 in force on 1 April 2025 and raised the mortgage floor from 20 to 25 %
         on 1 July. Two lenders not listed in Oslo sit beside them for comparison: Nordea, whose Norwegian mortgages are in
         Nordea Eiendomskreditt and whose models the ECB approves, and Santander Consumer Bank, the Nordic car- and
-        consumer-finance bank licensed in Norway. <span id="capAsof" class="faint"></span></p>
+        consumer-finance bank licensed in Norway. These sections read each bank's own Pillar 3 report, with its approvals and
+        pending model applications; for every Nordic bank on the EBA's numbers, see <a href="#nordic-capital">Capital and models
+        across the Nordics</a> above. <span id="capAsof" class="faint"></span></p>
     </div>
     <div class="cap-body">
       <div class="cap-hero">
@@ -964,6 +1049,15 @@ footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--border
         their mortgage and finance companies. Where a legal entity books branches abroad — DNB, Danske Bank, Santander Consumer —
         its home figure is scaled to the central bank's domestic one or left in the residual, and the note says which. What no
         named institution accounts for is shown as its own bar, never spread over the others.</p>
+      <p><b>Capital and models across the Nordics.</b> The EBA's Pillar 3 data hub, as each bank filed it: KM1 for capital and its
+        requirement, OV1 for what the risk exposure is made of, CR6 and CR6-A for the internal models and how much of the book they
+        cover, CR4 for the standardised weights, CMS1 for the output floor, CR9 for the back-test and CR8 for what moved the risk
+        exposure. The requirement is the CET1 a bank must hold before the restrictions on distributions bite: 4.5 % plus the CET1 part
+        of Pillar 2 plus the combined buffer; guidance is not disclosed. Filings that break the template's own arithmetic are
+        repaired and say so: Danish banks that put the whole solvency need in the Pillar 2 row, a combined buffer below the
+        bank's own overall requirement, a CMS1 total that disagrees with the bank's KM1. Risk weights and PDs are for the performing
+        grades, before national floors and add-ons (Norway's 25 % floor on the mortgage portfolio average among them), so a low
+        model weight need not mean low capital.</p>
       <p><b>Rungs.</b> Unsecured debt: Gjeldsregisteret's monthly key figures (interest-bearing balances — revolving or
         past due — since 2022). Liens: registered execution proceedings for unpaid debt (tinglyste utlegg, SSB 07218).
         Car loans: forced-sale requests on chattel (SSB 07218), which SSB stopped in January 2022 — there is no live

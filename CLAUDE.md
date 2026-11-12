@@ -131,7 +131,13 @@ backend architecture, scheduled jobs, DB access, and working agreements.
   2026-11-11): every Nordic bank's quarterly report newest first (`api.nordic_report_feed` + `api.nordic_quarters`: net profit and
   NII y/y, credit losses in annualised bp, ROE, C/I, CET1, link to the announcement), the season's medians and "who reports next"
   (`api.nordic_report_upcoming`); the bank profile opens with **Quarterly results** (d3 stacked income, costs, losses, profit +
-  an eight-quarter table). The **Nordic league** (sortable:
+  an eight-quarter table). **Capital and models across the Nordics** (`#nordic-capital`, 2026-11-12, `assets/banks-nordic-capital.js`,
+  self-starting after `BankNordic.ready`; it reads the registry, `open(lei)` and the tooltip from `window.BankNordic`): per bank CET1
+  against the requirement stack (P1 4.5 % + P2R CET1 + CBR, headroom shaded) and the OV1 composition, sortable, 24 rows until "show
+  all"; mortgage and corporate risk weights (CR6 performing vs CR4 SA, banks without a model pooled), the capital curve, the output floor
+  (`api.nordic_floor.floor_ratio`, IRB banks only), the CR9 back-test and CR8 model moves (`api.nordic_irb_classes`, `nordic_sa`,
+  `nordic_irb_scope`, `nordic_backtest`, `nordic_rwa_flow`). Norway's Capital section keeps its anchor `#capital` but its rail
+  label is "IRB". The **Nordic league** (sortable:
   exposure + footprint, TREA, CET1, distance to the MDA trigger, leverage, LCR, NSFR, stage 2/3, S3 cover, CR6 mortgage RW) and
   the **bank profile** (`#bank=<LEI>`: KM1 history, OV1 split incl. credit RWA on top of the models, CCyB1 by country, CR1 by
   stage with cover, CR6 per class with the PD-grade distribution, IRRBB1, CC1, and "What we fixed" from `api.nordic_fixes`).

@@ -1323,7 +1323,10 @@
       rt = setTimeout(() => { if (window.innerWidth === rw) return; rw = window.innerWidth; drawMap(); nhRender(); }, 250);
     });
     const pill = $('#pillNordic'); if (pill) pill.innerHTML = `<b>${Object.values(BANKS).filter((b) => b.nordic).length}</b>&nbsp;Nordic banks · EBA`;
+    if (window.__bnReady) window.__bnReady();
   }
-  window.BankNordic = { init, state: ST };
+  // for assets/banks-nordic-capital.js: the registry, opening a profile, and the shared tooltip
+  window.BankNordic = { init, state: ST, banks: () => BANKS, open: (lei) => openBank(lei), tip,
+    ready: new Promise((res) => { window.__bnReady = res; }) };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();
