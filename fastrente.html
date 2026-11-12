@@ -159,6 +159,11 @@
   .wed-table tr:last-child td { border-bottom: none; }
   .wed-table tr:hover td { background: var(--bg2); }
   .wed-table td.pos { color: var(--green); } .wed-table td.neg { color: var(--red); } .wed-table td.ink { color: var(--text1); }
+  .wed-table td.miss { color: var(--amber); text-align: right; white-space: normal; } .wed-table td.wait { color: var(--text3); text-align: right; white-space: normal; }
+  .wed-table tr.filled td:not(:first-child) { color: var(--text1); font-style: italic; }
+  .fill-tag { display: inline-block; margin-left: 8px; padding: 1px 6px; border: 1px solid var(--amber-border); border-radius: 3px;
+    background: var(--amber-bg); color: var(--amber); font-size: 9px; letter-spacing: 0.06em; text-transform: uppercase; cursor: help; }
+  .wed-note { margin: 10px 0 0; font-size: 10px; line-height: 1.6; color: var(--text3); } .wed-note strong { color: var(--text2); font-weight: 500; }
   .badge { display: inline-block; padding: 2px 7px; border-radius: 3px; font-size: 8px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
   .badge.yes { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
   .badge.no { background: var(--bg3); color: var(--text3); border: 1px solid var(--border); }
@@ -322,6 +327,15 @@ async function fetchSheet(gid) {
   if (!res.ok) throw new Error('HTTP ' + res.status + ' fra regnearket');
   return parseCSV(await res.text());
 }
+// Days the monitor filled after a missed run (lanekaseen-monitor --fill-*): the raw tab's Note column (X) by date.
+async function fetchNotes() {
+  const tq = encodeURIComponent('select B, X where X is not null');
+  const res = await fetch(`https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=Finansportalen&tq=${tq}`, { cache: 'no-cache' });
+  if (!res.ok) throw new Error('HTTP ' + res.status + ' fra regnearket');
+  const out = new Map();
+  for (const r of parseCSV(await res.text())) { const d = parseSheetDate(r.Date); if (d && r.Note) out.set(iso(d), r.Note); }
+  return out;
+}
 function parseCSV(raw) {
   function splitLine(line) {
     const out = []; let cur = '', inQ = false;
@@ -381,6 +395,7 @@ function loadAll() {
     getJSON(`${API}/lanekassen_rates?order=valid_from.asc`),
     getJSON(`${API}/rpc/world_history?ids=${ids}&since=2021-07-01`),
     getJSON(`${API}/rpc/world_history?ids=${encodeURIComponent('{' + SWAP_IDS.join(',') + '}')}&since=2026-01-01`),
+    fetchNotes(),
   ]);
 }
 
@@ -496,12 +511,14 @@ function windowRates(cyc, lk, rd) {
   const weds = wednesdays(cyc.src), out = {};
   for (const t of TENORS) {
     const official = lk ? lk.fixed(cyc.eff, t) : null;
-    const seen = weds.map(w => { const r = rd.byIso.get(iso(w)); return w <= TODAY && r && r[t.fp] != null ? r[t.fp] : null; })
-      .filter(v => v != null);
+    const seenW = weds.filter(w => { const r = rd.byIso.get(iso(w)); return w <= TODAY && r && r[t.fp] != null; });
+    const seen = seenW.map(w => rd.byIso.get(iso(w))[t.fp]);
+    const filled = seenW.filter(w => rd.notes && rd.notes.has(iso(w))).length;
+    const missed = weds.filter(w => w < TODAY && !seenW.includes(w));
     const prior = seen.length ? null : rd.readings.filter(r => r.d < weds[0] && r[t.fp] != null).pop();
     const est = seen.length ? avg(seen) : prior ? prior[t.fp] : null;
     out[t.k] = {
-      rate: official != null ? official : est, official, k: seen.length, n: weds.length, prior: prior ? prior.d : null,
+      rate: official != null ? official : est, official, k: seen.length, n: weds.length, prior: prior ? prior.d : null, filled, missed,
       kind: official != null ? 'official' : est == null ? 'missing' : seen.length === weds.length ? 'computed'
         : seen.length ? 'provisional' : 'prior',
     };
@@ -642,10 +659,14 @@ function nbModel(pol, cyc) {
 // ── RENDER: helpers ─────────────────────────────────────────────────────────
 const tenorOf = k => TENORS.find(t => t.k === +k) || TENORS[0];
 const sw = (t, cls = '') => `<span class="sw ${cls}" style="background:${t.color};border-color:${t.color}"></span>`;
+// "én rekonstruert, 11. nov mangler": what the k of n Wednesdays behind a rate leave out or fill in
+const obsExtra = r => [r.filled ? `${r.filled === 1 ? 'én' : r.filled} rekonstruert` : '',
+  r.missed && r.missed.length ? `${r.missed.map(fmtDay).join(', ')} mangler` : ''].filter(Boolean).join(', ');
+const obsParen = r => obsExtra(r) ? ` (${obsExtra(r)})` : '';
 const rateKindText = (r, cyc) => ({
   official: 'offisiell sats fra Lånekassen',
-  computed: `beregnet fra ${r.k} av ${r.n} onsdager i ${MONTHS[cyc.src.getMonth()]} · offisiell ${fmtDay(cyc.winOpen)}`,
-  provisional: `foreløpig: snittet av ${r.k} av ${r.n} onsdager i ${MONTHS[cyc.src.getMonth()]} så langt`,
+  computed: `beregnet fra ${r.k} av ${r.n} onsdager i ${MONTHS[cyc.src.getMonth()]}${obsParen(r)} · offisiell ${fmtDay(cyc.winOpen)}`,
+  provisional: `foreløpig: snittet av ${r.k} av ${r.n} onsdager i ${MONTHS[cyc.src.getMonth()]} så langt${obsParen(r)}`,
   prior: `ingen ${MONTHS[cyc.src.getMonth()]}-onsdager ennå · siste observasjon ${r.prior ? fmtDay(r.prior) : ''}`,
   missing: 'mangler data',
 }[r.kind]);
@@ -686,7 +707,7 @@ function decisionPanel(ctx) {
   const marketWord = sigHi > 3 ? 'høyere' : sigLo < -3 ? 'lavere' : 'omtrent på samme nivå';
   const r3 = rates[3];
   const summary = (r3.kind === 'provisional'
-      ? `Satsene for ${winName}-vinduet settes av <strong>${srcName}s onsdagsobservasjoner</strong> — ${r3.k} av ${r3.n} er tatt, og snittet så langt er ${pct(r3.rate)} for 3 år. `
+      ? `Satsene for ${winName}-vinduet settes av <strong>${srcName}s onsdagsobservasjoner</strong> — ${r3.k} av ${r3.n} er tatt${obsParen(r3)}, og snittet så langt er ${pct(r3.rate)} for 3 år. `
       : r3.kind === 'prior'
       ? `Satsene for ${winName}-vinduet settes av <strong>${srcName}s onsdagsobservasjoner</strong> — ingen er tatt ennå (første ${fmtDay(wednesdays(cyc.src)[0])}); siste observasjon, ${fmtDay(r3.prior)}, er ${pct(r3.rate)} for 3 år. `
       : `Satsene du kan binde ble satt av <strong>${srcName}s onsdagsobservasjoner</strong> (3 år: ${pct(r3.rate)}). `)
@@ -813,7 +834,7 @@ function alreadyBox(ctx) {
   const Win = winName.charAt(0).toUpperCase() + winName.slice(1);
   const soFar = r3.k === 1 ? 'den ene som er observert' : `de ${r3.k} som er observert`;
   const rateTxt = r3.kind === 'provisional'
-    ? `${Win}-satsen er ikke satt ennå: den blir snittet av ${r3.n} onsdager i ${srcMonth}. Snittet av ${soFar} så langt er ${pct(r3.rate)}, altså ${bp(p3.itm)} i pengene.`
+    ? `${Win}-satsen er ikke satt ennå: den blir snittet av ${r3.n} onsdager i ${srcMonth}. Snittet av ${soFar}${obsParen(r3)} så langt er ${pct(r3.rate)}, altså ${bp(p3.itm)} i pengene.`
     : r3.kind === 'prior'
     ? `${Win}-satsen er ikke satt ennå: den blir snittet av ${r3.n} onsdager i ${srcMonth}, og ingen er observert. Siste observasjon (${fmtDay(r3.prior)}) gir ${bp(p3.itm)} i pengene.`
     : `${Win}-satsen er ${pct(r3.rate)}, altså ${bp(p3.itm)} i pengene.`;
@@ -930,13 +951,24 @@ function trackerCard(ctx) {
     <p class="note" style="margin-top:12px">Ny sats = snittet av disse onsdagene (minus Lånekassens 0,15 pp, som allerede er trukket fra i tallene). Ukjente onsdager er anslått som statsrente for to uker siden + normalt påslag.</p>
   </div>`;
 }
+// A past Wednesday without a reading is "mangler" (the run failed), today's is pending; a day the monitor filled
+// afterwards carries its Note from the sheet.
 function wedTable(title, meta, weds, rd) {
-  const rows = weds.map(w => { const r = rd.byIso.get(iso(w)); return { w, r: w <= TODAY ? r : null }; });
+  const notes = rd.notes || new Map();
+  const rows = weds.map(w => { const r = rd.byIso.get(iso(w)); return { w, r: w <= TODAY ? r : null, note: notes.get(iso(w)) }; });
+  const has = r => r && TENORS.some(t => r[t.fp] != null);
   const cell = v => v != null ? pct(v) : '<span style="color:var(--text3)">—</span>';
+  const line = ({ w, r, note }) => {
+    const day = `<td class="ink">${fmtDayY(w)}${note && has(r) ? ' <span class="fill-tag" title="' + esc(note) + '">rekonstruert</span>' : ''}</td>`;
+    if (!has(r) && w < TODAY) return `<tr>${day}<td colspan="${TENORS.length}" class="miss">mangler — ingen avlesning denne onsdagen</td></tr>`;
+    if (!has(r) && +w === +TODAY) return `<tr>${day}<td colspan="${TENORS.length}" class="wait">i dag — avlesningen kommer i løpet av dagen</td></tr>`;
+    return `<tr${note && has(r) ? ' class="filled"' : ''}>${day}${TENORS.map(t => `<td>${cell(r ? r[t.fp] : null)}</td>`).join('')}</tr>`;
+  };
+  const filled = rows.filter(x => x.note && has(x.r));
   return `<div class="card"><div class="card-header"><span class="card-title">${title}</span><span class="card-meta">${meta}</span></div>
     <div class="tbl-wrap"><table class="wed-table"><thead><tr><th>Onsdag</th>${TENORS.map(t => `<th>${t.label}</th>`).join('')}</tr></thead><tbody>
-    ${rows.map(({ w, r }) => `<tr><td class="ink">${fmtDayY(w)}</td>${TENORS.map(t => `<td>${cell(r ? r[t.fp] : null)}</td>`).join('')}</tr>`).join('')}
-    </tbody></table></div></div>`;
+    ${rows.map(line).join('')}
+    </tbody></table></div>${filled.map(x => `<p class="note wed-note"><strong>${fmtDay(x.w)}:</strong> ${esc(x.note)}</p>`).join('')}</div>`;
 }
 function healthStrip(ctx) {
   const { lk, rd, ngb, pol, cyc } = ctx, items = [];
@@ -947,6 +979,8 @@ function healthStrip(ctx) {
   } else items.push('<span class="bad">Lånekassen-satser mangler</span>');
   const lr = rd.readings.length ? rd.readings[rd.readings.length - 1].d : null;
   items.push(lr ? `<span class="${age(lr) > 16 ? 'bad' : age(lr) > 9 ? 'warn' : 'ok'}">Finansportalen: siste onsdag ${fmtDay(lr)}</span>` : '<span class="bad">Finansportalen-data mangler</span>');
+  const lastWed = addDays(TODAY, -((TODAY.getDay() + 4) % 7 || 7));          // the latest Wednesday before today
+  if (lr && lastWed > lr) items.push(`<span class="warn">Finansportalen: ${fmtDay(lastWed)} mangler</span>`);
   const y = ngb['yc.no.3y'];
   items.push(y ? `<span class="${age(y.last) > 7 ? 'warn' : 'ok'}">Statsrenter: ${fmtDay(y.last)}</span>` : '<span class="bad">Statsrenter mangler</span>');
   items.push(pol ? `<span class="${age(pol.last) > 7 ? 'warn' : 'ok'}">Styringsrente: ${fmtDay(pol.last)}</span>` : '<span class="bad">Styringsrente mangler</span>');
@@ -1292,9 +1326,10 @@ function wire(ctx) {
 
 (async () => {
   try {
-    const [sheet, lkRes, hist, swapRes] = await loadAll();
+    const [sheet, lkRes, hist, swapRes, notesRes] = await loadAll();
     const errors = [];
     const rd = sheet.status === 'fulfilled' ? parseReadings(sheet.value) : (errors.push('Finansportalen-regnearket (' + sheet.reason.message + ')'), { byIso: new Map(), readings: [] });
+    rd.notes = notesRes.status === 'fulfilled' ? notesRes.value : new Map();
     const lk = lkRes.status === 'fulfilled' && lkRes.value.length ? lkModel(lkRes.value) : (errors.push('Lånekassen-satser' + (lkRes.reason ? ' (' + lkRes.reason.message + ')' : '')), null);
     const ngb = {}; let pol = null;
     if (hist.status === 'fulfilled') {
