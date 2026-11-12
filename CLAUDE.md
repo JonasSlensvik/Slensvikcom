@@ -110,6 +110,14 @@ backend architecture, scheduled jobs, DB access, and working agreements.
     Sheet's `fp_obs_*` Wednesday readings. Don't read the sheet's swap tab (dead since 2026-08-19; its history now
     lives in `sw.nok.*`) or its `rate_variabel` (dead since June 2026). Gain = Lånekassen's described
   method (same remaining term, fixed repayment plan); `?today=YYYY-MM-DD` replays another date's logic.
+  - **The Wednesday readings come from github JonasSlensvik/lanekaseen-monitor** (clone in `../lanekaseen-monitor`): a GitHub
+    Action scrapes Finansportalen's top-5 into the raw "Finansportalen" tab, and the `renter` tab looks each Wednesday up by
+    date. Since 2026-11-12 Wednesdays get four attempts, a run skips a day already recorded, rows are written only when
+    complete, and a failure pings healthchecks (`gha-lanekassen-monitor`). A missed day can be filled with `--fill-*` (copies
+    another day's row, the reason in column X, Note), but only with evidence that the market did not move: Finansportalen shows
+    each offer's "sist endret" date. 2026-11-11 is the one filled day (the run died on a DNS failure; no offer changed on the
+    11th). The page reads the Note column (`fetchNotes`, a gviz query) and tags such a day "rekonstruert", with the note under
+    the table; a past Wednesday without a reading shows "mangler", and the counts say so ("(én rekonstruert, 18. nov mangler)").
   Rule that shapes it: after a break you must float ≥ 2 months — no break-and-relock in one window.
 - `world.html` + `assets/world.js` — World Intel: canvas globe (d3-geo + topojson, layers: tension,
   policy/real rates, inflation, growth, FX, equities, sanctions; chokepoints, disasters, market beacons,
